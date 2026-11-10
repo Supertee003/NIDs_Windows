@@ -97,11 +97,12 @@ def test_host_level_claims_carry_a_build_anchor() -> None:
 
 
 def test_level_summary_matches_entries() -> None:
+    # S1-03 (2026-11-10): only `evidence` counts. `known_gaps` is a findings
+    # log; including it inflated E5_count to 166 (77 evidence + 89 gaps).
     data = _index()
     counts = Counter(
         e["level"]
-        for key in ("evidence", "known_gaps")
-        for e in data.get(key, [])
+        for e in data.get("evidence", [])
         if e.get("level")
     )
     summary = data["evidence_level_summary"]
@@ -111,3 +112,33 @@ def test_level_summary_matches_entries() -> None:
         if summary.get(f"{lvl}_count") != counts.get(lvl, 0)
     }
     assert not mismatched, f"level summary drift (recorded, actual): {mismatched}"
+
+
+def test_host_effect_claims_are_marked_lab_or_historical() -> None:
+    """This product is detection-only; a host-effect claim must be scoped."""
+    offenders = [
+        e.get("id")
+        for key in ("evidence", "known_gaps")
+        for e in _index().get(key, [])
+        if e.get("host_effect_confirmed") is True
+        and not (e.get("scope") == "lab" or e.get("historical") is True)
+    ]
+    assert not offenders, (
+        "host_effect_confirmed=true without scope=lab/historical: "
+        f"{offenders}"
+    )
+
+
+def test_e5_entries_disclose_whether_an_artifact_exists() -> None:
+    """An E5 without an openable artifact must say so, not imply one."""
+    offenders = [
+        e.get("id")
+        for e in _index()["evidence"]
+        if e.get("level") == "E5"
+        and not e.get("evidence_artifact")
+        and e.get("artifact_status") not in {"unrecorded", "missing", "historical"}
+    ]
+    assert not offenders, (
+        "E5 entries with no artifact pointer and no artifact_status marker: "
+        f"{offenders}"
+    )

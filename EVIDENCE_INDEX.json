@@ -444,7 +444,8 @@
       ],
       "result": "PASS_E5_SHARE_ARITHMETIC",
       "finding": "The pairwise isolation guarantee is now measured on the host, not only proven arithmetically. Both host sources reach their full 7,168 share and the shared tail check refused nothing during the window, so the second source is no longer stopped at 6,656 by the boundary as the old formula required. Limits, stated rather than implied: the refusals are the storming source's own excess (206,999, all source_quota_shed), so total loss is NOT reduced - FIM ingress aggregation (ADR-0012) remains the only lever for that; the churn is synthetic; critical_pushed_total was 0 because no System32 write happened in the window; the deploy used a hash-verified rollback copy and one restart, but the RB-021 preflight was not run for this window; readiness is degraded=true as it was before the deploy.",
-      "evidence_artifact": "admin-evidence/rb017-e5-deploy-20261108/storm-20261108_114516-summary.json"
+      "evidence_artifact": "admin-evidence/rb017-e5-deploy-20261108/storm-20261108_114326-summary.json",
+      "artifact_note": "pointer corrected 2026-11-10: the recorded filename used the file mtime (11:45:16) instead of the run stamp (11:43:26)"
     },
     {
       "id": "RB-017-BRAIN-SUPERVISED-E5-20261108",
@@ -1392,7 +1393,8 @@
         "Malformed header detection"
       ],
       "result": "PASS",
-      "finding": "WFP enforcement verified on Windows host. Bridge test 36/36 pass. GAP-002 CLOSED."
+      "finding": "WFP enforcement verified on Windows host. Bridge test 36/36 pass. GAP-002 CLOSED.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "EVT-028",
@@ -1558,7 +1560,8 @@
         "tests/runtime/test_harness_integration.py::TestCoreLifecycle::test_core_reaches_running_within_startup_timeout"
       ],
       "result": "PASS",
-      "finding": "The control plane stopped asserting capability as live health; core now reaches RUNNING against the real harness."
+      "finding": "The control plane stopped asserting capability as live health; core now reaches RUNNING against the real harness.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "EVT-035",
@@ -1650,7 +1653,8 @@
         "Rust PEP is sole enforcement authority"
       ],
       "result": "PASS",
-      "finding": "WFP enforcement verified on Windows host via Rust PEP bridge test. 36/36 tests pass. GAP-011 CLOSED confirms authority invariant."
+      "finding": "WFP enforcement verified on Windows host via Rust PEP bridge test. 36/36 tests pass. GAP-011 CLOSED confirms authority invariant.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "EVT-039",
@@ -1760,7 +1764,8 @@
         "artifact checklist 8/8"
       ],
       "finding": "implemented + verified",
-      "result": "PASS"
+      "result": "PASS",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "VOL03-CONTROL-001",
@@ -1935,7 +1940,8 @@
         "TRUTH_VALID"
       ],
       "finding": "implemented + verified",
-      "result": "PASS"
+      "result": "PASS",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "VOL11-ATK-001",
@@ -2030,7 +2036,8 @@
         "docs/runbooks/RB-021-hostonly-lab-proof.md",
         "EVIDENCE_INDEX.json",
         "AI_CONTEXT.md"
-      ]
+      ],
+      "artifact_status": "unrecorded"
     },
     {
       "id": "RB-018-HOSTONLY-20261020",
@@ -2050,7 +2057,8 @@
         "docs/runbooks/RB-018-hostonly-observe-only-qualification.md",
         "EVIDENCE_INDEX.json",
         "AI_CONTEXT.md"
-      ]
+      ],
+      "artifact_status": "unrecorded"
     },
     {
       "id": "CI-TRUTH-SOURCE-COMMIT",
@@ -2114,7 +2122,8 @@
         "FLOW_MAP.json",
         "EVIDENCE_INDEX.json",
         "AI_CONTEXT.md"
-      ]
+      ],
+      "artifact_status": "unrecorded"
     },
     {
       "id": "DEPLOY-120-REFRESH-20261020",
@@ -2210,7 +2219,8 @@
         "admin-evidence/deploy120-refresh-20261020/drill-before-service.txt",
         "admin-evidence/deploy120-refresh-20261020/drill-before-process.txt"
       ],
-      "files_changed": []
+      "files_changed": [],
+      "artifact_status": "unrecorded"
     },
     {
       "id": "DEPLOY-120-E5-20261020",
@@ -2247,7 +2257,8 @@
         "tests/release/test_installer_template.py: 23/23 pass (Sysnative copy/delete/signature + System32 SCM path + SysWOW64 cleanup + wait/retry pins)",
         "full pytest: 969 passed, 2 skipped, 27 subtests; release_engineering --verify 612/612; truth TRUTH_VALID",
         "operator E5 full drill: phase 0 22/22; uninstall 1060/drivers False/configs preserved; reinstall 22/22; SysWOW64 absent at all three phases; E5_DRILL_OK"
-      ]
+      ],
+      "artifact_status": "unrecorded"
     },
     {
       "id": "RB-021-L4-RATE-E2-20261020",
@@ -2359,7 +2370,8 @@
         "aegisctl enforce status: prevention_gate=closed, host_effect_capable=false"
       ],
       "host_effect_confirmed": false,
-      "prevention_gate": "closed"
+      "prevention_gate": "closed",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020",
@@ -2393,7 +2405,8 @@
         "readiness RUNNING; prevention_gate closed; queue drop counters unchanged across the controls"
       ],
       "host_effect_confirmed": false,
-      "prevention_gate": "closed"
+      "prevention_gate": "closed",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "RB-021-NOSE-FLAGS-E2-20261020",
@@ -2526,7 +2539,8 @@
         "gate: detection-only, prevention_gate=closed, host_effect_capable=false"
       ],
       "host_effect_confirmed": false,
-      "prevention_gate": "closed"
+      "prevention_gate": "closed",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "DEPLOY-131-INSTALL-20261020",
@@ -2556,7 +2570,8 @@
         "services: AegisNids, AegisWfp, AegisMinifilter RUNNING"
       ],
       "host_effect_confirmed": false,
-      "prevention_gate": "closed"
+      "prevention_gate": "closed",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "RB-021-NOSE-FLAGS-LIVE-ATTEMPT-20261020",
@@ -2589,7 +2604,8 @@
         "process: Nose PID 21568 created 2026-10-15 08:09:13 vs binary 2026-10-20 17:20:01"
       ],
       "host_effect_confirmed": false,
-      "prevention_gate": "closed"
+      "prevention_gate": "closed",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "RB-021-R9007-PRE-RESTART-20261020",
@@ -2617,7 +2633,8 @@
         "prevention_gate: closed; host_effect: false"
       ],
       "host_effect_confirmed": false,
-      "prevention_gate": "closed"
+      "prevention_gate": "closed",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "RB-021-NOSE-FLAGS-LIVE-PASS-20261020",
@@ -2654,7 +2671,8 @@
         "Nose process: PID 3632 created 19:51:55 vs binary 17:20:01"
       ],
       "host_effect_confirmed": false,
-      "prevention_gate": "closed"
+      "prevention_gate": "closed",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "DEPLOY-131-VERIFY-PROCESS-20261020",
@@ -2686,7 +2704,8 @@
         "all 22 prior installer/byte/config/manifest/service gates still PASS"
       ],
       "host_effect_confirmed": false,
-      "prevention_gate": "closed"
+      "prevention_gate": "closed",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "DEPLOY-130-L4-RATE-E5-LAB-20261020",
@@ -2719,7 +2738,8 @@
         "LIVE_VERIFY_OK (24/24)"
       ],
       "host_effect_confirmed": false,
-      "prevention_gate": "closed"
+      "prevention_gate": "closed",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "DEPLOY-132-DAEMON-IFACE-ENV-DRIFT-20261020",
@@ -2748,7 +2768,8 @@
         "daemon PID 13108 created 17:54:49; no restart during the lab"
       ],
       "host_effect_confirmed": false,
-      "prevention_gate": "closed"
+      "prevention_gate": "closed",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "DEPLOY-132-SCM-ENV-CACHE-20261020",
@@ -2779,7 +2800,8 @@
         "verifier LIVE_VERIFY_OK (24/24); gate closed; 9/10 clear assertions"
       ],
       "host_effect_confirmed": false,
-      "prevention_gate": "closed"
+      "prevention_gate": "closed",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "DEPLOY-132-POST-REBOOT-20261021",
@@ -2823,7 +2845,8 @@
         "provider_ready=true; prevention_gate=closed; host_effect_confirmed=false"
       ],
       "host_effect_confirmed": false,
-      "prevention_gate": "closed"
+      "prevention_gate": "closed",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "G2-RB012-013-LAB-20261021",
@@ -2869,7 +2892,10 @@
         "RB-013 mirror counter: UNMET (control verb bypasses pipeline mirror)"
       ],
       "host_effect_confirmed": true,
-      "prevention_gate": "open-lab-only"
+      "prevention_gate": "open-lab-only",
+      "artifact_status": "unrecorded",
+      "scope": "lab",
+      "historical": true
     },
     {
       "id": "G2-INBOUND-PIPELINE-20261021",
@@ -2921,7 +2947,10 @@
         "VM restore: PENDING (operator snapshot restore in progress)"
       ],
       "host_effect_confirmed": true,
-      "prevention_gate": "open-lab-only"
+      "prevention_gate": "open-lab-only",
+      "artifact_status": "unrecorded",
+      "scope": "lab",
+      "historical": true
     },
     {
       "id": "G2-METRICS-001",
@@ -3202,7 +3231,8 @@
       ],
       "host_effect_confirmed": false,
       "prevention_gate": "closed",
-      "evidence": "admin-evidence/e5-host-proof-20261026/e5c-arbiter-swap-result.json; e5c-arbiter-swap.log; e5c-arbiter-handback.log; e5c-arbiter-verified-20261026-153404.json/.log; E5C-ARBITER-E2E-20261026.md (corrected)."
+      "evidence": "admin-evidence/e5-host-proof-20261026/e5c-arbiter-swap-result.json; e5c-arbiter-swap.log; e5c-arbiter-handback.log; e5c-arbiter-verified-20261026-153404.json/.log; E5C-ARBITER-E2E-20261026.md (corrected).",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "ACQ-ARB-E5-VERIFIED-20261026",
@@ -3242,7 +3272,8 @@
         "daemon_file_sha256": "464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61",
         "nose_file_sha256": "735E2B8A9A6836E7407C20DC152CEB50164304CA2879AF14DEA8277F350C5C2E"
       },
-      "evidence": "admin-evidence/e5-host-proof-20261026/e5c-arbiter-verified-20261026-153820.json/.log; E5C-ARBITER-E2E-20261026.md (corrected); enforcement.status and queue snapshots."
+      "evidence": "admin-evidence/e5-host-proof-20261026/e5c-arbiter-verified-20261026-153820.json/.log; E5C-ARBITER-E2E-20261026.md (corrected); enforcement.status and queue snapshots.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "O2-DRIVER-DEPLOY-E5-PARTIAL-20261026",
@@ -3267,7 +3298,8 @@
         "O2 outbound capture functional proof: NOT ESTABLISHED"
       ],
       "host_effect_confirmed": false,
-      "evidence": "admin-evidence/e5-host-proof-20261026/e5a-resume.log; e5a-swap-result.json; e5a-driver-swap.log (initial locked-file attempt, superseded by successful resume)."
+      "evidence": "admin-evidence/e5-host-proof-20261026/e5a-resume.log; e5a-swap-result.json; e5a-driver-swap.log (initial locked-file attempt, superseded by successful resume).",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "O2-DIRECTION-PIPELINE-E2-20261026",
@@ -3340,7 +3372,8 @@
       ],
       "host_effect_confirmed": false,
       "prevention_gate": "closed",
-      "evidence": "admin-evidence/e5-host-proof-20261026/e5d-o2-direction-20261026-160828.log and matching JSON; failed preflight correctly prevented mutation."
+      "evidence": "admin-evidence/e5-host-proof-20261026/e5d-o2-direction-20261026-160828.log and matching JSON; failed preflight correctly prevented mutation.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "O2-DIRECTION-DEPLOY-READINESS-E5-20261026-161427",
@@ -3374,7 +3407,8 @@
       "host_effect_confirmed": false,
       "prevention_gate": "closed",
       "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24#issuecomment-6413628197",
-      "evidence": "Windows Application Error/WER event at 2026-10-26 16:14:27, correlated to pre-deploy PID and PE timestamp; deployment transcript and E5D JSON retained under admin-evidence/e5-host-proof-20261026. Harvested WER folder contains Report.wer only, with no dump."
+      "evidence": "Windows Application Error/WER event at 2026-10-26 16:14:27, correlated to pre-deploy PID and PE timestamp; deployment transcript and E5D JSON retained under admin-evidence/e5-host-proof-20261026. Harvested WER folder contains Report.wer only, with no dump.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "O2-CANDIDATE-SERVICE-EXIT-E5-20261026-163100",
@@ -3402,7 +3436,8 @@
       "host_effect_confirmed": false,
       "prevention_gate": "closed_at_deploy; current_query_unavailable_while_service_stopped",
       "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24",
-      "evidence": "Deployment transcript and captured System event 7031 records in admin-evidence/e5-host-proof-20261026; service/process/hash snapshot captured at 2026-10-26 16:31:39+07:00."
+      "evidence": "Deployment transcript and captured System event 7031 records in admin-evidence/e5-host-proof-20261026; service/process/hash snapshot captured at 2026-10-26 16:31:39+07:00.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "O2-CANDIDATE-ROLLBACK-E5-20261026-163550",
@@ -3430,7 +3465,8 @@
       "host_effect_confirmed": false,
       "prevention_gate": "closed",
       "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24",
-      "evidence": "Elevated rollback transcript plus read-only post-rollback health, service, enforce, and forensic queries."
+      "evidence": "Elevated rollback transcript plus read-only post-rollback health, service, enforce, and forensic queries.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "O2-CANDIDATE-ETW-PANIC-E5-20261026-164539",
@@ -3460,7 +3496,8 @@
       "host_effect_confirmed": false,
       "prevention_gate": "closed",
       "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24#issuecomment-6413016362",
-      "evidence": "CDB stack from the elevated diagnostic plus matching-PDB symbol and line lookup; full log, JSON, and transcript are under admin-evidence/e5-host-proof-20261026. The callsite is identified, but the panic expression and invariant remain unconfirmed."
+      "evidence": "CDB stack from the elevated diagnostic plus matching-PDB symbol and line lookup; full log, JSON, and transcript are under admin-evidence/e5-host-proof-20261026. The callsite is identified, but the panic expression and invariant remain unconfirmed.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "O2-ETW-CONTEXT-E2-20261026-165700",
@@ -3533,7 +3570,8 @@
       "host_effect_confirmed": false,
       "prevention_gate": "closed",
       "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24#issuecomment-6413318906",
-      "evidence": "Host transcript, CDB log, and result JSON under admin-evidence/e5-host-proof-20261026; post-run runtime hash and service states confirmed separately."
+      "evidence": "Host transcript, CDB log, and result JSON under admin-evidence/e5-host-proof-20261026; post-run runtime hash and service states confirmed separately.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "O2-FUNCTIONAL-ORCHESTRATOR-PARTIAL-E5-20261026-170620",
@@ -3566,7 +3604,8 @@
       "host_effect_confirmed": false,
       "prevention_gate": "closed",
       "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24#issuecomment-6413628197",
-      "evidence": "Orchestrator result JSON is explicitly not authoritative for rollback because it miscaptured the child process output; the nested rollback transcript plus independent service/hash/enforce/forensic queries establish successful recovery. Orchestrator helper is fixed and AST-parsed; no host proof rerun yet."
+      "evidence": "Orchestrator result JSON is explicitly not authoritative for rollback because it miscaptured the child process output; the nested rollback transcript plus independent service/hash/enforce/forensic queries establish successful recovery. Orchestrator helper is fixed and AST-parsed; no host proof rerun yet.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "O2-OUTBOUND-PROBE-PARTIAL-E5-20261026-171038",
@@ -3605,7 +3644,8 @@
       "host_effect_confirmed": false,
       "prevention_gate": "closed",
       "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24",
-      "evidence": "The source-constrained query did not establish whether the failure is wrong canonical source attribution or absence/truncation of the marker payload in forensics. Updated diagnostics now query the marker across all sources and snapshot WFP rows before forensic lookup; one more controlled E5 run is needed."
+      "evidence": "The source-constrained query did not establish whether the failure is wrong canonical source attribution or absence/truncation of the marker payload in forensics. Updated diagnostics now query the marker across all sources and snapshot WFP rows before forensic lookup; one more controlled E5 run is needed.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "O2-OUTBOUND-LOOPBACK-INBOUND-ONLY-PARTIAL-E5-20261026-172112",
@@ -3642,7 +3682,8 @@
       "host_effect_confirmed": false,
       "prevention_gate": "closed",
       "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24",
-      "evidence": "This is partial E5 evidence only. The same-host loopback probe established an inbound record, not outbound capture. Next proof must generate an outbound flow to a controlled external/remote endpoint and attribute its exact marker/tuple to direction=1, then verify handback and rollback. No source/driver code change is justified by this run alone."
+      "evidence": "This is partial E5 evidence only. The same-host loopback probe established an inbound record, not outbound capture. Next proof must generate an outbound flow to a controlled external/remote endpoint and attribute its exact marker/tuple to direction=1, then verify handback and rollback. No source/driver code change is justified by this run alone.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "O2-REMOTE-SINK-OUTBOUND-FORENSIC-MISS-E5-20261026-174241",
@@ -3677,7 +3718,8 @@
       "host_effect_confirmed": false,
       "prevention_gate": "closed",
       "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24",
-      "evidence": "The VM listener proves TCP marker delivery to 192.168.126.20:47821. The query uses exact payload-prefix semantics. Microsoft WFP Data Offset Positions confirms that inbound transport starts at data while outbound transport starts at the transport header; the prior shared copy path therefore put TCP/UDP headers before outbound marker bytes. Patch O2-OUTBOUND-PAYLOAD-OFFSET-001 strips and validates those headers while preserving the 48-byte record ABI. Local E2 tests and WDK build pass; signed-driver deployment and E5 host proof remain pending. Prevention remains closed."
+      "evidence": "The VM listener proves TCP marker delivery to 192.168.126.20:47821. The query uses exact payload-prefix semantics. Microsoft WFP Data Offset Positions confirms that inbound transport starts at data while outbound transport starts at the transport header; the prior shared copy path therefore put TCP/UDP headers before outbound marker bytes. Patch O2-OUTBOUND-PAYLOAD-OFFSET-001 strips and validates those headers while preserving the 48-byte record ABI. Local E2 tests and WDK build pass; signed-driver deployment and E5 host proof remain pending. Prevention remains closed.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "O2-OUTBOUND-PAYLOAD-OFFSET-E2-20261026",
@@ -3749,7 +3791,10 @@
       "prevention_gate": "closed",
       "completion_gate": "E5 PASS; gap G2-DUPFILTER-REPEAT-20261022 CLOSED",
       "issue": null,
-      "evidence": "admin-evidence/g2-dupfilter-20261028/host-run-result.json; admin-evidence/g2-dupfilter-20261028/host-run.txt"
+      "evidence": "admin-evidence/g2-dupfilter-20261028/host-run-result.json; admin-evidence/g2-dupfilter-20261028/host-run.txt",
+      "artifact_status": "unrecorded",
+      "scope": "lab",
+      "historical": true
     },
     {
       "id": "REL-REBASE-E2-20261028",
@@ -3894,7 +3939,8 @@
       "prevention_gate": "closed",
       "completion_gate": "E5 PASS; plan section 26 step 4 closed. The Zig sidecar decoder remains E2-proven (O1-V6-SIDECAR-E2-20261029); this entry proves kernel ring emission on the real host. No enforcement was enabled.",
       "issue": null,
-      "evidence": "admin-evidence/c1-e5-20261029/c1-e5-sidecar-result-20261030-122702.json (passed=true, failed_criteria=[]); c1-e5-sidecar-proof-20261030-122702.log; signed candidate F63195B02C87A99A442A34CCF7025F18431C5E1FACAB804D5050029FFFA21F63; rollback pins driver 49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C and daemon 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61."
+      "evidence": "admin-evidence/c1-e5-20261029/c1-e5-sidecar-result-20261030-122702.json (passed=true, failed_criteria=[]); c1-e5-sidecar-proof-20261030-122702.log; signed candidate F63195B02C87A99A442A34CCF7025F18431C5E1FACAB804D5050029FFFA21F63; rollback pins driver 49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C and daemon 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "O2-OUTBOUND-FORENSIC-E5-20261030",
@@ -3940,7 +3986,8 @@
       "prevention_gate": "closed",
       "completion_gate": "E5 PASS; O2 host proof (plan section 24) closed. Outbound v4 kernel capture is now proven ring-to-forensics; issue #24 remains closed (candidate stable through the full window); no enforcement was enabled.",
       "issue": null,
-      "evidence": "admin-evidence/e5-host-proof-20261026/e5d-o2-offset-proof-20261030-150536.json (direction_gate=true, driver_rollback_verified=true, prevention_gate_after=closed, forensic_verified_after=true); e5d-o2-functional-20261030-150552.json; e5d-o2-direction-20261030-150558.json (gate=true, forensic_record direction=1 payload_len=51 verified=true); transcripts e5d-o2-offset-proof-20261030-150536.log, e5d-o2-functional-20261030-150552.log, e5d-o2-direction-20261030-150558.log; signed candidate aegis_wfp_payload_offset_f63195b0.sys; rollback pins driver 49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C and daemon 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61."
+      "evidence": "admin-evidence/e5-host-proof-20261026/e5d-o2-offset-proof-20261030-150536.json (direction_gate=true, driver_rollback_verified=true, prevention_gate_after=closed, forensic_verified_after=true); e5d-o2-functional-20261030-150552.json; e5d-o2-direction-20261030-150558.json (gate=true, forensic_record direction=1 payload_len=51 verified=true); transcripts e5d-o2-offset-proof-20261030-150536.log, e5d-o2-functional-20261030-150552.log, e5d-o2-direction-20261030-150558.log; signed candidate aegis_wfp_payload_offset_f63195b0.sys; rollback pins driver 49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C and daemon 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "O1-V6-SIDECAR-E2-20261030",
@@ -4463,7 +4510,10 @@
       "prevention_gate": "closed (restored); open only in the isolated lab VM during the run",
       "completion_gate": "G2-RB013-LOG-20261023 CLOSED. The functional block-effect evidence remains the earlier 2026-10-21/23 lab runs. E5-CURRENT-RUNTIME-MISMATCH and IDS-XDR-005-WIRING-OPEN remain OPEN.",
       "issue": null,
-      "evidence": "admin-evidence/rb013-log-e5-20261030/closeout.md; evidence-20261102/collect2.json (diag hits=8, all epoch 1793607472, filter 77892); evidence-20261102/diag-hits.txt; evidence-20261102/guest-run-current-20261102.log; evidence-20261102/host-canary.json (ACCEPT, 0.016s); evidence-20261102/listener.log (ACCEPT 2026-11-02T00:17:47 192.168.126.1:60477); evidence-20261102/enforce-status-lab.json; evidence-20261102/enforce-status-restored.json; evidence-20261102/metrics-before.json (confirmed_quarantines=0). Lab kit daemon 86D4DD77438ED91C057422D1DF48D484AE4DE167F7202658950D1A8D778145C1; PEP C7F200793AC87B00C6887712428E99DF06083E2289FCF567AC4491064ED15ED8; bridge 9D5D7D46AD2385EAF7656C2B59F23F0ABB0B84DEDB296740DAB3ADD3B6283380; signed driver 8A2B3F1284CE0828AD4CB18A0AC7335CB5BB040DEDE7379F51E08B96395E7C74; lab policy DB67B1B5465BC1B17AE2AC4B73506DAF4B00067F5FD57054AA75D8F8B48035F9."
+      "evidence": "admin-evidence/rb013-log-e5-20261030/closeout.md; evidence-20261102/collect2.json (diag hits=8, all epoch 1793607472, filter 77892); evidence-20261102/diag-hits.txt; evidence-20261102/guest-run-current-20261102.log; evidence-20261102/host-canary.json (ACCEPT, 0.016s); evidence-20261102/listener.log (ACCEPT 2026-11-02T00:17:47 192.168.126.1:60477); evidence-20261102/enforce-status-lab.json; evidence-20261102/enforce-status-restored.json; evidence-20261102/metrics-before.json (confirmed_quarantines=0). Lab kit daemon 86D4DD77438ED91C057422D1DF48D484AE4DE167F7202658950D1A8D778145C1; PEP C7F200793AC87B00C6887712428E99DF06083E2289FCF567AC4491064ED15ED8; bridge 9D5D7D46AD2385EAF7656C2B59F23F0ABB0B84DEDB296740DAB3ADD3B6283380; signed driver 8A2B3F1284CE0828AD4CB18A0AC7335CB5BB040DEDE7379F51E08B96395E7C74; lab policy DB67B1B5465BC1B17AE2AC4B73506DAF4B00067F5FD57054AA75D8F8B48035F9.",
+      "artifact_status": "unrecorded",
+      "scope": "lab",
+      "historical": true
     },
     {
       "id": "RB-021-CANARY-F7C626D-20261104",
@@ -4667,7 +4717,8 @@
       ],
       "source": "admin-evidence/l4-flags-live-r9007-20261108_164536/RESULT.md",
       "summary": "XMAS scan from 192.168.126.10 to 192.168.126.1 on VMnet1 (nose pinned) produced 25 signature_match events for R9007 (per-packet); forensic verify true.",
-      "head_sha": "f9be3695f03e278b79d8f853d4ee775b3b328df2"
+      "head_sha": "f9be3695f03e278b79d8f853d4ee775b3b328df2",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "FOR-BATCH-001-E2-20261108",
@@ -4821,7 +4872,8 @@
       ],
       "description": "Read-only queue.stats snapshots 15 seconds apart: 186,815 events admitted, queue depth 271->11, and no per-source drop, source quota shed, minifilter ring drop, or minifilter pipeline drop counter increased. A separate adjacent sample recorded +1,247 ETW drops, so this does not establish steady-state no-loss operation.",
       "impact": "Shows the running consumer can drain a small backlog at the observed load, while #29 remains open for burst-sensitive ETW quota shedding and historical cumulative loss.",
-      "next_step": "Measure representative burst windows and choose a bounded admission/throughput change; retain the minifilter identity stop-line before any coalescing."
+      "next_step": "Measure representative burst windows and choose a bounded admission/throughput change; retain the minifilter identity stop-line before any coalescing.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "INGRESS-KIND-ATTRIBUTION-001-E2-20261109",
@@ -5282,7 +5334,8 @@
         "python tools/wfp_filter_audit.py <dump> --require-no-block  -> exit 0, blocking_filter_count 0",
         "python .work/d5_enforce.py  (as user and elevated) -> AUTH_DENIED then DETECTION_ONLY/REFUSED"
       ],
-      "limitations": "E5 for D1/D2/D5 only. Nothing was rebooted, so driver load is proven for one session and R-06's reboot-survival criterion is not met. No driver rollback was executed. The host is left with both drivers Running (they were Stopped before the window); sc.exe stop AegisMinifilter; sc.exe stop AegisWfp reverts that. D3 and D4 did not run, so R-07 and R-08 remain open. The drivers are test-signed, so this proves the lab host, not a production signing chain (R-09)."
+      "limitations": "E5 for D1/D2/D5 only. Nothing was rebooted, so driver load is proven for one session and R-06's reboot-survival criterion is not met. No driver rollback was executed. The host is left with both drivers Running (they were Stopped before the window); sc.exe stop AegisMinifilter; sc.exe stop AegisWfp reverts that. D3 and D4 did not run, so R-07 and R-08 remain open. The drivers are test-signed, so this proves the lab host, not a production signing chain (R-09).",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "PACKAGING-GATE-001-E2-20261109",
@@ -5324,7 +5377,8 @@
         "D3_FILES=25000 D3_WORKERS=4 python .work/d3_burst.py       (heavy: 100k files, 4 workers)",
         "aegisctl queue.stats sampled at 250 ms, before/after deltas per source and per source x kind"
       ],
-      "limitations": "The drop is attributable per source and per shed counter, but the per-kind half is only trustworthy for the ETW lane: KIND-ATTR-001 means 300,992 of 300,995 capture_fim events are counted as packet_captured. R-07 also requires an owner-agreed threshold; 0.72% of a deliberate 10k ops/s burst is a measurement, not a decision."
+      "limitations": "The drop is attributable per source and per shed counter, but the per-kind half is only trustworthy for the ETW lane: KIND-ATTR-001 means 300,992 of 300,995 capture_fim events are counted as packet_captured. R-07 also requires an owner-agreed threshold; 0.72% of a deliberate 10k ops/s burst is a measurement, not a decision.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "KIND-ATTR-001-E5-20261109",
@@ -5343,7 +5397,8 @@
         "python tools/wfp_filter_audit.py / aegisctl queue.stats -> by_source_kind shows capture_fim/packet_captured 300,992",
         "read src/capture/minifilter_reader.zig submitRecord and src/pipeline/event_queue.zig pushDecodedFrame"
       ],
-      "limitations": "Not repaired deliberately: mapping .minifilter to .fim_change would add a second duplicate FIM stream to every correlator keyed on fim_change (the ETW lane already supplies it), which is a loss-versus-duplication decision of the same class as issue #29. Options are recorded in DEV-PLAN section 3.5 instead of being applied silently."
+      "limitations": "Not repaired deliberately: mapping .minifilter to .fim_change would add a second duplicate FIM stream to every correlator keyed on fim_change (the ETW lane already supplies it), which is a loss-versus-duplication decision of the same class as issue #29. Options are recorded in DEV-PLAN section 3.5 instead of being applied silently.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "READINESS-001-E5-20261109",
@@ -5365,7 +5420,8 @@
         "Restart-Service AegisNids -Force   (elevated, with both drivers already Running)",
         "python tools/host_soak_check.py --start auto --json analysis/current-head/soak-check-20261109.json"
       ],
-      "limitations": "E5 on this host: proves the ordering effect and that the correct order yields RUNNING, not that every start order is safe. The one-shot readiness evaluation is a design smell that remains: a bridge that becomes active later should move the state machine instead of requiring a restart. The 24 h soak has only just started and is IN_PROGRESS, not passed."
+      "limitations": "E5 on this host: proves the ordering effect and that the correct order yields RUNNING, not that every start order is safe. The one-shot readiness evaluation is a design smell that remains: a bridge that becomes active later should move the state machine instead of requiring a restart. The 24 h soak has only just started and is IN_PROGRESS, not passed.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "D4-PAGEHEAP-E5-20261109",
@@ -5388,7 +5444,8 @@
         "gflags /p /disable aegis_nids.exe",
         "python tools/host_soak_check.py --start auto --json analysis/current-head/soak-check-20261109.json"
       ],
-      "limitations": "Negative result: page heap plus restart does not reproduce the #30 corruption, so the root cause is still unnamed and R-08 stays open. This does not prove the crash was fixed. The 24 h soak restarted at the last cycle (2026-11-10T02:50:02) and is IN_PROGRESS; the transcript lives in gitignored admin-evidence."
+      "limitations": "Negative result: page heap plus restart does not reproduce the #30 corruption, so the root cause is still unnamed and R-08 stays open. This does not prove the crash was fixed. The 24 h soak restarted at the last cycle (2026-11-10T02:50:02) and is IN_PROGRESS; the transcript lives in gitignored admin-evidence.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "D6-DRIVER-ROLLBACK-E5-20261109",
@@ -5409,7 +5466,8 @@
         "sc.exe stop AegisWfp ; Copy-Item saved current -> installed ; sc.exe start AegisWfp",
         "sc.exe start AegisNids ; aegisctl status -> RUNNING"
       ],
-      "limitations": "E5 for the rollback path only. It does not demonstrate boot survival (R-06's reboot half) and it reverted to a driver from an earlier build, not to a shipping release. Transcript in gitignored admin-evidence."
+      "limitations": "E5 for the rollback path only. It does not demonstrate boot survival (R-06's reboot half) and it reverted to a driver from an earlier build, not to a shipping release. Transcript in gitignored admin-evidence.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "D3B-RATE-SWEEP-E5-20261109",
@@ -5431,7 +5489,8 @@
         "D3_SECONDS=60 D3_WORKERS=4 python .work/d3_sustained.py",
         "aegisctl queue.stats sampled before/after each run"
       ],
-      "limitations": "The 3,553 ops/s sustained run's raw result file was overwritten by the next run, so that row rests on the console transcript (recorded as such in the sweep artifact). Threshold approval is still an owner decision; this entry supplies the numbers, not the policy."
+      "limitations": "The 3,553 ops/s sustained run's raw result file was overwritten by the next run, so that row rests on the console transcript (recorded as such in the sweep artifact). Threshold approval is still an owner decision; this entry supplies the numbers, not the policy.",
+      "artifact_status": "unrecorded"
     },
     {
       "id": "R09-DECLARED-LIMITATION-E1-20261109",
@@ -11357,12 +11416,14 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 41,
-    "E2_count": 185,
-    "E3_count": 17,
-    "E4_count": 15,
-    "E5_count": 166,
+    "E1_count": 20,
+    "E2_count": 84,
+    "E3_count": 12,
+    "E4_count": 0,
+    "E5_count": 77,
     "E6_count": 0,
-    "E7_count": 1
+    "E7_count": 0,
+    "E5_with_artifact_count": 27,
+    "known_gaps_count": 271
   }
 }

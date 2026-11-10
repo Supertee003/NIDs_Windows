@@ -43,15 +43,21 @@ def test_index_parses_as_json():
 
 
 def test_level_summary_matches_entries():
-    # Same counting rule as scripts/check_summary.py: both arrays count,
-    # including the historical EVT-037..039 duplicates present in both.
+    # Counting rule (corrected 2026-11-10, S1-03): only the `evidence`
+    # section is evidence. `known_gaps` is a findings log — counting it
+    # inflated E5_count to 166 (77 evidence + 89 open gaps). tools/evidence_debt.py
+    # has always used this rule; scripts/check_summary.py now matches it.
     d = _load()
     actual = Counter(
         e["level"]
-        for key in ("evidence", "known_gaps")
-        for e in d.get(key, [])
+        for e in d.get("evidence", [])
         if e.get("level")
     )
     summary = d["evidence_level_summary"]
     for lvl in LEVELS:
         assert summary.get(f"{lvl}_count") == actual.get(lvl, 0), lvl
+
+    e5 = [e for e in d["evidence"] if e.get("level") == "E5"]
+    with_artifact = [e for e in e5 if e.get("evidence_artifact")]
+    assert summary.get("E5_with_artifact_count") == len(with_artifact)
+    assert summary.get("known_gaps_count") == len(d.get("known_gaps", []))

@@ -17,11 +17,15 @@ Artifact-set selection rule (GAP-008, hybrid settlement EVT-093), in priority or
      normalized length so size and digest always agree.
 Modes: --manifest rebuilds the whole set (header stamps + full walk);
 --refresh-digests only re-records digests/sizes for already-listed
-artifacts (never adds or drops); --refresh-digests --adopt-missing is the
+artifacts (never adds or drops) and REFUSES to run while a tracked artifact
+has uncommitted changes (S1-02: refreshing the tree it then verifies made the
+gate self-certifying); --refresh-digests --adopt-missing is the
 explicit, reviewed growth path that records releasable files the set lacks
 (printed and verified, never silent; EVT-223); --verify fails on any
 digest/size mismatch (missing files count as not-built-locally, not as
-failure).
+failure). Shipped binaries are covered at the bundle layer by
+tools/release_candidate.py (SHA256SUMS over every packaged file); this
+manifest stays source-only on purpose.
 Known limitation (honest): the walk sees the working tree, not the git
 index, so gitignored build products under walked dirs (bridge/build/*,
 brain cython products) were collected when present under the pre-EVT-093 rule. Settled a871a32 (EVT-102): the committed 633-entry set IS this rule output — canonical sources added — an explicit, owned, one-time break, not silent drift (supersedes EVT-057); the adopted counts are the audit trail.
@@ -396,6 +400,39 @@ def generate_sbom(manifest: Dict[str, Any]) -> Dict[str, Any]:
     return sbom
 
 
+def tracked_head_paths() -> set[str]:
+    """Repository-relative paths tracked in HEAD (POSIX separators)."""
+    proc = subprocess.run(
+        ["git", "ls-tree", "-r", "--name-only", "HEAD"],
+        cwd=ROOT, capture_output=True, text=True,
+    )
+    if proc.returncode != 0:
+        return set()
+    return {line.strip() for line in proc.stdout.splitlines() if line.strip()}
+
+
+def modified_tracked_paths() -> set[str]:
+    """Tracked paths whose worktree/index state differs from HEAD.
+
+    `??` (untracked) entries are deliberately excluded: the artifact set
+    legitimately contains gitignored build outputs on a release host.
+    """
+    proc = subprocess.run(
+        ["git", "status", "--porcelain=v1", "-z"],
+        cwd=ROOT, capture_output=True,
+    )
+    if proc.returncode != 0:
+        return set()
+    modified: set[str] = set()
+    for entry in proc.stdout.decode("utf-8", "replace").split("\0"):
+        if len(entry) < 4:
+            continue
+        status, path = entry[:2], entry[3:]
+        if status.strip() and status != "??":
+            modified.add(path.replace("\\", "/"))
+    return modified
+
+
 def verify_manifest() -> int:
     """Recompute SHA-256 digests for artifacts present in the working tree
     and compare with build_manifest.json. Any mismatch -> FAIL (the release
@@ -452,6 +489,28 @@ def refresh_digests(commit: str, adopt_missing: bool = False) -> int:
         print("build_manifest.json not found - run --manifest first", file=sys.stderr)
         return 2
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+
+    # S1-02: refuse to launder uncommitted changes.
+    #
+    # The gate used to hash the working tree and then verify that same tree, so
+    # a modified artifact was "verified" by the act of refreshing it. Digests
+    # may only describe committed state: refresh runs on a clean tree (the
+    # established pattern is a records-only digest commit after the source
+    # commit). Untracked build outputs stay allowed - they are gitignored by
+    # design and cannot be compared to HEAD.
+    tracked = tracked_head_paths()
+    blocked = sorted(
+        {a["path"] for a in manifest.get("artifacts", [])}
+        & tracked
+        & modified_tracked_paths()
+    )
+    if blocked:
+        print("FAIL - refusing to refresh digests over uncommitted changes:")
+        for path in blocked:
+            print(f"  - {path}")
+        print("Commit or revert these first; --refresh-digests records committed state only.")
+        return 1
+
     kept: List[Dict[str, Any]] = []
     updated: List[str] = []
     dropped: List[str] = []
