@@ -846,8 +846,8 @@
     },
     {
       "path": "installer/aegis.nsi",
-      "size": 4918,
-      "sha256": "533a280d1b0a4e8cdfbc2f632f1f05bb7c36f6a7a9ee174362ab5f5fd5da5b81",
+      "size": 5439,
+      "sha256": "d4cbdd329846ebd49d776f0221ec852fbc1aa313e0e2e6a48713c96f25ea344d",
       "language": "script"
     },
     {
@@ -1021,7 +1021,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "1789f81741e7aabc702f268c296a3bfe3f363858c4984f38f3abeebb1e05b443",
+      "sha256": "44d546cd32804cef1b41c8c41df3df152c95e618ba74f95496d9364cef8cc11f",
       "language": "json"
     },
     {
@@ -3942,8 +3942,8 @@
     },
     {
       "path": "tools/release_candidate.py",
-      "size": 10759,
-      "sha256": "4bbfa8a087c0598e1bbd0e6f70b8150cb6c5ac68dcf306cabb2b1c8dd217acd3",
+      "size": 11114,
+      "sha256": "f2d88e4bf02de911dcd4a51a26bae002f2bca8009f890caf1a2fec9b4291de87",
       "language": "python/cython"
     },
     {
