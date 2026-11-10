@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T19:05:34.814672+00:00",
+  "generated_at": "2026-11-10T05:57:04.036288+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1519,
+  "total_files": 1539,
   "by_role": {
-    "documentation": 348,
-    "build-config": 175,
+    "documentation": 355,
+    "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
-    "source": 366,
-    "test-artifact": 225,
+    "source": 369,
+    "test-artifact": 229,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -584,6 +584,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/CONTROL-AUTH-001-20261110.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/CORR-SOURCE-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -591,6 +595,22 @@
     "analysis/current-head/COVERAGE-BOUNDARY-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
+    },
+    "analysis/current-head/d3-burst-attribution-20261109.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "analysis/current-head/d3-burst-idle-reference-20261109.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "analysis/current-head/d3-rate-sweep-20261109.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "analysis/current-head/d3-sustained-5566ops-20261109.json": {
+      "class": "canonical-build",
+      "role": "build-config"
     },
     "analysis/current-head/detection-only-baseline.json": {
       "class": "canonical-build",
@@ -632,6 +652,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/GATE-HONESTY-001-20261110.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/HEALTH-PROJECTION-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -648,6 +672,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/HOST-WINDOW-002-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/INGRESS-KIND-ATTRIBUTION-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -660,11 +688,19 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/ISSUE-30-ATTRIBUTION-20261110.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/issue-30-etw-stop-line-audit-20261108.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
     "analysis/current-head/issue-31-forensic-batch-stop-line.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/KIND-ATTR-001-20261110.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -688,13 +724,29 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/soak-check-20261109.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
     "analysis/current-head/STOPLINE-WFP-READINESS-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/SYSTEM-SURVEY-001-20261110.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/SYSTEM-SURVEY-001-ADDENDUM-20261110.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
     "analysis/current-head/TEST-SCOPE-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
+    },
+    "analysis/current-head/wfp-filter-audit-20261109.json": {
+      "class": "canonical-build",
+      "role": "build-config"
     },
     "analysis/current-head/WFP-READINESS-REFRESH-001-20261109.md": {
       "class": "canonical-docs",
@@ -5724,6 +5776,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/security/test_digest_gate.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/security/test_disabled_rules_authority.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -5749,6 +5805,10 @@
       "role": "test-artifact"
     },
     "tests/security/test_forbidden_edges.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_helper_staging.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -5797,6 +5857,10 @@
       "role": "test-artifact"
     },
     "tests/security/test_single_rule_authority.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_soak_verdict.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -5893,6 +5957,10 @@
       "role": "test-artifact"
     },
     "tests/tools/test_notifier_retired.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/tools/test_package_signature_gate.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -6144,6 +6212,10 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "tools/host_soak_check.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "tools/inspect_pe_exports.py": {
       "class": "canonical-source",
       "role": "source"
@@ -6308,6 +6380,10 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "tools/stage_helpers.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "tools/stix_export.py": {
       "class": "canonical-source",
       "role": "source"
@@ -6325,6 +6401,10 @@
       "role": "source"
     },
     "tools/upgrade_rollback.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "tools/wfp_filter_audit.py": {
       "class": "canonical-source",
       "role": "source"
     },
@@ -6400,6 +6480,5 @@
       "class": "canonical-build",
       "role": "build-config"
     }
-  },
-  "source_commit": "a8f3abf"
+  }
 }

@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T19:05:34.811458+00:00",
+  "generated_at": "2026-11-10T05:57:04.033729+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1519,
+  "total_files": 1539,
   "by_class": {
-    "canonical-docs": 362,
-    "canonical-build": 186,
+    "canonical-docs": 369,
+    "canonical-build": 192,
     "unclassified": 17,
-    "canonical-source": 662,
-    "canonical-test": 225,
+    "canonical-source": 665,
+    "canonical-test": 229,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -405,6 +405,12 @@
       "size": 307
     },
     {
+      "path": "analysis/current-head/CONTROL-AUTH-001-20261110.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5018
+    },
+    {
       "path": "analysis/current-head/CORR-SOURCE-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -417,6 +423,30 @@
       "size": 10359
     },
     {
+      "path": "analysis/current-head/d3-burst-attribution-20261109.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1639
+    },
+    {
+      "path": "analysis/current-head/d3-burst-idle-reference-20261109.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1434
+    },
+    {
+      "path": "analysis/current-head/d3-rate-sweep-20261109.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1895
+    },
+    {
+      "path": "analysis/current-head/d3-sustained-5566ops-20261109.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 666
+    },
+    {
       "path": "analysis/current-head/detection-only-baseline.json",
       "class": "canonical-build",
       "role": "build-config",
@@ -426,7 +456,7 @@
       "path": "analysis/current-head/DEV-PLAN-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 18906
+      "size": 27718
     },
     {
       "path": "analysis/current-head/ETW-LIFE-001-20261108.md",
@@ -438,7 +468,7 @@
       "path": "analysis/current-head/evidence-debt-baseline.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 21995
+      "size": 21849
     },
     {
       "path": "analysis/current-head/FIM-PROBE-IDENTITY-COMMENT-001-20261109.md",
@@ -462,7 +492,7 @@
       "path": "analysis/current-head/FREEZE-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4413
+      "size": 6200
     },
     {
       "path": "analysis/current-head/FULL-BOUNDARY-001-20261109.json",
@@ -475,6 +505,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 6330
+    },
+    {
+      "path": "analysis/current-head/GATE-HONESTY-001-20261110.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6601
     },
     {
       "path": "analysis/current-head/HEALTH-PROJECTION-001-20261109.md",
@@ -498,7 +534,13 @@
       "path": "analysis/current-head/HOST-WINDOW-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6828
+      "size": 7286
+    },
+    {
+      "path": "analysis/current-head/HOST-WINDOW-002-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 16720
     },
     {
       "path": "analysis/current-head/INGRESS-KIND-ATTRIBUTION-001-20261109.md",
@@ -519,6 +561,12 @@
       "size": 3127
     },
     {
+      "path": "analysis/current-head/ISSUE-30-ATTRIBUTION-20261110.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 11410
+    },
+    {
       "path": "analysis/current-head/issue-30-etw-stop-line-audit-20261108.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -529,6 +577,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 2805
+    },
+    {
+      "path": "analysis/current-head/KIND-ATTR-001-20261110.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5621
     },
     {
       "path": "analysis/current-head/PAYLOAD-ENVELOPE-V3-001-20261109.md",
@@ -561,16 +615,40 @@
       "size": 5062
     },
     {
+      "path": "analysis/current-head/soak-check-20261109.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 386
+    },
+    {
       "path": "analysis/current-head/STOPLINE-WFP-READINESS-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 5016
     },
     {
+      "path": "analysis/current-head/SYSTEM-SURVEY-001-20261110.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 31045
+    },
+    {
+      "path": "analysis/current-head/SYSTEM-SURVEY-001-ADDENDUM-20261110.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3481
+    },
+    {
       "path": "analysis/current-head/TEST-SCOPE-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4647
+    },
+    {
+      "path": "analysis/current-head/wfp-filter-audit-20261109.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 758
     },
     {
       "path": "analysis/current-head/WFP-READINESS-REFRESH-001-20261109.md",
@@ -3240,7 +3318,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1070007
+      "size": 1106025
     },
     {
       "path": "FLOW_MAP.json",
@@ -3348,7 +3426,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 231409
+      "size": 234735
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3612,7 +3690,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9693
+      "size": 9992
     },
     {
       "path": "pytest.ini",
@@ -3630,7 +3708,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 191928
+      "size": 194540
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -4860,7 +4938,7 @@
       "path": "scripts/build_all.bat",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 8539
+      "size": 8820
     },
     {
       "path": "scripts/build_and_check.ps1",
@@ -4902,7 +4980,7 @@
       "path": "scripts/check_summary.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 1734
+      "size": 5631
     },
     {
       "path": "scripts/check_vec.py",
@@ -5178,7 +5256,7 @@
       "path": "scripts/package_release.ps1",
       "class": "canonical-source",
       "role": "source",
-      "size": 3456
+      "size": 4519
     },
     {
       "path": "scripts/pep_analysis.py",
@@ -5532,7 +5610,7 @@
       "path": "shared/protocol/control_protocol.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8376
+      "size": 8456
     },
     {
       "path": "shared/protocol/protocol.md",
@@ -5808,7 +5886,7 @@
       "path": "src/control/authorization.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 3443
+      "size": 3659
     },
     {
       "path": "src/control/defcon.zig",
@@ -5826,7 +5904,7 @@
       "path": "src/control/protocol.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 22503
+      "size": 23407
     },
     {
       "path": "src/control/state_machine.zig",
@@ -6306,7 +6384,7 @@
       "path": "src/pipeline/event_queue.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 50173
+      "size": 54296
     },
     {
       "path": "src/pipeline/fim_dedup.zig",
@@ -6348,7 +6426,7 @@
       "path": "src/platform/win32_pipe.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 14027
+      "size": 14407
     },
     {
       "path": "src/platform/win32_service.zig",
@@ -7848,7 +7926,7 @@
       "path": "tests/release/test_evidence_index_valid.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 2015
+      "size": 2409
     },
     {
       "path": "tests/release/test_fresh_deploy.py",
@@ -8115,6 +8193,12 @@
       "size": 3065
     },
     {
+      "path": "tests/security/test_digest_gate.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 2770
+    },
+    {
       "path": "tests/security/test_disabled_rules_authority.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -8142,7 +8226,7 @@
       "path": "tests/security/test_evidence_index_integrity.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 3834
+      "size": 4991
     },
     {
       "path": "tests/security/test_fim_longpath.py",
@@ -8155,6 +8239,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 23146
+    },
+    {
+      "path": "tests/security/test_helper_staging.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3197
     },
     {
       "path": "tests/security/test_l4_rate_config.py",
@@ -8227,6 +8317,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 6653
+    },
+    {
+      "path": "tests/security/test_soak_verdict.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3244
     },
     {
       "path": "tests/security/test_t16_security_hardening.py",
@@ -8371,6 +8467,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 2251
+    },
+    {
+      "path": "tests/tools/test_package_signature_gate.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1883
     },
     {
       "path": "tests/tools/test_ps1_routes.py",
@@ -8745,6 +8847,12 @@
       "size": 12412
     },
     {
+      "path": "tools/host_soak_check.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 9317
+    },
+    {
       "path": "tools/inspect_pe_exports.py",
       "class": "canonical-source",
       "role": "source",
@@ -8754,7 +8862,7 @@
       "path": "tools/installer.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 23666
+      "size": 26511
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/__init__.py",
@@ -8976,7 +9084,7 @@
       "path": "tools/release_engineering.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 26314
+      "size": 28678
     },
     {
       "path": "tools/run_zig_test_timeout.ps1",
@@ -8989,6 +9097,12 @@
       "class": "canonical-source",
       "role": "source",
       "size": 2197
+    },
+    {
+      "path": "tools/stage_helpers.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6474
     },
     {
       "path": "tools/stix_export.py",
@@ -9019,6 +9133,12 @@
       "class": "canonical-source",
       "role": "source",
       "size": 8482
+    },
+    {
+      "path": "tools/wfp_filter_audit.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4253
     },
     {
       "path": "ts_policy/package-lock.json",
@@ -9128,6 +9248,5 @@
       "role": "build-config",
       "size": 624
     }
-  ],
-  "source_commit": "a8f3abf"
+  ]
 }
