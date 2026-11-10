@@ -5594,6 +5594,37 @@
       ],
       "limitations": "Two points bracket the ceiling (3,229 clean, 4,009 lossy); the exact knee is not located. The window therefore cannot start a clean 24 h soak without an elevated daemon restart, and #29 stays open.",
       "evidence_artifact": "admin-evidence/host-window-003-20261110/kind-attribution-e5.json"
+    },
+    {
+      "id": "QLOSS-RATE-CLEAN-E5-20261110",
+      "head_sha": "c79c5a1",
+      "timestamp": "2026-11-10",
+      "title": "Held 4,000 op-sets/s with zero drops on a clean counter set: the ETW NameCreate duplicate lane, not capacity, was the loss",
+      "level": "E5",
+      "component": "deployed daemon ED74E56F (source c79c5a1): src/windows/etw_realtime.zig dedupe gate, src/capture/minifilter_reader.zig pacing, src/pipeline/event_queue.zig",
+      "flow_id": "QLOSS-HEALTH-001",
+      "description": "Owner-accepted #29 threshold measured with the corrected fail-closed harness (tools/soak_rate.py: throttled producers, by_source attribution, exit 2 when unattributable). Window-004's zero_drops claim is retracted (SOAK-GATE-002: it never held the rate and read a bucket key the daemon does not publish). From the clean counter set of the ED74E56F deploy: 90 s at 3,999.9 op-sets/s (359,996 op-sets) -> 0 drops, state RUNNING; 300 s at 4,000.0 op-sets/s (1,199,998 op-sets) -> 0 drops, state RUNNING. All loss counters zero throughout (queue_dropped_total, minifilter_pipeline_dropped, minifilter_ring_dropped, nose_frames_dropped/rejected, nose_pipe_errors, source_quota_shed, reserved_tail_shed); depth_peak 5,754 of 16,384, per-source cap 7,168 never reached, pace_waits 0 (PACE-MF-001 safety net never engaged). Fix attribution: etw.file_name_create 0 with name_create_deduped 1,549,792 while file_write 1,631,789 and file_name_delete 1,500,699 were untouched, so the removed lane was the duplicate and coverage outside it was not cut. Stated residual: a 6,383 op-sets/s burst still sheds, so the zero-loss ceiling of this build lies between 4,000 and 6,383 op-sets/s.",
+      "evidence_artifact": "admin-evidence/host-window-005-20261110/rate-4000-held-5min.json",
+      "artifacts": [
+        "admin-evidence/host-window-005-20261110/deploy-window-005-result.json",
+        "admin-evidence/host-window-005-20261110/rate-4000-held.json",
+        "admin-evidence/host-window-005-20261110/rate-4000-held-5min.json",
+        "admin-evidence/host-window-005-20261110/queue-after-rate.txt",
+        "admin-evidence/host-window-005-20261110/health-after-rate.json",
+        "admin-evidence/host-window-005-20261110/soak-window-start.json",
+        "analysis/current-head/ISSUE-29-CLOSURE-20261110.md",
+        "analysis/current-head/SOAK-GATE-002-20261110.md",
+        "analysis/current-head/ETW-FILE-DEDUPE-001-20261110.md"
+      ],
+      "commands": [
+        "powershell -NoProfile -ExecutionPolicy Bypass -File admin-evidence/host-window-005-20261110/run-window-005.ps1 (elevated)",
+        "python tools/soak_rate.py --ops-per-second 4000 --seconds 300 --settle-seconds 120 --workers 6 --out admin-evidence/host-window-005-20261110/rate-4000-held-5min.json"
+      ],
+      "limitations": [
+        "Acceptance is 4,000 op-sets/s; a 6,383 op-sets/s burst still sheds.",
+        "The 24 h soak (R-08) is a separate gate started from this clean counter set and was not complete at the time of this record; #30 stays open until it finishes crash-free.",
+        "admin-evidence/ is local-only and git-ignored; the JSON artifacts live on the host that produced them."
+      ]
     }
   ],
   "known_gaps": [
@@ -11504,10 +11535,10 @@
     "E2_count": 85,
     "E3_count": 12,
     "E4_count": 0,
-    "E5_count": 80,
+    "E5_count": 81,
     "E6_count": 0,
     "E7_count": 0,
-    "E5_with_artifact_count": 30,
+    "E5_with_artifact_count": 31,
     "known_gaps_count": 271
   }
 }
