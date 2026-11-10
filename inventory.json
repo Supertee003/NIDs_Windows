@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-10T18:10:41.453385+00:00",
+  "generated_at": "2026-11-10T18:59:23.838415+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1553,
+  "total_files": 1556,
   "by_class": {
-    "canonical-docs": 379,
+    "canonical-docs": 382,
     "canonical-build": 192,
     "unclassified": 17,
     "canonical-source": 665,
@@ -393,6 +393,18 @@
       "size": 12058
     },
     {
+      "path": "analysis/current-head/BOOT-RING-LOSS-001-20261111.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 7181
+    },
+    {
+      "path": "analysis/current-head/BOOT-RING-LOSS-002-20261111.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3853
+    },
+    {
       "path": "analysis/current-head/BOUNDARY-DECLARATION-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -667,6 +679,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 5639
+    },
+    {
+      "path": "analysis/current-head/SOAK-SHED-BUDGET-001-20261111.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2043
     },
     {
       "path": "analysis/current-head/STOPLINE-WFP-READINESS-001-20261109.md",
@@ -3378,7 +3396,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1131127
+      "size": 1138359
     },
     {
       "path": "FLOW_MAP.json",
@@ -3486,7 +3504,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 236498
+      "size": 236984
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3744,7 +3762,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9574
+      "size": 10041
     },
     {
       "path": "pytest.ini",
@@ -3762,7 +3780,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 195929
+      "size": 196313
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -4830,7 +4848,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23219
+      "size": 23767
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -5796,7 +5814,7 @@
       "path": "src/capture/minifilter_reader.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 24551
+      "size": 24920
     },
     {
       "path": "src/capture/nose_contract.zig",
@@ -8388,7 +8406,7 @@
       "path": "tests/security/test_soak_verdict.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 3244
+      "size": 4133
     },
     {
       "path": "tests/security/test_t16_security_hardening.py",
@@ -8928,7 +8946,7 @@
       "path": "tools/host_soak_check.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 9317
+      "size": 10462
     },
     {
       "path": "tools/inspect_pe_exports.py",
@@ -9333,5 +9351,5 @@
       "size": 624
     }
   ],
-  "source_commit": "4c4ed3a"
+  "source_commit": "1ca18c4"
 }

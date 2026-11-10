@@ -1,5 +1,5 @@
 {
-  "head_sha": "4c4ed3aae168188e262e678981996168af7ef8df",
+  "head_sha": "1ca18c46e94b556be5a2152602cfa2688190b031",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-11",
   "generator_version": "3.0",
@@ -5843,6 +5843,32 @@
         "The exact deploy termination is not recorded; the script's new elevation guard and trap close that gap for the next run.",
         "A driver reload resets the gauge for the steady-state window; it does not fix the boot blind spot.",
         "The host boot model is not what the installer ships: tools/installer.py:263 creates AegisNids with start=auto and never registers AegisBootSequence, so a fresh install would reintroduce the AUTO_START-before-drivers gap. Packaging slice still open."
+      ]
+    },
+    {
+      "id": "BOOT-RING-LOSS-002-E2-20261111",
+      "head_sha": "1ca18c4",
+      "timestamp": "2026-11-11",
+      "title": "Minifilter reader retries the port every second so the boot ring can start empty",
+      "level": "E2",
+      "component": "src/capture/minifilter_reader.zig",
+      "flow_id": "QLOSS",
+      "description": "After the 2026-11-11 demand-start change, the 01:49 boot still lost 4,012 minifilter rows (ring_written=188,653, reads=7,322, rows=190,191, pipeline_dropped=0) because the boot task started the minifilter before the daemon and the 4 MiB ring (~116k 36-byte records) could not hold the >16k records/s boot burst for the ~7 s daemon init. Starting the daemon first is the only order that starts the ring empty: the minifilter reader is a retry loop, so it can already be waiting when the driver loads. The retry interval was 10,000 ms, which could let the reader sleep through the driver's first seconds and rebuild the backlog; it is now 1,000 ms. The host boot script is reordered (WFP -> daemon -> minifilter) and its sc.exe State parser is fixed. zig build test: 2,085 passed / 10 skipped / 0 failed; zig build produces 21A875CF8F103E3B. E2 only: the new build has not been deployed or rebooted yet.",
+      "evidence_artifact": "analysis/current-head/BOOT-RING-LOSS-002-20261111.md",
+      "artifacts": [
+        "analysis/current-head/BOOT-RING-LOSS-002-20261111.md",
+        "src/capture/minifilter_reader.zig"
+      ],
+      "commands": [
+        "zig build test --summary all",
+        "zig build",
+        "python tools/aegisctl.py queue --json"
+      ],
+      "limitations": [
+        "E2 only. The 4,012-row measurement was taken on 4c4ed3a; 21A875CF has not run on the host.",
+        "The boot order fix lives in admin-evidence/host-window-003 (local-only); the installer still ships no boot task and creates AegisNids AUTO_START.",
+        "A 1 s port retry is more probes while the driver is absent; it does not change the 50 ms steady-state pull loop.",
+        "If the boot storm outruns the reader for more than ~7 s after the driver loads, the 4 MiB ring can still overflow; that would need a driver-side ring increase."
       ]
     }
   ],
@@ -11751,7 +11777,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 92,
+    "E2_count": 93,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 81,
