@@ -43,8 +43,13 @@ BINARIES = [
     "zig-out/bin/aegis_etw_helper.dll", "zig-out/bin/aegis_fim_helper.dll",
     "zig-out/bin/aegis_fuzz.exe",
 ]
-DRIVERS = ["drivers/wfp_callout/aegis_wfp.sys",
-           "drivers/wfp_callout/aegis_minifilter.sys"]
+# S2-05: driver images come from the WDK build outputs, the same two paths
+# tools/installer.py, scripts/package_release.ps1 and installer/aegis.nsi ship.
+# They used to be read from drivers/wfp_callout/, which holds sources plus a
+# pre-EVT-231 .sys that no build target refreshes, so a candidate package could
+# carry a driver that matches no source commit.
+DRIVERS = ["build/x64/wfp/aegis_wfp.sys",
+           "build/x64/minifilter/aegis_minifilter.sys"]
 CORE_KEYS = ["config/Rules.json", "configs/Rules.json", "installer/aegis.nsi", "build.zig"]
 RUNTIME_FILES = [
     "dist/aegis_bridge.exe",

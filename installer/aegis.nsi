@@ -69,7 +69,14 @@ Section "AEGIS Runtime + Service (Required)" SecCore
   File "/oname=aegis_fim_helper.dll" "zig-out\bin\aegis_fim_helper.dll"
 
   SetOutPath "$INSTDIR\drivers"
-  File "/nonfatal" "/oname=aegis_wfp.sys" "drivers\wfp_callout\aegis_wfp.sys"
+  ; ONE driver image, ONE source path (S2-05). This used to package
+  ; drivers\wfp_callout\aegis_wfp.sys, the pre-EVT-231 Oct-16 binary that is no
+  ; longer built by any script, so this installer and tools/installer.py could
+  ; deploy different drivers under the same file name. The canonical image is
+  ; the WDK build output, the same literal tools/installer.py and
+  ; scripts/package_release.ps1 ship; /nonfatal keeps the "build it first" path
+  ; working, and the copy is byte-verified at install time by installer.py.
+  File "/nonfatal" "/oname=aegis_wfp.sys" "build\x64\wfp\aegis_wfp.sys"
 
   SetOutPath "$INSTDIR"
   File "/oname=build_manifest.json" "build_manifest.json"
