@@ -83,3 +83,30 @@ pytest tests/tools/test_aegisctl_queue.py   14 passed
 - The dedupe is measured only on this host; a host with the minifilter present
   but idle (no FIM rules) would rely on the same `ok` state. The gate is
   connect-state, not event-flow-state.
+
+## 7. E5 deployment status — BLOCKED ON ELEVATION
+
+The build that must be measured is staged and identified:
+
+| Item | Value |
+|---|---|
+| Staged daemon | `zig-out\bin\aegis_nids.exe`, 5,235,712 bytes, SHA-256 `C19C76B1854D8EED5E37D02443DF8486B8896C28F80D08496FCA31DC569EDBB5` |
+| Feature proof in the artifact | strings `AEGIS_ETW_NAME_DEDUPE` and `ETW NameCreate dedupe` present in the built exe |
+| Installed daemon | still the window-003 build (`0DFA3F04C8305CF9…`), untouched |
+| Elevation attempts | 2 × `Start-Process -Verb RunAs` on 2026-11-10, both returned "The operation was canceled by the user" (no interactive consent); direct `sc stop AegisNids` → `Access is denied` (5) |
+| Consequence | no restart, no counter reset, no rate re-measure, no soak start |
+
+One elevated run performs the whole window:
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File D:\NIDs_Windows\admin-evidence\host-window-004-20261110\run-window-004.ps1
+```
+
+It deploys the staged daemon (hash-asserted, rollback copy taken), restarts from
+clean counters, re-measures 4,000 op-sets/s for 90 s with the corrected
+`soak_rate.py`, records `rate-4000-dedupe.json`, and writes
+`soak-window-start.json` for the 24 h soak evaluation.
+
+**This section claims no E5 result.** Until the run happens, the E5 state of
+ETW-FILE-DEDUPE-001 is NOT_PROVEN.
+
