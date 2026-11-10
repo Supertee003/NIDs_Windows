@@ -1,8 +1,8 @@
 {
   "id": "EVIDENCE-DEBT-BASELINE",
   "rule": "unnamed product files may shrink but never grow; trim this file in the same patch that names one",
-  "source_commit": "a8f3abf",
-  "count": 535,
+  "source_commit": "e68cd96",
+  "count": 533,
   "unnamed": [
     "aegis_dashboard/Cargo.lock",
     "aegis_dashboard/Cargo.toml",
@@ -136,8 +136,6 @@
     "nose/payload_v3_test.go",
     "nose/pipe_writer_test.go",
     "nose/run_nose.bat",
-    "nose/signature_classifier.go",
-    "nose/signature_classifier_test.go",
     "nose/styles.go",
     "nose/talkers_live.go",
     "nose/talkers_live_test.go",

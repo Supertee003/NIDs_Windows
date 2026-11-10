@@ -1,4 +1,5 @@
 """AEGIS NIDS CLI configuration and constants."""
+import os
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -48,7 +49,11 @@ SUBSYSTEMS = [
 ]
 
 # Paths
-LOGS_DIR = REPO_ROOT / "logs"
+# S3-01 / TEST HYGIENE item 2: tests and lab runs redirect runtime state away
+# from the tracked tree. The installed service never sets AEGIS_LOGS_DIR, so
+# production state stays at <repo>/logs and an operator cannot silently move it
+# by exporting a variable into a shell that the SCM does not use.
+LOGS_DIR = Path(os.environ.get("AEGIS_LOGS_DIR") or (REPO_ROOT / "logs"))
 PID_DIR = LOGS_DIR / "pids"
 NDJSON_LOG = LOGS_DIR / "aegis_core.ndjson"
 ANOMALOUS_LOG = LOGS_DIR / "anomalous.json"

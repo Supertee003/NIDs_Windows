@@ -1,16 +1,19 @@
 """DETECTION-CONTRACT-PIN-001: one rule set, one rule-id space, one match field.
 
-Detection happens in two engines: the Go nose classifier matches real packet
-payloads at capture time, and the Zig core builds an Aho-Corasick automaton from
-the same file. They must agree on the file, the field and the numeric rule id,
-or a detection attributed by one tier names a different rule in the other.
+Detection happens in exactly one tier: the Zig core builds an Aho-Corasick
+automaton from `configs/Rules.json` and decides matches. Go Nose acquires and
+frames evidence; it owns no rule file, no pattern matcher and no verdict
+(VERDICT-AUTH-001, #28 — the classifier that used to mirror this contract was
+deleted, and any acquisition-authored verdict is now stripped at Zig ingress).
 
 Contract pinned here:
-  AC1. All tiers read configs/Rules.json; the Go classifier matches
-       `match_pattern` and the Zig automaton is built from `match_pattern`.
+  AC1. The one detection tier reads configs/Rules.json through the bundle
+       resolver and builds its automaton from `match_pattern`. Acquisition
+       tiers read no rule file at all.
   AC2. `regex_pattern` is owned by the Python Brain path only.
-  AC3. The rule-id hash (FNV-1a over the rule_id string) is identical in
-       Python, Go and Zig, asserted against one golden table.
+  AC3. The rule-id hash (FNV-1a over the rule_id string) is identical in the
+       Python reference, the Zig detector and the CLI, asserted against one
+       golden table.
   AC4. The canonical file declares both fields for every rule.
 """
 from __future__ import annotations
@@ -25,8 +28,8 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 RULES = REPO_ROOT / "configs" / "Rules.json"
-GO_CLASSIFIER = REPO_ROOT / "nose" / "signature_classifier.go"
-GO_TEST = REPO_ROOT / "nose" / "signature_classifier_test.go"
+NOSE_DIR = REPO_ROOT / "nose"
+GO_CLASSIFIER = NOSE_DIR / "signature_classifier.go"
 ZIG_LOADER = REPO_ROOT / "src" / "pipeline" / "rule_loader.zig"
 BRAIN = REPO_ROOT / "brain" / "windows_brain.py"
 
@@ -47,7 +50,7 @@ def _canonical_rules() -> list[dict]:
 def _golden_from(source: str) -> dict[str, int]:
     """Extract the shared golden rule-id table from tier test code.
 
-    Go spells it `"R0056": 2107512682` and Zig `"R0056", .hash = 2107512682`.
+    Zig spells it `"R0056", .hash = 2107512682`.
     """
     table: dict[str, int] = {}
     for rid, value in re.findall(r'"(R\d{4})"\s*:\s*(\d+)', source):
@@ -57,16 +60,15 @@ def _golden_from(source: str) -> dict[str, int]:
     return table
 
 
-# ── AC1: same file, same field ─────────────────────────────────────────────
+def _nose_sources() -> list[Path]:
+    return sorted(p for p in NOSE_DIR.glob("*.go") if not p.name.endswith("_test.go"))
 
-def test_every_detection_tier_reads_the_canonical_rule_file():
-    go = GO_CLASSIFIER.read_text(encoding="utf-8")
-    assert 'path = "configs/Rules.json"' in go
-    assert "AEGIS_RULES_PATH" in go, "the classifier must allow an explicit rule path override"
-    assert 'json:"match_pattern"' in go
 
+# ── AC1: one tier reads the file ───────────────────────────────────────────
+
+def test_one_detection_tier_reads_the_canonical_rule_file():
     zig = ZIG_LOADER.read_text(encoding="utf-8")
-    assert 'runtime_paths.configPath' in zig, (
+    assert "runtime_paths.configPath" in zig, (
         "the Zig loader must resolve configs/Rules.json through the shared "
         "bundle resolver, not the process working directory"
     )
@@ -77,12 +79,26 @@ def test_every_detection_tier_reads_the_canonical_rule_file():
     assert "configs" in brain and "Rules.json" in brain
 
 
-def test_go_classifier_matches_the_match_pattern_by_substring():
-    go = GO_CLASSIFIER.read_text(encoding="utf-8")
-    assert "strings.Contains(string(payload), rule.MatchPattern)" in go, (
-        "the Go classifier must be pinned to case-sensitive substring matching"
+def test_no_acquisition_tier_owns_a_rule_file():
+    """VERDICT-AUTH-001 (#28): no rule loader may exist outside the one tier.
+
+    The deleted `nose/signature_classifier.go` read `configs/Rules.json`,
+    decoded `match_pattern`, and wrote `rule_id`/`severity` onto the wire — a
+    second detection authority. Evidence, not a comment, keeps it gone.
+    """
+    assert not GO_CLASSIFIER.exists(), (
+        "the Go signature classifier must stay deleted: acquisition reports "
+        "evidence, Zig owns the verdict (#28)"
     )
-    assert "regex_pattern" not in go, "regex_pattern is owned by the Python Brain path"
+    for path in _nose_sources():
+        source = path.read_text(encoding="utf-8")
+        assert "AEGIS_RULES_PATH" not in source, f"{path.name} must not load a rule file"
+        assert 'json:"match_pattern"' not in source, (
+            f"{path.name} must not decode rule patterns"
+        )
+        assert "match_pattern" not in source, (
+            f"{path.name} must not reference match_pattern at all"
+        )
 
 
 def test_fast_pattern_is_fixture_marker_only():
@@ -90,15 +106,17 @@ def test_fast_pattern_is_fixture_marker_only():
     marker (fixture signals prepend it; the observe-only harness checks
     it alongside regex), not packet content — R0088's "PATH_TRAV" never
     appears in real traversal traffic, so gating match/regex on it would
-    silence real detections. Go/Zig must not read it."""
-    go = GO_CLASSIFIER.read_text(encoding="utf-8")
-    assert "fast_pattern" not in go and "FastPattern" not in go, (
-        "the Go classifier must match match_pattern directly, never gate on fast_pattern"
-    )
+    silence real detections. Zig must not read it, and the acquisition tier
+    has no matcher left to read it with."""
     zig = ZIG_LOADER.read_text(encoding="utf-8")
     assert "fast_pattern" not in zig, (
         "the Zig automaton loader must build from match_pattern directly, never gate on fast_pattern"
     )
+    for path in _nose_sources():
+        source = path.read_text(encoding="utf-8")
+        assert "fast_pattern" not in source and "FastPattern" not in source, (
+            f"{path.name} must not gate on fast_pattern"
+        )
     # The fast→regex chain lives in the synthetic harness, where it belongs.
     harness = (REPO_ROOT / "scripts" / "run_rule_matching_observe_only.py").read_text(encoding="utf-8")
     assert "fast_pattern" in harness and "regex_pattern" in harness
@@ -139,10 +157,10 @@ def test_zig_automaton_is_built_from_match_pattern_not_regex():
 
 # ── AC2/AC3: one rule-id space ─────────────────────────────────────────────
 
-def test_rule_id_hashes_are_identical_across_python_go_and_zig():
+def test_rule_id_hashes_are_identical_across_python_and_zig():
     golden = {rule["rule_id"]: _fnv1a32(rule["rule_id"]) for rule in _canonical_rules()}
-    # Explicit census (not len()): adding a rule must update the Go and Zig
-    # tables in the same patch, or the comparison below fails.
+    # Explicit census (not len()): adding a rule must update the Zig table in
+    # the same patch, or the comparison below fails.
     assert set(golden) == {
         "R0056", "R0088", "R0089", "R1001", "R1002", "R1003", "R1004",
         "R1005", "R2001", "R2002", "R2003", "R2004", "R2005", "R3001",
@@ -150,24 +168,21 @@ def test_rule_id_hashes_are_identical_across_python_go_and_zig():
         "R9059", "R9064",
     }, sorted(set(golden))
 
-    go_table = _golden_from(GO_TEST.read_text(encoding="utf-8"))
-    zig_table = _golden_from((ZIG_LOADER.parent / "rule_loader.zig").read_text(encoding="utf-8"))
+    zig_table = _golden_from(ZIG_LOADER.read_text(encoding="utf-8"))
 
-    assert go_table == golden, "the Go classifier's rule-id space drifted from the canonical table"
     assert zig_table == golden, "the Zig detector's rule-id space drifted from the canonical table"
 
 
-def test_rule_id_hash_is_fnv1a_in_both_compiled_tiers():
-    for path in (GO_CLASSIFIER, ZIG_LOADER):
-        source = path.read_text(encoding="utf-8")
-        assert "0x811c9dc5" in source, f"{path.name} must use the FNV-1a offset basis"
-        assert "0x01000193" in source, f"{path.name} must use the FNV-1a prime"
+def test_rule_id_hash_is_fnv1a_in_the_compiled_tier():
+    source = ZIG_LOADER.read_text(encoding="utf-8")
+    assert "0x811c9dc5" in source, "rule_loader.zig must use the FNV-1a offset basis"
+    assert "0x01000193" in source, "rule_loader.zig must use the FNV-1a prime"
 
 
 def test_cli_rule_hash_joins_the_shared_table():
     # EVT-176: `forensic search --field rule` hashes catalog ids
-    # client-side, so the CLI joins the Go/Zig/Python agreement as the
-    # fourth implementation. Bare integers pass through untouched.
+    # client-side, so the CLI joins the Zig/Python agreement as another
+    # implementation. Bare integers pass through untouched.
     from tools.aegisctl.api.control_api import rule_id_to_u32
     golden = {rule["rule_id"]: _fnv1a32(rule["rule_id"]) for rule in _canonical_rules()}
     for rid, want in golden.items():
@@ -218,12 +233,12 @@ def test_match_patterns_are_unique_and_nonempty():
 
 # ── AC5: rule action is an advisory label, never an enforcement order ──────
 #
-# In Project 2 observe-only mode the detection tiers (Zig AC, Go substring)
-# never branch on a rule's `action`. Enforcement comes only from
-# configs/policies.json through the Rust PEP receipt path while the
-# prevention gate is the authority. If a new action value appears, or any
-# tier starts reading it, this pin fails loudly so the coupling is a
-# conscious contract change — not a silent promotion to host effect.
+# In Project 2 observe-only mode the detection tier never branches on a rule's
+# `action`. Enforcement comes only from configs/policies.json through the Rust
+# PEP receipt path while the prevention gate is the authority. If a new action
+# value appears, or any tier starts reading it, this pin fails loudly so the
+# coupling is a conscious contract change — not a silent promotion to host
+# effect.
 
 ADVISORY_RULE_ACTIONS = {"Drop", "Block", "Alert"}
 
@@ -244,10 +259,14 @@ def test_no_detection_tier_branches_on_rule_action():
         "the Zig automaton loader must not read rule actions; "
         "enforcement is owned by policies.json through the Rust PEP"
     )
-    go = GO_CLASSIFIER.read_text(encoding="utf-8")
-    assert "Action" not in go, (
-        "the Go classifier struct must not carry an action field"
-    )
+    for path in _nose_sources():
+        source = path.read_text(encoding="utf-8")
+        assert 'json:"action"' not in source, (
+            f"{path.name} must not decode a rule action: acquisition tiers submit no policy decision"
+        )
+        assert "rule.Action" not in source, (
+            f"{path.name} must not branch on a rule action"
+        )
 
 
 # ── AC7: the 32-bit rule-id space has no collisions ─────────────────────────
@@ -272,7 +291,7 @@ def test_rule_id_hashes_have_no_collisions():
         digest = _fnv1a32(rid)
         assert digest not in seen, (
             f"FNV-1a collision: {rid!r} and {seen[digest]!r} both hash to "
-            f"{digest} — one rule would shadow the other in both engines"
+            f"{digest} — one rule would shadow the other"
         )
         seen[digest] = rid
 
@@ -287,11 +306,16 @@ def test_no_signature_hash_lands_in_the_correlator_block():
 
 
 @pytest.mark.skipif(shutil.which("go") is None, reason="Go toolchain not installed")
-def test_go_classifier_suite_pins_the_shared_golden_table():
-    nose_dir = (REPO_ROOT / "nose").resolve()
+def test_nose_package_still_builds_without_the_classifier():
+    """The acquisition tier must keep compiling after its matcher was removed:
+    a deleted classifier that leaves dangling references would only surface at
+    install time, on the host."""
     completed = subprocess.run(
-        ["go", "test", "-run", "RuleHashes|ClassifierMatches", "."],
-        cwd=nose_dir, capture_output=True, text=True,
+        ["go", "build", "-o", str(Path(__file__).with_name("_nose_probe.exe")), "."],
+        cwd=NOSE_DIR.resolve(), capture_output=True, text=True,
         encoding="utf-8", errors="replace", check=False,
     )
-    assert completed.returncode == 0, completed.stdout + completed.stderr
+    try:
+        assert completed.returncode == 0, completed.stdout + completed.stderr
+    finally:
+        Path(__file__).with_name("_nose_probe.exe").unlink(missing_ok=True)

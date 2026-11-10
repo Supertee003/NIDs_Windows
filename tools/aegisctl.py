@@ -1435,6 +1435,19 @@ def _ip_entries(path: Path, key: str) -> list[dict]:
     return _load_state(path, {key: []}).get(key, [])
 
 
+def _logs_dir() -> Path:
+    """Runtime state directory.
+
+    S3-01: tests and lab runs point AEGIS_LOGS_DIR at tmp_path so a test can
+    exercise the candidate-list views without writing tracked tree state. The
+    installed service never sets the variable, so production state stays at
+    <repo>/logs. Same override as `aegisctl.config.LOGS_DIR`; kept as a helper
+    here so the CLI's local-path commands cannot drift from it again.
+    """
+    override = os.environ.get("AEGIS_LOGS_DIR")
+    return Path(override) if override else TOOLS_DIR.parent / "logs"
+
+
 def cmd_block(args) -> int:
     # NEG-002: list-only. Mutations go through the control plane
     # (enforcement.block -> Rust PEP -> receipt -> postcondition). The local
@@ -1446,7 +1459,7 @@ def cmd_block(args) -> int:
     # does not prove no filters exist. Live state: enforce status.
     if getattr(args, "block_command", "list") != "list":
         return _unavailable("block", "pep_wfp_postcondition_not_connected")
-    path = TOOLS_DIR.parent / "logs" / "blocked_ips.json"
+    path = _logs_dir() / "blocked_ips.json"
     entries = _ip_entries(path, "blocked_ips")
     if not entries:
         print("No IPs in the block list (local candidates only; live state: enforce status)")
@@ -1590,7 +1603,7 @@ def cmd_quarantine(args) -> int:
     # this file, so entries are local candidates, never live-state proof.
     if getattr(args, "quarantine_command", "list") != "list":
         return _unavailable("quarantine", "pep_wfp_postcondition_not_connected")
-    qpath = TOOLS_DIR.parent / "logs" / "quarantine.json"
+    qpath = _logs_dir() / "quarantine.json"
     entries = _ip_entries(qpath, "quarantined_ips")
     if not entries:
         print("No IPs in quarantine (local candidates only; live state: enforce status)")
