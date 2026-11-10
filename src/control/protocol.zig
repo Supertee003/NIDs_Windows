@@ -219,7 +219,7 @@ pub fn contract(cmd: Command) CommandContract {
         .rules_list => .{ .command = cmd, .name = "rules.list", .required_role = .read, .description = "List rules", .is_mutation = false, .has_postcondition = false },
         .rules_show => .{ .command = cmd, .name = "rules.show", .required_role = .read, .description = "Show rule details", .is_mutation = false, .has_postcondition = false },
         .rules_validate => .{ .command = cmd, .name = "rules.validate", .required_role = .read, .description = "Validate rules", .is_mutation = false, .has_postcondition = false },
-        .rules_reload => .{ .command = cmd, .name = "rules.reload", .required_role = .operate, .description = "Reload rules into engine", .is_mutation = true, .has_postcondition = true },
+        .rules_reload => .{ .command = cmd, .name = "rules.reload", .required_role = .privileged, .description = "Reload rules into engine", .is_mutation = true, .has_postcondition = true },
 
         // --- events domain ---
         .events_count => .{ .command = cmd, .name = "events.count", .required_role = .read, .description = "Event count", .is_mutation = false, .has_postcondition = false },
@@ -352,12 +352,30 @@ test "contracts: read-only commands have correct role" {
     try std.testing.expect(!c_status.is_mutation);
 
     const c_reload = contract(.rules_reload);
-    try std.testing.expectEqual(Role.operate, c_reload.required_role);
+    // S1-04: reload applies detection content, so it is an elevated action.
+    // A local non-elevated user can read status/health; changing what the
+    // NIDS detects requires an elevated caller.
+    try std.testing.expectEqual(Role.privileged, c_reload.required_role);
     try std.testing.expect(c_reload.is_mutation);
 
     const c_stop = contract(.runtime_stop);
     try std.testing.expectEqual(Role.privileged, c_stop.required_role);
     try std.testing.expect(c_stop.is_mutation);
+}
+
+test "contracts: every mutation requires an elevated caller (S1-04)" {
+    // A local user can open the control pipe (AU read/operate) so status,
+    // health and queue reads keep working without elevation. Anything that
+    // changes state - detection content included - must not be reachable at
+    // that level. This asserts the whole table, not just rules.reload, so a
+    // future mutation cannot be added below privileged.
+    inline for (std.meta.fields(Command)) |field| {
+        const cmd: Command = @enumFromInt(field.value);
+        const c = contract(cmd);
+        if (c.is_mutation) {
+            try std.testing.expectEqual(Role.privileged, c.required_role);
+        }
+    }
 }
 
 test "contracts: federation.status is read-only" {

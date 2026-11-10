@@ -67,6 +67,12 @@ const SDDL_REVISION_1_V: std.os.windows.DWORD = 1;
 // local user, mutations gated per-command by role below (impersonated
 // token). There is deliberately no Everyone ACE; file ACLs (repo,
 // Rules.json) are the second wall -- see OPERATOR_COMMAND_MAP.md.
+//
+// S1-04 boundary: the role is elevation-only, so "AU" means "can read and
+// can send any command", and authorization is what makes that safe. Every
+// command with is_mutation=true therefore requires .privileged (asserted in
+// protocol.zig "contracts: every mutation requires an elevated caller");
+// rules.reload was the last mutation reachable at .operate and now is not.
 const CONTROL_PIPE_SDDL = "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GA;;;AU)";
 
 // The role is derived from the impersonated client token below; the JSON

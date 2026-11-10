@@ -69,10 +69,13 @@ test "Authorizer: read role cannot mutate" {
     try std.testing.expectEqual(AuthDecision.deny, result.decision);
 }
 
-test "Authorizer: operate role can reload" {
+test "Authorizer: operate role cannot reload detection rules" {
+    // S1-04: reloading rules changes what the NIDS detects. A local
+    // non-elevated caller keeps read/operate for status surfaces, but not
+    // this: rules.reload requires an elevated token.
     var auth = Authorizer{};
     const result = auth.authorize(.rules_reload, .operate);
-    try std.testing.expectEqual(AuthDecision.allow, result.decision);
+    try std.testing.expectEqual(AuthDecision.deny, result.decision);
 }
 
 test "Authorizer: operate role cannot shutdown" {

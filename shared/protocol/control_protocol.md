@@ -45,7 +45,7 @@ Named pipe: `\\.\pipe\aegis_control`
 | `version` | READ | Version string |
 | `HEALTH` (alias `health.check`) | READ | Health check results; `data` is the RUNTIME_CONTRACT.md §4.1 payload |
 | `rules.list` | READ | List loaded rules |
-| `rules.reload` | OPERATE | Reload Rules.json |
+| `rules.reload` | PRIVILEGED | Reload Rules.json (changes detection content — S1-04) |
 | `incidents.list` | READ | List open incidents |
 | `federation.status` | READ | Federation status |
 | `block.request` | OPERATE | Request IP block (PEP-gated) |
@@ -130,7 +130,7 @@ mutation/postcondition flags.
 | `rules.list` | READ | no | List rules |
 | `rules.show` | READ | no | Show rule details |
 | `rules.validate` | READ | no | Validate rules |
-| `rules.reload` | OPERATE | yes | Reload rules into engine |
+| `rules.reload` | PRIVILEGED | yes | Reload rules into engine (S1-04: detection-content mutation) |
 | `events.count` | READ | no | Event count |
 | `events.stats` | READ | no | Event statistics |
 | `events.tail` | READ | no | Recent events |
