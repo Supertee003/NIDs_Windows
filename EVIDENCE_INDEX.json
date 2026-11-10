@@ -1,5 +1,5 @@
 {
-  "head_sha": "c79c5a1658725952bdd216cf9317313663a7374b",
+  "head_sha": "e68cd964196054ee2083bc71919892c42ab2618d",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-10",
   "generator_version": "3.0",
@@ -5624,6 +5624,35 @@
         "Acceptance is 4,000 op-sets/s; a 6,383 op-sets/s burst still sheds.",
         "The 24 h soak (R-08) is a separate gate started from this clean counter set and was not complete at the time of this record; #30 stays open until it finishes crash-free.",
         "admin-evidence/ is local-only and git-ignored; the JSON artifacts live on the host that produced them."
+      ]
+    },
+    {
+      "id": "VERDICT-AUTH-001-E2-20261110",
+      "head_sha": "e68cd96",
+      "timestamp": "2026-11-10",
+      "title": "Acquisition-authored detection verdicts stripped at Zig ingress; the Go signature classifier is deleted, not just left dormant",
+      "level": "E2",
+      "component": "src/pipeline/event_queue.zig (sanitizeAcquisitionClaim + ingress_authority counters), src/control/handler_registry.zig, nose/ (classifier deleted, AST guard added)",
+      "flow_id": "PAYLOAD-ENVELOPE-V3-001",
+      "description": "#28 required one detection authority. The v3 frame already carried evidence, but the wire's verdict fields were still believed: pushDecodedFrame copied producer rule_id/severity/event_type into IpcEvent, and detection_engine's ruleMatchDetector, blockEventDetector and severityDetector trusted them, so a producer asserting TypeMatch + rule id + severity produced a verdict with no Zig detection. sanitizeAcquisitionClaim now clears rule_id, zeroes severity and demotes .match_/.block/.ip_blocked to .forward at the single seam every wire producer passes, counting each removal in queue.stats.ingress_authority (claims_stripped + per-field breakdown). Red step first: the new ingress test failed with 'expected 0, found 12648430' (0x00C0FFEE) before the fix. Go side: nose/signature_classifier.go and its tests deleted, inject.go no longer claims Severity 1, and a new AST guard (nose/verdict_authority_test.go) fails if any non-codec file assigns EventType/RuleID/Severity or emits TypeMatch; the guard was proven to fire against an injected Severity: 2. No wire change: vectors, six codecs and struct_size are untouched.",
+      "evidence_artifact": "analysis/current-head/VERDICT-AUTH-001-20261110.md",
+      "artifacts": [
+        "analysis/current-head/VERDICT-AUTH-001-20261110.md",
+        "shared/protocol/wire_v3.md",
+        "src/pipeline/event_queue.zig",
+        "src/control/handler_registry.zig",
+        "nose/verdict_authority_test.go"
+      ],
+      "commands": [
+        "zig build",
+        "zig build test",
+        "cd nose && go vet ./... && go test ./...",
+        "python -m pytest -q tests/contracts tests/tools"
+      ],
+      "limitations": [
+        "E2 only: no image was deployed for this patch, so no host observation of ingress_authority.claims_stripped exists yet.",
+        "The WFP driver header's rule_id/severity are now stripped; if the driver populates them, operator attribution for those rows must be re-homed into an evidence field in a separate slice.",
+        "The strip changes kind mapping for a producer-authored .match_ (now the evidence carrier, e.g. dns_query), which is intentional but is a behaviour change for any consumer that treated a wire .match_ as a detection."
       ]
     }
   ],
@@ -11532,7 +11561,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 20,
-    "E2_count": 85,
+    "E2_count": 86,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 81,

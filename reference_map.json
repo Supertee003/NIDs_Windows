@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-10T08:57:46.183263+00:00",
+  "generated_at": "2026-11-10T09:10:23.035060+00:00",
   "generator": "generate_truth_artifacts.py",
   "total_files": 1545,
   "by_role": {
-    "documentation": 359,
+    "documentation": 360,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
-    "source": 370,
+    "source": 369,
     "test-artifact": 230,
     "config-data": 34,
     "architecture-decision": 12,
@@ -757,6 +757,10 @@
       "role": "documentation"
     },
     "analysis/current-head/TEST-SCOPE-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/VERDICT-AUTH-001-20261110.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -2756,14 +2760,6 @@
       "class": "canonical-build",
       "role": "build-config"
     },
-    "nose/signature_classifier.go": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "nose/signature_classifier_test.go": {
-      "class": "canonical-test",
-      "role": "test-artifact"
-    },
     "nose/styles.go": {
       "class": "canonical-source",
       "role": "source"
@@ -2785,6 +2781,10 @@
       "role": "source"
     },
     "nose/traffic_sys_windows_test.go": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "nose/verdict_authority_test.go": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -6505,5 +6505,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "c79c5a1"
+  "source_commit": "e68cd96"
 }

@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-11-10T08:57:46.814051+00:00",
-  "head": "7f6591f048af5847e98cc8e8066190f957375be8",
-  "source_commit": "c79c5a1658725952bdd216cf9317313663a7374b",
-  "source_short": "c79c5a1",
+  "generated_at": "2026-11-10T09:10:23.656967+00:00",
+  "head": "e68cd964196054ee2083bc71919892c42ab2618d",
+  "source_commit": "e68cd964196054ee2083bc71919892c42ab2618d",
+  "source_short": "e68cd96",
   "steps": [
     {
       "label": "inventory/reference",
@@ -11,7 +11,7 @@
         "tools/generate_truth_artifacts.py"
       ],
       "returncode": 0,
-      "stdout": "============================================================\n AEGIS Truth Artifact Generator\n inventory.json + reference_map.json\n============================================================\n\n Scanned 1545 files\n Classification:\n   canonical-source        666\n   canonical-docs          373\n   canonical-test          230\n   canonical-build         192\n   canonical-config         34\n   legacy                   33\n   unclassified             17\n\n Wrote: D:\\NIDs_Windows\\inventory.json (244,918 bytes)\n Wrote: D:\\NIDs_Windows\\reference_map.json (201,738 bytes)\n\n Done.\n",
+      "stdout": "============================================================\n AEGIS Truth Artifact Generator\n inventory.json + reference_map.json\n============================================================\n\n Scanned 1545 files\n Classification:\n   canonical-source        665\n   canonical-docs          374\n   canonical-test          230\n   canonical-build         192\n   canonical-config         34\n   legacy                   33\n   unclassified             17\n\n Wrote: D:\\NIDs_Windows\\inventory.json (244,941 bytes)\n Wrote: D:\\NIDs_Windows\\reference_map.json (201,762 bytes)\n\n Done.\n",
       "stderr": ""
     },
     {
@@ -28,7 +28,7 @@
       "label": "source stamp",
       "command": [],
       "returncode": 0,
-      "stdout": "source=c79c5a1658725952bdd216cf9317313663a7374b changed=inventory.json, reference_map.json",
+      "stdout": "source=e68cd964196054ee2083bc71919892c42ab2618d changed=inventory.json, reference_map.json, SYSTEM_MAP.json, FLOW_MAP.json, AUTHORITY_MAP.json, CONTRACT_MAP.json, EVIDENCE_INDEX.json, build_truth.json, build_manifest.json, AI_CONTEXT.md",
       "stderr": ""
     },
     {
@@ -40,7 +40,7 @@
         "--json"
       ],
       "returncode": 0,
-      "stdout": "{\n  \"head\": \"7f6591f048af5847e98cc8e8066190f957375be8\",\n  \"source\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n  \"source_short\": \"c79c5a1\",\n  \"source_is_ancestor\": true,\n  \"source_paths_clean\": true,\n  \"source_worktree_clean\": true,\n  \"source_worktree_changes\": [],\n  \"valid\": true,\n  \"results\": [\n    {\n      \"file\": \"<source-ancestry>\",\n      \"type\": \"ancestry\",\n      \"expected\": \"ancestor of 7f6591f\",\n      \"actual\": \"c79c5a1\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"<source-paths>\",\n      \"type\": \"source_tree\",\n      \"expected\": \"clean since source\",\n      \"actual\": \"clean\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"<source-worktree>\",\n      \"type\": \"worktree\",\n      \"expected\": \"clean working tree\",\n      \"actual\": \"clean\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"SYSTEM_MAP.json\",\n      \"type\": \"head_sha\",\n      \"expected\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n      \"actual\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"FLOW_MAP.json\",\n      \"type\": \"head_sha\",\n      \"expected\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n      \"actual\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"AUTHORITY_MAP.json\",\n      \"type\": \"head_sha\",\n      \"expected\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n      \"actual\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"CONTRACT_MAP.json\",\n      \"type\": \"head_sha\",\n      \"expected\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n      \"actual\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"EVIDENCE_INDEX.json\",\n      \"type\": \"head_sha\",\n      \"expected\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n      \"actual\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"build_truth.json\",\n      \"type\": \"head_sha\",\n      \"expected\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n      \"actual\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"runtime_manifest.json\",\n      \"type\": \"head_sha\",\n      \"expected\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n      \"actual\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"build_manifest.json\",\n      \"type\": \"source_commit\",\n      \"expected\": \"c79c5a1\",\n      \"actual\": \"c79c5a1\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"inventory.json\",\n      \"type\": \"source_commit\",\n      \"expected\": \"c79c5a1\",\n      \"actual\": \"c79c5a1\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"reference_map.json\",\n      \"type\": \"source_commit\",\n      \"expected\": \"c79c5a1\",\n      \"actual\": \"c79c5a1\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"AI_CONTEXT.md\",\n      \"type\": \"markdown_head\",\n      \"expected\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n      \"actual\": \"c79c5a1658725952bdd216cf9317313663a7374b\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    }\n  ]\n}\n",
+      "stdout": "{\n  \"head\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n  \"source\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n  \"source_short\": \"e68cd96\",\n  \"source_is_ancestor\": true,\n  \"source_paths_clean\": true,\n  \"source_worktree_clean\": true,\n  \"source_worktree_changes\": [],\n  \"valid\": true,\n  \"results\": [\n    {\n      \"file\": \"<source-ancestry>\",\n      \"type\": \"ancestry\",\n      \"expected\": \"ancestor of e68cd96\",\n      \"actual\": \"e68cd96\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"<source-paths>\",\n      \"type\": \"source_tree\",\n      \"expected\": \"clean since source\",\n      \"actual\": \"clean\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"<source-worktree>\",\n      \"type\": \"worktree\",\n      \"expected\": \"clean working tree\",\n      \"actual\": \"clean\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"SYSTEM_MAP.json\",\n      \"type\": \"head_sha\",\n      \"expected\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n      \"actual\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"FLOW_MAP.json\",\n      \"type\": \"head_sha\",\n      \"expected\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n      \"actual\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"AUTHORITY_MAP.json\",\n      \"type\": \"head_sha\",\n      \"expected\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n      \"actual\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"CONTRACT_MAP.json\",\n      \"type\": \"head_sha\",\n      \"expected\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n      \"actual\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"EVIDENCE_INDEX.json\",\n      \"type\": \"head_sha\",\n      \"expected\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n      \"actual\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"build_truth.json\",\n      \"type\": \"head_sha\",\n      \"expected\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n      \"actual\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"runtime_manifest.json\",\n      \"type\": \"head_sha\",\n      \"expected\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n      \"actual\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"build_manifest.json\",\n      \"type\": \"source_commit\",\n      \"expected\": \"e68cd96\",\n      \"actual\": \"e68cd96\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"inventory.json\",\n      \"type\": \"source_commit\",\n      \"expected\": \"e68cd96\",\n      \"actual\": \"e68cd96\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"reference_map.json\",\n      \"type\": \"source_commit\",\n      \"expected\": \"e68cd96\",\n      \"actual\": \"e68cd96\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    },\n    {\n      \"file\": \"AI_CONTEXT.md\",\n      \"type\": \"markdown_head\",\n      \"expected\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n      \"actual\": \"e68cd964196054ee2083bc71919892c42ab2618d\",\n      \"status\": \"PASS\",\n      \"ok\": true\n    }\n  ]\n}\n",
       "stderr": ""
     }
   ],
@@ -99,7 +99,15 @@
   "unresolved": [],
   "stamped": [
     "inventory.json",
-    "reference_map.json"
+    "reference_map.json",
+    "SYSTEM_MAP.json",
+    "FLOW_MAP.json",
+    "AUTHORITY_MAP.json",
+    "CONTRACT_MAP.json",
+    "EVIDENCE_INDEX.json",
+    "build_truth.json",
+    "build_manifest.json",
+    "AI_CONTEXT.md"
   ],
   "machine_map_rebuild": {
     "status": "SOURCE_STAMP",
