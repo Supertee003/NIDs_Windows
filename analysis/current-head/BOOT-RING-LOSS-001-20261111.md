@@ -63,13 +63,15 @@ That is why a soak started from the boot state can never pass at
 
 | Option | Work | Effect |
 |---|---|---|
-| **A. 8 MiB ring** (`AEGIS_RING_SIZE` 4 → 8 MiB) | driver edit, WDK build, test-sign, elevated driver swap, E5 re-measure | roughly doubles the buffered boot window (~4.8 min); the 2.45 min gap fits with margin. A driver change, so a separate patch and candidate. |
-| **B. Attach earlier** | source: re-evaluate bridge readiness / let the reader thread attach before the daemon reports running | removes the gap instead of buffering it; larger change, needs E5. |
-| **C. Bounded startup limitation** | record + disclose per boot | no code change; 0.39 % of boot events remain a stated blind spot. |
+| **A. Daemon `DEMAND_START` + the existing boot task** | `sc config AegisNids start= demand`, reboot proof, installer update | removes the stop/restart cycle: the task starts drivers and the daemon once, back-to-back, so the ring buffers seconds instead of ~2.4 min. No driver change. |
+| **B. 8 MiB ring** (`AEGIS_RING_SIZE` 4 → 8 MiB) | driver edit, WDK build, test-sign, elevated driver swap, E5 re-measure | roughly doubles the buffered boot window (~4.8 min); keeps the current start model. A driver change, so a separate patch and candidate. |
+| **C. Attach earlier** | source: let the reader attach before the daemon reports running | removes the gap in code; larger change, needs E5. |
+| **D. Bounded startup limitation** | record + disclose per boot | no code change; 0.39 % of boot events remain a stated blind spot. |
 
-Recommendation: **A** as the next driver candidate (small, measurable), with
-**C** as the interim disclosure. Do not silently reset the counter and call the
-window clean.
+Recommendation: **A first** (configuration only, testable in the same window,
+no kernel change), with **D** as the interim disclosure and **B** only if a
+future measurement shows the boot task itself is slow. Do not silently reset
+the counter and call the window clean.
 
 ## 5. The 01:29 window did not deploy
 
@@ -94,8 +96,27 @@ policy, not the minifilter ring), but the new build's numbers do not exist yet.
 
 ## 6. Immediate operation
 
-`host-window-006-20261111/steady-soak.ps1` reloads the minifilter (zeroing the
-driver gauge), restarts the daemon, refuses to arm unless
-`ring/drops/shed = 0`, and then starts the 24 h window. The boot transient is
+`host-window-006-20261111/boot-model.ps1` sets `AegisNids` to `DEMAND_START`
+(elevated, configuration only); the existing `AegisBootSequence` task then
+loads drivers and daemon back-to-back. After the reboot the probe should show
+`minifilter_ring_dropped` near zero, and the boot-inclusive soak can be armed.
+
+If a boot transient still appears, `steady-soak.ps1` reloads the minifilter
+(zeroing the driver gauge), restarts the daemon, refuses to arm unless
+`ring/drops/shed = 0`, and starts the 24 h window. The boot transient is
 recorded here and in the post-boot probe; it is excluded from the steady-state
 window on the record, not erased.
+
+## 7. Packaging gap this exposes
+
+The boot model proven on this host is **not what the installer ships**:
+
+- `tools/installer.py:263` creates `AegisNids` with `start= auto` and starts it;
+- the installer never registers `AegisBootSequence`, and the boot script lives
+  under `admin-evidence/host-window-003-20261110/` (local-only, not packaged).
+
+So the AUTO_START-before-drivers gap would return on any fresh install, and the
+boot task that makes the demand-start drivers survive a reboot exists only on
+this lab host. For a shippable release candidate the installer must carry both
+halves: a tracked boot script, its task registration, and the daemon start mode
+that matches. That is a separate packaging slice, not part of the host window.

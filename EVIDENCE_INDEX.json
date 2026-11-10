@@ -5841,7 +5841,8 @@
         "E1: host reads only; no fix has been applied.",
         "Measured on the old deployed build (ED74E56F, source c79c5a1). The 4c4ed3a build was not deployed by the 01:29 window.",
         "The exact deploy termination is not recorded; the script's new elevation guard and trap close that gap for the next run.",
-        "A driver reload resets the gauge for the steady-state window; it does not fix the boot blind spot."
+        "A driver reload resets the gauge for the steady-state window; it does not fix the boot blind spot.",
+        "The host boot model is not what the installer ships: tools/installer.py:263 creates AegisNids with start=auto and never registers AegisBootSequence, so a fresh install would reintroduce the AUTO_START-before-drivers gap. Packaging slice still open."
       ]
     }
   ],
