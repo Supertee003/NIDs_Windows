@@ -1,7 +1,7 @@
 {
   "head_sha": "a8f3abfdfd577c38618f1342200a10545c41fd5c",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-09",
+  "last_updated_at": "2026-11-10",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -5510,6 +5510,29 @@
         "scripts/verify_release.ps1 -> 9 artifacts hash-verified; installer warns 6 unsigned runtime binaries"
       ],
       "limitations": "E1: this is a declaration, not a signing capability. It closes R-09 only in the sense the plan permits (limitation stated); it does not make a release a customer can validate, and it must not be read as a production trust chain."
+    },
+    {
+      "id": "FIM-HELPER-STAGING-001-E2-20261110",
+      "head_sha": "eaacfde",
+      "timestamp": "2026-11-10",
+      "title": "A committed FIM shutdown fix never reached the packaging input, so every bundle shipped the crashing helper",
+      "level": "E2",
+      "component": "tools/stage_helpers.py, tools/installer.py, scripts/build_all.bat",
+      "flow_id": "FLOW-RELEASE-PACKAGE",
+      "description": "CMake builds the three native helper DLLs into build/Release and every packager reads zig-out/bin, but no step copied one to the other: from 2026-10-16 onward zig-out/bin held the 1291A73E (14,336 B) helper while build/Release held the 5275ED8B (14,848 B) build of the 2026-11-01 aegis_fim_stop shutdown fix. Both #30 crash dumps load the pre-fix image (PE ts 0x6AD19661 = 2026-10-16 10:13:37; no 'session retained' / 'did not signal termination' strings; CancelIoEx present), so the reported crash was never produced by the fixed code. Repair: tools/stage_helpers.py copies Release into zig-out/bin and refuses a build older than its source or a missing build (Debug is never a substitute); --check compares staged vs build byte-for-byte. build_all.bat runs --stage and installer.py runs --check before emitting an NSIS script. The same shape appears twice more in the tree, so the installer driver replacement now uses copy /y && fc /b with Pop/Abort instead of trusting copy's exit code.",
+      "artifacts": [
+        "tools/stage_helpers.py",
+        "tools/installer.py",
+        "scripts/build_all.bat",
+        "tests/security/test_helper_staging.py",
+        "analysis/current-head/ISSUE-30-ATTRIBUTION-20261110.md"
+      ],
+      "commands": [
+        "python tools/stage_helpers.py --check   # FAIL before staging, OK after",
+        "python tools/stage_helpers.py --stage   # aegis_fim_helper.dll 5275ed8b004e <- build/Release",
+        "python -m pytest tests/security/test_helper_staging.py -q  -> 4 passed"
+      ],
+      "limitations": "E2 only: the gate and its tests run against a throwaway tree, and the staging step was executed on this host. Nothing here deploys the fixed helper to a running service or proves #30 is closed; that needs the host window (deploy 5275ED8B, restart, observe no SCM 7031)."
     }
   ],
   "known_gaps": [
@@ -11417,7 +11440,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 20,
-    "E2_count": 84,
+    "E2_count": 85,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 77,
