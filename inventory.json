@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-10T10:04:06.834062+00:00",
+  "generated_at": "2026-11-10T10:26:12.096023+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1548,
+  "total_files": 1550,
   "by_class": {
-    "canonical-docs": 376,
+    "canonical-docs": 377,
     "canonical-build": 192,
     "unclassified": 17,
     "canonical-source": 665,
-    "canonical-test": 231,
+    "canonical-test": 232,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -480,7 +480,7 @@
       "path": "analysis/current-head/evidence-debt-baseline.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 21740
+      "size": 21665
     },
     {
       "path": "analysis/current-head/FIM-PROBE-IDENTITY-COMMENT-001-20261109.md",
@@ -565,6 +565,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 7277
+    },
+    {
+      "path": "analysis/current-head/INJECTION-CLAIM-001-20261110.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4908
     },
     {
       "path": "analysis/current-head/issue-29-adr0012-measurement-gate-contradiction-20261108.md",
@@ -2340,7 +2346,7 @@
       "path": "docs/ARCHITECTURE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6723
+      "size": 7029
     },
     {
       "path": "docs/ARCHITECTURE_BOUNDARY.md",
@@ -3360,7 +3366,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1111729
+      "size": 1114488
     },
     {
       "path": "FLOW_MAP.json",
@@ -3468,7 +3474,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 235849
+      "size": 236498
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3726,7 +3732,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9693
+      "size": 10041
     },
     {
       "path": "pytest.ini",
@@ -3744,7 +3750,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 195416
+      "size": 195929
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -5898,7 +5904,7 @@
       "path": "src/contract/runtime_manifest.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 6419
+      "size": 7009
     },
     {
       "path": "src/contract/runtime_spine.zig",
@@ -6090,7 +6096,7 @@
       "path": "src/daemon.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 48676
+      "size": 49078
     },
     {
       "path": "src/detection/anomaly_detector.zig",
@@ -8211,6 +8217,12 @@
       "size": 3439
     },
     {
+      "path": "tests/security/test_capability_claims.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3327
+    },
+    {
       "path": "tests/security/test_cli_mutation_gate.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -9303,5 +9315,5 @@
       "size": 624
     }
   ],
-  "source_commit": "e68cd96"
+  "source_commit": "cf041b8"
 }

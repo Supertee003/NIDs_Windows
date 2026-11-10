@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-10T10:04:06.844785+00:00",
+  "generated_at": "2026-11-10T10:26:12.098533+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1548,
+  "total_files": 1550,
   "by_role": {
-    "documentation": 362,
+    "documentation": 363,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
     "source": 369,
-    "test-artifact": 231,
+    "test-artifact": 232,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -689,6 +689,10 @@
       "role": "documentation"
     },
     "analysis/current-head/INGRESS-KIND-ATTRIBUTION-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/INJECTION-CLAIM-001-20261110.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -5788,6 +5792,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/security/test_capability_claims.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/security/test_cli_mutation_gate.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -6517,5 +6525,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "e68cd96"
+  "source_commit": "cf041b8"
 }

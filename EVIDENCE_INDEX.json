@@ -1,5 +1,5 @@
 {
-  "head_sha": "e68cd964196054ee2083bc71919892c42ab2618d",
+  "head_sha": "cf041b83117d84bedefc386baaf55c63031f6d74",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-10",
   "generator_version": "3.0",
@@ -5708,6 +5708,35 @@
         "E2 only: no host window ran, so the installed AegisWfp image is still whatever the last window left; S1-01 (installed vs repo build) remains open.",
         "installer/aegis.nsi is still a second installer with weaker guarantees: it performs no driver hash verification, no configs ACL hardening and no uninstall cleanup proof, so shipping the same image does not make the two installers equivalent.",
         "drivers/wfp_callout/aegis_wfp.sys still exists on disk as untracked build output; no packaging path or build script references it now, but removing it is a host cleanup, not a repository change."
+      ]
+    },
+    {
+      "id": "INJECTION-CLAIM-001-E2-20261110",
+      "head_sha": "cf041b8",
+      "timestamp": "2026-11-10",
+      "title": "Runtime stops claiming T1055 injection detection it never executes",
+      "level": "E2",
+      "component": "src/daemon.zig, src/contract/runtime_manifest.zig, docs/ARCHITECTURE.md, tests/security/test_capability_claims.py",
+      "flow_id": "HOST-TELEMETRY",
+      "description": "S2-03. Three places claimed a live injection detector and none was live: src/daemon.zig constructed an InjectionDetector and destroyed it without ever calling ingest(); src/contract/runtime_manifest.zig hard-coded c.has_injection_detector = true (unlike the probed flags beside it), so every feature negotiation was answered wrongly; docs/ARCHITECTURE.md described a 'REAL-time ETW path' that does not exist. The daemon has no InjectionEvent producer at all: the ETW session parses process/file/registry providers into IpcEvents and carries no process-open, thread-create, VirtualAllocEx or image-load opcodes. The construction, its import and the flag are removed/falsified with the reason in place, the doc rows are corrected to NOT WIRED, and tests/security/test_capability_claims.py pins the rule in both directions: the flag may not be re-asserted (mutation control: restoring = true fails it), a returning InjectionDetector.init must be accompanied by an .ingest call site, src/daemon.zig may not carry imports it never uses, and the NOT WIRED documentation may not silently revert. zig build and zig build test both pass; full python suite 1092 passed / 4 skipped.",
+      "evidence_artifact": "analysis/current-head/INJECTION-CLAIM-001-20261110.md",
+      "artifacts": [
+        "analysis/current-head/INJECTION-CLAIM-001-20261110.md",
+        "src/daemon.zig",
+        "src/contract/runtime_manifest.zig",
+        "docs/ARCHITECTURE.md",
+        "tests/security/test_capability_claims.py"
+      ],
+      "commands": [
+        "zig build",
+        "zig build test",
+        "python -m pytest -q tests"
+      ],
+      "limitations": [
+        "E2 only: nothing was observed on a host; T1055 detection remains unimplemented in production.",
+        "Wiring the detector needs new ETW opcode parsing and an InjectionEvent producer, plus a detection-identity path into the pipeline - a separate slice with an E5 gate.",
+        "Two injection implementations still overlap in source (ProcessInjectionDetector in windows/host_telemetry_detectors.zig and detection/injection_detector.zig); choosing one is an owner design decision.",
+        "Six other runtime_manifest flags are still hard-coded true (has_federation, has_tls, has_xdr, has_replay, has_forensic_pipeline, has_fault_injection) and this pin does not cover them."
       ]
     }
   ],
@@ -11616,7 +11645,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 20,
-    "E2_count": 88,
+    "E2_count": 89,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 81,

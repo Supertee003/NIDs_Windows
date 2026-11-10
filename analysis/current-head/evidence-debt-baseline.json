@@ -1,8 +1,8 @@
 {
   "id": "EVIDENCE-DEBT-BASELINE",
   "rule": "unnamed product files may shrink but never grow; trim this file in the same patch that names one",
-  "source_commit": "e68cd96",
-  "count": 531,
+  "source_commit": "cf041b8",
+  "count": 530,
   "unnamed": [
     "aegis_dashboard/Cargo.lock",
     "aegis_dashboard/Cargo.toml",
@@ -267,7 +267,6 @@
     "src/contract/abi_manifest.zig",
     "src/contract/event_fabric.zig",
     "src/contract/event_queue.zig",
-    "src/contract/runtime_manifest.zig",
     "src/contract/wire_event.zig",
     "src/control.zig",
     "src/control/audit.zig",
