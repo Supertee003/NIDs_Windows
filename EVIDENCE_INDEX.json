@@ -1,5 +1,5 @@
 {
-  "head_sha": "cf041b83117d84bedefc386baaf55c63031f6d74",
+  "head_sha": "4c4ed3aae168188e262e678981996168af7ef8df",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-11",
   "generator_version": "3.0",
@@ -5763,6 +5763,33 @@
         "The aggregate `degraded` flag is still not itemised inside the daemon (state_machine.zig / control_api.py); the CLI now names the gap instead of hiding it.",
         "`health --strict`, web_dashboard/app.py and host_soak_check.py re-derive health from the same payload and were not changed.",
         "The gate remains worker-flag based; whether a stopped non-required subsystem (e.g. rust_pep in detection-only mode) should close the gate is an owner product decision."
+      ]
+    },
+    {
+      "id": "QLOSS-ETW-PRIORITY-001-E2-20261111",
+      "head_sha": "4c4ed3a",
+      "timestamp": "2026-11-11",
+      "title": "ETW storm shed now protects the signal classes inside the source share",
+      "level": "E2",
+      "component": "src/pipeline/telemetry_threads.zig",
+      "flow_id": "QLOSS",
+      "description": "The live 8.93 h soak on source c79c5a1 lost 148,217 rows, all capture_etw (145,915 fim_change + 2,302 reg_change), with shed_overload=0 and source_quota_shed=148,217. Root cause: the deliberate storm policy shed Write/NameDelete only at the global 3/4 queue line (12,288), while admission refuses a host source at SOURCE_OCCUPANCY_CAP (7,168), so a file-write burst filled the ETW share first and the registry/process rows were refused by the same quota. The callback now uses etwSharePressure(depth, occupancy): shed low-value classes when EITHER the queue is 3/4 full OR this source is within ETW_SHARE_MARGIN=256 of its own cap, leaving a bounded reserve for ProcessStart/CreateKey/SetValueKey. The first-sighting exemption and its 200-token bucket are unchanged. Pacing the ETW callback was rejected because the helper exposes no EventsLost counter, so a pause would convert counted queue loss into uncounted kernel loss. zig build test: 2,085 passed / 10 skipped / 0 failed; zig build exit 0. E2 only: the finding was measured on the previous build and this policy has not been deployed or re-measured.",
+      "evidence_artifact": "analysis/current-head/QLOSS-ETW-PRIORITY-001-20261111.md",
+      "artifacts": [
+        "analysis/current-head/QLOSS-ETW-PRIORITY-001-20261111.md",
+        "src/pipeline/telemetry_threads.zig"
+      ],
+      "commands": [
+        "zig build test --summary all",
+        "zig build",
+        "python tools/aegisctl.py queue --json"
+      ],
+      "limitations": [
+        "E2 only. The 148,217-drop measurement was taken on the previous build; this patch must be deployed and the soak re-run before any E5 claim.",
+        "It does not make the soak zero-loss: write storms still lose rows, now as shed_overload (policy, first sighting exempt) rather than source_quota_shed (overflow).",
+        "The 256-slot reserve is not a guarantee: the exemption bucket can release up to 200 writes in a burst, and a registry storm can still exhaust the share.",
+        "shed_overload is exposed on queue.stats but not in the health payload the soak tool reads, so a soak can pass while policy shed is nonzero. That honesty gap is recorded, not fixed.",
+        "Extending storm shed to the per-source boundary changes which rows are lost first; the acceptable loss budget is an owner decision."
       ]
     }
   ],
@@ -11671,7 +11698,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 20,
-    "E2_count": 90,
+    "E2_count": 91,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 81,

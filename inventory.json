@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-10T10:28:22.567895+00:00",
+  "generated_at": "2026-11-10T18:10:41.453385+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1550,
+  "total_files": 1553,
   "by_class": {
-    "canonical-docs": 377,
+    "canonical-docs": 379,
     "canonical-build": 192,
     "unclassified": 17,
     "canonical-source": 665,
-    "canonical-test": 232,
+    "canonical-test": 233,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -637,6 +637,18 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 1864
+    },
+    {
+      "path": "analysis/current-head/QLOSS-ETW-PRIORITY-001-20261111.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4990
+    },
+    {
+      "path": "analysis/current-head/READINESS-CAUSE-001-20261110.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4746
     },
     {
       "path": "analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md",
@@ -3366,7 +3378,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1114488
+      "size": 1131127
     },
     {
       "path": "FLOW_MAP.json",
@@ -3474,7 +3486,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 236499
+      "size": 236498
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3732,7 +3744,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9693
+      "size": 9574
     },
     {
       "path": "pytest.ini",
@@ -4818,7 +4830,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23767
+      "size": 23219
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -6462,7 +6474,7 @@
       "path": "src/pipeline/telemetry_threads.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 31519
+      "size": 33863
     },
     {
       "path": "src/platform/win32_pipe.zig",
@@ -8535,6 +8547,12 @@
       "size": 1189
     },
     {
+      "path": "tests/tools/test_readiness_cause.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 6349
+    },
+    {
       "path": "tests/tools/test_runbooks.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -8826,7 +8844,7 @@
       "path": "tools/aegisctl.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 111619
+      "size": 113461
     },
     {
       "path": "tools/audit_kernel_runtime.py",
@@ -9315,5 +9333,5 @@
       "size": 624
     }
   ],
-  "source_commit": "cf041b8"
+  "source_commit": "4c4ed3a"
 }
