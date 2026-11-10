@@ -23,7 +23,11 @@ const fim_dedup = @import("fim_dedup.zig");
 /// Read by queue.stats; never read by any push/drop decision.
 pub const EtwClasses = struct {
     process_start: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
+    /// Counts only NameCreate records that reached the queue. The duplicate
+    /// copies suppressed by ETW-FILE-DEDUPE-001 are counted separately in
+    /// `name_create_deduped`, so observed total = sum, never a silent gap.
     file_name_create: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
+    name_create_deduped: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
     file_name_delete: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
     file_write: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
     reg_create: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
@@ -104,6 +108,50 @@ fn isStormSheddable(provider_guid: *const [16]u8, event_id: u16) bool {
     return event_id == 0x10 or event_id == 0x0B;
 }
 
+/// ETW-FILE-DEDUPE-001 (issue #29): the Kernel-File `NameCreate` record
+/// (opcode 0x0A) describes the same file open the minifilter already reports
+/// as `capture_fim` (one record per IRP_MJ_CREATE completion). While the
+/// kernel lane is connected, the ETW copy is duplicate work that buys no
+/// detection signal, and it was the largest single class inside the measured
+/// 4,008 op-sets/s burst drop. Suppression is deliberately conditional:
+///
+///   * it is off unless `runtime_state.g_minifilter_state == .ok`, so a host
+///     without the driver keeps full ETW file coverage;
+///   * it is re-evaluated per record, so a minifilter disconnect restores the
+///     ETW lane immediately rather than at the next daemon restart;
+///   * `AEGIS_ETW_NAME_DEDUPE=0` is the operator kill switch (default on);
+///   * only 0x0A is suppressed. NameDelete (0x0B) and Write (0x10) are
+///     information the minifilter does not emit and must never be deduped.
+pub var g_etw_name_dedupe: std.atomic.Value(bool) = std.atomic.Value(bool).init(true);
+
+/// Parse the `AEGIS_ETW_NAME_DEDUPE` value. `null` (unset) keeps the default.
+/// Only the literal "0" disables; every other value keeps the dedupe on, so a
+/// typo can never silently remove a telemetry lane.
+pub fn parseNameDedupeEnv(value: ?[]const u8) bool {
+    const raw = value orelse return true;
+    return !std.mem.eql(u8, raw, "0");
+}
+
+fn etwNameDedupeEnabledFromEnv() bool {
+    const raw = std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_ETW_NAME_DEDUPE") catch
+        return true;
+    defer std.heap.page_allocator.free(raw);
+    return parseNameDedupeEnv(raw);
+}
+
+/// True when this record is the duplicate NameCreate the minifilter already
+/// covers. Pure so the gate is testable without an ETW session.
+pub fn shouldDedupeNameCreate(
+    provider_guid: *const [16]u8,
+    event_id: u16,
+    minifilter_ok: bool,
+    enabled: bool,
+) bool {
+    if (!enabled or !minifilter_ok) return false;
+    if (!std.mem.eql(u8, provider_guid, &etw.KERNEL_FILE_GUID.guid)) return false;
+    return event_id == 0x0A;
+}
+
 /// ETW thread: receives Windows kernel events via ETW session.
 /// Converts EtwEventRecord to IpcEvent and pushes to pipeline.
 pub fn etwThread(source: *etw.EtwSource) void {
@@ -113,6 +161,10 @@ pub fn etwThread(source: *etw.EtwSource) void {
         return;
     }
     // Start ETW with kernel process provider
+    g_etw_name_dedupe.store(etwNameDedupeEnabledFromEnv(), .release);
+    diag.info("ETW NameCreate dedupe: {s} (minifilter-gated)", .{
+        if (g_etw_name_dedupe.load(.acquire)) "on" else "off (AEGIS_ETW_NAME_DEDUPE=0)",
+    });
     const providers = [_][16]u8{
         etw.PROVIDER_KERNEL_PROCESS,
         etw.PROVIDER_KERNEL_FILE,
@@ -155,6 +207,20 @@ fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []cons
     // Provider event_id is local to the ETW provider. Reserve a monotonic
     // AEGIS event identity separately for downstream trace/forensic joins.
     ev.event_id = diag.metrics.events_emitted.next();
+
+    // ETW-FILE-DEDUPE-001 (#29): drop the Kernel-File NameCreate copy while the
+    // kernel minifilter lane is connected — same file open, already in
+    // `capture_fim`. The check is per record so the lane self-restores when the
+    // minifilter disconnects. Counted, never silent.
+    if (shouldDedupeNameCreate(
+        &rec.provider_guid,
+        rec.event_id,
+        state.g_minifilter_state.load(.acquire) == @intFromEnum(state.MinifilterState.ok),
+        g_etw_name_dedupe.load(.acquire),
+    )) {
+        _ = g_etw_classes.name_create_deduped.fetchAdd(1, .monotonic);
+        return;
+    }
 
     // Event IDs are provider-local. Always gate the mapping by provider
     // GUID; otherwise an ID=1 from a file/registry provider could be
@@ -548,6 +614,31 @@ test "GAP-015 G3 classifier counts every outcome" {
     const drops = g_etw_classes.dropped_unmapped.load(.acquire);
     _ = classifyEtwEvent(file_guid, 0x0C);
     try std.testing.expectEqual(drops + 1, g_etw_classes.dropped_unmapped.load(.acquire));
+}
+
+test "ETW name-create dedupe is minifilter-gated, provider-gated, opcode-exact (#29)" {
+    const file_guid = &etw.KERNEL_FILE_GUID.guid;
+    const proc_guid = &etw.KERNEL_PROCESS_GUID.guid;
+    // Duplicate only when the kernel lane is connected and the switch is on.
+    try std.testing.expect(shouldDedupeNameCreate(file_guid, 0x0A, true, true));
+    try std.testing.expect(!shouldDedupeNameCreate(file_guid, 0x0A, false, true));
+    try std.testing.expect(!shouldDedupeNameCreate(file_guid, 0x0A, true, false));
+    // Writes and name deletes are not emitted by the minifilter: never deduped.
+    try std.testing.expect(!shouldDedupeNameCreate(file_guid, 0x0B, true, true));
+    try std.testing.expect(!shouldDedupeNameCreate(file_guid, 0x10, true, true));
+    // The same opcode from another provider is not the duplicate.
+    try std.testing.expect(!shouldDedupeNameCreate(proc_guid, 0x0A, true, true));
+    const unknown: [16]u8 = [_]u8{0} ** 16;
+    try std.testing.expect(!shouldDedupeNameCreate(&unknown, 0x0A, true, true));
+}
+
+test "ETW name-create dedupe env switch defaults on and only '0' disables" {
+    try std.testing.expect(parseNameDedupeEnv(null));
+    try std.testing.expect(!parseNameDedupeEnv("0"));
+    try std.testing.expect(parseNameDedupeEnv("1"));
+    // Typo-safety: any other value keeps the lane duplicate-suppressed only
+    // under the same minifilter gate; it never *removes* a telemetry lane.
+    try std.testing.expect(parseNameDedupeEnv("off"));
 }
 
 test "GAP-015 G4.1 exemption passes first sighting, sheds repeats, respects bucket" {

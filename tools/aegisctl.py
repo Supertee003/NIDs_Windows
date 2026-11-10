@@ -502,6 +502,7 @@ def _format_queue_rows(response: dict) -> list[str]:
         )
     etw = response.get("etw") or {}
     if etw:
+        dedupe = etw.get("name_create_deduped")
         rows.append(
             f"  etw start={etw.get('process_start', '?')} "
             f"name={etw.get('file_name_create', '?')}+{etw.get('file_name_delete', '?')} "
@@ -510,6 +511,9 @@ def _format_queue_rows(response: dict) -> list[str]:
             f"unmapped={etw.get('dropped_unmapped', '?')} "
             f"predecode={etw.get('predecode_dropped', '?')} "
             f"exempt={etw.get('shed_exempted', '?')}"
+            # #29: present only on daemons that dedupe; older ones render
+            # byte-identically otherwise.
+            + (f" dedupe={dedupe}" if dedupe is not None else "")
         )
     wfp = response.get("wfp") or {}
     if wfp:

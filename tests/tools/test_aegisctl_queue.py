@@ -72,6 +72,22 @@ def test_format_queue_rows_renders_etw_and_shed():
     assert rows[3] == "  etw start=5 name=50+2 write=900 reg=1+30 unmapped=4 predecode=8000 exempt=11"
 
 
+def test_format_queue_rows_renders_name_dedupe_only_when_present():
+    # #29 ETW-FILE-DEDUPE-001: suppressed NameCreate copies are a counted class
+    # and must be visible next to the pushed count.
+    response = dict(SAMPLE)
+    response["etw"] = {
+        "process_start": 5, "file_name_create": 50, "name_create_deduped": 17,
+        "file_name_delete": 2, "file_write": 900, "reg_create": 1, "reg_set": 30,
+        "dropped_unmapped": 4, "predecode_dropped": 8000, "shed_exempted": 11,
+    }
+    rows = cli._format_queue_rows(response)
+    assert rows[3] == (
+        "  etw start=5 name=50+2 write=900 reg=1+30 unmapped=4 "
+        "predecode=8000 exempt=11 dedupe=17"
+    )
+
+
 def test_format_queue_rows_tolerates_missing_keys():
     rows = cli._format_queue_rows({})
     assert rows == ["queue ?/? pushed=? dropped=? shed_overload=?"]
