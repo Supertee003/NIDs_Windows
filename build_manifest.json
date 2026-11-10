@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "a8f3abf",
+  "source_commit": "eaacfde",
   "build_date": "2026-10-23T00:00:00.000000+00:00",
   "build_host": "windows",
   "platform": {
@@ -1194,8 +1194,8 @@
     },
     {
       "path": "scripts/build_all.bat",
-      "size": 8539,
-      "sha256": "e542b0ec41e78e05d11f3cd2b0e7b5e7eab5ff535cdc4e9f1bca40782a6635ac",
+      "size": 8820,
+      "sha256": "d656b41e7f81c7fd510d061c09ba4ea243c4c5fde4253fb2b6c7ba2073fa6b1f",
       "language": "script"
     },
     {
@@ -1236,8 +1236,8 @@
     },
     {
       "path": "scripts/check_summary.py",
-      "size": 1734,
-      "sha256": "6ba6a793d44dc37427fd66c04496c4378f054847adc6f49aa1c3179955f02d58",
+      "size": 5631,
+      "sha256": "0750d0c9e7cc0f2906785f2db27f7ec8bc16fc12ceac6ab5735f30a3d8b38d26",
       "language": "python/cython"
     },
     {
@@ -1506,8 +1506,8 @@
     },
     {
       "path": "scripts/package_release.ps1",
-      "size": 3456,
-      "sha256": "598ef458350390156de20b219b488e5656214c50bdaf54227b1ce71a2976b02a",
+      "size": 4519,
+      "sha256": "929c23080c3d0c5f9bb7d0ba000cda45dcede17a4f412377f9a17721ddb814f5",
       "language": "script"
     },
     {
@@ -2016,8 +2016,8 @@
     },
     {
       "path": "src/control/authorization.zig",
-      "size": 3443,
-      "sha256": "9f9ca403396a6814742b0dcb5e34df4e14f94199b86f3e1455a1b5678b309e07",
+      "size": 3659,
+      "sha256": "82cd62f2e487537521f8c1df7e13ea9fe7e2234274cc506e7a3c7203eed9740d",
       "language": "zig"
     },
     {
@@ -2034,8 +2034,8 @@
     },
     {
       "path": "src/control/protocol.zig",
-      "size": 22503,
-      "sha256": "e8f6875ea5796dbb6b01d4019d4e1cd74afb2515a78712433801dfa5187654f3",
+      "size": 23407,
+      "sha256": "6fcc6f34621be968b5a511d3a873dc6395740cd3a58af4c344e812b8313c75fa",
       "language": "zig"
     },
     {
@@ -2496,8 +2496,8 @@
     },
     {
       "path": "src/pipeline/event_queue.zig",
-      "size": 50173,
-      "sha256": "baf63674dc3aa96c2146fae79b0d4727bebde5196606d1188e966f99e1f76ee6",
+      "size": 54296,
+      "sha256": "34cf841df14559f16551f6c9d927b9be7a7e54f00878cfc7a24664d12231c128",
       "language": "zig"
     },
     {
@@ -2532,8 +2532,8 @@
     },
     {
       "path": "src/platform/win32_pipe.zig",
-      "size": 14027,
-      "sha256": "93ba7d4b69df00a977c615715d013a5237ca213e564c01f0a1957f3c348a2739",
+      "size": 14407,
+      "sha256": "b6904bec4c3809d5d9aebdadbad3c07d95bf2e86327f224f094411f96608606a",
       "language": "zig"
     },
     {
@@ -3738,8 +3738,8 @@
     },
     {
       "path": "tools/installer.py",
-      "size": 23666,
-      "sha256": "65327613f3f26e94b187e86282d050373b18ca98f18c0451c4b91c75e418d4de",
+      "size": 26511,
+      "sha256": "4c85ae005d7dd719020b77631e5468daf56cf80ca151fe08eff5b4f166f9f214",
       "language": "python/cython"
     },
     {
@@ -3960,8 +3960,8 @@
     },
     {
       "path": "tools/release_engineering.py",
-      "size": 26314,
-      "sha256": "a3e68563e47aaecff14fa8c8003ac8e933cbae715497538a6eb2d2045f68071f",
+      "size": 28678,
+      "sha256": "2812da818b6497c230d5de0ecbe6f7ab55a80f2755a6726d5d92d4c4c5801b0a",
       "language": "python/cython"
     },
     {
