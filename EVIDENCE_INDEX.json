@@ -1,5 +1,5 @@
 {
-  "head_sha": "1ca18c46e94b556be5a2152602cfa2688190b031",
+  "head_sha": "2d5ee1bd1b2b56c9726e56f4208a8c843f303638",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-12",
   "generator_version": "3.0",
@@ -5921,6 +5921,35 @@
         "The 446,327 shed rows are deliberate policy, counted, and excluded from any zero-loss claim.",
         "A confirmation window with an owner-approved budget is still required if the release proceeds with a budget."
       ]
+    },
+    {
+      "id": "QLOSS-ETW-WRITEFILTER-001-E2-20261112",
+      "head_sha": "2d5ee1b",
+      "timestamp": "2026-11-12",
+      "title": "ETW file writes outside the rule-actionable paths are filtered at the source",
+      "level": "E2",
+      "component": "src/pipeline/telemetry_threads.zig, src/control/handler_registry.zig, src/windows/etw_realtime.zig",
+      "flow_id": "QLOSS",
+      "description": "The 30.8 h window showed 8,850,070 ETW file writes holding the ETW share while 1,394 registry rows were quota-dropped and 446,327 rows were policy-shed. Rule audit: R1001/R1004 match System32 paths, R1005 matches System32\\drivers\\etc\\hosts, R1003 matches Startup, R1002 is a create/rename signal delivered by the minifilter; no rule matches an arbitrary write. New shouldAdmitEtwWrite(path) admits empty paths, isCriticalPath paths (System32/SysWOW64/drivers\\etc) and \\Startup\\ paths, and filters the rest at the ETW callback before they consume the share. Filtered rows are counted in file_write_filtered, published on queue.stats.etw and the CLI; NameDelete, registry and process rows are unchanged. zig build test: 2,087 passed / 10 skipped / 0 failed; zig build produces 25AB91543EBC90F5. E2 only: the expected collapse of shed and registry overflow must be measured in the next window.",
+      "evidence_artifact": "analysis/current-head/QLOSS-ETW-WRITEFILTER-001-20261112.md",
+      "artifacts": [
+        "analysis/current-head/QLOSS-ETW-WRITEFILTER-001-20261112.md",
+        "src/pipeline/telemetry_threads.zig",
+        "src/control/handler_registry.zig",
+        "src/windows/etw_realtime.zig"
+      ],
+      "commands": [
+        "zig build test --summary all",
+        "zig build",
+        "python tools/aegisctl.py queue --json"
+      ],
+      "limitations": [
+        "E2 only; 25AB9154 has not been deployed or measured.",
+        "It is a coverage decision: generic file writes are no longer evidence. R1002/R1004 still see file creation via the minifilter, but future rules that need arbitrary writes must revisit this filter.",
+        "Anomaly-detector baselines shift because fim_change volume falls; thresholds were not retuned.",
+        "NameDelete (606,234 in 30.8 h) is still admitted; if it becomes the pressure point it needs its own rule audit.",
+        "If registry bursts still overflow the 256-slot reserve, the next lever is the reserve size or registry coalescing, not this filter."
+      ]
     }
   ],
   "known_gaps": [
@@ -11828,7 +11857,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 93,
+    "E2_count": 94,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 83,

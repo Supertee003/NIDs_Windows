@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-10T18:59:23.841147+00:00",
+  "generated_at": "2026-11-12T05:58:00.539955+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1556,
+  "total_files": 1559,
   "by_role": {
-    "documentation": 368,
+    "documentation": 371,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
@@ -584,6 +584,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/BOOT-RING-LOSS-E5-20261111.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/BOUNDARY-DECLARATION-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -752,11 +756,19 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/QLOSS-ETW-WRITEFILTER-001-20261112.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/READINESS-CAUSE-001-20261110.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
     "analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/SOAK-30H-20261112.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -6549,5 +6561,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "1ca18c4"
+  "source_commit": "2d5ee1b"
 }

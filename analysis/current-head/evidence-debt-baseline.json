@@ -1,7 +1,7 @@
 {
   "id": "EVIDENCE-DEBT-BASELINE",
   "rule": "unnamed product files may shrink but never grow; trim this file in the same patch that names one",
-  "source_commit": "1ca18c4",
+  "source_commit": "2d5ee1b",
   "count": 530,
   "unnamed": [
     "aegis_dashboard/Cargo.lock",
