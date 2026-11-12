@@ -207,6 +207,9 @@ pub const EtwEventRecord = struct {
     pub fn commandLine(self: *const EtwEventRecord) []const u8 {
         return self.command_line[0..self.command_line_len];
     }
+    pub fn filePath(self: *const EtwEventRecord) []const u8 {
+        return self.file_path[0..self.file_path_len];
+    }
 };
 
 // ============================================================

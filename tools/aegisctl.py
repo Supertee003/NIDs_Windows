@@ -507,6 +507,7 @@ def _format_queue_rows(response: dict) -> list[str]:
             f"  etw start={etw.get('process_start', '?')} "
             f"name={etw.get('file_name_create', '?')}+{etw.get('file_name_delete', '?')} "
             f"write={etw.get('file_write', '?')} "
+            f"filtered={etw.get('file_write_filtered', '?')} "
             f"reg={etw.get('reg_create', '?')}+{etw.get('reg_set', '?')} "
             f"unmapped={etw.get('dropped_unmapped', '?')} "
             f"predecode={etw.get('predecode_dropped', '?')} "

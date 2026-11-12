@@ -780,12 +780,13 @@ const handlers = struct {
             }) catch return null;
         }
         writer.writeAll("],\"etw\":{") catch return null;
-        writer.print("\"process_start\":{},\"file_name_create\":{},\"name_create_deduped\":{},\"file_name_delete\":{},\"file_write\":{},\"reg_create\":{},\"reg_set\":{},\"dropped_unmapped\":{},\"predecode_dropped\":{},\"shed_exempted\":{}}}", .{
+        writer.print("\"process_start\":{},\"file_name_create\":{},\"name_create_deduped\":{},\"file_name_delete\":{},\"file_write\":{},\"file_write_filtered\":{},\"reg_create\":{},\"reg_set\":{},\"dropped_unmapped\":{},\"predecode_dropped\":{},\"shed_exempted\":{}}}", .{
             telemetry.g_etw_classes.process_start.load(.acquire),
             telemetry.g_etw_classes.file_name_create.load(.acquire),
             telemetry.g_etw_classes.name_create_deduped.load(.acquire),
             telemetry.g_etw_classes.file_name_delete.load(.acquire),
             telemetry.g_etw_classes.file_write.load(.acquire),
+            telemetry.g_etw_classes.file_write_filtered.load(.acquire),
             telemetry.g_etw_classes.reg_create.load(.acquire),
             telemetry.g_etw_classes.reg_set.load(.acquire),
             telemetry.g_etw_classes.dropped_unmapped.load(.acquire),
@@ -2472,6 +2473,8 @@ test "queueStats emits parseable JSON with shed and etw keys (GAP-015)" {
     try std.testing.expect(root.contains("pipeline"));
     try std.testing.expect(root.contains("etw"));
     try std.testing.expect(root.get("etw").?.object.contains("file_write"));
+    // QLOSS-ETW-WRITEFILTER-001: source-side filtering is visible, not silent.
+    try std.testing.expect(root.get("etw").?.object.contains("file_write_filtered"));
     // #29 ETW-FILE-DEDUPE-001: suppressed duplicates are a counted class, so
     // operators can see observed NameCreate = pushed + deduped.
     try std.testing.expect(root.get("etw").?.object.contains("name_create_deduped"));

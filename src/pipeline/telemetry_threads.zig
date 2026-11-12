@@ -30,6 +30,10 @@ pub const EtwClasses = struct {
     name_create_deduped: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
     file_name_delete: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
     file_write: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
+    /// Writes filtered at the source because their path is not one the rule
+    /// set can act on (see shouldAdmitEtwWrite). Counted so the reduction is
+    /// visible on queue.stats instead of looking like lost throughput.
+    file_write_filtered: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
     reg_create: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
     reg_set: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
     dropped_unmapped: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
@@ -131,6 +135,36 @@ pub fn etwSharePressure(depth: u64, occupancy: u64) bool {
 fn isStormSheddable(provider_guid: *const [16]u8, event_id: u16) bool {
     if (!std.mem.eql(u8, provider_guid, &etw.KERNEL_FILE_GUID.guid)) return false;
     return event_id == 0x10 or event_id == 0x0B;
+}
+
+fn containsIgnoreCase(haystack: []const u8, needle: []const u8) bool {
+    if (needle.len == 0 or haystack.len < needle.len) return false;
+    var i: usize = 0;
+    while (i + needle.len <= haystack.len) : (i += 1) {
+        var j: usize = 0;
+        while (j < needle.len and
+            std.ascii.toLower(haystack[i + j]) == needle[j]) : (j += 1)
+        {}
+        if (j == needle.len) return true;
+    }
+    return false;
+}
+
+/// QLOSS-ETW-WRITEFILTER-001: a generic file write is not actionable by the
+/// current rule set. R1001/R1004 are System32 paths, R1005 is the hosts file
+/// under System32\drivers\etc (all covered by `isCriticalPath`), R1003 is the
+/// Startup folder, and R1002 is a create/rename signal the minifilter already
+/// emits. The 2026-11-11/12 30.8 h window showed 8.85 M ETW file writes, of
+/// which 446 k were policy-shed and 1,394 registry rows were quota-dropped
+/// while the write lane held the ETW share. Filtering the non-actionable
+/// writes at the source removes that pressure without deleting a path any
+/// current rule matches; the drop is counted (`file_write_filtered`), never
+/// silent. An empty path is admitted: unknown evidence is not discarded.
+pub fn shouldAdmitEtwWrite(path: []const u8) bool {
+    if (path.len == 0) return true;
+    if (queue.isCriticalPath(path)) return true;
+    if (containsIgnoreCase(path, "\\startup\\")) return true;
+    return false;
 }
 
 /// ETW-FILE-DEDUPE-001 (issue #29): the Kernel-File `NameCreate` record
@@ -255,6 +289,16 @@ fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []cons
         return;
     };
     ev.kind = kind;
+
+    // QLOSS-ETW-WRITEFILTER-001: drop the writes no current rule can act on
+    // before they consume the ETW share. Counted, not silent; registry and
+    // process rows keep the share.
+    if (std.mem.eql(u8, &rec.provider_guid, &etw.KERNEL_FILE_GUID.guid) and
+        rec.event_id == 0x10 and !shouldAdmitEtwWrite(rec.filePath()))
+    {
+        _ = g_etw_classes.file_write_filtered.fetchAdd(1, .monotonic);
+        return;
+    }
 
     // Queue storage is bounded; hash and measure the exact bytes that will be
     // copied so forensic metadata cannot claim more payload than was retained.
@@ -644,6 +688,51 @@ test "QLOSS-ETW-PRIORITY-001 sheds low-value ETW rows when its own share is near
     try std.testing.expect(etwSharePressure(0, std.math.maxInt(u64)));
     // The reservation is meaningful but small relative to the share.
     try std.testing.expect(ETW_SHARE_MARGIN < cap / 4);
+}
+
+test "QLOSS-ETW-WRITEFILTER-001 admits only paths a current rule can act on" {
+    try std.testing.expect(shouldAdmitEtwWrite("C:\\Windows\\System32\\evil.dll"));
+    try std.testing.expect(shouldAdmitEtwWrite("C:\\Windows\\SysWOW64\\x.dll"));
+    try std.testing.expect(shouldAdmitEtwWrite("C:\\Windows\\System32\\drivers\\etc\\hosts"));
+    try std.testing.expect(shouldAdmitEtwWrite(
+        "C:\\Users\\u\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\a.lnk",
+    ));
+    // Generic writes are not matched by R1001/R1002/R1003/R1004/R1005.
+    try std.testing.expect(!shouldAdmitEtwWrite("C:\\Users\\u\\Documents\\report.docx"));
+    try std.testing.expect(!shouldAdmitEtwWrite("D:\\temp\\churn.tmp"));
+    // Unknown path is admitted: never discard evidence we cannot classify.
+    try std.testing.expect(shouldAdmitEtwWrite(""));
+}
+
+test "QLOSS-ETW-WRITEFILTER-001 filters generic writes and keeps a critical one" {
+    while (queue.popEvent()) |_| {}
+
+    var generic = etw.EtwEventRecord{
+        .provider_guid = etw.KERNEL_FILE_GUID.guid,
+        .event_id = 0x10,
+    };
+    const generic_path = "C:\\Users\\u\\Documents\\report.docx";
+    @memcpy(generic.file_path[0..generic_path.len], generic_path);
+    generic.file_path_len = @intCast(generic_path.len);
+
+    const filtered_before = g_etw_classes.file_write_filtered.load(.acquire);
+    etwCallback(undefined, &generic, generic_path);
+    try std.testing.expectEqual(
+        filtered_before + 1,
+        g_etw_classes.file_write_filtered.load(.acquire),
+    );
+    try std.testing.expectEqual(@as(u64, 0), queue.queueDepth());
+
+    var critical = etw.EtwEventRecord{
+        .provider_guid = etw.KERNEL_FILE_GUID.guid,
+        .event_id = 0x10,
+    };
+    const critical_path = "C:\\Windows\\System32\\evil.dll";
+    @memcpy(critical.file_path[0..critical_path.len], critical_path);
+    critical.file_path_len = @intCast(critical_path.len);
+    etwCallback(undefined, &critical, critical_path);
+    try std.testing.expect(queue.queueDepth() > 0);
+    while (queue.popEvent()) |_| {}
 }
 
 test "GAP-015 G3 classifier counts every outcome" {
