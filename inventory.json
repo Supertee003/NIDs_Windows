@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-12T05:58:00.536959+00:00",
+  "generated_at": "2026-11-12T06:02:13.709354+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1559,
@@ -666,7 +666,7 @@
       "path": "analysis/current-head/QLOSS-ETW-WRITEFILTER-001-20261112.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4940
+      "size": 5220
     },
     {
       "path": "analysis/current-head/READINESS-CAUSE-001-20261110.md",
@@ -3414,7 +3414,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1145065
+      "size": 1145112
     },
     {
       "path": "FLOW_MAP.json",
@@ -3522,7 +3522,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 237486
+      "size": 237980
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3798,7 +3798,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 196711
+      "size": 197103
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -6510,7 +6510,7 @@
       "path": "src/pipeline/telemetry_threads.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 38097
+      "size": 38803
     },
     {
       "path": "src/platform/win32_pipe.zig",
@@ -8502,7 +8502,7 @@
       "path": "tests/tools/test_aegisctl_queue.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 7656
+      "size": 7743
     },
     {
       "path": "tests/tools/test_analysis_helpers.py",
@@ -9369,5 +9369,5 @@
       "size": 624
     }
   ],
-  "source_commit": "2d5ee1b"
+  "source_commit": "35f5668"
 }

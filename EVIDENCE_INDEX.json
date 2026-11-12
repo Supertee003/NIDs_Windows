@@ -1,5 +1,5 @@
 {
-  "head_sha": "2d5ee1bd1b2b56c9726e56f4208a8c843f303638",
+  "head_sha": "35f5668c70cd7c1860480166adfe126b05a02dd4",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-12",
   "generator_version": "3.0",
@@ -5924,19 +5924,20 @@
     },
     {
       "id": "QLOSS-ETW-WRITEFILTER-001-E2-20261112",
-      "head_sha": "2d5ee1b",
+      "head_sha": "35f5668",
       "timestamp": "2026-11-12",
       "title": "ETW file writes outside the rule-actionable paths are filtered at the source",
       "level": "E2",
       "component": "src/pipeline/telemetry_threads.zig, src/control/handler_registry.zig, src/windows/etw_realtime.zig",
       "flow_id": "QLOSS",
-      "description": "The 30.8 h window showed 8,850,070 ETW file writes holding the ETW share while 1,394 registry rows were quota-dropped and 446,327 rows were policy-shed. Rule audit: R1001/R1004 match System32 paths, R1005 matches System32\\drivers\\etc\\hosts, R1003 matches Startup, R1002 is a create/rename signal delivered by the minifilter; no rule matches an arbitrary write. New shouldAdmitEtwWrite(path) admits empty paths, isCriticalPath paths (System32/SysWOW64/drivers\\etc) and \\Startup\\ paths, and filters the rest at the ETW callback before they consume the share. Filtered rows are counted in file_write_filtered, published on queue.stats.etw and the CLI; NameDelete, registry and process rows are unchanged. zig build test: 2,087 passed / 10 skipped / 0 failed; zig build produces 25AB91543EBC90F5. E2 only: the expected collapse of shed and registry overflow must be measured in the next window.",
+      "description": "The 30.8 h window showed 8,850,070 ETW file writes holding the ETW share while 1,394 registry rows were quota-dropped and 446,327 rows were policy-shed. Rule audit: R1001/R1004 match System32 paths, R1005 matches System32\\drivers\\etc\\hosts, R1003 matches Startup, R1002 is a create/rename signal delivered by the minifilter; no rule matches an arbitrary write. New shouldAdmitEtwWrite(path) admits empty paths, isCriticalPath paths (System32/SysWOW64/drivers\\etc), any path containing \\windows\\system32\\ or \\windows\\syswow64\\ (ETW may use an NT device path), and \\Startup\\ paths, and filters the rest at the ETW callback before they consume the share. Filtered rows are counted in file_write_filtered, published on queue.stats.etw and the CLI; NameDelete, registry and process rows are unchanged. zig build test: 2,087 passed / 10 skipped / 0 failed; zig build produces 25AB91543EBC90F5. E2 only: the expected collapse of shed and registry overflow must be measured in the next window.",
       "evidence_artifact": "analysis/current-head/QLOSS-ETW-WRITEFILTER-001-20261112.md",
       "artifacts": [
         "analysis/current-head/QLOSS-ETW-WRITEFILTER-001-20261112.md",
         "src/pipeline/telemetry_threads.zig",
         "src/control/handler_registry.zig",
-        "src/windows/etw_realtime.zig"
+        "src/windows/etw_realtime.zig",
+        "tests/tools/test_aegisctl_queue.py"
       ],
       "commands": [
         "zig build test --summary all",
