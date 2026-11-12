@@ -1021,7 +1021,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "5ad2d55dacb811fa03f27c2f22eeb7ba01def5385530ed5fe770ad39d7c82cb2",
+      "sha256": "bf6956fe73c0a9c38c3c1000ef1ea3db16d7d8721fd0e7cb5dd65ff00d8b31e6",
       "language": "json"
     },
     {
@@ -2514,8 +2514,8 @@
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",
-      "size": 39027,
-      "sha256": "0668fff16a444aaca5a49aad1af3ab0dfb340a1e7fd3f826f53f5ceac1a56578",
+      "size": 42742,
+      "sha256": "9fd899864f202078e47a062b5bc717a3430f095cc51a8e5bb584140e125957fe",
       "language": "zig"
     },
     {
