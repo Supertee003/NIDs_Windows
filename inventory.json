@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-12T06:05:44.822997+00:00",
+  "generated_at": "2026-11-12T06:48:47.756801+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1559,
@@ -666,7 +666,7 @@
       "path": "analysis/current-head/QLOSS-ETW-WRITEFILTER-001-20261112.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5377
+      "size": 5773
     },
     {
       "path": "analysis/current-head/READINESS-CAUSE-001-20261110.md",
@@ -3414,7 +3414,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1145338
+      "size": 1145595
     },
     {
       "path": "FLOW_MAP.json",
@@ -6510,7 +6510,7 @@
       "path": "src/pipeline/telemetry_threads.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 39027
+      "size": 42742
     },
     {
       "path": "src/platform/win32_pipe.zig",
@@ -9369,5 +9369,5 @@
       "size": 624
     }
   ],
-  "source_commit": "358d722"
+  "source_commit": "a9dd914"
 }
