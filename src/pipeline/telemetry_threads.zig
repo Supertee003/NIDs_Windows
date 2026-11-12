@@ -297,11 +297,13 @@ fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []cons
     ev.kind = kind;
 
     // QLOSS-ETW-WRITEFILTER-001: drop the writes no current rule can act on
-    // before they consume the ETW share. Counted, not silent; registry and
-    // process rows keep the share.
-    if (std.mem.eql(u8, &rec.provider_guid, &etw.KERNEL_FILE_GUID.guid) and
-        rec.event_id == 0x10 and !shouldAdmitEtwWrite(rec.filePath()))
-    {
+    // before they consume the ETW share. A write that DID pass the rule-path
+    // check is signal, so it is also exempt from the storm shed below — a
+    // System32 write must not be the row the policy discards.
+    const is_file_write = std.mem.eql(u8, &rec.provider_guid, &etw.KERNEL_FILE_GUID.guid) and
+        rec.event_id == 0x10;
+    const critical_write = is_file_write and shouldAdmitEtwWrite(rec.filePath());
+    if (is_file_write and !critical_write) {
         _ = g_etw_classes.file_write_filtered.fetchAdd(1, .monotonic);
         return;
     }
@@ -317,7 +319,7 @@ fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []cons
     // downstream. First sightings are exempt (tryExempt) so a new file's
     // content is always evaluated once even mid-storm; FIM duplicates
     // deletes regardless.
-    if (isStormSheddable(&rec.provider_guid, rec.event_id) and
+    if (!critical_write and isStormSheddable(&rec.provider_guid, rec.event_id) and
         etwSharePressure(queue.queueDepth(), queue.sourceOccupancy(.capture_etw)))
     {
         if (!tryExempt(payload, std.time.milliTimestamp())) {

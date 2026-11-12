@@ -59,6 +59,8 @@ System32 / SysWOW64 / drivers\etc trees, all covered by `isCriticalPath`.
 - in `etwCallback`, Kernel-File **Write** (Id 0x10) records that fail the
   predicate are dropped before they consume the share, counted in the new
   `file_write_filtered` counter;
+- a write that passes the predicate (`critical_write`) is also **exempt from
+  the storm shed**: a System32 write must never be the row the policy discards;
 - `queue.stats.etw` now publishes `file_write_filtered`; the CLI prints it.
 
 `NameDelete` (0x0B) and all registry/process rows are unchanged. An empty or
