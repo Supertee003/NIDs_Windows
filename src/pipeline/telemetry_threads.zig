@@ -159,9 +159,17 @@ fn containsIgnoreCase(haystack: []const u8, needle: []const u8) bool {
 /// while the write lane held the ETW share. Filtering the non-actionable
 /// writes at the source removes that pressure without deleting a path any
 /// current rule matches; the drop is counted (`file_write_filtered`), never
-/// silent. An empty path is admitted: unknown evidence is not discarded.
+/// silent.
+///
+/// A write with no decoded path is filtered: 2026-11-12 showed
+/// `file_write_filtered=0` with 186 k writes in 16 min, i.e. the live Write
+/// event's `FileName` is not reaching `file_path`. A write with no path cannot
+/// match R1001/R1003/R1004/R1005, so admitting it is pure queue pressure. The
+/// callback still checks the raw TLV payload for a protected path, so a
+/// decoder regression cannot black out a System32 write that is present in the
+/// bytes.
 pub fn shouldAdmitEtwWrite(path: []const u8) bool {
-    if (path.len == 0) return true;
+    if (path.len == 0) return false;
     if (queue.isCriticalPath(path)) return true;
     // ETW FileName may be an NT device path (`\Device\HarddiskVolume3\...`)
     // rather than `C:\...`; match the protected trees anywhere in the path so
@@ -171,6 +179,40 @@ pub fn shouldAdmitEtwWrite(path: []const u8) bool {
     if (containsIgnoreCase(path, "\\windows\\syswow64\\")) return true;
     if (containsIgnoreCase(path, "\\startup\\")) return true;
     return false;
+}
+
+/// Scan the raw TLV payload for a protected **file path** (kind 3 only).
+/// Used when the structured `FileName` decode is empty: the bytes are still
+/// the evidence of record. Only the FileName TLV is inspected — scanning the
+/// whole blob would match the writing process's `ImageName`
+/// (`C:\Windows\System32\svchost.exe`) and admit every write a system process
+/// makes.
+pub fn payloadFileHasCriticalPath(payload: []const u8) bool {
+    if (payload.len < 4) return false;
+    // "AEGT" little-endian
+    if (payload[0] != 0x41 or payload[1] != 0x45 or
+        payload[2] != 0x47 or payload[3] != 0x54) return false;
+    var off: usize = 4;
+    while (off + 4 <= payload.len) {
+        const kind: u16 = @as(u16, payload[off]) | (@as(u16, payload[off + 1]) << 8);
+        const len: u16 = @as(u16, payload[off + 2]) | (@as(u16, payload[off + 3]) << 8);
+        off += 4;
+        if (off + len > payload.len) return false;
+        if (kind == 3) {
+            const path = payload[off .. off + len];
+            if (containsIgnoreCase(path, "\\windows\\system32\\")) return true;
+            if (containsIgnoreCase(path, "\\windows\\syswow64\\")) return true;
+            if (containsIgnoreCase(path, "\\startup\\")) return true;
+            return false;
+        }
+        off += len;
+    }
+    return false;
+}
+
+fn writeU16Le(buf: []u8, off: usize, value: u16) void {
+    buf[off] = @intCast(value & 0xff);
+    buf[off + 1] = @intCast(value >> 8);
 }
 
 /// ETW-FILE-DEDUPE-001 (issue #29): the Kernel-File `NameCreate` record
@@ -302,7 +344,8 @@ fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []cons
     // System32 write must not be the row the policy discards.
     const is_file_write = std.mem.eql(u8, &rec.provider_guid, &etw.KERNEL_FILE_GUID.guid) and
         rec.event_id == 0x10;
-    const critical_write = is_file_write and shouldAdmitEtwWrite(rec.filePath());
+    const critical_write = is_file_write and
+        (shouldAdmitEtwWrite(rec.filePath()) or payloadFileHasCriticalPath(ext_data));
     if (is_file_write and !critical_write) {
         _ = g_etw_classes.file_write_filtered.fetchAdd(1, .monotonic);
         return;
@@ -715,8 +758,35 @@ test "QLOSS-ETW-WRITEFILTER-001 admits only paths a current rule can act on" {
     // Generic writes are not matched by R1001/R1002/R1003/R1004/R1005.
     try std.testing.expect(!shouldAdmitEtwWrite("C:\\Users\\u\\Documents\\report.docx"));
     try std.testing.expect(!shouldAdmitEtwWrite("D:\\temp\\churn.tmp"));
-    // Unknown path is admitted: never discard evidence we cannot classify.
-    try std.testing.expect(shouldAdmitEtwWrite(""));
+    // No decoded path cannot match a path rule; it is queue pressure.
+    try std.testing.expect(!shouldAdmitEtwWrite(""));
+}
+
+test "QLOSS-ETW-WRITEFILTER-001 finds a protected file path in the raw TLV" {
+    const p = "C:\\Windows\\System32\\evil.dll";
+    var buf: [256]u8 = undefined;
+    @memcpy(buf[0..4], "AEGT");
+    writeU16Le(&buf, 4, 3);
+    writeU16Le(&buf, 6, @intCast(p.len));
+    @memcpy(buf[8..][0..p.len], p);
+    try std.testing.expect(payloadFileHasCriticalPath(buf[0 .. 8 + p.len]));
+
+    // A non-critical FileName TLV is filtered.
+    const generic = "C:\\Users\\u\\Documents\\report.docx";
+    writeU16Le(&buf, 6, @intCast(generic.len));
+    @memcpy(buf[8..][0..generic.len], generic);
+    try std.testing.expect(!payloadFileHasCriticalPath(buf[0 .. 8 + generic.len]));
+
+    // The writing process's ImageName is kind 1 and must NOT admit the write,
+    // even when it is a System32 image.
+    const img = "C:\\Windows\\System32\\svchost.exe";
+    writeU16Le(&buf, 4, 1);
+    writeU16Le(&buf, 6, @intCast(img.len));
+    @memcpy(buf[8..][0..img.len], img);
+    try std.testing.expect(!payloadFileHasCriticalPath(buf[0 .. 8 + img.len]));
+
+    try std.testing.expect(!payloadFileHasCriticalPath(""));
+    try std.testing.expect(!payloadFileHasCriticalPath("garbage"));
 }
 
 test "QLOSS-ETW-WRITEFILTER-001 filters generic writes and keeps a critical one" {
@@ -746,6 +816,22 @@ test "QLOSS-ETW-WRITEFILTER-001 filters generic writes and keeps a critical one"
     @memcpy(critical.file_path[0..critical_path.len], critical_path);
     critical.file_path_len = @intCast(critical_path.len);
     etwCallback(undefined, &critical, critical_path);
+    try std.testing.expect(queue.queueDepth() > 0);
+    while (queue.popEvent()) |_| {}
+
+    // A write whose structured path did not decode still gets admitted when
+    // the raw TLV carries a protected FileName.
+    var payload_only = etw.EtwEventRecord{
+        .provider_guid = etw.KERNEL_FILE_GUID.guid,
+        .event_id = 0x10,
+    };
+    const p2 = "C:\\Windows\\System32\\payload.dll";
+    var tlv: [128]u8 = undefined;
+    @memcpy(tlv[0..4], "AEGT");
+    writeU16Le(&tlv, 4, 3);
+    writeU16Le(&tlv, 6, @intCast(p2.len));
+    @memcpy(tlv[8..][0..p2.len], p2);
+    etwCallback(undefined, &payload_only, tlv[0 .. 8 + p2.len]);
     try std.testing.expect(queue.queueDepth() > 0);
     while (queue.popEvent()) |_| {}
 }

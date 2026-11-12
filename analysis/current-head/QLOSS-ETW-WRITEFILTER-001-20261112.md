@@ -47,7 +47,10 @@ System32 / SysWOW64 / drivers\etc trees, all covered by `isCriticalPath`.
 `src/pipeline/telemetry_threads.zig`:
 
 - new pure predicate `shouldAdmitEtwWrite(path)`:
-  - admit when the path is empty (unknown evidence is never discarded);
+  - a write with **no decoded path** is filtered: it cannot match a path rule,
+    and the 2026-11-12 16 min reading showed `file_write_filtered=0` with
+    186 k writes, i.e. the live Write event's `FileName` is not reaching
+    `file_path`;
   - admit when `event_queue.isCriticalPath(path)` (System32 / SysWOW64 /
     drivers\etc, case-insensitive);
   - admit when the path contains `\windows\system32\` or `\windows\syswow64\`
@@ -55,7 +58,10 @@ System32 / SysWOW64 / drivers\etc trees, all covered by `isCriticalPath`.
     `\Device\HarddiskVolume3\Windows\System32\...` instead of `C:\...`, so a
     drive-letter-only check could filter exactly the writes R1001/R1004 need);
   - admit when the path contains `\Startup\` (R1003);
-  - otherwise filter.
+  - otherwise filter;
+- `payloadHasCriticalPath(raw_tlv)` scans the raw bytes for the same protected
+  trees, so a write whose structured path did not decode is still admitted
+  when the path is present in the payload;
 - in `etwCallback`, Kernel-File **Write** (Id 0x10) records that fail the
   predicate are dropped before they consume the share, counted in the new
   `file_write_filtered` counter;
@@ -63,9 +69,9 @@ System32 / SysWOW64 / drivers\etc trees, all covered by `isCriticalPath`.
   the storm shed**: a System32 write must never be the row the policy discards;
 - `queue.stats.etw` now publishes `file_write_filtered`; the CLI prints it.
 
-`NameDelete` (0x0B) and all registry/process rows are unchanged. An empty or
-undecodable path is admitted, so a decoder regression cannot silently turn into
-a total write blackout.
+`NameDelete` (0x0B) and all registry/process rows are unchanged. A write whose
+path is absent from both the decoded field and the raw TLV is filtered: it
+cannot match any path rule and is pure queue pressure.
 
 ## 4. What this is, and what it is not
 
