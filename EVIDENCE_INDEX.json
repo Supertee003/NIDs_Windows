@@ -1,7 +1,7 @@
 {
   "head_sha": "1ca18c46e94b556be5a2152602cfa2688190b031",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-11",
+  "last_updated_at": "2026-11-12",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -5894,6 +5894,32 @@
         "The 24 h soak (R-08) is still open; this record covers the boot path only.",
         "The boot order and task are local-only; the installer still ships AUTO_START and no loader.",
         "The 18,035 ETW policy shed at boot is accepted as a transient here and excluded from the steady-state window by a deliberate daemon restart; it is not zero-loss evidence for the ETW lane."
+      ]
+    },
+    {
+      "id": "SOAK-30H-E5-20261112",
+      "head_sha": "1ca18c4",
+      "timestamp": "2026-11-12",
+      "title": "30.8 h on 21A875CF: no crash, no ring loss, ETW admission still bounded-loss",
+      "level": "E5",
+      "component": "src/capture/minifilter_reader.zig, src/pipeline/telemetry_threads.zig",
+      "flow_id": "QLOSS",
+      "description": "30.81 h window (2026-11-11 05:56:58 -> 2026-11-12 12:44:49) on installed 21A875CF8F103E3B (source 1ca18c4), daemon pid 8160. Services all RUNNING, no SCM 7031/7034, no worker failure. minifilter_ring_dropped=0, minifilter_pipeline_dropped=0, nose frames dropped/rejected/pipe errors=0. The only loss is capture_etw: queue_dropped_total=1,395 (1,394 reg_change of 11,168,437 pushed, 1 fim_change of 9,009,995) and shed_overload=446,327 (file_write/file_delete policy shed; first-sighting exempted 6,296 distinct paths, 643,167 NameCreate deduped against the minifilter). 33,516,395 rows pushed. Rates per 24 h: ~1,087 queue drops and ~347,700 shed; 1.33% of all rows shed, 0.0042% queue-dropped. Verdict at 0/0 is FAIL; the boot-ring fix and #30 crash-free evidence both hold. Decision pending: owner loss budget (A) or raise ETW reserve 256->1024+ (B).",
+      "evidence_artifact": "analysis/current-head/SOAK-30H-20261112.md",
+      "artifacts": [
+        "analysis/current-head/SOAK-30H-20261112.md"
+      ],
+      "commands": [
+        "python tools/host_soak_check.py --start auto --hours 24 --loss-budget 0 --shed-budget 0",
+        "python tools/aegisctl.py queue --json",
+        "python tools/aegisctl.py health --json"
+      ],
+      "limitations": [
+        "Verdict is FAIL at the project's zero-loss gate; it is not a zero-loss soak.",
+        "One lab host; not fleet behaviour.",
+        "The 1,394 registry queue drops are overflow, not policy; the 256-slot ETW reserve is too small for this registry volume.",
+        "The 446,327 shed rows are deliberate policy, counted, and excluded from any zero-loss claim.",
+        "A confirmation window with an owner-approved budget is still required if the release proceeds with a budget."
       ]
     }
   ],
@@ -11805,10 +11831,10 @@
     "E2_count": 93,
     "E3_count": 12,
     "E4_count": 0,
-    "E5_count": 82,
+    "E5_count": 83,
     "E6_count": 0,
     "E7_count": 0,
-    "E5_with_artifact_count": 32,
+    "E5_with_artifact_count": 33,
     "known_gaps_count": 271
   }
 }
