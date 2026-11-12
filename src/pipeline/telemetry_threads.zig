@@ -163,6 +163,12 @@ fn containsIgnoreCase(haystack: []const u8, needle: []const u8) bool {
 pub fn shouldAdmitEtwWrite(path: []const u8) bool {
     if (path.len == 0) return true;
     if (queue.isCriticalPath(path)) return true;
+    // ETW FileName may be an NT device path (`\Device\HarddiskVolume3\...`)
+    // rather than `C:\...`; match the protected trees anywhere in the path so
+    // a drive-letter assumption cannot filter the System32 writes R1001/R1004
+    // depend on.
+    if (containsIgnoreCase(path, "\\windows\\system32\\")) return true;
+    if (containsIgnoreCase(path, "\\windows\\syswow64\\")) return true;
     if (containsIgnoreCase(path, "\\startup\\")) return true;
     return false;
 }
@@ -694,6 +700,13 @@ test "QLOSS-ETW-WRITEFILTER-001 admits only paths a current rule can act on" {
     try std.testing.expect(shouldAdmitEtwWrite("C:\\Windows\\System32\\evil.dll"));
     try std.testing.expect(shouldAdmitEtwWrite("C:\\Windows\\SysWOW64\\x.dll"));
     try std.testing.expect(shouldAdmitEtwWrite("C:\\Windows\\System32\\drivers\\etc\\hosts"));
+    // ETW may hand us an NT device path instead of a drive letter.
+    try std.testing.expect(shouldAdmitEtwWrite(
+        "\\Device\\HarddiskVolume3\\Windows\\System32\\evil.dll",
+    ));
+    try std.testing.expect(shouldAdmitEtwWrite(
+        "\\Device\\HarddiskVolume3\\Windows\\SysWOW64\\x.dll",
+    ));
     try std.testing.expect(shouldAdmitEtwWrite(
         "C:\\Users\\u\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\a.lnk",
     ));

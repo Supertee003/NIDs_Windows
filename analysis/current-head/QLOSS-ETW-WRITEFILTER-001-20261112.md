@@ -50,6 +50,10 @@ System32 / SysWOW64 / drivers\etc trees, all covered by `isCriticalPath`.
   - admit when the path is empty (unknown evidence is never discarded);
   - admit when `event_queue.isCriticalPath(path)` (System32 / SysWOW64 /
     drivers\etc, case-insensitive);
+  - admit when the path contains `\windows\system32\` or `\windows\syswow64\`
+    (ETW may report an NT device path such as
+    `\Device\HarddiskVolume3\Windows\System32\...` instead of `C:\...`, so a
+    drive-letter-only check could filter exactly the writes R1001/R1004 need);
   - admit when the path contains `\Startup\` (R1003);
   - otherwise filter.
 - in `etwCallback`, Kernel-File **Write** (Id 0x10) records that fail the
