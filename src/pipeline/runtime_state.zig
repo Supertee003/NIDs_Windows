@@ -16,6 +16,31 @@ const forensic = @import("../forensic/forensic_pipeline.zig");
 /// Set by SCM stop / `daemon.shutdown`. Polled by every worker thread.
 pub var g_stop_requested = std.atomic.Value(bool).init(false);
 
+/// RC-CLOSEOUT / loss envelope: the owner-approved number of lost rows
+/// allowed per counter before the runtime calls itself DEGRADED. Default 0
+/// preserves the strict pre-budget behaviour. Read once at startup from
+/// `AEGIS_LOSS_BUDGET`; never changed at runtime.
+pub var g_loss_budget = std.atomic.Value(u64).init(0);
+
+/// Parse `AEGIS_LOSS_BUDGET`. Unset/empty/invalid/negative -> 0 (strict).
+pub fn parseLossBudget(value: ?[]const u8) u64 {
+    const raw = value orelse return 0;
+    const trimmed = std.mem.trim(u8, raw, " \t\r\n");
+    if (trimmed.len == 0) return 0;
+    return std.fmt.parseInt(u64, trimmed, 10) catch 0;
+}
+
+/// Read the budget from the environment once. Called before the control pipe
+/// starts serving health; a failure keeps the strict default.
+pub fn initLossBudgetFromEnv() void {
+    if (std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_LOSS_BUDGET")) |raw| {
+        defer std.heap.page_allocator.free(raw);
+        g_loss_budget.store(parseLossBudget(raw), .release);
+    } else |_| {
+        g_loss_budget.store(0, .release);
+    }
+}
+
 /// Host mutation remains disabled until the isolated WFP proof opens this
 /// gate. Provider readiness alone must never change it. SLICE-C-LAB: the
 /// only writer is openPreventionGateLab() below (daemon, lab builds only).
@@ -86,6 +111,16 @@ pub const WorkerFailureKind = enum(u8) {
 
 pub var g_worker_failure_kind = std.atomic.Value(u8).init(@intFromEnum(WorkerFailureKind.none));
 pub var g_worker_failure_mask = std.atomic.Value(u8).init(0);
+
+test "loss budget env parse: unset/invalid keep the strict default" {
+    try std.testing.expectEqual(@as(u64, 0), parseLossBudget(null));
+    try std.testing.expectEqual(@as(u64, 0), parseLossBudget(""));
+    try std.testing.expectEqual(@as(u64, 0), parseLossBudget("   "));
+    try std.testing.expectEqual(@as(u64, 0), parseLossBudget("not-a-number"));
+    try std.testing.expectEqual(@as(u64, 0), parseLossBudget("-5"));
+    try std.testing.expectEqual(@as(u64, 3500), parseLossBudget("3500"));
+    try std.testing.expectEqual(@as(u64, 3500), parseLossBudget(" 3500\n"));
+}
 
 test "runtime fail-closed defaults hold (BYTE-ORDER-096 audit)" {
     // Pinned boot posture: prevention closed (the only writer is

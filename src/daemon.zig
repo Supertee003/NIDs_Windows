@@ -238,6 +238,10 @@ pub fn runDaemon() !void {
 
     // P1: Initialize runtime state machine
     runtime_sm.g_runtime.transition(.starting);
+    state.initLossBudgetFromEnv();
+    diag.info("loss budget: {d} rows per counter (AEGIS_LOSS_BUDGET; 0 = strict)", .{
+        state.g_loss_budget.load(.acquire),
+    });
     runtime_sm.g_runtime.registerSubsystem(.zig, "zig", "5.0.0", "core,detection,correlation");
     runtime_sm.g_runtime.registerSubsystem(.go, "go", "5.0.0", "capture,nose");
     runtime_sm.g_runtime.registerSubsystem(.cpp, "cpp", "1.0.0", "etw,fim,registry,wfp");

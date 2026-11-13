@@ -334,8 +334,13 @@ pub const RuntimeState = struct {
         const nose_pipe_errors = runtime_state.g_nose_pipe_errors.load(.acquire);
         const minifilter_ring_dropped = runtime_state.g_minifilter_dropped.load(.acquire);
         const minifilter_pipeline_dropped = runtime_state.g_minifilter_pipeline_dropped.load(.acquire);
-        const data_loss_observed = queue_drops != 0 or nose_rejected != 0 or nose_dropped != 0 or
-            nose_pipe_errors != 0 or minifilter_ring_dropped != 0 or minifilter_pipeline_dropped != 0;
+        // RC-CLOSEOUT: the owner-approved envelope. A counter at or below the
+        // budget is inside the declared loss envelope and must not flip the
+        // runtime to DEGRADED; above it, the strict behaviour returns.
+        const loss_budget = runtime_state.g_loss_budget.load(.acquire);
+        const data_loss_observed = queue_drops > loss_budget or nose_rejected > loss_budget or
+            nose_dropped > loss_budget or nose_pipe_errors > loss_budget or
+            minifilter_ring_dropped > loss_budget or minifilter_pipeline_dropped > loss_budget;
         const operationally_ready = workers.pipeline and !core_pipeline_failed and bridge_ready and !data_loss_observed;
         const operational_state = if (operationally_ready) "RUNNING" else "DEGRADED";
         const health_degraded = !all_healthy or !workers.pipeline or core_pipeline_failed or !bridge_ready or data_loss_observed;
@@ -359,13 +364,14 @@ pub const RuntimeState = struct {
         try writer.print(
             \\{{"component":"core","version":"{s}","state":"{s}","runtime_state":"{s}","pid":{} ,"uptime_ms":{},"last_event_ms":{},"degraded":{},"rules_loaded":{},"policies_loaded":{},"defcon_level":{},"defcon_label":"{s}","capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},"data_plane":{{"nose_connected":{},"nose_frames_read":{},"nose_frames_rejected":{},"nose_frames_submitted":{},"nose_frames_dropped":{},"nose_pipe_errors":{},"nose_last_event_id":{},"nose_duplicate_event_ids":{},"nose_non_monotonic_event_ids":{}}},"packets_captured":{},"flows_active":{},"counters":{{"in_events":{},"out_events":{},"errors":{},"dropped":{}}},
         , .{ ver, operational_state, ss.toString(), pid, uptime, runtime_state.lastEventAgeMs(runtime_state.g_last_event_ms.load(.acquire), std.time.milliTimestamp()), health_degraded, runtime_state.g_rules_loaded.load(.acquire), runtime_state.g_policies_loaded.load(.acquire), defcon_level, defcon.labelFor(defcon_level), wfp_ready, cpp_ready, udp_ready, runtime_state.g_nose_connected.load(.acquire), runtime_state.g_nose_frames_read.load(.acquire), runtime_state.g_nose_frames_rejected.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), runtime_state.g_nose_frames_dropped.load(.acquire), runtime_state.g_nose_pipe_errors.load(.acquire), runtime_state.g_nose_last_event_id.load(.acquire), runtime_state.g_nose_duplicate_event_ids.load(.acquire), runtime_state.g_nose_non_monotonic_event_ids.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), diag.metrics.flows_active.get(), runtime_state.g_nose_frames_read.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), runtime_state.g_nose_pipe_errors.load(.acquire), runtime_state.g_nose_frames_dropped.load(.acquire) });
-        try writer.print("\"data_integrity\":{{\"queue_dropped_total\":{},\"nose_frames_rejected\":{},\"nose_frames_dropped\":{},\"nose_pipe_errors\":{},\"minifilter_ring_dropped\":{},\"minifilter_pipeline_dropped\":{}}},\"deps\":[", .{
+        try writer.print("\"data_integrity\":{{\"queue_dropped_total\":{},\"nose_frames_rejected\":{},\"nose_frames_dropped\":{},\"nose_pipe_errors\":{},\"minifilter_ring_dropped\":{},\"minifilter_pipeline_dropped\":{},\"loss_budget\":{}}},\"deps\":[", .{
             queue_drops,
             nose_rejected,
             nose_dropped,
             nose_pipe_errors,
             minifilter_ring_dropped,
             minifilter_pipeline_dropped,
+            loss_budget,
         });
 
         try writer.print("{{\"name\":\"bridge\",\"state\":\"{s}\"}},{{\"name\":\"pipeline\",\"state\":\"{s}\"}}],\"subsystems\":[", .{
@@ -518,7 +524,6 @@ test "healthJson exposes packets_captured, flows_active and counters from live c
     try std.testing.expect(std.mem.indexOf(u8, out, "\"counters\":{\"in_events\":1000,\"out_events\":900,\"errors\":3,\"dropped\":12}") != null);
 }
 
-
 test "healthJson reports DEGRADED when ingress loss counters are nonzero" {
     const saved = .{
         runtime_state.g_queue_drops.load(.acquire),
@@ -549,4 +554,39 @@ test "healthJson reports DEGRADED when ingress loss counters are nonzero" {
     try std.testing.expect(std.mem.indexOf(u8, out, "\"state\":\"DEGRADED\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"degraded\":true") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"queue_dropped_total\":1") != null);
+}
+
+test "healthJson accepts loss at or below the owner-approved budget" {
+    const saved = .{
+        runtime_state.g_queue_drops.load(.acquire),
+        runtime_state.g_nose_frames_rejected.load(.acquire),
+        runtime_state.g_nose_frames_dropped.load(.acquire),
+        runtime_state.g_nose_pipe_errors.load(.acquire),
+        runtime_state.g_minifilter_dropped.load(.acquire),
+        runtime_state.g_minifilter_pipeline_dropped.load(.acquire),
+        runtime_state.g_loss_budget.load(.acquire),
+    };
+    defer {
+        runtime_state.g_queue_drops.store(saved[0], .monotonic);
+        runtime_state.g_nose_frames_rejected.store(saved[1], .monotonic);
+        runtime_state.g_nose_frames_dropped.store(saved[2], .monotonic);
+        runtime_state.g_nose_pipe_errors.store(saved[3], .monotonic);
+        runtime_state.g_minifilter_dropped.store(saved[4], .monotonic);
+        runtime_state.g_minifilter_pipeline_dropped.store(saved[5], .monotonic);
+        runtime_state.g_loss_budget.store(saved[6], .monotonic);
+    }
+    runtime_state.g_queue_drops.store(1, .monotonic);
+    runtime_state.g_nose_frames_rejected.store(0, .monotonic);
+    runtime_state.g_nose_frames_dropped.store(0, .monotonic);
+    runtime_state.g_nose_pipe_errors.store(0, .monotonic);
+    runtime_state.g_minifilter_dropped.store(0, .monotonic);
+    runtime_state.g_minifilter_pipeline_dropped.store(0, .monotonic);
+    runtime_state.g_loss_budget.store(2, .monotonic);
+    var rs = RuntimeState{};
+    const workers = WorkerReadiness{ .pipeline = true, .sensor = true, .nose = true, .etw = true, .fim = true, .registry = true, .failed = false, .failure_reason = "", .failure_mask = 0 };
+    const out = try rs.healthJson(std.testing.allocator, 1234, true, true, true, true, workers);
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"state\":\"RUNNING\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"degraded\":false") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"loss_budget\":2") != null);
 }
