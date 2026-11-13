@@ -5977,6 +5977,34 @@
         "One lab host, 25.3 h; not fleet behaviour.",
         "A budget-based closure or one more delete-filter iteration is the owner decision."
       ]
+    },
+    {
+      "id": "RC-CLOSEOUT-20261113",
+      "head_sha": "a9dd914",
+      "timestamp": "2026-11-13",
+      "title": "Release-candidate closeout under an accepted ETW loss envelope",
+      "level": "E5",
+      "component": "analysis/current-head/RC-CLOSEOUT-20261113.md",
+      "flow_id": "QLOSS",
+      "description": "Owner accepted the measured ETW loss envelope on 2026-11-13 (option A). Envelope: 3,500 queue drops + 4,000 policy-shed rows per 24 h, measured 2,900 + 3,357 over 25.33 h on installed 33223B2C (source a9dd914), total 0.0262 % of 23,850,132 pushed rows and 0.033 % at budget. Closed at E5: deploy parity, daemon-first boot (R-06/FREEZE #22), 25.33 h crash-free (R-08), #30 crash-free with the fixed FIM helper, boot-ring loss (448/4,012 -> 0), QLOSS bounded. The 25.33 h window is FAIL at the 0/0 gate and is kept as the measurement; the RC ships under the declared envelope. Declared limitations: daemon still reports DEGRADED while any loss counter is nonzero (budget-aware health is not in this candidate), write coverage reduction (file_write_filtered=6,273,495), installer does not ship the DEMAND_START boot model or AegisBootSequence, no E7 signing custody, one lab host.",
+      "evidence_artifact": "analysis/current-head/RC-CLOSEOUT-20261113.md",
+      "artifacts": [
+        "analysis/current-head/RC-CLOSEOUT-20261113.md",
+        "analysis/current-head/SOAK-25H-20261113.md"
+      ],
+      "commands": [
+        "python tools/host_soak_check.py --start auto --hours 24 --loss-budget 3500 --shed-budget 4000",
+        "python tools/truth.py verify",
+        "python tools/release_engineering.py --verify"
+      ],
+      "limitations": [
+        "Not a zero-loss release: the 0/0 gate is FAIL; the envelope is 0.033 % of pushed rows at budget.",
+        "The daemon still reports DEGRADED and readiness false while counters are nonzero, even inside the envelope.",
+        "ETW write coverage is intentionally reduced; generic writes are not ingested.",
+        "The installer still ships AUTO_START and no AegisBootSequence task.",
+        "No E7 signing custody; test-signed drivers only.",
+        "One lab host, 25.33 h; no fleet claim."
+      ]
     }
   ],
   "known_gaps": [
@@ -11887,10 +11915,10 @@
     "E2_count": 94,
     "E3_count": 12,
     "E4_count": 0,
-    "E5_count": 84,
+    "E5_count": 85,
     "E6_count": 0,
     "E7_count": 0,
-    "E5_with_artifact_count": 34,
+    "E5_with_artifact_count": 35,
     "known_gaps_count": 271
   }
 }
