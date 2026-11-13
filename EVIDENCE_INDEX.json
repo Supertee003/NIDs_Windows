@@ -1,5 +1,5 @@
 {
-  "head_sha": "a9dd9145a53f373c6e2a98b211bb8d7083cbc4de",
+  "head_sha": "cc3518db0887daed8048027de5beca56dd62e07b",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-13",
   "generator_version": "3.0",
@@ -6005,6 +6005,34 @@
         "No E7 signing custody; test-signed drivers only.",
         "One lab host, 25.33 h; no fleet claim."
       ]
+    },
+    {
+      "id": "LOSS-BUDGET-001-E2-20261113",
+      "head_sha": "cc3518d",
+      "timestamp": "2026-11-13",
+      "title": "Health and readiness honour the owner-approved loss budget",
+      "level": "E2",
+      "component": "src/pipeline/runtime_state.zig, src/control/state_machine.zig, src/daemon.zig",
+      "flow_id": "QLOSS",
+      "description": "RC-CLOSEOUT accepted a 3,500 queue / 4,000 shed envelope, but state_machine.zig used counter != 0 for data_loss_observed, so the 25.33 h window (2,900/3,357) reported DEGRADED and readiness false; host_soak_check --loss-budget could not pass because it checks health independently. New AEGIS_LOSS_BUDGET (default 0) is parsed once at startup; every data_loss_observed comparison is now counter > budget; health data_integrity exposes loss_budget. Invalid/negative values fall back to 0 (strict); the budget is per counter and does not cover shed_overload. zig build test: 2,090 passed / 10 skipped / 0 failed; zig build produces B8EFE0B85F1754D5. E2 only: the service environment has not been set or measured on the host.",
+      "evidence_artifact": "analysis/current-head/LOSS-BUDGET-001-20261113.md",
+      "artifacts": [
+        "analysis/current-head/LOSS-BUDGET-001-20261113.md",
+        "src/pipeline/runtime_state.zig",
+        "src/control/state_machine.zig",
+        "src/daemon.zig"
+      ],
+      "commands": [
+        "zig build test --summary all",
+        "zig build",
+        "python tools/aegisctl.py health --json"
+      ],
+      "limitations": [
+        "E2 only; the service Environment value has not been written or observed on the host.",
+        "Per-counter budget; shed_overload is not in health and remains a separate soak-tool gate.",
+        "Read once at startup; changing it requires a service restart.",
+        "The installer does not yet write AEGIS_LOSS_BUDGET for a fresh install."
+      ]
     }
   ],
   "known_gaps": [
@@ -11912,7 +11940,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 94,
+    "E2_count": 95,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 85,

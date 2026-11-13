@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-12T06:48:47.756801+00:00",
+  "generated_at": "2026-11-13T09:08:43.985805+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1559,
+  "total_files": 1562,
   "by_class": {
-    "canonical-docs": 385,
+    "canonical-docs": 388,
     "canonical-build": 192,
     "unclassified": 17,
     "canonical-source": 665,
@@ -633,6 +633,12 @@
       "size": 5621
     },
     {
+      "path": "analysis/current-head/LOSS-BUDGET-001-20261113.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4085
+    },
+    {
       "path": "analysis/current-head/PAYLOAD-ENVELOPE-V3-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -669,6 +675,12 @@
       "size": 5773
     },
     {
+      "path": "analysis/current-head/RC-CLOSEOUT-20261113.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4451
+    },
+    {
       "path": "analysis/current-head/READINESS-CAUSE-001-20261110.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -679,6 +691,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 5062
+    },
+    {
+      "path": "analysis/current-head/SOAK-25H-20261113.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3932
     },
     {
       "path": "analysis/current-head/SOAK-30H-20261112.md",
@@ -3414,7 +3432,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1145595
+      "size": 1151820
     },
     {
       "path": "FLOW_MAP.json",
@@ -6000,7 +6018,7 @@
       "path": "src/control/state_machine.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 25652
+      "size": 27575
     },
     {
       "path": "src/control.zig",
@@ -6144,7 +6162,7 @@
       "path": "src/daemon.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 49078
+      "size": 49251
     },
     {
       "path": "src/detection/anomaly_detector.zig",
@@ -6504,7 +6522,7 @@
       "path": "src/pipeline/runtime_state.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 21462
+      "size": 23126
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",
@@ -9369,5 +9387,5 @@
       "size": 624
     }
   ],
-  "source_commit": "a9dd914"
+  "source_commit": "cc3518d"
 }
