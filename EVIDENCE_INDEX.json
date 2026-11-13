@@ -1,7 +1,7 @@
 {
   "head_sha": "a9dd9145a53f373c6e2a98b211bb8d7083cbc4de",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-12",
+  "last_updated_at": "2026-11-13",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -5951,6 +5951,32 @@
         "NameDelete (606,234 in 30.8 h) is still admitted; if it becomes the pressure point it needs its own rule audit.",
         "If registry bursts still overflow the 256-slot reserve, the next lever is the reserve size or registry coalescing, not this filter."
       ]
+    },
+    {
+      "id": "SOAK-25H-E5-20261113",
+      "head_sha": "a9dd914",
+      "timestamp": "2026-11-13",
+      "title": "25.3 h with the write filter: loss down 98.6 %, registry overflow remains",
+      "level": "E5",
+      "component": "src/pipeline/telemetry_threads.zig",
+      "flow_id": "QLOSS",
+      "description": "25.33 h window (2026-11-12 14:11:57 -> 2026-11-13 15:31:41) on installed 33223B2CC59DE177 (source a9dd914), daemon pid 24396. Services all RUNNING, no SCM 7031/7034, no crash, uptime 25.33 h. minifilter_ring_dropped=0, minifilter_pipeline_dropped=0, nose dropped/rejected/pipe errors=0. queue_dropped_total=2,900, all capture_etw/reg_change of 10,782,952 pushed; shed_overload=3,357; file_write_filtered=6,273,495 equals file_write, so the write firehose is gone. Total loss 6,257 of 23,850,132 pushed = 0.0262 %, down 98.6 % from the 30.8 h window (447,722). Per-24 h rates: ~2,747 queue drops (0.0269 % of registry) and ~3,180 shed (0.71 % of the 472,991 admitted deletes). Verdict at 0/0 is FAIL; the remaining loss is ETW admission only, with the queue peak (7,176) at the ETW share cap (7,168).",
+      "evidence_artifact": "analysis/current-head/SOAK-25H-20261113.md",
+      "artifacts": [
+        "analysis/current-head/SOAK-25H-20261113.md"
+      ],
+      "commands": [
+        "python tools/host_soak_check.py --start auto --hours 24 --loss-budget 0 --shed-budget 0",
+        "python tools/aegisctl.py queue --json",
+        "python tools/aegisctl.py health --json"
+      ],
+      "limitations": [
+        "Verdict is FAIL at the project's zero-loss gate; the remaining loss is 0.026 % of pushed rows.",
+        "All remaining queue drops are registry changes; all remaining shed is NameDelete. Ring, minifilter, nose and WFP are clean.",
+        "The write filter is a coverage decision (generic writes are not ingested); it does not address deletes or registry bursts.",
+        "One lab host, 25.3 h; not fleet behaviour.",
+        "A budget-based closure or one more delete-filter iteration is the owner decision."
+      ]
     }
   ],
   "known_gaps": [
@@ -11861,10 +11887,10 @@
     "E2_count": 94,
     "E3_count": 12,
     "E4_count": 0,
-    "E5_count": 83,
+    "E5_count": 84,
     "E6_count": 0,
     "E7_count": 0,
-    "E5_with_artifact_count": 33,
+    "E5_with_artifact_count": 34,
     "known_gaps_count": 271
   }
 }
