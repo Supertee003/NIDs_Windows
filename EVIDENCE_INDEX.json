@@ -6014,13 +6014,15 @@
       "level": "E2",
       "component": "src/pipeline/runtime_state.zig, src/control/state_machine.zig, src/daemon.zig",
       "flow_id": "QLOSS",
-      "description": "RC-CLOSEOUT accepted a 3,500 queue / 4,000 shed envelope, but state_machine.zig used counter != 0 for data_loss_observed, so the 25.33 h window (2,900/3,357) reported DEGRADED and readiness false; host_soak_check --loss-budget could not pass because it checks health independently. New AEGIS_LOSS_BUDGET (default 0) is parsed once at startup; every data_loss_observed comparison is now counter > budget; health data_integrity exposes loss_budget. Invalid/negative values fall back to 0 (strict); the budget is per counter and does not cover shed_overload. zig build test: 2,090 passed / 10 skipped / 0 failed; zig build produces B8EFE0B85F1754D5. E2 only: the service environment has not been set or measured on the host.",
+      "description": "RC-CLOSEOUT accepted a 3,500 queue / 4,000 shed envelope, but state_machine.zig used counter != 0 for data_loss_observed, so the 25.33 h window (2,900/3,357) reported DEGRADED and readiness false; host_soak_check --loss-budget could not pass because it checks health independently. New AEGIS_LOSS_BUDGET (default 0) is parsed once at startup; every data_loss_observed comparison is now counter > budget; health data_integrity exposes loss_budget. Invalid/negative values fall back to 0 (strict); the budget is per counter and does not cover shed_overload. zig build test: 2,090 passed / 10 skipped / 0 failed; zig build produces B8EFE0B85F1754D5. E2 only: the service environment has not been set or measured on the host. The CLI health projection (tools/aegisctl/api/control_api.py) whitelisted only the six counters, so `aegisctl health` hid the daemon's new loss_budget field; loss_budget is now projected too and malformed/negative values are still omitted. 5 focused control-retry tests pass, including the projection test.",
       "evidence_artifact": "analysis/current-head/LOSS-BUDGET-001-20261113.md",
       "artifacts": [
         "analysis/current-head/LOSS-BUDGET-001-20261113.md",
         "src/pipeline/runtime_state.zig",
         "src/control/state_machine.zig",
-        "src/daemon.zig"
+        "src/daemon.zig",
+        "tools/aegisctl/api/control_api.py",
+        "tests/tools/test_control_retry.py"
       ],
       "commands": [
         "zig build test --summary all",

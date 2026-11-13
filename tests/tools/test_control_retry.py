@@ -57,6 +57,21 @@ def test_latency_probe_counts_and_orders(monkeypatch):
     assert doc["capped"] is False
 
 
+def test_health_data_integrity_projects_loss_budget():
+    # LOSS-BUDGET-001: the daemon's additive field must survive the CLI
+    # projection, or `aegisctl health` hides the envelope the daemon honours.
+    out = control_api._daemon_data_integrity(
+        {"data_integrity": {"queue_dropped_total": 2, "loss_budget": 3500}}
+    )
+    assert out == {"queue_dropped_total": 2, "loss_budget": 3500}
+
+    # Malformed/negative values are omitted, not turned into a misleading 0.
+    out = control_api._daemon_data_integrity(
+        {"data_integrity": {"queue_dropped_total": -1, "loss_budget": True}}
+    )
+    assert out == {}
+
+
 def test_latency_probe_caps_rounds_and_survives_total_failure(monkeypatch):
     calls = {"n": 0}
 

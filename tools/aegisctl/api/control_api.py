@@ -1071,6 +1071,9 @@ def _daemon_data_integrity(daemon_health: Dict[str, Any]) -> Dict[str, int]:
         "nose_pipe_errors",
         "minifilter_ring_dropped",
         "minifilter_pipeline_dropped",
+        # LOSS-BUDGET-001: additive; older daemons omit it and the projection
+        # simply stays without the field, which is why it is not defaulted to 0.
+        "loss_budget",
     )
     projected: Dict[str, int] = {}
     for key in keys:
