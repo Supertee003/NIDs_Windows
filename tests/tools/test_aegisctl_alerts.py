@@ -69,3 +69,12 @@ def test_enrich_alert_labels_known_and_unknown():
     unknown = cli._enrich_alert({"rule_num": 12345}, by_num)
     assert unknown["rule_id"] == "UNKNOWN_RULE"
     assert unknown["rule_num"] == 12345
+
+
+def test_enrich_alert_names_the_native_registry_rules():
+    # ALERT-MAP-001: ids 1/2/3 are the native registry monitor's own rule ids,
+    # not catalog FNV hashes; they must not surface as UNKNOWN_RULE.
+    for num, expected in ((1, "REG-HKLM-RUN"), (2, "REG-HKLM-SERVICES"), (3, "REG-HKCU-RUN")):
+        alert = cli._enrich_alert({"rule_num": num}, {})
+        assert alert["rule_id"] == expected
+        assert alert["severity"] == "High"

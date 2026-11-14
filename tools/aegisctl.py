@@ -1678,6 +1678,31 @@ def _alert_rule_map() -> dict[int, dict]:
     return {_fnv1a32(rid): rule for rid, rule in by_id.items()}
 
 
+# ALERT-MAP-001: the native registry monitor uses small numeric rule ids
+# (1/2/3), not the catalog's FNV hashes. Without this map they surface as
+# UNKNOWN_RULE and the operator cannot tell which key matched.
+_REGISTRY_ALERT_RULES = {
+    1: {
+        "rule_id": "REG-HKLM-RUN",
+        "name": "Registry Run key modified (HKLM)",
+        "severity": "High",
+        "action": "Alert",
+    },
+    2: {
+        "rule_id": "REG-HKLM-SERVICES",
+        "name": "Registry Services key modified (HKLM)",
+        "severity": "High",
+        "action": "Alert",
+    },
+    3: {
+        "rule_id": "REG-HKCU-RUN",
+        "name": "Registry Run key modified (HKCU)",
+        "severity": "High",
+        "action": "Alert",
+    },
+}
+
+
 def _select_alerts(records: list) -> list[dict]:
     """Pure: every forensic record carrying a rule match becomes an alert.
 
@@ -1706,6 +1731,9 @@ def _select_alerts(records: list) -> list[dict]:
 
 
 def _enrich_alert(alert: dict, by_num: dict[int, dict]) -> dict:
+    registry_rule = _REGISTRY_ALERT_RULES.get(alert["rule_num"])
+    if registry_rule is not None:
+        return {**alert, **registry_rule}
     rule = by_num.get(alert["rule_num"])
     if rule is None:
         return {**alert, "rule_id": "UNKNOWN_RULE", "name": "unmapped numeric rule", "severity": "?", "action": "?"}

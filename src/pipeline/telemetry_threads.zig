@@ -562,6 +562,14 @@ pub fn registryThread(monitor: *reg_mon.RegistryMonitor) void {
         state.markWorkerFailure(.registry);
         return;
     };
+    // REG-HKCU-001: the native watcher covers every loaded user hive and
+    // normalizes HKU\<SID>\...\Run to this match path. The rule id 3 is the
+    // same one configs/runtime.json assigns to the HKCU Run key.
+    monitor.addRule("HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", 3) catch |err| {
+        diag.warn("Registry HKCU Run rule failed: {}", .{err});
+        state.markWorkerFailure(.registry);
+        return;
+    };
     monitor.startAll() catch |err| {
         diag.warn("Registry native watcher start failed: {}", .{err});
         state.markWorkerFailure(.registry);
@@ -580,7 +588,10 @@ pub fn registryThread(monitor: *reg_mon.RegistryMonitor) void {
             ev.source = .capture_registry;
             ev.rule_id = reg_ev.rule_id;
             ev.timestamp_ns = @intCast(reg_ev.timestamp_ns);
-            _ = queue.pushEvent(ev, &[_]u8{});
+            // REG-EVIDENCE-001: carry the matched key path into the record; an
+            // empty payload made every registry alert unattributable (the
+            // canary showed payload_len=0). Bounded by RegEvent.path.
+            _ = queue.pushEvent(ev, reg_ev.path[0..reg_ev.path_len]);
             diag.metrics.events_emitted.inc();
         }
         std.time.sleep(500 * std.time.ns_per_ms); // poll every 500ms
