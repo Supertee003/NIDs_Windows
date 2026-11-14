@@ -1021,7 +1021,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "16348decf907f4017dc746c092d6d3b1bcbb1aebcddb8e3a214912062e6eb8cd",
+      "sha256": "c837078d88635e2e0f19a9fc7541da83302c9d41f254b2bf10f77289dfbc8dbe",
       "language": "json"
     },
     {
@@ -3666,8 +3666,8 @@
     },
     {
       "path": "tools/config_validator.py",
-      "size": 4315,
-      "sha256": "a549f8fd787421f26210e7ffd6b036c19f4be2c045adb21f553bf0b5dd0db815",
+      "size": 5226,
+      "sha256": "4ba861e274026db3919fc80d9ae30857cee38a6ac2a3c1ac8b0480715f326a65",
       "language": "python/cython"
     },
     {
