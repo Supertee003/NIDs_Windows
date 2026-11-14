@@ -13901,6 +13901,18 @@
       "detail": "src/tests/federation/federation_tcp.zig:5 imports ../../federation/federation_tcp.zig while build.zig:218 roots the step at src/tests/federation, illegal in Zig 0.13. Build Summary 0/3 steps succeeded; the loopback TCP integration tests never run and no release gate calls the step.",
       "fix": "one-line build.zig change: root_source_file at src/federation/federation_tcp.zig, or a module rooted at src/ imported by the test",
       "blocked_by": "build.zig is in RUNTIME_PATHS; a commit there makes the running soak stale"
+    },
+    {
+      "id": "RC-STALE-001",
+      "status": "OPEN",
+      "severity": "P2",
+      "level": "E1",
+      "head_sha": "99e32c4",
+      "timestamp": "2026-11-14",
+      "found_by": "file-by-file hash comparison of release/T20-final/7234d7a against HEAD",
+      "title": "The signed release candidate predates CLI-STATE-001, so its tools differ from HEAD",
+      "detail": "262 files in the RC: 242 identical to the repo, 4 differ (tools/aegisctl.py, tools/aegisctl/api/control_api.py, dist/aegis_bridge.exe, dist/aegis_ipc.dll) and 16 are build/signature outputs absent from the repo by design. The signed candidate therefore ships the pre-CLI-STATE-001 readiness/status behaviour, and the release_signature gate's PASS describes that older tree only.",
+      "next_step": "after the post-soak patches, rebuild the RC from the final HEAD, regenerate SBOM.json and SHA256SUMS, re-sign with tools/sign_release.py, and re-run final_audit --release-check"
     }
   ],
   "evidence_level_summary": {
@@ -13913,7 +13925,7 @@
     "E6_count": 1,
     "E7_count": 1,
     "E5_with_artifact_count": 39,
-    "known_gaps_count": 276
+    "known_gaps_count": 277
   },
   "known_gaps_status_note": "status is OPEN, CLOSED or UNRECORDED. UNRECORDED means the entry was written before the field existed and has not been re-verified; it is not a claim that the gap is closed. PASS and CLOSED_BY_EVT-008 were normalised to UNRECORDED and CLOSED respectively, and E5_VERIFIED_TOTAL_LOSS_OPEN to OPEN, on 2026-11-14."
 }

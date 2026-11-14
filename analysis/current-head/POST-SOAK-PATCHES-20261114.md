@@ -65,3 +65,27 @@ build/runtime mismatch is a STOP-THE-LINE trigger.
 
 Each lands as its own patch transaction with its own evidence entry; none of them
 may be folded into another.
+
+---
+
+## 4. RC-STALE-001 — rebuild and re-sign the release candidate last
+
+Measured 2026-11-14 against `release/T20-final/7234d7a` (262 files):
+
+```
+identical to the repo    242
+differ                     4   tools/aegisctl.py, tools/aegisctl/api/control_api.py,
+                               dist/aegis_bridge.exe, dist/aegis_ipc.dll
+absent from the repo      16   SHA256SUMS, signatures.json, SBOM.json, bin/*.dll,
+                               KNOWN_LIMITATIONS.md, ROLLBACK.md, ...
+```
+
+The absent files are build/signature outputs, which is expected. The four that
+differ are not: the signed candidate's CLI **predates `CLI-STATE-001`**, so the
+readiness and status behaviour an operator would get from the artifact is not the
+behaviour at HEAD, and `release_signature` PASS describes the older tree only.
+
+**Order it after the three patches above**, because the RC must contain them:
+rebuild the tree from the final HEAD, regenerate `SBOM.json` and `SHA256SUMS`,
+re-sign with the release key, then re-run `final_audit --release-check`. The
+signature gate is only meaningful for the tree that is actually shipped.
