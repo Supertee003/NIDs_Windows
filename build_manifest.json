@@ -1021,7 +1021,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "e289ed5641dda606ebd388537c5a8f2144685fc291fb5fdc35ce89428ec0a4af",
+      "sha256": "fcb650f9b293dc5779a47bfe275b3c2c9ac2daf9adfcc98bd03980c7c5aa313c",
       "language": "json"
     },
     {
@@ -3576,8 +3576,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 115161,
-      "sha256": "1421f66417fe2ccf4100b520d2190dcf8783b5334bb2990a2140ca3dffc2a451",
+      "size": 115075,
+      "sha256": "47669e9c36c4ef2a12d56cfe96e42fcc5cc1ab4a78aa56ac65c9ddb83f3d57cd",
       "language": "python/cython"
     },
     {
