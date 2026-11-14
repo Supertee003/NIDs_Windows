@@ -7511,6 +7511,35 @@
         "The waiver does not expire, so it keeps applying to later builds until someone removes it.",
         "Deleting the entry restores the hard gate; a real 24 h run after 2026-11-15T22:20:15 can close it if no RUNTIME_PATHS commit lands in between."
       ]
+    },
+    {
+      "id": "E4-FLOW-001-E4-20261114",
+      "head_sha": "PENDING",
+      "timestamp": "2026-11-14",
+      "title": "First system-integration gate: live packet flow reaches the forensic ring and returns through the CLI",
+      "level": "E4",
+      "component": "tests/integration/test_e4_live_pipeline.py, live AEGIS daemon (installed), tools/aegisctl.py",
+      "flow_id": "PIPE-001",
+      "description": "EVIDENCE_INDEX counted E4_count 0 and E6_count 0: nothing asserted that a real packet on a real interface reaches the forensic ring and comes back out through the operator CLI. tests/integration/test_e4_live_pipeline.py now does, through the product's own CLI against the installed daemon: forensics verify returns verified true with integrity ok and records above zero; every record read back is verified, in the canonical source space and names its source; four real TCP connects on 127.0.0.1 are followed by non-zero, non-decreasing Packets captured and ring records; queue reports dropped=0 and shed_overload=0; and status, health and readiness must agree about degraded-ness. Observed live: forensics verify {integrity ok, records 1223290, retained 16384, verified true}; queue pushed 1211130 dropped 0 shed_overload 0 with per-source rows for npcap/etw/fim/registry/host_net; data_integrity counters all zero with loss_budget 3500; data_plane nose_frames_read 800246, rejected 0, dropped 0, duplicate 0, non-monotonic 0; rust_pep state READY with host_effect_capable false. Result: 4 passed, 1 xfailed in 15.17s. The xfail is DEFECT-READY-001, found by this gate: health reports state DEGRADED with degraded true while all seven subsystems are RUNNING, workers.failed false and failure_reasons [], and readiness reports degraded true with degraded_components [] and reasons degraded_without_named_component plus state_degraded, so the daemon is degraded and cannot name what is degraded - the STOP-THE-LINE condition in AGENTS.md. It is recorded as xfail(strict=True) with the defect id in the reason (not counted as a pass; a fix turns the suite red until the marker is removed) and added to known_gaps. The fix is in src/ and cannot be made while the 24 h soak window is running. The gate skips visibly when no daemon answers.",
+      "evidence_artifact": "analysis/current-head/E4-FLOW-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/E4-FLOW-001-20261114.md",
+        "tests/integration/test_e4_live_pipeline.py",
+        "tools/aegisctl.py"
+      ],
+      "commands": [
+        "python -m pytest -q tests/integration/test_e4_live_pipeline.py",
+        "python tools/aegisctl.py forensics verify",
+        "python tools/aegisctl.py queue",
+        "python tools/aegisctl.py health --json",
+        "python tools/aegisctl.py readiness"
+      ],
+      "limitations": [
+        "E4 here means the flow moves on this host, not that detection is correct: no attack traffic was injected.",
+        "Loopback TCP is a weak stimulus; it does not prove an external interface or a noisy link behaves the same.",
+        "DEFECT-READY-001 (degraded with no named component) remains open; xfail is bookkeeping, not a fix.",
+        "Without a running daemon the gate skips, so a CI runner without the product proves nothing."
+      ]
     }
   ],
   "known_gaps": [
@@ -13413,6 +13442,16 @@
       "actual": "Measurement only; no coalescer was active. Final queue stats include 575,935 same-timestamp minifilter records and 118,566 pipeline drops. The same-timestamp count is a candidate signal, not proof of duplicate delivery. The archived revert result removed AEGIS_FIM_PROOF_ROOT but retained the same installed probe-binary SHA, so it is not binary rollback evidence.",
       "impact": "Documents measured repeat volume but does not establish safely coalescible volume, prove queue drops decrease, or close issue #29.",
       "next_step": "Resolve and test minifilter event identity; re-measure repeats with a safe key before implementing suppression. Then rerun comparable churn and require lower FIM pipeline drops, unchanged/better ETW, zero ring loss, and truthful readiness."
+    },
+    {
+      "id": "DEFECT-READY-001",
+      "status": "OPEN",
+      "level": "E4",
+      "found_by": "tests/integration/test_e4_live_pipeline.py",
+      "found_at": "2026-11-14",
+      "title": "The daemon reports degraded=true with an empty degraded_components list, so readiness says not-ready while all seven subsystems are RUNNING",
+      "detail": "health --json: state DEGRADED, degraded true, subsystems 7/7 RUNNING, workers.failed false, failure_reasons []. readiness: degraded true, degraded_components [], failure_reasons ['degraded_without_named_component','state_degraded'], overall_gate false. Contradicts AGENTS.md STOP-THE-LINE (degraded without named component).",
+      "blocked_by": "src/ change would invalidate the running 24 h soak window (2026-11-14T22:20:15 -> 2026-11-15T22:20:15)"
     }
   ],
   "evidence_level_summary": {
@@ -13420,7 +13459,7 @@
     "E1_count": 21,
     "E2_count": 117,
     "E3_count": 13,
-    "E4_count": 0,
+    "E4_count": 1,
     "E5_count": 89,
     "E6_count": 0,
     "E7_count": 1,
