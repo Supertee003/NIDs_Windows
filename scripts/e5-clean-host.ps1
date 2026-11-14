@@ -44,8 +44,15 @@ function Invoke-External {
     param([string]$Exe, [string[]]$Arguments)
     $shown = "$Exe $($Arguments -join ' ')"
     if ($DryRun) { Write-Step "DRY-RUN: $shown"; return 0 }
-    & $Exe @Arguments
-    return $LASTEXITCODE
+    # E5-EXITCODE-001: the NSIS installer is a Windows-subsystem executable.
+    # `& $Exe` does not wait for those and leaves $LASTEXITCODE $null, so the
+    # install stage reported `installer exited ` with no number and threw even
+    # though the install had completed. Start-Process -Wait -PassThru is the
+    # only form that returns the real code here.
+    $proc = Start-Process -FilePath $Exe -ArgumentList $Arguments -Wait -PassThru -NoNewWindow
+    if ($null -ne $proc -and $null -ne $proc.ExitCode) { return [int]$proc.ExitCode }
+    Write-Step "warning: no exit code from $Exe"
+    return 0
 }
 
 function Assert-Elevated {
@@ -82,7 +89,11 @@ switch ($Stage) {
         # install-boot-task.ps1 fails, so a 0 here already means the task and
         # AEGIS_LOSS_BUDGET were written.
         $code = Invoke-External -Exe $InstallerPath -Arguments @('/S')
-        if ($code -ne 0) { throw "installer exited $code" }
+        # 3010/1641 mean "installed, reboot required"; this stage reboots anyway.
+        if ($code -ne 0 -and $code -ne 3010 -and $code -ne 1641) {
+            throw "installer exited $code"
+        }
+        Write-Step "installer exit code $code"
         if ($DryRun) { Write-Step 'install: SKIPPED (dry run)' } else { Write-Step 'install finished' }
 
         New-Item -ItemType Directory -Force -Path $ArtifactDir | Out-Null

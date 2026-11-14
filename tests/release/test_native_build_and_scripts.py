@@ -144,3 +144,25 @@ def test_the_native_adapters_are_wired_into_the_root_build() -> None:
     cmake = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8-sig")
     for source in ["src/windows/aegis_wfp.c", "src/windows/fim_native.c"]:
         assert source in cmake, f"{source} is no longer part of the native build"
+
+
+def test_the_install_stage_waits_for_the_installer_exit_code() -> None:
+    """E5-EXITCODE-001.
+
+    The NSIS installer is a Windows-subsystem executable: `& $Exe` does not wait
+    for it and leaves `$LASTEXITCODE` as `$null`, so the install stage printed
+    `installer exited ` with no number and aborted after a successful install.
+    Only `Start-Process -Wait -PassThru` returns the code, and a reboot-required
+    code (3010/1641) must not count as failure in a stage that reboots anyway.
+    """
+    text = (ROOT / "scripts" / "e5-clean-host.ps1").read_text(encoding="utf-8-sig")
+    invoke = text.split("function Invoke-External", 1)[1].split("function ", 1)[0]
+    assert "Start-Process" in invoke and "-PassThru" in invoke and "-Wait" in invoke, (
+        "Invoke-External must obtain the exit code through Start-Process -Wait -PassThru"
+    )
+    assert "& $Exe @Arguments" not in invoke, (
+        "calling a Windows-subsystem installer with & leaves $LASTEXITCODE null"
+    )
+    assert "3010" in text and "1641" in text, (
+        "the install stage must accept reboot-required exit codes"
+    )
