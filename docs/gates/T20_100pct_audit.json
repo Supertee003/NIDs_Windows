@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "93bdda8",
+  "commit": "e30af8e",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE"
@@ -66,7 +66,7 @@
         "id": "evidence_debt",
         "ok": true,
         "owner": "none",
-        "detail": "unnamed product files 120 <= baseline 120"
+        "detail": "unnamed product files 75 <= baseline 75"
       }
     ]
   },
