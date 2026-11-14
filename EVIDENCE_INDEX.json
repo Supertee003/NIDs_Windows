@@ -1,7 +1,7 @@
 {
   "head_sha": "cc3518db0887daed8048027de5beca56dd62e07b",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-13",
+  "last_updated_at": "2026-11-14",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -6035,6 +6035,34 @@
         "Read once at startup; changing it requires a service restart.",
         "The installer does not yet write AEGIS_LOSS_BUDGET for a fresh install."
       ]
+    },
+    {
+      "id": "RC-FINAL-20261114",
+      "head_sha": "cc3518d",
+      "timestamp": "2026-11-14",
+      "title": "Release candidate closed at the 21.77 h budget window with a declared 24 h deviation",
+      "level": "E5",
+      "component": "analysis/current-head/RC-FINAL-20261114.md",
+      "flow_id": "QLOSS",
+      "description": "Installed B8EFE0B85F1754D5 (source cc3518d), service AEGIS_LOSS_BUDGET=3500, 21.77 h window (2026-11-13 16:55:21 -> 2026-11-14 14:41:42). host_soak_check --hours 21 --loss-budget 3500 --shed-budget 4000 returned PASS: all services RUNNING, uptime 21.77 h, no SCM restart, health state RUNNING with degraded=false while queue_dropped_total=2,898 (inside 3,500) and shed_overload=3,396 (inside 4,000), ring/nose/pipeline zero, loss_budget=3500. This is the first host proof that loss inside the accepted envelope does not degrade health. Deviation: the formal 24 h gate on this exact build is not met (21.77 h); duration evidence is the prior 25.33 h window on 33223B2C plus this 21.77 h, and the delta between builds is health/readiness only. Closed: deploy parity, boot path, crash-free duration, #30, boot-ring, QLOSS bounded, loss-budget health. Declared limitations: 0.035 % ETW loss, 21.77 h not 24 h on this build, write coverage reduction, installer does not ship DEMAND_START/boot task/AEGIS_LOSS_BUDGET, no E7, one lab host. Completion ~85 %.",
+      "evidence_artifact": "analysis/current-head/RC-FINAL-20261114.md",
+      "artifacts": [
+        "analysis/current-head/RC-FINAL-20261114.md",
+        "analysis/current-head/SOAK-21H-BUDGET-20261114.md"
+      ],
+      "commands": [
+        "python tools/host_soak_check.py --start auto --hours 21 --loss-budget 3500 --shed-budget 4000",
+        "python tools/aegisctl.py health --json",
+        "python tools/truth.py verify"
+      ],
+      "limitations": [
+        "Not a 24 h PASS on this exact build: 21.77 h at the 21 h criterion; the prior 25.33 h window supplies the duration evidence.",
+        "Not zero-loss: 2,898 queue + 3,396 shed = 0.035 % of pushed rows; the accepted envelope is 3,500/4,000 per 24 h.",
+        "The write filter intentionally excludes generic ETW writes; path rules use the minifilter lane.",
+        "Installer does not ship the DEMAND_START boot model, AegisBootSequence or AEGIS_LOSS_BUDGET.",
+        "No E7 signing custody; test-signed drivers only.",
+        "One lab host, 47.1 h combined; no fleet claim."
+      ]
     }
   ],
   "known_gaps": [
@@ -11945,10 +11973,10 @@
     "E2_count": 95,
     "E3_count": 12,
     "E4_count": 0,
-    "E5_count": 85,
+    "E5_count": 86,
     "E6_count": 0,
     "E7_count": 0,
-    "E5_with_artifact_count": 35,
+    "E5_with_artifact_count": 36,
     "known_gaps_count": 271
   }
 }
