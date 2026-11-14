@@ -245,6 +245,15 @@ def cmd_status(args) -> int:
                               "host_effect_posture": host_posture}, sort_keys=True))
             return 0
         print(f"\n  State: {health['state']}")
+        machine = health.get("state_machine_state") or health.get("runtime_state")
+        if machine:
+            print(f"  State machine: {machine}")
+        if health.get("state_machine_disagrees"):
+            print(
+                "  [!] state machine reports DEGRADED while every health-contract "
+                "fact is ready (CLI-STATE-001: the daemon never re-promotes the "
+                "lifecycle set at startup)"
+            )
         print(f"  Version: {health.get('version', 'unknown')}")
         print(f"  Uptime: {health.get('uptime_ms', 0)} ms")
         print(f"  Packets captured: {health.get('packets_captured', 0)}")
@@ -362,6 +371,10 @@ def cmd_diagnose(args) -> int:
     print(f"  {payload.get('version', 'unknown')}")
     print("  RUNTIME STATUS")
     print(f"  State: {payload['state']}")
+    if payload.get("state_machine_state") or payload.get("runtime_state"):
+        print(f"  State machine: {payload.get('state_machine_state') or payload.get('runtime_state')}")
+    if payload.get("state_machine_disagrees"):
+        print("  [!] state machine disagrees with the health contract (CLI-STATE-001)")
     print(f"  Degraded: {payload.get('degraded', True)}")
     print("  SUBSYSTEM HEALTH")
     for name, status in payload.get("subsystems", {}).items():
@@ -763,6 +776,14 @@ def build_readiness(payload: dict) -> dict:
     missing = list(missing_workers)
     state = str(payload.get("state") or "unknown").upper()
     degraded = bool(payload.get("degraded", True))
+    # CLI-STATE-001: the control API keeps the fail-closed merge (a degraded
+    # lifecycle may not be promoted), but a lifecycle that contradicts a fully
+    # healthy health contract used to arrive here as a bare `degraded`. Name it
+    # so the refusal points at the state machine instead of at nothing.
+    state_machine_state = str(
+        payload.get("state_machine_state") or payload.get("runtime_state") or ""
+    ).upper()
+    state_machine_disagrees = bool(payload.get("state_machine_disagrees", False))
     rules_loaded = int(payload.get("rules_loaded", 0) or 0)
     policies_loaded = int(payload.get("policies_loaded", 0) or 0)
     if rules_loaded <= 0:
@@ -784,6 +805,8 @@ def build_readiness(payload: dict) -> dict:
     reasons.extend(f"worker_{name}_not_ready" for name in missing_workers)
     if rules_loaded <= 0:
         reasons.append("rules_not_loaded")
+    if state_machine_disagrees:
+        reasons.append("state_machine_degraded_but_health_facts_ready")
     reasons.extend(
         f"{item['name']}_{str(item.get('error') or item.get('state', 'not_ready')).lower()}"
         for item in degraded_components
@@ -791,7 +814,7 @@ def build_readiness(payload: dict) -> dict:
     # `degraded` is aggregated upstream from data loss, lifecycle and subsystem
     # states. When it is true and none of the above explained it, say that
     # instead of returning a bare refusal.
-    degradation_named = bool(degraded_components) or any(
+    degradation_named = bool(degraded_components) or state_machine_disagrees or any(
         r.startswith("worker_") or r in {"worker_failed", "rules_not_loaded"} for r in reasons
     )
     if degraded and not degradation_named:
@@ -812,6 +835,8 @@ def build_readiness(payload: dict) -> dict:
         "policies_loaded": policies_loaded,
         "degraded_components": degraded_components,
         "failure_reasons": sorted(set(reasons)),
+        "state_machine_state": state_machine_state or None,
+        "state_machine_disagrees": state_machine_disagrees,
     }
 
 

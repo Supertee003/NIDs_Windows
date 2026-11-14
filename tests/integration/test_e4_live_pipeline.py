@@ -144,12 +144,12 @@ def test_the_pipeline_drops_nothing_while_it_runs() -> None:
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "DEFECT-READY-001: the daemon reports degraded=true with an empty "
-        "degraded_components list and failure_reasons "
-        "['degraded_without_named_component', 'state_degraded'], so readiness "
-        "says not-ready while all seven subsystems are RUNNING, workers report "
-        "failure_reasons [] and the queue dropped nothing. Needs a source fix; "
-        "remove this marker when it is fixed (strict=True makes the fix visible)."
+        "DEFECT-READY-001: the daemon's state machine stays DEGRADED while its "
+        "health contract reports state RUNNING, degraded false, seven of seven "
+        "subsystems RUNNING and every worker ready. src/daemon.zig sets the "
+        "lifecycle once at startup and never re-promotes it, so status and the "
+        "health contract disagree for the whole run. Needs a source fix; remove "
+        "this marker when it is fixed (strict=True makes the fix visible)."
     ),
 )
 def test_every_surface_agrees_about_health() -> None:
@@ -173,3 +173,27 @@ def test_every_surface_agrees_about_health() -> None:
         f"readiness_degraded={readiness_degraded}, "
         f"readiness reasons={readiness.get('failure_reasons')}"
     )
+
+
+@needs_daemon
+def test_readiness_names_the_state_machine_as_the_cause() -> None:
+    """CLI-STATE-001: the refusal must point at the state machine, not at nothing.
+
+    The daemon's health contract is fully healthy on this host while its
+    lifecycle state machine stays DEGRADED. Before CLI-STATE-001 that arrived at
+    the gate as `degraded_without_named_component`; now it must name the cause.
+    """
+    # `readiness` exits 1 while its gate is closed; the refusal is the expected
+    # answer here, so parse stdout and assert on the verdict, not the exit code.
+    proc = _ctl("readiness")
+    assert "{" in proc.stdout, proc.stdout + proc.stderr
+    readiness = json.loads(proc.stdout[proc.stdout.find("{"):])
+    assert proc.returncode == 1, proc.stdout
+    assert readiness["ready"] is False, readiness
+    reasons = readiness["failure_reasons"]
+    assert "state_machine_degraded_but_health_facts_ready" in reasons, readiness
+    assert readiness["state_machine_state"] in {"DEGRADED", "RUNNING"}, readiness
+
+    status = _status_text()
+    assert "State machine:" in status, status
+    assert "CLI-STATE-001" in status, status

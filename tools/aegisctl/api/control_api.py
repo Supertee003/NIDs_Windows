@@ -1209,6 +1209,21 @@ def get_health_payload() -> Dict[str, Any]:
         ).upper()
         daemon_health_state = str(daemon_health.get("state", daemon_runtime_state)).upper()
         daemon_degraded = bool(daemon_health.get("degraded", False))
+        # CLI-STATE-001: the daemon owns two different states. `state` is the
+        # health contract, computed from live operational facts (workers,
+        # subsystems, data loss). `runtime_state` is the lifecycle state
+        # machine, which src/daemon.zig sets ONCE at startup and never
+        # re-promotes. The merge below stays fail-closed — a degraded lifecycle
+        # must not promote anything — but a lifecycle that contradicts a fully
+        # healthy health contract is a named condition an operator can act on,
+        # not an unattributable degradation.
+        state_machine_disagrees = (
+            daemon_runtime_state == "DEGRADED"
+            and daemon_health_state == "RUNNING"
+            and not daemon_degraded
+            and workers_ready
+            and canonical_subsystems_ready
+        )
         if "FAILED" in {computed_state, daemon_runtime_state, daemon_health_state}:
             effective_state = "FAILED"
         elif daemon_runtime_state in {"STOPPED", "STOPPING", "STARTING"}:
@@ -1248,6 +1263,8 @@ def get_health_payload() -> Dict[str, Any]:
             "compatibility_aliases": {"rust_shield": "rust_pep"},
             "state": effective_state,
             "runtime_state": daemon_health.get("runtime_state", daemon_health.get("state", "DEGRADED")),
+            "state_machine_state": daemon_runtime_state,
+            "state_machine_disagrees": state_machine_disagrees,
             "rules_loaded": int(daemon_health.get("rules_loaded", 0) or 0),
             "policies_loaded": int(daemon_health.get("policies_loaded", 0) or 0),
             # CLI-SHOW-158: forward the daemon traffic gauges for operator

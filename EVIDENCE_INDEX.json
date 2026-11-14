@@ -7601,6 +7601,36 @@
         "No .cat catalog; the INFs reference catalogs that owner signing produces.",
         "ExAllocatePoolWithTag deprecation in the WFP driver is a future compatibility risk."
       ]
+    },
+    {
+      "id": "CLI-STATE-001-E4-20261114",
+      "head_sha": "55d6901",
+      "timestamp": "2026-11-14",
+      "title": "Readiness names the daemon's stale lifecycle state machine instead of refusing anonymously",
+      "level": "E4",
+      "component": "tools/aegisctl.py, tools/aegisctl/api/control_api.py, tests/tools/test_readiness_state_machine.py, tests/integration/test_e4_live_pipeline.py",
+      "flow_id": "CTL-001",
+      "description": "Root cause of DEFECT-READY-001 found by reading the raw daemon payload through tools/probe_control_pipe.py: the daemon returns state RUNNING, degraded false, seven of seven subsystems RUNNING, workers all ready and data_integrity all zero, while runtime_state stays DEGRADED. state is the health contract (healthJson in src/control/state_machine.zig:309) computed from live facts; runtime_state is the lifecycle state machine, set once at src/daemon.zig:854-860 from bridge_init.allActive() sampled immediately after bridge_init.initAll(), and never re-promoted (recomputeHealth only maps failed to degraded and degraded to recovering, and no timer calls it). tools/aegisctl/api/control_api.py now computes state_machine_disagrees (runtime_state DEGRADED while the health contract reports RUNNING with no degraded flag, six of six workers ready and every subsystem RUNNING) and exposes state_machine_state plus state_machine_disagrees, while keeping the merge fail-closed: a degraded lifecycle still yields state DEGRADED and degraded true, so only the explanation changes, never the verdict. tools/aegisctl.py build_readiness emits state_machine_degraded_but_health_facts_ready in that case, counts it as a named degradation so degraded_without_named_component disappears, and reports the new fields; status and diagnose print a second State machine line plus an explicit note naming the defect. Live verification: readiness returns failure_reasons [state_degraded, state_machine_degraded_but_health_facts_ready] with state_machine_state DEGRADED and overall_gate false; status prints State DEGRADED, State machine DEGRADED and the note, with 7/7 subsystems running. Tests: 28 passed, 1 xfailed across tests/tools/test_readiness_state_machine.py, tests/tools/test_readiness_cause.py and tests/integration/test_e4_live_pipeline.py. The xfail remains DEFECT-READY-001: the surfaces still disagree, and the marker stays until the daemon re-promotes its lifecycle. The patch touches tools/ and tests/ only, no RUNTIME_PATHS entry, so the running soak window stays valid. Scope limits: the daemon behaviour is unchanged, the gate still refuses by design, E4 here is a CLI-surface reading on a live daemon, and state_machine_disagrees is a heuristic over published facts.",
+      "evidence_artifact": "analysis/current-head/CLI-STATE-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/CLI-STATE-001-20261114.md",
+        "tools/aegisctl.py",
+        "tools/aegisctl/api/control_api.py",
+        "tests/tools/test_readiness_state_machine.py",
+        "tests/integration/test_e4_live_pipeline.py"
+      ],
+      "commands": [
+        "python tools/aegisctl.py readiness",
+        "python tools/aegisctl.py status",
+        "python tools/probe_control_pipe.py health",
+        "python -m pytest -q tests/tools/test_readiness_state_machine.py tests/tools/test_readiness_cause.py tests/integration/test_e4_live_pipeline.py"
+      ],
+      "limitations": [
+        "The daemon still reports a stale lifecycle; this slice improves the report only.",
+        "readiness still refuses (ready false) while the two daemon states disagree, by design.",
+        "E4 here is a CLI-surface reading on a live daemon; no daemon behaviour changed.",
+        "state_machine_disagrees is a heuristic over published facts, pinned by four cases."
+      ]
     }
   ],
   "known_gaps": [
@@ -13512,7 +13542,9 @@
       "found_at": "2026-11-14",
       "title": "The daemon reports degraded=true with an empty degraded_components list, so readiness says not-ready while all seven subsystems are RUNNING",
       "detail": "health --json: state DEGRADED, degraded true, subsystems 7/7 RUNNING, workers.failed false, failure_reasons []. readiness: degraded true, degraded_components [], failure_reasons ['degraded_without_named_component','state_degraded'], overall_gate false. Contradicts AGENTS.md STOP-THE-LINE (degraded without named component).",
-      "blocked_by": "src/ change would invalidate the running 24 h soak window (2026-11-14T22:20:15 -> 2026-11-15T22:20:15)"
+      "blocked_by": "src/ change would invalidate the running 24 h soak window (2026-11-14T22:20:15 -> 2026-11-15T22:20:15)",
+      "root_cause": "src/daemon.zig:854-860 transitions the lifecycle ONCE from bridge_init.allActive() sampled right after bridge_init.initAll(); nothing re-promotes it, and recomputeHealth() only handles failed->degraded and degraded->recovering with no caller.",
+      "current_reporting": "CLI-STATE-001 (2026-11-14) makes readiness name it: state_machine_degraded_but_health_facts_ready; the gate still refuses."
     }
   ],
   "evidence_level_summary": {
@@ -13520,7 +13552,7 @@
     "E1_count": 21,
     "E2_count": 117,
     "E3_count": 14,
-    "E4_count": 1,
+    "E4_count": 2,
     "E5_count": 89,
     "E6_count": 1,
     "E7_count": 1,

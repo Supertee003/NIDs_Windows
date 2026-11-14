@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T16:06:20.589356+00:00",
+  "generated_at": "2026-11-14T17:13:52.537967+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1829,
+  "total_files": 1831,
   "by_role": {
-    "documentation": 410,
+    "documentation": 411,
     "build-config": 199,
     "other": 18,
     "lockfile": 6,
     "rust-build": 4,
     "source": 532,
-    "test-artifact": 277,
+    "test-artifact": 278,
     "config-data": 38,
     "architecture-decision": 12,
     "step-document": 2,
@@ -609,6 +609,10 @@
       "role": "documentation"
     },
     "analysis/current-head/CLI-LOGS-RESOLVER-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/CLI-STATE-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -7105,6 +7109,10 @@
       "role": "test-artifact"
     },
     "tests/tools/test_readiness_cause.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/tools/test_readiness_state_machine.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T16:06:20.583832+00:00",
+  "generated_at": "2026-11-14T17:13:52.535160+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1829,
+  "total_files": 1831,
   "by_class": {
-    "canonical-docs": 424,
+    "canonical-docs": 425,
     "canonical-build": 210,
     "unclassified": 18,
     "canonical-source": 828,
-    "canonical-test": 277,
+    "canonical-test": 278,
     "canonical-config": 38,
     "legacy": 34
   },
@@ -445,6 +445,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 2551
+    },
+    {
+      "path": "analysis/current-head/CLI-STATE-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4419
     },
     {
       "path": "analysis/current-head/CONFIG-VALIDATE-001-20261114.md",
@@ -3630,7 +3636,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1262513
+      "size": 1266739
     },
     {
       "path": "FLOW_MAP.json",
@@ -3738,7 +3744,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 280983
+      "size": 281929
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4014,7 +4020,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 231102
+      "size": 231844
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -9450,7 +9456,7 @@
       "path": "tests/integration/test_e4_live_pipeline.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 6449
+      "size": 7612
     },
     {
       "path": "tests/integration/test_e6_attack_burst.py",
@@ -10191,6 +10197,12 @@
       "size": 6349
     },
     {
+      "path": "tests/tools/test_readiness_state_machine.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3929
+    },
+    {
       "path": "tests/tools/test_runbooks.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -10434,7 +10446,7 @@
       "path": "tools/aegisctl/api/control_api.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 65175
+      "size": 66130
     },
     {
       "path": "tools/aegisctl/client.py",
@@ -10488,7 +10500,7 @@
       "path": "tools/aegisctl.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 115075
+      "size": 116601
     },
     {
       "path": "tools/audit_kernel_runtime.py",
