@@ -14,7 +14,12 @@
  *
  * ---
  * aegis_wfp_comm.c - AEGIS NIDS WFP IRP Dispatch & IPS Block (HISTORICAL)
- */
+ *
+ * DRIVER-SYNTAX-001: this header used to close the comment early, leaving the
+ * bullet lines below outside any comment, so the file did not parse at all -
+ * a syntax-only compile reported "missing '{' before ':'" at this line.
+ * The comment is now closed once, at the end of the header.
+ *
  * C3: CreateClose/ReadEvents/DeviceControl/BlockFlow/GetStats
  *     all live here (aegis_wfp.c delegates to this file).
  * M1: AegisWfpBlockFlow adds real WFP block filter.
