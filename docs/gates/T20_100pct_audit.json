@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "b73d4cc",
+  "commit": "c338c80",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE (waived by owner: soak_24h, unproven)"

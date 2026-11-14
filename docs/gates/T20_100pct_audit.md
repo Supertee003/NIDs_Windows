@@ -6,7 +6,7 @@
 
 - Component audit: **COMPLETE**
 - Release: **NOT SHIPPABLE (waived by owner: soak_24h, unproven)** — open gates: soak_24h
-- Commit: `b73d4cc`
+- Commit: `c338c80`
 - Part I modules: 66/66 pass
 - Part I production failures: 0
 - Part II holds: 5/5
