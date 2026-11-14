@@ -1021,7 +1021,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "502979a16b5de787be219b46cc092cfd3370c2cba065ea0e0d9cfc596e355037",
+      "sha256": "0d6ce570cb3df886d8cb4ed66373a4f40d38dcf1d015ae90d367533532405a1a",
       "language": "json"
     },
     {
@@ -3672,8 +3672,8 @@
     },
     {
       "path": "tools/create_manifest.py",
-      "size": 20208,
-      "sha256": "e0fb0951c9ec963b5e586c31c12e28c221591df5b68a731c853cf35b77b29930",
+      "size": 21922,
+      "sha256": "066408bd4c631ab84c00ed628d1590164c832682afeeff95504510c9cc72a4a3",
       "language": "python/cython"
     },
     {
@@ -3930,8 +3930,8 @@
     },
     {
       "path": "tools/probe_control_pipe.py",
-      "size": 2010,
-      "sha256": "37847ce23518b4b07043365bb904276cb99133de5e49394e8ffe603f7a52c930",
+      "size": 2906,
+      "sha256": "a1e17d824314fa619b6e6589aef663959fd9fd931f8a45e97cb2529a5510f399",
       "language": "python/cython"
     },
     {
@@ -3968,12 +3968,6 @@
       "path": "tools/truth.py",
       "size": 12402,
       "sha256": "4ded8b0d7f7eafec2bcaffe07572c474d73f06211527821eec77695ffd0c46c1",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/update_health_cmd.py",
-      "size": 2319,
-      "sha256": "8f5b030d5dd67a5819e18666c152f2191ad16ce68ff30a95b9954fda93c7bbe6",
       "language": "python/cython"
     },
     {
