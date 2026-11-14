@@ -97,10 +97,26 @@ Rollback:
   powershell -ExecutionPolicy Bypass -File .\scripts\install_aegis.ps1 -BundleRoot . -Rollback
 "@ | Set-Content (Join-Path $bundle "README.txt") -Encoding UTF8
 
-$installer = Join-Path $root "scripts\install_aegis.ps1"
-if (Test-Path $installer) { Copy-Item $installer (Join-Path $scripts "install_aegis.ps1") -Force }
-$verifier = Join-Path $root "scripts\verify_release.ps1"
-if (Test-Path $verifier) { Copy-Item $verifier (Join-Path $scripts "verify_release.ps1") -Force }
+# BOOT-MODEL-003: the bundle must carry every script its own installer runs.
+# install_aegis.ps1 throws when $InstallRoot\scripts\install-boot-task.ps1 is
+# missing, and that script throws when its boot-sequence.ps1 sibling is missing,
+# so a bundle without both failed after the runtime was copied and the service
+# was created - a half-installed host with no boot loader. The list is explicit
+# and every entry must exist: a silent Test-Path guard is how the two files went
+# missing in the first place.
+$scriptPayload = @(
+    'install_aegis.ps1',
+    'install-boot-task.ps1',
+    'boot-sequence.ps1',
+    'verify_release.ps1'
+)
+foreach ($name in $scriptPayload) {
+    $source = Join-Path (Join-Path $root 'scripts') $name
+    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+        throw "Missing script payload: scripts\$name"
+    }
+    Copy-Item $source (Join-Path $scripts $name) -Force
+}
 
 $zip = "$bundle.zip"
 Compress-Archive -Path "$bundle\*" -DestinationPath $zip -Force
