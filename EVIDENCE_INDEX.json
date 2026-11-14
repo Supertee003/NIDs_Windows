@@ -6235,6 +6235,32 @@
         "FILE_OPEN_IF read-only is treated as read-only even if it creates; rename/delete via SetInformation is not emitted.",
         "FIM volume reduction was not measured over 24 h."
       ]
+    },
+    {
+      "id": "SOAK-BASELINE-001-E2-20261114",
+      "head_sha": "38c1038",
+      "timestamp": "2026-11-14",
+      "title": "The 24 h soak gate scored cumulative counters, so a deploy burst spent the whole budget before the window began",
+      "level": "E2",
+      "component": "tools/host_soak_check.py (--baseline, delta gate, counters_absolute/counters_delta), tests/security/test_soak_verdict.py",
+      "flow_id": "QLOSS-HEALTH-001",
+      "description": "After the write-intent minifilter deploy at 17:11 on 2026-11-14, the fresh daemon showed queue_dropped_total 0 but shed_overload 5,310 in ~2 h, above the owner's 4,000/24 h envelope, so the soak gate failed. Two queue.stats samples 60 s apart showed shed_overload flat at 5,310 while 16,347 rows were pushed: the loss was a burst in the first minutes after restart (minifilter ring draining plus the FIM/HKCU canaries at 17:11-17:12), not sustained loss. The gate was comparing cumulative process counters against a per-window budget, so the deploy's own burst consumed the 24 h allowance and no later window on that process could pass. Fix: --baseline auto|<path> snapshots data_integrity + shed_overload at window start and gates growth since the anchor, failing closed on growth over budget, on a counter that went backwards (restart), and on a counter missing from the payload or the baseline; every report carries counters_absolute and counters_delta so the pre-window burst stays visible. Without --baseline the historical absolute comparison is unchanged, so the existing PASS artifacts reproduce exactly. Also hardened: a missing loss counter is now a problem instead of being skipped. 15 tests in test_soak_verdict.py (6 new), 439 in tests/security+tests/tools+tests/docs; a live --baseline auto run reported IN_PROGRESS with all deltas zero and the 5,310 pre-window sheds reported absolutely.",
+      "evidence_artifact": "analysis/current-head/SOAK-BASELINE-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/SOAK-BASELINE-001-20261114.md",
+        "tools/host_soak_check.py",
+        "tests/security/test_soak_verdict.py"
+      ],
+      "commands": [
+        "python -m pytest -q tests/security/test_soak_verdict.py",
+        "python -m pytest -q tests/security tests/tools tests/docs",
+        "python tools/host_soak_check.py --start auto --baseline auto --hours 24 --loss-budget 3500 --shed-budget 4000 --json admin-evidence/host-window-006-20261111/soak-24h-delta-20261114.json"
+      ],
+      "limitations": [
+        "The 24 h window this patch starts has not finished; the entry records the gate fix, not a completed soak.",
+        "Absolute budget semantics are unchanged when --baseline is omitted, so an operator who does not pass a baseline still gets the old (stricter, window-poisoning) behaviour.",
+        "The baseline is a snapshot, not a series: a restart between anchor and check voids the window rather than resuming it."
+      ]
     }
   ],
   "known_gaps": [
@@ -12142,7 +12168,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 98,
+    "E2_count": 99,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 89,

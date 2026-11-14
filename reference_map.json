@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T10:10:39.048508+00:00",
+  "generated_at": "2026-11-14T12:01:54.285201+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1573,
+  "total_files": 1575,
   "by_role": {
-    "documentation": 381,
+    "documentation": 383,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
@@ -660,6 +660,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/FIM-WRITE-INTENT-E5-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/FOR-BATCH-001-20261108.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -809,6 +813,10 @@
       "role": "documentation"
     },
     "analysis/current-head/SOAK-30H-20261112.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/SOAK-BASELINE-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },

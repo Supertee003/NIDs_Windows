@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T10:10:39.045157+00:00",
+  "generated_at": "2026-11-14T12:01:54.281084+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1573,
+  "total_files": 1575,
   "by_class": {
-    "canonical-docs": 395,
+    "canonical-docs": 397,
     "canonical-build": 192,
     "unclassified": 17,
     "canonical-source": 667,
@@ -516,7 +516,13 @@
       "path": "analysis/current-head/FIM-WRITE-INTENT-001-20261114.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3321
+      "size": 3209
+    },
+    {
+      "path": "analysis/current-head/FIM-WRITE-INTENT-E5-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2494
     },
     {
       "path": "analysis/current-head/FOR-BATCH-001-20261108.md",
@@ -745,6 +751,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 5295
+    },
+    {
+      "path": "analysis/current-head/SOAK-BASELINE-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5359
     },
     {
       "path": "analysis/current-head/soak-check-20261109.json",
@@ -3474,7 +3486,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1166456
+      "size": 1159496
     },
     {
       "path": "FLOW_MAP.json",
@@ -8508,7 +8520,7 @@
       "path": "tests/security/test_soak_verdict.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 4133
+      "size": 8023
     },
     {
       "path": "tests/security/test_t16_security_hardening.py",
@@ -9048,7 +9060,7 @@
       "path": "tools/host_soak_check.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 10462
+      "size": 16260
     },
     {
       "path": "tools/inspect_pe_exports.py",
