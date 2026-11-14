@@ -7636,11 +7636,11 @@
       "id": "E6-L4-CAPTURE-001-E4-20261114",
       "head_sha": "PENDING",
       "timestamp": "2026-11-14",
-      "title": "Live rule path is empty: no rule-tagged forensic record exists, and loopback traffic is not what this install captures",
+      "title": "L4 rule tagging is intermittent, loopback is not captured, and two gates of mine were unsound",
       "level": "E4",
       "component": "tests/integration/test_e6_l4_scan_detection.py, tests/integration/test_e4_live_pipeline.py, live AEGIS daemon, configs/Rules.json",
       "flow_id": "DETECT-002",
-      "description": "Negative live measurement of the detection rule path, plus a correction to an earlier gate. configs/Rules.json ships three L4 rules with real rate configuration (R9006 distinct_dst_ports 20/10000 ms, R9002 count 50/1000 ms, R9007 per-packet FLAGS) and src/pipeline/event_processor.zig:307 evaluates them for ev.source == .capture_npcap, which canonical Go-Nose frames map to via event_queue.legacySourceFor, so the path exists for production traffic. Measurement: across 1000 retained forensic records, zero carry a non-zero rule_id; a 150-port loopback SYN scan then --after head produced 187 new records with rule_id histogram {0: 187} (host_telemetry 121, file_sensor 36, npcap_sensor 30), repeated three times with the same result. The caveat is recorded with the number: this install does not capture localhost traffic (idle 162 npcap_sensor records per 5 s versus 87 during the scan), so the scan never reached the sensor and the measurement proves that no rule-tagged record exists in the live stream, not that R9006 is broken. Recorded as two open gaps: DETECT-L4-001 (the L4 rule path is unproven and never tagged anything here, narrowing the earlier GAP-L4-FLAGS-LIVE-UNPROVEN) and CAPTURE-LOOPBACK-001 (a loopback self-test cannot feed detection on this install; detection gates need a lab interface). The slice also corrects a gate I wrote earlier this session: test_real_loopback_traffic_reaches_the_ring asserted Packets captured and ring records do not go backwards, which an idle host satisfies, so it could not fail; it is replaced by test_the_sensor_keeps_writing_evidence, which measures the sensor's own npcap_sensor stream over three consecutive windows and fails if all are empty. New tests/integration/test_e6_l4_scan_detection.py adds a precondition test that deliberately does not claim the scan reached the sensor, and test_a_syn_scan_is_tagged_by_an_l4_rule as xfail(strict=True) carrying DETECT-L4-001. Suite: 11 passed, 2 xfailed in 89.01s for tests/integration. Not measured: whether the flags lane is empty, the rate window is mis-keyed, or the installed binary predates the flags commit (three different fixes), and whether L7 content rules match, since that needs payload bytes on the canonical path.",
+      "description": "Live measurement of whether an L4 rule tags a SYN scan, which ended with the first claim withdrawn. configs/Rules.json ships three L4 rules with real rate configuration (R9006 distinct_dst_ports 20/10000 ms, R9002 count 50/1000 ms, R9007 per-packet FLAGS) and src/pipeline/event_processor.zig:307 evaluates them for ev.source == .capture_npcap, which canonical Go-Nose frames map to via event_queue.legacySourceFor. Run 1, three trials: a 150-port loopback SYN scan produced no rule-tagged record, and across 1000 retained records none carried a non-zero rule_id. A later full-suite run produced the opposite - test_a_syn_scan_is_tagged_by_an_l4_rule XPASSed - so tagging can happen but is not deterministic under this stimulus, and the earlier 'the rule path is empty' claim is withdrawn. The stimulus is itself unproven: this install does not capture localhost traffic (162 npcap_sensor records per 5 s idle versus 87 during the scan), so no trial shows the scan reached the sensor. Recorded as DETECT-L4-001 (open, undetermined: empty flags lane, rate-window keying or an older installed binary remain three distinct causes) and CAPTURE-LOOPBACK-001 (open measurement limit). The slice also corrected two of my own gates: test_real_loopback_traffic_reaches_the_ring asserted that counters do not go backwards, which an idle host satisfies, and is replaced by test_the_ring_keeps_accepting_records reading forensic_records twice and requiring growth; and cursor-based record paging proved unreliable because at roughly 700 records/s the ring retains about 23 s, so forensics list --after a rotated-out cursor returns nothing (head advanced 4225 records in 6 s) and every liveness claim now uses counters. tests/integration: 11 passed, 2 xfailed in 102.83s. The scan test is xfail(strict=False) carrying DETECT-L4-001 on purpose, since both outcomes are informative until a lab-interface run pins the behaviour.",
       "evidence_artifact": "analysis/current-head/E6-L4-CAPTURE-001-20261114.md",
       "artifacts": [
         "analysis/current-head/E6-L4-CAPTURE-001-20261114.md",
@@ -7654,10 +7654,10 @@
         "python tools/aegisctl.py forensics list --after <head> --limit 1000"
       ],
       "limitations": [
-        "A negative measurement, not a diagnosis: empty flags lane, mis-keyed rate window and an older installed binary are three different fixes.",
-        "Loopback is not captured here, so nothing was injected into the sensor on purpose; a lab-interface rerun is the only proper test.",
+        "No detection verdict: intermittent is the whole finding, and which of three candidate causes is responsible is unknown.",
+        "Loopback is not captured here, so scan-based numbers describe background traffic, not the stimulus.",
         "No claim about L7 content rules, which need payload bytes on the canonical path.",
-        "The xfail is a tripwire, not a fix."
+        "23 rules, one host, one interface, one afternoon: nothing generalises to a second host or a lab network."
       ]
     }
   ],
@@ -13581,8 +13581,8 @@
       "level": "E4",
       "found_at": "2026-11-14",
       "found_by": "tests/integration/test_e6_l4_scan_detection.py",
-      "title": "L4 rules (R9006/R9002/R9007) never tag a forensic record in the live stream",
-      "detail": "Zero records with a non-zero rule_id across 1000 retained records; a 150-port SYN scan added 187 records, all rule_id 0, three times. Loopback is not captured here (162 idle vs 87 during the scan per 5 s), so the scan did not reach the sensor: the claim is 'no rule hit observed', not 'R9006 is broken'.",
+      "title": "L4 rule tagging of a scan is intermittent on this host and cannot be pinned with a loopback stimulus",
+      "detail": "Three trials of a 150-port loopback SYN scan produced no rule-tagged record and 1000 retained records held none; a full-suite run then produced a tagged record (XPASS). Tagging can happen but is not deterministic here. Loopback is not captured (162 idle vs 87 during the scan per 5 s), so the stimulus never provably reached the sensor.",
       "blocked_by": "needs a lab interface stimulus and a check of the installed build's flags lane; src/ changes are blocked while the soak window is open"
     },
     {

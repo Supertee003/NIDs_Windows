@@ -134,33 +134,26 @@ def _scan() -> None:
 
 
 @needs_daemon
-def test_the_sensor_keeps_writing_evidence() -> None:
-    """The sensor's own record stream is live and continuous.
+def test_the_ring_keeps_accepting_records() -> None:
+    """The evidence path is live: `forensic_records` grows over a short window.
 
     Earlier versions of this check were not evidence. "Packets captured does not
-    go backwards" is satisfied by an idle host, and attributing growth to
-    traffic we generate turned out to be impossible here: two 5 s windows
-    measured on 2026-11-14 gave 162 sensor records idle vs 87 during a 150-port
-    loopback scan, so localhost traffic is **not** what this install captures.
-    That limit is recorded as `CAPTURE-LOOPBACK-001` and it means the detection
-    gates cannot be fed by a self-test on loopback; they need a lab interface.
+    go backwards" is satisfied by an idle host, and attributing growth to traffic
+    we generate turned out to be impossible here: two 5 s windows measured on
+    2026-11-14 gave 162 sensor records idle vs 87 during a 150-port loopback
+    scan, so localhost traffic is **not** what this install captures. That limit
+    is recorded as `CAPTURE-LOOPBACK-001`.
 
-    What this asserts is the part that is true and measurable: the sensor keeps
-    producing verified records in consecutive windows.
+    Reading records by cursor is also unreliable on this host: with roughly 700
+    records/s the ring keeps only about 23 s of history, and `--after` a cursor
+    that has already rotated out returns nothing. The counter does not have that
+    problem, so the liveness claim is made on the counter.
     """
-    # A quiet host can legitimately write nothing for a few seconds, so measure
-    # three windows and require the sensor to be alive in at least one of them.
-    windows: list[int] = []
-    for _ in range(3):
-        seq = _head_seq()
-        time.sleep(SETTLE_SECONDS)
-        windows.append(_npcap_records_since(seq))
-
-    assert any(count > 0 for count in windows), (
-        "the sensor wrote no npcap_sensor record in three consecutive 5 s windows: "
-        f"{windows}"
-    )
-    assert _int_field(_status_text(), "Packets captured") > 0
+    before = int(_json("metrics").get("forensic_records") or 0)
+    time.sleep(SETTLE_SECONDS)
+    after = int(_json("metrics").get("forensic_records") or 0)
+    assert before > 0, "the ring reports zero records; nothing is being written"
+    assert after > before, f"the ring accepted nothing in {SETTLE_SECONDS}s: {before} -> {after}"
 
 
 @needs_daemon
