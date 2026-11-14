@@ -2,13 +2,6 @@
   "id": "EVIDENCE-DEBT-BASELINE",
   "rule": "unnamed product files may shrink but never grow; trim this file in the same patch that names one",
   "source_commit": "164043a",
-  "count": 6,
-  "unnamed": [
-    "drivers/minifilter/aegis_minifilter.c",
-    "drivers/minifilter/aegis_minifilter.inf",
-    "drivers/minifilter/aegis_minifilter_comm.c",
-    "drivers/minifilter/aegis_minifilter_proc.c",
-    "drivers/wfp_callout/aegis_wfp.inf",
-    "drivers/wfp_callout/quarantined/aegis_wfp_comm.c"
-  ]
+  "count": 0,
+  "unnamed": []
 }

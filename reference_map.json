@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T15:00:57.320985+00:00",
+  "generated_at": "2026-11-14T15:06:07.026018+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1611,
+  "total_files": 1613,
   "by_role": {
-    "documentation": 400,
+    "documentation": 401,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
     "source": 372,
-    "test-artifact": 252,
+    "test-artifact": 253,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -657,6 +657,10 @@
       "role": "documentation"
     },
     "analysis/current-head/DRIVER-PACKAGING-001-20261110.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/DRIVER-SYNTAX-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -5804,6 +5808,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/release/test_driver_sources.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/release/test_e5_runbook.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -6769,5 +6777,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "8aa43c0"
+  "source_commit": "1fa877c"
 }

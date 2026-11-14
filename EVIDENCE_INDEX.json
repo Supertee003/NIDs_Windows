@@ -1,5 +1,5 @@
 {
-  "head_sha": "8aa43c057754679b04385d7e67f65be226bf9bfd",
+  "head_sha": "1fa877c8fca3050eacfcdda000e9831f2743cade",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-14",
   "generator_version": "3.0",
@@ -7417,6 +7417,37 @@
         "drivers/ (6 files) and rust-src/bin/aegis_keygen.rs remain unbuilt: the drivers need the WDK and test signing, the keygen is a standalone owner tool with no crate.",
         "The 5 doc/config files named here (two README_DEPLOY.txt, mouth/.gitignore, two README.md) were inspected for consistency only; no executable check covers them."
       ]
+    },
+    {
+      "id": "DRIVER-SYNTAX-001-E2-20261114",
+      "head_sha": "1fa877c",
+      "timestamp": "2026-11-14",
+      "title": "The quarantined WFP dispatch copy did not parse, and the minifilter sources now parse against the WDK",
+      "level": "E2",
+      "component": "drivers/minifilter (aegis_minifilter.c, _comm.c, _proc.c, .inf), drivers/wfp_callout (aegis_wfp.inf, quarantined/aegis_wfp_comm.c), tests/release/test_driver_sources.py",
+      "flow_id": "DRIVER-001",
+      "description": "The six files under drivers/ were the last product files named by no evidence entry, and nothing in the repository compiles any of them. A syntax-only compile against the installed WDK headers found one real defect: the quarantine header of drivers/wfp_callout/quarantined/aegis_wfp_comm.c closed its comment block after the (HISTORICAL) line, leaving three bullet lines of prose outside a comment, which the compiler read as code (error C2143 missing '{' before ':', error C2059, warning C4138 '*/' found outside comment). The file has been marked QUARANTINED - DO NOT COMPILE since quarantine, so nothing in production was affected, but an unparsable quarantined file cannot be audited; the header is now a single comment block closed once, with a note explaining the break. The three minifilter sources parsed with zero diagnostics against fltKernel.h on the first attempt. tests/release/test_driver_sources.py pins: cl -Zs parse of aegis_minifilter.c, aegis_minifilter_comm.c and aegis_minifilter_proc.c against the WDK includes (skipped without MSVC or WDK); the quarantine header contains exactly one comment close before #include, starts with /** and still says QUARANTINED; no driver build script uses the quarantined copy (a REM forbidding it is allowed, that comment is the guard); both INFs keep [Version], an NT signature line and a CatalogFile, with [Manufacturer] required only for the package that installs Root\\AEGIS_WFP. 7 passed; mutation (closing the quarantine comment early again) fails test_the_quarantined_header_closes_exactly_once. Explicitly not established: the WFP callout sources were not compiled (the WDK build environment is required and an ad-hoc cl -Zs dies inside the WDK's own fwpsk.h), no driver was loaded, no minifilter attached, no WFP filter installed or removed, and the INFs were checked structurally rather than with infverif.",
+      "evidence_artifact": "analysis/current-head/DRIVER-SYNTAX-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/DRIVER-SYNTAX-001-20261114.md",
+        "tests/release/test_driver_sources.py",
+        "drivers/minifilter/aegis_minifilter.c",
+        "drivers/minifilter/aegis_minifilter.inf",
+        "drivers/minifilter/aegis_minifilter_comm.c",
+        "drivers/minifilter/aegis_minifilter_proc.c",
+        "drivers/wfp_callout/aegis_wfp.inf",
+        "drivers/wfp_callout/quarantined/aegis_wfp_comm.c"
+      ],
+      "commands": [
+        "python -m pytest -q tests/release/test_driver_sources.py",
+        "cl -nologo -Zs -D_AMD64_ -DAMD64 -DWIN32=100 -D_WIN32_WINNT=0x0A00 -I<WDK>/km -I<WDK>/shared -I<WDK>/ucrt -I<MSVC>/include drivers/minifilter/aegis_minifilter.c"
+      ],
+      "limitations": [
+        "The WFP callout sources (drivers/wfp_callout/aegis_wfp.c and aegis_wfp_callout.c) were not compiled; they need the WDK build environment.",
+        "Kernel-mode behaviour is unverified: no driver loaded, no minifilter attached, no WFP filter installed or removed, no unload exercised.",
+        "The INFs were checked structurally (sections present), not with infverif.",
+        "The .cat catalogs referenced by the INFs come from signing, which the owner holds."
+      ]
     }
   ],
   "known_gaps": [
@@ -13324,7 +13355,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 115,
+    "E2_count": 116,
     "E3_count": 13,
     "E4_count": 0,
     "E5_count": 89,

@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T15:00:57.318389+00:00",
+  "generated_at": "2026-11-14T15:06:07.021552+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1611,
+  "total_files": 1613,
   "by_class": {
-    "canonical-docs": 414,
+    "canonical-docs": 415,
     "canonical-build": 192,
     "unclassified": 17,
     "canonical-source": 668,
-    "canonical-test": 252,
+    "canonical-test": 253,
     "canonical-config": 34,
     "legacy": 34
   },
@@ -519,6 +519,12 @@
       "size": 5729
     },
     {
+      "path": "analysis/current-head/DRIVER-SYNTAX-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3464
+    },
+    {
       "path": "analysis/current-head/E5-CLEAN-HOST-001-20261114.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -540,7 +546,7 @@
       "path": "analysis/current-head/evidence-debt-baseline.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1205
+      "size": 499
     },
     {
       "path": "analysis/current-head/FIM-PROBE-IDENTITY-COMMENT-001-20261109.md",
@@ -3270,7 +3276,7 @@
       "path": "drivers/wfp_callout/quarantined/aegis_wfp_comm.c",
       "class": "canonical-source",
       "role": "source",
-      "size": 7178
+      "size": 7471
     },
     {
       "path": "evidence/milestone-1-2-20260922-163230/README.txt",
@@ -3588,7 +3594,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1242204
+      "size": 1245891
     },
     {
       "path": "FLOW_MAP.json",
@@ -3696,7 +3702,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 246195
+      "size": 246196
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3954,7 +3960,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 10041
+      "size": 9693
     },
     {
       "path": "pytest.ini",
@@ -8235,6 +8241,12 @@
       "size": 5491
     },
     {
+      "path": "tests/release/test_driver_sources.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 6114
+    },
+    {
       "path": "tests/release/test_e5_runbook.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -9681,5 +9693,5 @@
       "size": 624
     }
   ],
-  "source_commit": "8aa43c0"
+  "source_commit": "1fa877c"
 }
