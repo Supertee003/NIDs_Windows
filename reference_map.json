@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T09:56:00.867267+00:00",
+  "generated_at": "2026-11-14T10:09:58.424832+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1569,
+  "total_files": 1573,
   "by_role": {
-    "documentation": 378,
+    "documentation": 381,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
     "source": 371,
-    "test-artifact": 234,
+    "test-artifact": 235,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -656,6 +656,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/FIM-WRITE-INTENT-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/FOR-BATCH-001-20261108.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -768,6 +772,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/R1005-HOSTS-E5-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/RC-CLOSEOUT-20261113.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -781,6 +789,10 @@
       "role": "documentation"
     },
     "analysis/current-head/REG-HKCU-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/REG-HKCU-E5-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -5704,6 +5716,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/release/test_fim_write_intent.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/release/test_fresh_deploy.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -6601,5 +6617,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "e4c2188"
+  "source_commit": "d976d0b"
 }

@@ -1,5 +1,5 @@
 {
-  "head_sha": "e4c218886cc219e599abde8765a22a20c45a17d8",
+  "head_sha": "d976d0b596550128f6e4108d0937bc16e1b0cd39",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-14",
   "generator_version": "3.0",
@@ -6178,6 +6178,34 @@
         "R1004 noise (677 in the same window) still crowds the alert surface; a --rule filter is the next ergonomic fix.",
         "Forensic retention still requires the anchored scan and a large limit."
       ]
+    },
+    {
+      "id": "FIM-WRITE-INTENT-001-E2-20261114",
+      "head_sha": "d976d0b",
+      "timestamp": "2026-11-14",
+      "title": "Minifilter emits only write/create intent, not every read-only open",
+      "level": "E2",
+      "component": "drivers/minifilter/aegis_minifilter_file.c",
+      "flow_id": "HOST-FILE",
+      "description": "R1005 and R1001 fired on a read-only Get-Content because AegisPostOperation emitted every successful IRP_MJ_CREATE. The record struct has no desired-access field, so the classification is done in the driver without an ABI change: AegisPreCreate reads DesiredAccess (FILE_WRITE_DATA/APPEND/WRITE_ATTRIBUTES/DELETE/WRITE_DAC/WRITE_OWNER) and the CreateDisposition high byte (SUPERSEDE/CREATE/OVERWRITE/OVERWRITE_IF), stores a one-bit sentinel in the callback context, and AegisPostOperation returns immediately when ctx is NULL. No record/IOCTL/ring/user-ABI change; the post-op does not touch the possibly-freed security context. WDK build: 10,240 bytes, unsigned 9C627F0F; test-signed Valid 10A1BA9EA1253DDD4E1B1B70FFEBF1566CB4BFC793341D56051058A92EC37389. Two source pins pass. E2 only: the host has not deployed the driver or run the read/write canary.",
+      "evidence_artifact": "analysis/current-head/FIM-WRITE-INTENT-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/FIM-WRITE-INTENT-001-20261114.md",
+        "drivers/minifilter/aegis_minifilter_file.c",
+        "tests/release/test_fim_write_intent.py"
+      ],
+      "commands": [
+        "powershell -File scripts/wdk_build_minifilter.ps1",
+        "powershell -File scripts/minifilter_sign.ps1",
+        "python -m pytest -q tests/release/test_fim_write_intent.py"
+      ],
+      "limitations": [
+        "E2 only; the driver has not been deployed or measured on the host.",
+        "FILE_OPEN_IF with read-only access is treated as read-only even if it creates.",
+        "Rename/delete via SetInformation is still not emitted.",
+        "Test-signed driver; no production signing custody.",
+        "FIM volume reduction has not been measured over 24 h."
+      ]
     }
   ],
   "known_gaps": [
@@ -12085,7 +12113,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 97,
+    "E2_count": 98,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 88,

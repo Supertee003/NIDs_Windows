@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_at": "2026-10-23T00:00:00.000000+00:00",
-  "head_sha": "e4c218886cc219e599abde8765a22a20c45a17d8",
+  "head_sha": "d976d0b596550128f6e4108d0937bc16e1b0cd39",
   "build_commands": {
     "zig": {
       "command": "zig build",
