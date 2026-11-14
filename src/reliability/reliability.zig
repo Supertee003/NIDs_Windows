@@ -1,4 +1,16 @@
-﻿// G20: Reliability Î“Ã‡Ã¶ ReliabilityWatchdog + FaultMatrix
+﻿// REL-SPEC-050 / SRC-CLOSURE-001 -- SPECIMEN, NOT WIRED.
+//
+// This file is the G20-G33 design specimen: it carries a second
+// ReliabilityWatchdog, a stub SecurityCheck and drill-only canary/XDR
+// types. Nothing in any build root imports it -- src/main.zig's import
+// closure does not contain this path, and tests/security/test_forbidden_edges.py
+// fails if a production module imports it. The live homes of the same
+// behaviour are reliability/watchdog.zig, reliability/fault_injection.zig,
+// reliability/security_check.zig and reliability/latency_histogram.zig,
+// wired in daemon.zig. Its inline tests do not run under `zig build test`.
+// Kept as reference so the design history is readable; do not wire it in.
+
+// G20: Reliability Î“Ã‡Ã¶ ReliabilityWatchdog + FaultMatrix
 // G21: Fault Injection Î“Ã‡Ã¶ controlled injection framework
 // G22: Security Hardening Î“Ã‡Ã¶ input validation + ABI checks
 // G23: Performance Î“Ã‡Ã¶ latency histogram (p50/p95/p99)
