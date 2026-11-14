@@ -19,7 +19,8 @@ static BOOLEAN AegisWriteIntent(PFLT_CALLBACK_DATA data)
     ACCESS_MASK access;
     ULONG disposition;
 
-    if (data == NULL || data->Iopb == NULL)
+    if (data == NULL || data->Iopb == NULL ||
+        data->Iopb->Parameters.Create.SecurityContext == NULL)
         return FALSE;
 
     access = data->Iopb->Parameters.Create.SecurityContext->DesiredAccess;

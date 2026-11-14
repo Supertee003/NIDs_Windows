@@ -47,9 +47,9 @@ sentinel.
 
 ```
 scripts\wdk_build_minifilter.ps1 -> BUILD OK, 10,240 bytes
-  unsigned SHA-256 9C627F0F908BD2F5...
+  (unsigned hash printed by the build; not retained after signing)
 scripts\minifilter_sign.ps1      -> Valid (CN=AEGIS Test Signer)
-  signed SHA-256   10A1BA9EA1253DDD4E1B1B70FFEBF1566CB4BFC793341D56051058A92EC37389
+  signed SHA-256   8AC348372321ECFE5BD535B9A9A19F6F6567C58145395359764AFCAF5C2480E0
 ```
 
 Source pins: `tests/release/test_fim_write_intent.py` (classification tokens;
