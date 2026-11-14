@@ -68,3 +68,22 @@ combination of 25.33 h (previous build) + 21.77 h (this build).
 - `shed_overload` is not in health; the soak tool's `--shed-budget` is the gate.
 - The write filter coverage decision (generic ETW writes not ingested) stands.
 - One lab host; no fleet or kernel qualification claim.
+
+## 5. 22.11 h re-check (same process)
+
+At 2026-11-14 15:02:04 the owner re-ran the same command with `--hours 24`:
+
+```
+verdict = IN_PROGRESS   (22.11 h < 24 h)
+problems = []
+state = RUNNING, degraded = false
+queue_dropped_total = 2,898  (unchanged from 21.77 h)
+shed_overload = 3,396        (unchanged from 21.77 h)
+ring = 0, scm_restarts = []
+```
+
+`IN_PROGRESS` with an empty `problems` list is the expected pre-24 h answer,
+not a failure: the counters did not move in the 20 minutes since the 21.77 h
+check, and no problem appeared. The closure remains the 21.77 h PASS plus the
+declared deviation; a later 24 h run would be the formal completion of the same
+window if the service is left running.
