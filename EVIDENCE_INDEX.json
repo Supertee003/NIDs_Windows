@@ -1,5 +1,5 @@
 {
-  "head_sha": "d976d0b596550128f6e4108d0937bc16e1b0cd39",
+  "head_sha": "87e780eb2aae14ecdd1b373fc822f39fd0a6583a",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-14",
   "generator_version": "3.0",
@@ -6181,13 +6181,13 @@
     },
     {
       "id": "FIM-WRITE-INTENT-001-E2-20261114",
-      "head_sha": "d976d0b",
+      "head_sha": "87e780e",
       "timestamp": "2026-11-14",
       "title": "Minifilter emits only write/create intent, not every read-only open",
       "level": "E2",
       "component": "drivers/minifilter/aegis_minifilter_file.c",
       "flow_id": "HOST-FILE",
-      "description": "R1005 and R1001 fired on a read-only Get-Content because AegisPostOperation emitted every successful IRP_MJ_CREATE. The record struct has no desired-access field, so the classification is done in the driver without an ABI change: AegisPreCreate reads DesiredAccess (FILE_WRITE_DATA/APPEND/WRITE_ATTRIBUTES/DELETE/WRITE_DAC/WRITE_OWNER) and the CreateDisposition high byte (SUPERSEDE/CREATE/OVERWRITE/OVERWRITE_IF), stores a one-bit sentinel in the callback context, and AegisPostOperation returns immediately when ctx is NULL. No record/IOCTL/ring/user-ABI change; the post-op does not touch the possibly-freed security context. WDK build: 10,240 bytes, unsigned 9C627F0F; test-signed Valid 10A1BA9EA1253DDD4E1B1B70FFEBF1566CB4BFC793341D56051058A92EC37389. Two source pins pass. E2 only: the host has not deployed the driver or run the read/write canary.",
+      "description": "R1005 and R1001 fired on a read-only Get-Content because AegisPostOperation emitted every successful IRP_MJ_CREATE. The record struct has no desired-access field, so the classification is done in the driver without an ABI change: AegisPreCreate NULL-guards the create security context, then reads DesiredAccess (FILE_WRITE_DATA/APPEND/WRITE_ATTRIBUTES/DELETE/WRITE_DAC/WRITE_OWNER) and the CreateDisposition high byte (SUPERSEDE/CREATE/OVERWRITE/OVERWRITE_IF), stores a one-bit sentinel in the callback context, and AegisPostOperation returns immediately when ctx is NULL. No record/IOCTL/ring/user-ABI change; the post-op does not touch the possibly-freed security context. WDK build: 10,240 bytes, unsigned 9C627F0F; test-signed Valid 8AC348372321ECFE5BD535B9A9A19F6F6567C58145395359764AFCAF5C2480E0. Two source pins pass. E2 only: the host has not deployed the driver or run the read/write canary.",
       "evidence_artifact": "analysis/current-head/FIM-WRITE-INTENT-001-20261114.md",
       "artifacts": [
         "analysis/current-head/FIM-WRITE-INTENT-001-20261114.md",

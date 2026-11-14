@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T10:09:58.418777+00:00",
+  "generated_at": "2026-11-14T10:10:39.045157+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1573,
@@ -516,7 +516,7 @@
       "path": "analysis/current-head/FIM-WRITE-INTENT-001-20261114.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3293
+      "size": 3321
     },
     {
       "path": "analysis/current-head/FOR-BATCH-001-20261108.md",
@@ -3114,7 +3114,7 @@
       "path": "drivers/minifilter/aegis_minifilter_file.c",
       "class": "canonical-source",
       "role": "source",
-      "size": 3896
+      "size": 3961
     },
     {
       "path": "drivers/minifilter/aegis_minifilter_proc.c",
@@ -3474,7 +3474,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1166410
+      "size": 1166456
     },
     {
       "path": "FLOW_MAP.json",
@@ -3582,7 +3582,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 239537
+      "size": 240178
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3858,7 +3858,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 198320
+      "size": 198825
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -9453,5 +9453,5 @@
       "size": 624
     }
   ],
-  "source_commit": "d976d0b"
+  "source_commit": "87e780e"
 }
