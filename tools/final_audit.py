@@ -1,23 +1,50 @@
-"""Final 100% Audit (T20 AC4, Steps 63-64).
+"""Final audit: component completeness, and whether the release may ship.
 
-Declares 100% PRODUCTION VERIFIED only when every runtime_manifest
-component is verified across the ten audit dimensions (Implemented /
-Used / Authoritative / Integrated / Verified / Secure / Measured /
-Documented / Recoverable / Auditable) AND the five specialized holds
-(Windows / Real-Telemetry / Authorization / Rollback / Fail-Safe) all
-pass AND the golden path is declared. Evidence is gathered only from
-authoritative in-repo records; a missing cell is reported with its
-evidence gap, never silently waived.
+Two different questions were previously answered by one string.
+
+**Component audit.** Every `runtime_manifest` component must be verified across
+the ten dimensions (Implemented / Used / Authoritative / Integrated / Verified /
+Secure / Measured / Documented / Recoverable / Auditable), the five specialized
+holds (Windows / Real-Telemetry / Authorization / Rollback / Fail-Safe) must
+pass, and the golden path must be declared. Evidence is gathered only from
+authoritative in-repo records; a missing cell is reported with its gap, never
+silently waived.
+
+**Release readiness.** A complete component audit is not a shippable release.
+The tool used to print "100% PRODUCTION VERIFIED" for the first question while
+`RC-FINAL-20261114` recorded ~85% for the second, which is exactly the
+contradictory-source-of-truth condition `AGENTS.md` forbids. The declaration is
+now split, and the second half is computed from recorded artifacts:
+
+  * `truth_artifacts`   — `tools/truth.py verify` exits 0,
+  * `component_audit`   — the Part I / II / III result above,
+  * `release_signature` — a release tree carrying a detached signature over its
+    `SHA256SUMS`, naming the digest it covers and the public key (owner: there is
+    no key custody in this repo, and a *reference* record is not a signature),
+  * `clean_host_e5`     — a post-install preflight artifact whose verdict is PASS
+    and whose boot-task loader lives under the install directory (owner: needs a
+    clean Windows host),
+  * `soak_24h`          — a soak artifact with `required_hours >= 24`, verdict
+    PASS and no problems (time: the current window is in progress),
+  * `evidence_debt`     — the unnamed-product-file ratchet has not grown.
+
+Every gate is fail-closed: an absent artifact is an open gate, never a pass, and
+each open gate names its owner. A dry run of the audit therefore cannot render a
+ship verdict it did not earn.
 
 Usage:
-    python tools/final_audit.py            # emits docs/gates/T20_100pct_audit.{json,md}
-    python tools/final_audit.py --check    # exit 1 if declaration cannot be made
+    python tools/final_audit.py                 # emits docs/gates/T20_100pct_audit.{json,md}
+    python tools/final_audit.py --check         # exit 1 unless the component audit is complete
+    python tools/final_audit.py --release-check # exit 1 unless every release gate is closed
 """
 from __future__ import annotations
 
 import argparse
+import datetime as dt
+import hashlib
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -292,14 +319,296 @@ class AuditEngine:
 PROD_CLASSES = {"production", "security"}
 
 
-class Args:
-    check: bool = False
+# ── release readiness ───────────────────────────────────────────────────────
+#
+# Pure evaluators first: every gate is a function of recorded artifacts, so the
+# rules can be pinned without a host, a signature, or 24 hours of wall clock.
+
+INSTALL_DIR = r"C:\Program Files\AEGIS NIDS"
+SOAK_HOURS = 24.0
+# Paths whose change means the runtime a soak measured is no longer this build.
+RUNTIME_PATHS = (
+    "src", "nose", "brain", "ts_policy", "shared", "contracts", "drivers", "go",
+    "build.zig", "CMakeLists.txt", "Cargo.toml", "rust-src",
+)
+
+
+def parse_timestamp(value) -> dt.datetime | None:
+    """Parse an ISO timestamp to naive local time; None when unreadable."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        parsed = dt.datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone().replace(tzinfo=None)
+    return parsed
+
+
+def evaluate_signature(artifacts: list[dict]) -> dict:
+    """A signature gate passes only on a complete, matching detached signature."""
+    if not artifacts:
+        return {"ok": False, "detail": "no release signature artifact exists"}
+    near = []
+    for art in artifacts:
+        path = art.get("path") or "?"
+        if not (art.get("signature") and art.get("public_key") and art.get("signed_digest")):
+            near.append(f"{path} is a reference record, not a signature "
+                        "(needs signature, public_key, signed_digest)")
+            continue
+        actual = art.get("actual_digest")
+        if not actual:
+            near.append(f"{path} signs a digest but the SHA256SUMS it covers is absent")
+            continue
+        if str(actual).upper() != str(art["signed_digest"]).upper():
+            near.append(f"{path} signs {str(art['signed_digest'])[:16]}... but SHA256SUMS "
+                        f"hashes to {str(actual)[:16]}...")
+            continue
+        return {
+            "ok": True,
+            "detail": f"{path} signs SHA256SUMS ({str(actual)[:16]}...) "
+                      f"with a {art.get('algorithm') or 'declared'} key",
+        }
+    return {"ok": False, "detail": "; ".join(near)}
+
+
+def evaluate_clean_host(artifacts: list[dict]) -> dict:
+    """A PASS only counts if the host was installed, not hand-fixed."""
+    if not artifacts:
+        return {"ok": False, "detail": "no post-install preflight artifact exists"}
+    passing = [a for a in artifacts if str(a.get("verdict")).upper() == "PASS"]
+    for art in passing:
+        loader = str(art.get("loader") or "")
+        if INSTALL_DIR.lower() in loader.lower():
+            return {
+                "ok": True,
+                "detail": f"{art.get('path')} PASS with the loader under {INSTALL_DIR}",
+            }
+    if passing:
+        return {
+            "ok": False,
+            "detail": "the only PASS artifacts have a boot-task loader outside the install "
+                      "directory, i.e. they describe a hand-fixed lab host, not an install",
+        }
+    names = ", ".join(str(a.get("path")) for a in artifacts[:3])
+    failed = next((a.get("failed") for a in artifacts if a.get("failed")), [])
+    return {
+        "ok": False,
+        "detail": f"no PASS artifact ({names}); open checks {failed or 'unknown'}",
+    }
+
+
+def evaluate_soak(artifacts: list[dict]) -> dict:
+    """A 24 h claim needs a 24 h artifact that is not older than the build."""
+    candidates = [
+        art for art in artifacts
+        if isinstance(art.get("required_hours"), (int, float))
+        and art["required_hours"] >= SOAK_HOURS
+    ]
+    if not candidates:
+        return {"ok": False, "detail": "no soak artifact declares a 24 h requirement"}
+    ordered = sorted(candidates, key=lambda a: str(a.get("checked_at") or ""), reverse=True)
+    newest = ordered[0]
+    label = (f"{newest.get('path')} is {newest.get('verdict')} at "
+             f"{newest.get('elapsed_hours')}/{newest.get('required_hours')} h")
+    problems = newest.get("problems") or []
+
+    if str(newest.get("verdict")).upper() == "PASS" and not problems:
+        if newest.get("stale") is True:
+            return {"ok": False,
+                    "detail": f"{label} but it predates the current runtime source commit; "
+                              "it does not cover this build"}
+        if newest.get("stale") is None:
+            return {"ok": False,
+                    "detail": f"{label}, but the runtime source commit time is unreadable, "
+                              "so freshness cannot be established"}
+        return {"ok": True, "detail": f"{label} with no problems"}
+
+    detail = label + (f", problems {problems}" if problems else "")
+    older = [
+        a for a in ordered
+        if str(a.get("verdict")).upper() == "PASS" and not (a.get("problems") or [])
+    ]
+    if older:
+        detail += (f"; an older PASS ({older[0].get('path')} at "
+                   f"{older[0].get('elapsed_hours')} h) predates the current source commit "
+                   "and does not close this gate")
+    return {"ok": False, "detail": detail}
+
+
+def evaluate_debt(debt: dict) -> dict:
+    unnamed = debt.get("unnamed")
+    baseline = debt.get("baseline")
+    if not isinstance(unnamed, int) or not isinstance(baseline, int):
+        return {"ok": False, "detail": "evidence-debt baseline or count unreadable"}
+    if unnamed > baseline:
+        return {"ok": False,
+                "detail": f"unnamed product files grew {baseline} -> {unnamed}"}
+    return {"ok": True, "detail": f"unnamed product files {unnamed} <= baseline {baseline}"}
+
+
+def release_gates(facts: dict) -> list[dict]:
+    """One record per release gate: {id, ok, owner, detail}. Fail-closed."""
+    gates: list[dict] = []
+
+    def add(gate_id: str, ok: bool, owner: str, detail: str) -> None:
+        gates.append({"id": gate_id, "ok": bool(ok), "owner": owner, "detail": detail})
+
+    def add_owned(gate_id: str, owner: str, result: dict) -> None:
+        add(gate_id, result.get("ok") is True, owner, result.get("detail") or "unreadable")
+
+    truth = facts.get("truth") or {}
+    add("truth_artifacts", truth.get("ok") is True, "none",
+        truth.get("detail") or "tools/truth.py verify did not run")
+
+    component = facts.get("component") or {}
+    add("component_audit", component.get("ok") is True, "none",
+        component.get("detail") or "component audit did not run")
+
+    add_owned("release_signature", "owner", evaluate_signature(facts.get("signatures") or []))
+    add_owned("clean_host_e5", "owner", evaluate_clean_host(facts.get("preflights") or []))
+    add_owned("soak_24h", "time", evaluate_soak(facts.get("soaks") or []))
+    add_owned("evidence_debt", "none", evaluate_debt(facts.get("debt") or {}))
+    return gates
+
+
+def release_verdict(gates: list[dict]) -> dict:
+    open_gates = [g for g in gates if not g["ok"]]
+    return {
+        "shippable": not open_gates,
+        "open": [g["id"] for g in open_gates],
+        "owners": sorted({g["owner"] for g in open_gates if g["owner"] != "none"}),
+    }
+
+
+# ── artifact collection (the only I/O in this half) ────────────────────────
+
+def _sha256(path: Path) -> str | None:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest().upper()
+    except OSError:
+        return None
+
+
+def _read_json(path: Path) -> dict | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _runtime_source_time(repo: Path) -> dt.datetime | None:
+    """Local commit time of the newest runtime-tree change.
+
+    A soak recorded before that moment measured a different build, so its PASS
+    cannot close a gate for this one ("never treat an old report as current
+    truth"). Returns None when git cannot answer; the gate then fails closed.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "log", "-1", "--format=%cI", "--", *RUNTIME_PATHS],
+            capture_output=True, text=True, timeout=120, cwd=str(repo),
+        ).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return parse_timestamp(out)
+
+
+def collect_release_facts(repo: Path = REPO) -> dict:
+    facts: dict = {}
+
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(repo / "tools" / "truth.py"), "verify"],
+            capture_output=True, text=True, timeout=300, cwd=str(repo),
+        )
+        tail = (proc.stdout or proc.stderr).strip().splitlines()
+        facts["truth"] = {
+            "ok": proc.returncode == 0,
+            "detail": tail[-1] if tail else f"exit {proc.returncode}",
+        }
+    except (OSError, subprocess.SubprocessError) as exc:
+        facts["truth"] = {"ok": False, "detail": f"truth.py did not run: {exc}"}
+
+    signatures = []
+    for path in sorted([*(repo / "release").glob("*/signatures.json"),
+                        *(repo / "release").glob("*/*/signatures.json")]):
+        data = _read_json(path)
+        if data is None:
+            continue
+        sums = path.parent / "SHA256SUMS"
+        signatures.append({
+            "path": str(path.relative_to(repo)),
+            "signature": data.get("signature"),
+            "public_key": data.get("public_key"),
+            "algorithm": data.get("algorithm"),
+            "signed_digest": data.get("signed_digest"),
+            "actual_digest": _sha256(sums) if sums.exists() else None,
+        })
+    facts["signatures"] = signatures
+
+    preflights = []
+    for path in sorted((repo / "admin-evidence").glob("**/preflight-*.json")):
+        data = _read_json(path)
+        if data is None:
+            continue
+        boot = ((data.get("checked_at_facts") or {}).get("task") or {})
+        preflights.append({
+            "path": str(path.relative_to(repo)),
+            "verdict": data.get("verdict"),
+            "failed": data.get("failed") or [],
+            "loader": boot.get("task_to_run"),
+        })
+    facts["preflights"] = preflights
+
+    soaks = []
+    source_time = _runtime_source_time(repo)
+    for path in sorted((repo / "admin-evidence").glob("**/soak-*.json")):
+        if path.name.endswith(".baseline.json"):
+            continue
+        data = _read_json(path)
+        if data is None:
+            continue
+        checked = parse_timestamp(data.get("checked_at"))
+        stale = (None if (checked is None or source_time is None)
+                 else checked < source_time)
+        soaks.append({
+            "path": str(path.relative_to(repo)),
+            "verdict": data.get("verdict"),
+            "elapsed_hours": data.get("elapsed_hours"),
+            "required_hours": data.get("required_hours"),
+            "problems": data.get("problems") or [],
+            "checked_at": data.get("checked_at"),
+            "stale": stale,
+        })
+    facts["soaks"] = soaks
+    facts["runtime_source_time"] = source_time.isoformat() if source_time else None
+
+    baseline_path = repo / "analysis" / "current-head" / "evidence-debt-baseline.json"
+    baseline = _read_json(baseline_path) or {}
+    unnamed = None
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(repo / "tools" / "evidence_debt.py")],
+            capture_output=True, text=True, timeout=300, cwd=str(repo),
+        )
+        match = re.search(r"never named by evidence:\s*(\d+)", proc.stdout or "")
+        unnamed = int(match.group(1)) if match else None
+    except (OSError, subprocess.SubprocessError):
+        unnamed = None
+    facts["debt"] = {"unnamed": unnamed, "baseline": baseline.get("count")}
+    return facts
+
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true",
-                    help="exit non-zero unless the 100 percent declaration is possible")
+                    help="exit non-zero unless the component audit is complete")
+    ap.add_argument("--release-check", action="store_true",
+                    help="exit non-zero unless every release gate is closed (shippable)")
     args = ap.parse_args()
     eng = AuditEngine()
 
@@ -342,12 +651,27 @@ def main() -> int:
 
     all_part_i = not part_i_fail
     all_part_ii = all(part_ii.values())
-    declared = bool(all_part_i and all_part_ii and gp_steps_real)
+    component_complete = bool(all_part_i and all_part_ii and gp_steps_real)
+
+    facts = collect_release_facts(REPO)
+    facts["component"] = {
+        "ok": component_complete,
+        "detail": (
+            f"modules {sum(1 for r in rows.values() if r['pass'])}/{len(rows)}, "
+            f"prod failures {len(part_i_fail)}, part_ii {sum(part_ii.values())}/5, "
+            f"golden path declared={gp_steps_real}"
+        ),
+    }
+    gates = release_gates(facts)
+    verdict = release_verdict(gates)
 
     out = {
-        "step": "T20 AC4 (Steps 63-64)",
+        "step": "T20 AC4 (Steps 63-64) + release readiness",
         "commit": _git_short(),
-        "declaration": "100% PRODUCTION VERIFIED" if declared else "NOT DECLARED",
+        "declaration": {
+            "component_audit": "COMPLETE" if component_complete else "INCOMPLETE",
+            "release": "SHIPPABLE" if verdict["shippable"] else "NOT SHIPPABLE",
+        },
         "part_i": {
             "total_modules": len(rows),
             "passing": sum(1 for r in rows.values() if r["pass"]),
@@ -356,25 +680,38 @@ def main() -> int:
         },
         "part_ii": part_ii,
         "part_iii_golden_path_declared": gp_steps_real,
-        "declared": declared,
+        "component_audit_complete": component_complete,
+        "release": {
+            "shippable": verdict["shippable"],
+            "open": verdict["open"],
+            "owners": verdict["owners"],
+            "gates": gates,
+        },
         "modules": rows,
     }
     (REPO / "docs" / "gates").mkdir(parents=True, exist_ok=True)
     (REPO / "docs" / "gates" / "T20_100pct_audit.json").write_text(
         json.dumps(out, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     write_md(out)
-    print(f"audit: {out['declaration']} "
+    print(f"component audit: {out['declaration']['component_audit']} "
           f"(modules {out['part_i']['passing']}/{out['part_i']['total_modules']}, "
           f"prod failures {len(part_i_fail)}, part_ii "
           f"{sum(part_ii.values())}/5, golden_path declared={gp_steps_real})")
-    if args.check and not declared:
-        print("FAIL: 100% PRODUCTION VERIFIED cannot be declared", file=sys.stderr)
+    print(f"release: {out['declaration']['release']} "
+          f"({len(verdict['open'])}/{len(gates)} gates open)")
+    for gate in gates:
+        print(f"  {'PASS' if gate['ok'] else 'OPEN'}  {gate['id']:<18} "
+              f"[{gate['owner']}] {gate['detail']}")
+    if args.check and not component_complete:
+        print("FAIL: the component audit is incomplete", file=sys.stderr)
+        return 1
+    if args.release_check and not verdict["shippable"]:
+        print(f"FAIL: release gates open: {', '.join(verdict['open'])}", file=sys.stderr)
         return 1
     return 0
 
 
 def _git_short() -> str:
-    import subprocess
     try:
         return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"],
                                        cwd=str(REPO), text=True).strip()
@@ -383,19 +720,34 @@ def _git_short() -> str:
 
 
 def write_md(out: dict) -> None:
+    release = out["release"]
     lines = [
-        "# T20 Final 100% Audit (Steps 63-64)",
+        "# T20 Component Audit and Release Readiness (Steps 63-64)",
         "",
-        f"- Declaration: **{out['declaration']}**",
+        "> The file name is kept for continuity (`RELEASE-BOARD-001` renamed the",
+        "> content, not the path). A complete component audit is **not** a shippable",
+        "> release; the two are reported separately and never merged.",
+        "",
+        f"- Component audit: **{out['declaration']['component_audit']}**",
+        f"- Release: **{out['declaration']['release']}**"
+        + (f" — open gates: {', '.join(release['open'])}" if release["open"] else ""),
         f"- Commit: `{out['commit']}`",
         f"- Part I modules: {out['part_i']['passing']}/{out['part_i']['total_modules']} pass",
         f"- Part I production failures: {len(out['part_i']['prod_failures'])}",
         f"- Part II holds: {sum(out['part_ii'].values())}/5",
         f"- Golden path declared: {out['part_iii_golden_path_declared']}",
         "",
-        "## Part II - specialized holds",
+        "## Release gates",
         "",
+        "| Gate | State | Owner | Evidence |",
+        "|---|---|---|---|",
     ]
+    for gate in release["gates"]:
+        detail = str(gate["detail"]).replace("|", "\\|")
+        lines.append(
+            f"| `{gate['id']}` | {'PASS' if gate['ok'] else 'OPEN'} | {gate['owner']} | {detail} |"
+        )
+    lines += ["", "## Part II - specialized holds", ""]
     for k, v in out["part_ii"].items():
         lines.append(f"- {k}: {'PASS' if v else 'FAIL'}")
     lines += ["", "## Part I per-module gaps", ""]

@@ -1,10 +1,13 @@
 {
-  "step": "T20 AC4 (Steps 63-64)",
-  "commit": "97bb4a1",
-  "declaration": "100% PRODUCTION VERIFIED",
+  "step": "T20 AC4 (Steps 63-64) + release readiness",
+  "commit": "222cfe3",
+  "declaration": {
+    "component_audit": "COMPLETE",
+    "release": "NOT SHIPPABLE"
+  },
   "part_i": {
-    "total_modules": 62,
-    "passing": 62,
+    "total_modules": 66,
+    "passing": 66,
     "failing": [],
     "prod_failures": []
   },
@@ -16,7 +19,57 @@
     "Fail-Safe-Verified": true
   },
   "part_iii_golden_path_declared": true,
-  "declared": true,
+  "component_audit_complete": true,
+  "release": {
+    "shippable": false,
+    "open": [
+      "release_signature",
+      "clean_host_e5",
+      "soak_24h"
+    ],
+    "owners": [
+      "owner",
+      "time"
+    ],
+    "gates": [
+      {
+        "id": "truth_artifacts",
+        "ok": true,
+        "owner": "none",
+        "detail": "TRUTH_VALID — artifacts carry build source 87e780e (ancestor of HEAD; source history and worktree clean)"
+      },
+      {
+        "id": "component_audit",
+        "ok": true,
+        "owner": "none",
+        "detail": "modules 66/66, prod failures 0, part_ii 5/5, golden path declared=True"
+      },
+      {
+        "id": "release_signature",
+        "ok": false,
+        "owner": "owner",
+        "detail": "release\\T20-final\\46b93dc\\signatures.json is a reference record, not a signature (needs signature, public_key, signed_digest)"
+      },
+      {
+        "id": "clean_host_e5",
+        "ok": false,
+        "owner": "owner",
+        "detail": "no PASS artifact (admin-evidence\\host-window-006-20261111\\preflight-20261114.json); open checks ['boot_task_loader_installed']"
+      },
+      {
+        "id": "soak_24h",
+        "ok": false,
+        "owner": "time",
+        "detail": "admin-evidence\\host-window-006-20261111\\soak-24h-delta-latest.json is IN_PROGRESS at 2.04/24.0 h"
+      },
+      {
+        "id": "evidence_debt",
+        "ok": true,
+        "owner": "none",
+        "detail": "unnamed product files 528 <= baseline 528"
+      }
+    ]
+  },
   "modules": {
     "brain/aegis_brain_cython/fast_scan.pyx": {
       "file": "fast_scan.pyx",
@@ -478,8 +531,68 @@
       "missing": [],
       "pass": true
     },
+    "src/capture/nose_pipe_reader.zig": {
+      "file": "nose_pipe_reader.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
     "src/capture/npcap_capture.zig": {
       "file": "npcap_capture.zig",
+      "classification": "",
+      "status": "LAB",
+      "golden_path": false,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/capture/proto/l7_payload.zig": {
+      "file": "l7_payload.zig",
+      "classification": "",
+      "status": "LAB",
+      "golden_path": false,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/contract/event_fabric.zig": {
+      "file": "event_fabric.zig",
       "classification": "",
       "status": "REAL",
       "golden_path": true,
@@ -561,8 +674,28 @@
     "src/core/real_ips_path.zig": {
       "file": "real_ips_path.zig",
       "classification": "",
-      "status": "REAL",
-      "golden_path": true,
+      "status": "LAB",
+      "golden_path": false,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/detection/proto_anomaly.zig": {
+      "file": "proto_anomaly.zig",
+      "classification": "",
+      "status": "LAB",
+      "golden_path": false,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
@@ -722,7 +855,7 @@
       "file": "forensics_engine.zig",
       "classification": "",
       "status": "REAL",
-      "golden_path": true,
+      "golden_path": false,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
@@ -742,7 +875,7 @@
       "file": "replay_engine.zig",
       "classification": "",
       "status": "REAL",
-      "golden_path": true,
+      "golden_path": false,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
@@ -762,7 +895,7 @@
       "file": "replayable_security.zig",
       "classification": "",
       "status": "REAL",
-      "golden_path": true,
+      "golden_path": false,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
@@ -862,7 +995,7 @@
       "file": "wfp_production.zig",
       "classification": "",
       "status": "REAL",
-      "golden_path": true,
+      "golden_path": false,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
@@ -902,7 +1035,7 @@
       "file": "forensics_integration.zig",
       "classification": "",
       "status": "REAL",
-      "golden_path": true,
+      "golden_path": false,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
@@ -982,7 +1115,7 @@
       "file": "forensic_replay_proof.zig",
       "classification": "",
       "status": "REAL",
-      "golden_path": true,
+      "golden_path": false,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
@@ -1041,8 +1174,8 @@
     "src/windows/ips_canary_order.zig": {
       "file": "ips_canary_order.zig",
       "classification": "",
-      "status": "REAL",
-      "golden_path": true,
+      "status": "LAB",
+      "golden_path": false,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
@@ -1081,8 +1214,8 @@
     "src/xdr/xdr_incident_fabric.zig": {
       "file": "xdr_incident_fabric.zig",
       "classification": "",
-      "status": "REAL",
-      "golden_path": true,
+      "status": "LAB",
+      "golden_path": false,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
@@ -1093,7 +1226,7 @@
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
+        "Auditable": "audit/forensic trace producer"
       },
       "missing": [],
       "pass": true

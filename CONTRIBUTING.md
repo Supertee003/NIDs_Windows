@@ -26,8 +26,15 @@ python -m pytest tests/ tests/e2e -q
 cargo test
 python tools/truth.py verify
 python tools/release_engineering.py --verify
-python tools/final_audit.py --check
+python tools/final_audit.py --check          # component audit (Part I/II/III)
+python tools/final_audit.py --release-check  # release gates; see the table it prints
 ```
+
+`--check` and `--release-check` answer different questions. A complete
+component audit is not a shippable release: `--release-check` additionally
+requires a signature over the release `SHA256SUMS`, a clean-host preflight PASS,
+and a 24 h soak recorded after the current runtime commit. When it fails it
+names each open gate and its owner.
 
 Rules that keep the tree healthy: product modules must import with no
 side effects (no sockets, no serve loops, no banners, no `sys.exit`);
