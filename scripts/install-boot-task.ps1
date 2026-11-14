@@ -40,8 +40,11 @@ try {
     Log ("service Environment: " + ($values -join '; '))
 
     # 2. The boot task is the only loader; keep the daemon demand-start.
-    $out = (& sc.exe config AegisNids start= demand 2>&1 | Out-String)
-    if ($out -match 'FAILED|denied') { throw "sc config failed: $($out.Trim())" }
+    # The decision is $LASTEXITCODE. sc.exe localises its message text, so a
+    # regex on 'FAILED' can miss a real failure on a non-English host and this
+    # script would log DEMAND_START over an AUTO_START service it never changed.
+    $out = (& sc.exe config AegisNids start= demand 2>&1 | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0) { throw "sc config failed (exit $LASTEXITCODE): $out" }
     Log 'AegisNids START_TYPE = DEMAND_START'
 
     # 3. Register the loader.

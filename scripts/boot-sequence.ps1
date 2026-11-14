@@ -11,6 +11,18 @@
 #
 # The task writes a probe under ProgramData so the boot result survives the
 # interactive session that launched the reboot.
+#
+# Exit code: 0 only when AegisNids, AegisWfp and AegisMinifilter are all RUNNING
+# at the end. `boot_task_last_result` is what the post-install preflight reads,
+# so an unconditional `exit 0` would make "the loader ran" and "the stack came
+# up" the same fact when they are not. (-StartAttempts / -StartDelaySeconds exist
+# so the retry window can be shortened in a test; the task action passes none.)
+
+param(
+    [int]$StartAttempts = 10,
+    [int]$StartDelaySeconds = 3,
+    [int]$ReadyWaitSeconds = 120
+)
 
 $ErrorActionPreference = 'Continue'
 $root = Split-Path -Parent $PSScriptRoot
@@ -40,11 +52,11 @@ function WaitState([string]$svc, [string]$want, [int]$seconds = 90) {
     return $false
 }
 
-function EnsureRunning([string]$svc, [int]$attempts = 10) {
-    for ($i = 1; $i -le $attempts; $i++) {
+function EnsureRunning([string]$svc) {
+    for ($i = 1; $i -le $StartAttempts; $i++) {
         if ((State $svc) -eq 'RUNNING') { return $true }
         & sc.exe start $svc | Out-Null
-        Start-Sleep -Seconds 3
+        Start-Sleep -Seconds $StartDelaySeconds
     }
     return ((State $svc) -eq 'RUNNING')
 }
@@ -78,7 +90,7 @@ if ($daemonBefore -eq 'RUNNING' -and $wfpBefore -ne 'RUNNING') {
 if ((State 'AegisNids') -ne 'RUNNING') {
     Log 'starting AegisNids (minifilter reader retries until its driver loads)'
     & sc.exe start AegisNids | Out-Null
-    $null = WaitState 'AegisNids' 'RUNNING' 120
+    $null = WaitState 'AegisNids' 'RUNNING' $ReadyWaitSeconds
 }
 Log "AegisNids -> $(State 'AegisNids')"
 
@@ -86,9 +98,16 @@ $fimBefore = State 'AegisMinifilter'
 $fimOk = EnsureRunning 'AegisMinifilter'
 Log "drivers: AegisWfp $wfpBefore -> $(State 'AegisWfp'); AegisMinifilter $fimBefore -> $(State 'AegisMinifilter') (started after daemon)"
 
+# The exit code is the boot verdict, not "the script reached its last line".
+$daemonOk = (State 'AegisNids') -eq 'RUNNING'
+$wfpNow = (State 'AegisWfp') -eq 'RUNNING'
+$fimNow = (State 'AegisMinifilter') -eq 'RUNNING'
+$ok = [bool]($wfpNow -and $daemonOk -and $fimNow)
+
 $probe = [ordered]@{
     checked_at = (Get-Date).ToString('s')
     root       = $root
+    ok         = $ok
     drivers    = [ordered]@{
         wfp_before = $wfpBefore; wfp_after = (State 'AegisWfp'); wfp_ok = $wfpOk
         daemon_before = $daemonBefore
@@ -116,5 +135,9 @@ $probe.scm_7031 = @(Get-WinEvent -FilterHashtable @{ LogName='System'; ID=7031,7
     ForEach-Object { $_.TimeCreated.ToString('s') })
 
 $probe | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $logDir 'post-boot-probe.json') -Encoding utf8
+if (-not $ok) {
+    Log "boot sequence finished with the stack NOT up (AegisWfp=$wfpNow AegisNids=$daemonOk AegisMinifilter=$fimNow)"
+    exit 1
+}
 Log 'boot sequence done; probe written'
 exit 0
