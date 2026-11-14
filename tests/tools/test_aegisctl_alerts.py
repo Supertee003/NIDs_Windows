@@ -78,3 +78,13 @@ def test_enrich_alert_names_the_native_registry_rules():
         alert = cli._enrich_alert({"rule_num": num}, {})
         assert alert["rule_id"] == expected
         assert alert["severity"] == "High"
+
+
+def test_alert_scan_starts_near_the_ring_tip():
+    # ALERT-SCAN-001: unanchored forensics.list starts at the oldest record;
+    # the scan must anchor within the newest window, bounded by oldest.
+    assert cli._alert_scan_start(100_000, 0) == 100_000 - 4096
+    assert cli._alert_scan_start(100_000, 99_000) == 99_000
+    assert cli._alert_scan_start(1_000, 0) == 0
+    assert cli._alert_scan_start(None, 0) is None
+    assert cli._alert_scan_start("bad", 0) is None

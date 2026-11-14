@@ -1746,16 +1746,29 @@ def _enrich_alert(alert: dict, by_num: dict[int, dict]) -> dict:
     }
 
 
+def _alert_scan_start(ring_records, oldest_seq, window: int = 4096):
+    """Start sequence for a newest-first alert scan.
+
+    ALERT-SCAN-001: forensics.list pages from the OLDEST retained record, and
+    the previous 5-page cap read stale records while a canary written seconds
+    earlier sat at the tip. The ring response carries ring_records/oldest_seq;
+    start one window before the tip, bounded by the oldest retained seq.
+    """
+    try:
+        total = int(ring_records)
+        oldest = int(oldest_seq)
+    except (TypeError, ValueError):
+        return None
+    if total <= 0:
+        return 0
+    return max(oldest, total - max(1, int(window)))
+
+
 def _scan_ring_alerts(want: int):
     """Scan the forensic ring for alert-level records (shared core).
 
     Returns (found, scanned, pages, cursor_exhausted, failed): failed is
     True only when the very first page is unreachable (blind, not quiet).
-    NOTE: no after-anchor. forensics.list's after-cursor does not window
-    under ring wrap (proven live: after=435000 and after=422786 both
-    return the tip), so an anchor would claim a window it cannot hold.
-    The unanchored scan returns tip records first in practice; the scan
-    totals are always reported so coverage stays honest.
     """
     found: list[dict] = []
     scanned = 0
@@ -1763,7 +1776,19 @@ def _scan_ring_alerts(want: int):
     cursor_exhausted = False
     failed = False
     after = None
-    while len(found) < want and pages < 5 and not cursor_exhausted:
+
+    # Probe the ring tip so the scan starts near the newest records instead
+    # of replaying the oldest page (ALERT-SCAN-001).
+    try:
+        probe = query_control("forensics.list", payload={"limit": 1})
+    except Exception:
+        probe = None
+    if isinstance(probe, dict):
+        start = _alert_scan_start(probe.get("ring_records"), probe.get("oldest_record_seq"))
+        if start is not None and start > 0:
+            after = start - 1
+
+    while len(found) < want and pages < 25 and not cursor_exhausted:
         payload: dict = {"limit": 200}
         if after is not None:
             payload["after"] = after

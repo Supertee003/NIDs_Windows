@@ -6123,6 +6123,34 @@
         "ETW registry paths are still not normalized into the HKCU rule; the native watcher is the authority.",
         "Forensic retention (~16k records) still requires prompt querying."
       ]
+    },
+    {
+      "id": "REG-HKCU-001-E5-20261114",
+      "head_sha": "e4c2188",
+      "timestamp": "2026-11-14",
+      "title": "HKCU Run canary detected on 680510AB with the SID-bearing key path",
+      "level": "E5",
+      "component": "src/windows/registry_monitor.zig, src/pipeline/telemetry_threads.zig, tools/aegisctl.py",
+      "flow_id": "HOST-REGISTRY",
+      "description": "Installed 680510ABB14E328A (source e4c2188). Created HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run value AegisCanaryE5, waited 1 s, and scanned alerts. Result: REG-HKCU-RUN, severity High, source registry_sensor, verified=true, payload_len=94, record_seq=114434. The daemon log named the hive: 'registry change matched rule 3: HKU\\S-1-5-21-2240144573-294256931-834073773-1001\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'. The chain is user hive -> HKU<SID> watcher -> rule 3 (match HKCU path) -> forensic record carrying the HKU path -> named alert. The canary value was removed after capture. ALERT-SCAN-001: forensics.list pages oldest-first and alerts capped at 5 pages/want, so the first attempts returned only R1004 noise; alerts now anchors the scan 4,096 records before the ring tip and the E5 capture used --limit 1000.",
+      "evidence_artifact": "analysis/current-head/REG-HKCU-E5-20261114.md",
+      "artifacts": [
+        "analysis/current-head/REG-HKCU-E5-20261114.md",
+        "admin-evidence/host-window-006-20261111/canary-hkcu-e5.json",
+        "tools/aegisctl.py",
+        "tests/tools/test_aegisctl_alerts.py"
+      ],
+      "commands": [
+        "python tools/aegisctl.py alerts --limit 1000 --json",
+        "Select-String -Path 'C:\\Program Files\\AEGIS NIDS\\logs\\aegis-daemon-diagnostic.log' -Pattern 'matched rule 3'"
+      ],
+      "limitations": [
+        "One host, one loaded user hive, one canary.",
+        "Hives loaded after the registry thread starts are not watched until restart.",
+        "RegNotify reports the watched root, not the value name.",
+        "Forensic retention is ~16k records; prompt querying or the anchored scan is required.",
+        "A --rule filter for alerts is not implemented; R1004 noise can still fill the early page."
+      ]
     }
   ],
   "known_gaps": [
@@ -12033,10 +12061,10 @@
     "E2_count": 97,
     "E3_count": 12,
     "E4_count": 0,
-    "E5_count": 86,
+    "E5_count": 87,
     "E6_count": 0,
     "E7_count": 0,
-    "E5_with_artifact_count": 36,
+    "E5_with_artifact_count": 37,
     "known_gaps_count": 271
   }
 }
