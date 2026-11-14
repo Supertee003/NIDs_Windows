@@ -115,8 +115,15 @@ def test_install_aegis_registers_and_starts_core_service():
     assert "'runtime\\aegis_nids.exe'" in text, (
         "service binary must be the canonical runtime\\aegis_nids.exe"
     )
-    create = text.index(
-        "sc.exe create AegisNids binPath= $svcBin start= auto")
+    # INSTALLER-BOOT-MODEL-001 / BOOT-RING-LOSS-001: the service is demand-start
+    # and AegisBootSequence is the only loader. The previous pin required
+    # `start= auto`, which is the 2026-11-11 boot failure: SCM starts the daemon
+    # before the demand-start drivers, the ring fills with no reader, and the
+    # daemon is degraded from its first second.
+    create = text.index("sc.exe create AegisNids binPath= $svcBin start= demand")
+    assert "sc.exe create AegisNids binPath= $svcBin start= auto" not in text, (
+        "AUTO_START starts the daemon before its drivers (2026-11-11 boot failure)"
+    )
     assert "sc.exe description AegisNids" in text
     assert ("sc.exe failure AegisNids reset= 86400 "
             "actions= restart/5000/restart/15000/restart/60000") in text, (
@@ -124,6 +131,9 @@ def test_install_aegis_registers_and_starts_core_service():
     )
     assert "sc.exe query AegisNids" in text, (
         "service registration must be idempotent (query before create)"
+    )
+    assert "install-boot-task.ps1" in text, (
+        "the bundle must install the AegisBootSequence loader, not rely on AUTO_START"
     )
     start = text.index("sc.exe start AegisNids")
     assert create < start, "service must be created before it is started"

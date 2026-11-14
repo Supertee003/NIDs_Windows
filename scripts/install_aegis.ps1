@@ -44,7 +44,11 @@ if ($Uninstall) {
     if (-not (Test-Path $InstallRoot)) { throw "Install root not found: $InstallRoot" }
     Stop-Aegis
     schtasks.exe /delete /tn AegisBootSequence /f 2>$null | Out-Null
-    if (sc.exe query AegisNids 2>$null) { sc.exe delete AegisNids | Out-Null }
+    # SERVICE-EXISTS-001: `sc.exe query` writes its "FAILED 1060" text to
+    # STDOUT, so `if (sc.exe query ...)` is always true and `-not (...)` is
+    # always false. Existence is the exit code, never the output.
+    sc.exe query AegisNids *> $null
+    if ($LASTEXITCODE -eq 0) { sc.exe delete AegisNids | Out-Null }
     $driverQc = (sc.exe qc AegisWfp 2>$null) -join ' '
     if ($driverQc -match [regex]::Escape($InstallRoot)) {
         sc.exe stop AegisWfp 2>$null | Out-Null
@@ -113,19 +117,29 @@ Copy-Item (Join-Path $BundleRoot '*') $InstallRoot -Recurse -Force
 
 $runtime = Join-Path $InstallRoot 'runtime'
 $driver = Join-Path $InstallRoot 'drivers\aegis_wfp.sys'
-$driverSvc = sc.exe query AegisWfp 2>$null
 if (-not (Test-Path $driver)) { throw "Installed WFP driver missing: $driver" }
 
-if (-not $driverSvc) {
-    sc.exe create AegisWfp type= kernel start= demand error= normal binPath= "\??\$driver" | Out-Null
+# SERVICE-EXISTS-001: both guards below used the output of `sc.exe query` as a
+# boolean. sc.exe prints "[SC] EnumQueryServicesStatus:OpenService FAILED 1060:"
+# on STDOUT when the service is absent, so that output is always truthy:
+# `if (-not (sc.exe query ...))` never ran and a clean host got no services at
+# all. Existence is `$LASTEXITCODE -eq 0`, and a failed create now aborts the
+# install instead of printing nothing.
+sc.exe query AegisWfp *> $null
+$driverRegistered = ($LASTEXITCODE -eq 0)
+if (-not $driverRegistered) {
+    sc.exe create AegisWfp type= kernel start= demand error= normal binPath= "\??\$driver" *> $null
+    if ($LASTEXITCODE -ne 0) { throw "sc.exe create AegisWfp failed (exit $LASTEXITCODE)" }
 }
 
 # Core service: identical contract to the NSIS installer (tools/installer.py)
 # and docs/DEPLOYMENT.md - DEMAND_START + restart-on-failure recovery. The
 # AegisBootSequence task installed below is the only loader (BOOT-RING-LOSS-001).
 $svcBin = Join-Path $InstallRoot 'runtime\aegis_nids.exe'
-if (-not (sc.exe query AegisNids 2>$null)) {
-    sc.exe create AegisNids binPath= $svcBin start= demand | Out-Null
+sc.exe query AegisNids *> $null
+if ($LASTEXITCODE -ne 0) {
+    sc.exe create AegisNids binPath= $svcBin start= demand *> $null
+    if ($LASTEXITCODE -ne 0) { throw "sc.exe create AegisNids failed (exit $LASTEXITCODE)" }
     sc.exe description AegisNids "AEGIS Network Intrusion Detection System" | Out-Null
     sc.exe failure AegisNids reset= 86400 actions= restart/5000/restart/15000/restart/60000 | Out-Null
     Write-Host "Registered service AegisNids (demand-start + restart-on-failure)" -ForegroundColor Green
