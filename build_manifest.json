@@ -1452,8 +1452,8 @@
     },
     {
       "path": "scripts/install_aegis.ps1",
-      "size": 6425,
-      "sha256": "0d26ee9bae8f258fc81196d3990dd8b6621a0af0ceca67e145374071adad602b",
+      "size": 7021,
+      "sha256": "2e4d59755639b642aa2f9bd04dc00e1948f3b45a7d1e743241f228c4b61515d8",
       "language": "script"
     },
     {
@@ -3726,8 +3726,8 @@
     },
     {
       "path": "tools/installer.py",
-      "size": 26511,
-      "sha256": "4c85ae005d7dd719020b77631e5468daf56cf80ca151fe08eff5b4f166f9f214",
+      "size": 27671,
+      "sha256": "d58b174bdcb512747f298d1aa6e8d5ff0bbe0a452d56733cd590aebdb9a2447b",
       "language": "python/cython"
     },
     {
