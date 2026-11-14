@@ -1021,7 +1021,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "03659844e3c863a6ab0fd47dab2605a5a91b4a43c35cb0ef37a12efa84af4530",
+      "sha256": "b303adda2172ff9d3120da51eb1480a6d736ff69e019721ab225faef18bc8255",
       "language": "json"
     },
     {
@@ -3738,158 +3738,158 @@
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/__init__.py",
-      "size": 1002,
-      "sha256": "c5bf692af6c5083d9101c8f87d87ebea60bbba28b0ea17b3a83f4ec5ae263309",
+      "size": 1578,
+      "sha256": "c6300bea71ce7f75a4e0253062dc77746d50d3d1e0327dc763f6bf7f2435227a",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/alerts.py",
-      "size": 2796,
-      "sha256": "fa5452b7a4314dd3bc1db82f1cf662167517d10742324cb24585f8b2a43e0295",
+      "size": 3370,
+      "sha256": "eeb094a2b07036d9baebcf46115baeb92de321deeaf71845b1f38701e3f84638",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/api.py",
-      "size": 1255,
-      "sha256": "c45ae3b99bb9acf671a9011af033da9917a29ba6e6b147e1f79c519211ca826f",
+      "size": 1826,
+      "sha256": "d7741b825730d0959c88dbca5cff117cd379e3e18331683b89818f26537e8f59",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/backup.py",
-      "size": 585,
-      "sha256": "95d5956d93f226f14a5e025867bff66527d8945d41e9a1f18f0e21530345d4da",
+      "size": 1159,
+      "sha256": "b6e3c10ac86275d109824edcffcdc2b17c7bf47d84286a90195283e98e3d88f6",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/canary.py",
-      "size": 2746,
-      "sha256": "236f12c0589ce2434e871142b977ecda31ac18bd405bffbe1a8032d503c3e759",
+      "size": 3320,
+      "sha256": "4c3984c85c819703c8811dc5cc17f117d8de40e609384ce87bd2b171d84576d1",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/console.py",
-      "size": 12167,
-      "sha256": "a256c7cfdadd5abfb53aaf4d6e19a33f4373fb723013c3e88f739e6b3d728999",
+      "size": 12742,
+      "sha256": "3f189967fc9256e06396b0f0ee60b8cfc0069614b5b119a064b5275afb5f97e0",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/dashboard.py",
-      "size": 2157,
-      "sha256": "901d451d2b0c670f16e90c8ae32dfd84698e8ed484f55c178204ba679c663c39",
+      "size": 2734,
+      "sha256": "66957ced6c49423736267413516f5a49d3b466fdd4af5523f25024693ee4be78",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/events.py",
-      "size": 1473,
-      "sha256": "35d5645993d8e4f0b37ab413dedd968a67c1f9de7a5166cc1bcb886539abc6ae",
+      "size": 2047,
+      "sha256": "47d5dc5f768dc82d7f0fcf01674c4dae54df2bd2203924d4601a10a32bcc792c",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/forensic.py",
-      "size": 1715,
-      "sha256": "33cdad418ffa77b7a142210af30e3ce6c46b2cbe3d2aaf2f2e7835927e5b2d6d",
+      "size": 2291,
+      "sha256": "87c4b0df56ff0237e790e1fd35f64b75b8f2eae981e1e4c5e50bf606b88bae84",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/intelligence.py",
-      "size": 2112,
-      "sha256": "3423e5d6562d99171c6103a014fbbd74e7cb6024537ae354c28f5f24b390d8ac",
+      "size": 2692,
+      "sha256": "d9ab2396740a5b3c1b9f33b3a9d4dbc3902f76a759f4f122ec4fd38254449898",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/logs.py",
-      "size": 828,
-      "sha256": "741488949634bedd28806b072d31f595b0a3061563eead299c35ec9b2eaa1b0f",
+      "size": 1400,
+      "sha256": "0618d1e9787f0a15253ead6c58ade2f1e1b4c91f4aaecfb676b975ef5197fcc5",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/network.py",
-      "size": 7929,
-      "sha256": "827d562bcbc5ac9d85412fc74e46816d3cf0a51d1b1c7800fec558f0314222f3",
+      "size": 8504,
+      "sha256": "2022abf6618780d604cee290b13d600582dd8e3a147db74e320ca4a32c294928",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/policy.py",
-      "size": 2959,
-      "sha256": "f101b8acfd76ab092310cb47be0b93779143c58947b95ff01231e211c9dd5a2b",
+      "size": 3533,
+      "sha256": "0cd9ebfc9dc3e29d2978d9e3ba943442a872f2706eb748f9f3d0710c0d30147c",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/rules.py",
-      "size": 5065,
-      "sha256": "ae17fa5e1b55631e05a1624211bf343ef747818ccb1d0e7f6a0affa71ddffb70",
+      "size": 5638,
+      "sha256": "130e6f5a5431939fc04f910a31f0d8eba4ef3d9016a2326d2e9efcd84c8e3b49",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/simulate.py",
-      "size": 2397,
-      "sha256": "795384d7d5db3cdeffaa83cd841bf0bb55b6f643a68dc1c0096fef08951e9bda",
+      "size": 2973,
+      "sha256": "14b9f6eaf71847ebb203c765d040630cf1c6c3b724b3f0b1776e52075cd3f084",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/status.py",
-      "size": 6753,
-      "sha256": "0b420b1fe37b9d310af571de0a726f1d7f0691a7c957cc56552c9cbd0223513f",
+      "size": 7327,
+      "sha256": "7538af58d25f1eacfa6de1570f6bd8b453bb696ffb754bb8cc69e601dc86762c",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_lifecycle_quarantined.py",
-      "size": 8978,
-      "sha256": "38f727298ac1156fcee4bd566133be4305b9d68525412478a0d0aca5271779f3",
+      "size": 9546,
+      "sha256": "3fd4cfca301942b5f2ab107e7c45ca504e6daeeac87829e5973e7c876422903d",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/backup_recovery.py",
-      "size": 5563,
-      "sha256": "462869b19b2436a3898c97e23adf95cc3a2192f56f44cc9c1071f818cb8bc7dd",
+      "size": 6116,
+      "sha256": "90257cb534ca30cc55adaf865c64be2af783829a513c9821c0b07ce3f6de0115",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/fix_component_labels_v2.py",
-      "size": 1401,
-      "sha256": "90f3a7ef2e959cf4c28f18cdce76dd019c39cde5689728a2dbb2b50660217892",
+      "size": 1962,
+      "sha256": "c4913d3192ef1216c70351320a9cf37a23cbaac92542e5d1188db5e8a0ef8783",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/fix_console.py",
-      "size": 3795,
-      "sha256": "8742bb6470dd7ccc7e00d953c06bfc340d70bd01f8a6d10485a69135df8a8bec",
+      "size": 4346,
+      "sha256": "0b8d5ee14a7690a50ccea713ac5bb5a2436e451534f3f4294e73c13f913bc0c8",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/fix_console2.py",
-      "size": 3398,
-      "sha256": "2b950915562ff9258cf019a7f4f5ab928c8809f898a028f2c04838fd3cf65457",
+      "size": 3948,
+      "sha256": "5460458c01cb052f963581173119979a5c759f95ef936bf380d6442688fcdecd",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/fix_forensics_parser.py",
-      "size": 1675,
-      "sha256": "1b7016f1821f1262611cc424c99751fd7dc8d14eb6bb225e871f471ecc684012",
+      "size": 2233,
+      "sha256": "0a7b1032e0a831aa8b98da96ae3d3e09aead43de053286bfdc9df58f9143d9a5",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/patch_forensics_cli.py",
-      "size": 2514,
-      "sha256": "e91b81fe79ef589e29eb7ec8624d26dd9959c1a1b12ad35b5ab196b1bb1e0bee",
+      "size": 3071,
+      "sha256": "3b3b3ff87184a884aa616ebb2a489f9c814cb0e885c5d64ee6176acaa5fc6b05",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/patch_forensics_list.zig.py",
-      "size": 4120,
-      "sha256": "3ee614c08d9344aeb1e5a6b55d352eed9a047e96b746210032a812ad51a3827d",
+      "size": 4682,
+      "sha256": "1e795be0ce7b93266d3be395e587826a5218d55ff8ed328849bf095c9554afc1",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/patch_graph_daemon.py",
-      "size": 5234,
-      "sha256": "ce0de4823f8c9273c3ce0a334bfe948f7c6eafbf29226f4947139329b104259a",
+      "size": 5790,
+      "sha256": "f1638796cef4eceaf6023df67a8f2913365aaf2edbf914a3522a246d4c443524",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/patch_graph_watch.py",
-      "size": 5603,
-      "sha256": "0dec0f7a5d792e4b1aa36e5e1be677ab2e1b623528f66ac3663bcb98ad172ac8",
+      "size": 6158,
+      "sha256": "55e942de2da6d16267202f4a5fb958097248224955b9d9e79274a7d5ad2eebad",
       "language": "python/cython"
     },
     {
@@ -3918,14 +3918,14 @@
     },
     {
       "path": "tools/legacy/update_auth.py",
-      "size": 852,
-      "sha256": "e3e098d215a93a5e0ce684996388c9d06441022ce05ebfacd42db422fb95aa4e",
+      "size": 1401,
+      "sha256": "da1aac7b2b0dc2fa5d2536601ca97ba0ee2daa4cd0af704a04920e318f095840",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/update_console.py",
-      "size": 9748,
-      "sha256": "0444fc19adaea7ce832a3d89cec3524b999fa8ce9c001627d7907fb9d219abac",
+      "size": 10300,
+      "sha256": "2f90261288fa5c55a8bcef049ea3337fe084ae4863508357ed28efece0a22f5c",
       "language": "python/cython"
     },
     {
