@@ -1,5 +1,5 @@
 {
-  "head_sha": "069356bcbbda92bd7900617b373e2d69be01cf48",
+  "head_sha": "0f0c029ee0c601a9b838f72f4d48bb50f2bf94ee",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-14",
   "generator_version": "3.0",
@@ -7080,6 +7080,68 @@
         "configs/aegis.conf is not validated by anything (the loader understands .json/.toml only); whether it is live configuration or documentation is unanswered.",
         "Only configs/runtime.json was checked against the schema; the other 23 JSON files are pinned as parseable, not conformant (several are fixtures with a deliberate different shape)."
       ]
+    },
+    {
+      "id": "CONTRACT-OPERATOR-001-E2-20261114",
+      "head_sha": "0f0c029",
+      "timestamp": "2026-11-14",
+      "title": "The operator contract had no reader, and one of its claimants was two values short",
+      "level": "E2",
+      "component": "contracts/, shared/, src/forensic/integration_contract.zig, tests/contracts/test_operator_contract.py",
+      "flow_id": "FFI-002",
+      "description": "contracts/operator_contract_v1.json declares the PolicyAction and PepDecision ordinal spaces and the rule that their BLOCK values must not be compared, but no code or test read it - git grep found it only in README, two design docs and generated maps. Comparing it to the code found drift: the contract and src/policy/pep_bindings.zig and the Rust DECISION_* constants all declare six PEP decisions (allow0 block1 rate_limit2 quarantine3 escalate4 drop5), while the duplicate enum in src/forensic/integration_contract.zig stopped at quarantine=3. Its inline Zig test checked exactly the four shared ordinals, so zig build test stayed green while the two Zig enums disagreed about the two values the assessment path returns (pep_bindings returns .escalate when the PEP is unavailable and guards on .drop). Fix: the forensic enum now declares all six with a comment naming pep_bindings.zig as the live authority and forbidding renumbering. shared/protocol/protocol_version.json had the same defect (no reader) for six constants that are duplicated in shared/wire/wire_codec.py. New test tests/contracts/test_operator_contract.py (8 pins): policy_action_ordinals equals PolicyAction in both src/contract/canonical_event.zig and src/forensic/policy_contract.zig; pep_decision_ordinals equals PepDecision in both Zig files and agrees with the Rust DECISION_* constants, and Rust still declares escalate/drop; PolicyAction.BLOCK != PepDecision.BLOCK, enforcing the file's own rule; the enforcement-receipt requirement list is non-empty and versioned; protocol_version.json equals WIRE_VERSION/WIRE_MAGIC/WIRE_HEADER_SIZE/WIRE_MAX_PAYLOAD/EVENT_MAGIC/EVENT_VERSION; and every un-fixtured contract file (contracts/operator_contract_v1.json, shared/protocol/protocol_version.json, shared/runtime/components.json) is named by some code or test in the working tree.",
+      "evidence_artifact": "analysis/current-head/CONTRACT-OPERATOR-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/CONTRACT-OPERATOR-001-20261114.md",
+        "tests/contracts/test_operator_contract.py",
+        "src/forensic/integration_contract.zig",
+        "contracts/fixtures/abi/event_boundaries.json",
+        "contracts/fixtures/adapters/degraded_etw.json",
+        "contracts/fixtures/control/runtime_health_request.json",
+        "contracts/fixtures/control/runtime_health_response.json",
+        "contracts/fixtures/data_plane/ingress_counters.json",
+        "contracts/fixtures/detection/signature_match.json",
+        "contracts/fixtures/enforcement/wfp_receipt.json",
+        "contracts/fixtures/health/degraded_core.json",
+        "contracts/fixtures/lab/scenario_result.json",
+        "contracts/fixtures/operator/recovery_result.json",
+        "contracts/fixtures/policy/active_policy.json",
+        "contracts/fixtures/release/bundle_manifest.json",
+        "contracts/fixtures/replay/observe_only.json",
+        "contracts/operator_contract_v1.json",
+        "shared/__init__.py",
+        "shared/abi/pep_abi.md",
+        "shared/abi/runtime_abi.md",
+        "shared/errors/error_codes.md",
+        "shared/event/canonical_event.md",
+        "shared/federation/fed_codec.py",
+        "shared/policy/policy_ir.md",
+        "shared/protocol/control_protocol.md",
+        "shared/protocol/protocol.md",
+        "shared/protocol/protocol_version.json",
+        "shared/protocol/versioning.md",
+        "shared/protocol/wire_v1.h",
+        "shared/protocol/wire_v1.md",
+        "shared/protocol/wire_v2.md",
+        "shared/protocol/wire_v3.md",
+        "shared/runtime/components.json",
+        "shared/schema/canonical_event_v1.h",
+        "shared/version/version.md",
+        "shared/wire/golden_path_ffi.py",
+        "shared/wire/wire_codec.h",
+        "shared/wire/wire_codec.py"
+      ],
+      "commands": [
+        "python -m pytest -q tests/contracts/test_operator_contract.py",
+        "zig build",
+        "zig build test"
+      ],
+      "limitations": [
+        "The JSON is now true, not load-bearing: the daemon does not consult operator_contract_v1.json at runtime.",
+        "rust-src/lib.rs also declares an ACTION_* space (PASS0 LOG1 ALERT2 RATE_LIMIT3 BLOCK4 QUARANTINE5 ESCALATE6) that differs from the frozen PolicyAction numbering; it is internal to the PEP request path and this patch neither validates nor claims it consistent.",
+        "The reader census matches file names, so a comment naming the file counts as a reader; the other pins provide the validation.",
+        "shared/runtime/components.json passed the census on existing readers (scripts/doc_checker.py, tests/runtime/test_aegisctl.py); its content was not audited here."
+      ]
     }
   ],
   "known_gaps": [
@@ -12987,7 +13049,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 110,
+    "E2_count": 111,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 89,
