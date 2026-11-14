@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "0aee80f",
+  "commit": "6cb07d1",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE"
@@ -23,11 +23,10 @@
   "release": {
     "shippable": false,
     "open": [
-      "release_signature",
-      "soak_24h"
+      "soak_24h",
+      "evidence_debt"
     ],
     "owners": [
-      "owner",
       "time"
     ],
     "gates": [
@@ -45,9 +44,9 @@
       },
       {
         "id": "release_signature",
-        "ok": false,
+        "ok": true,
         "owner": "owner",
-        "detail": "release\\T20-final\\46b93dc\\signatures.json is a reference record, not a signature (needs signature, public_key, signed_digest)"
+        "detail": "release\\T20-final\\7234d7a\\signatures.json signs SHA256SUMS (BA861CB56EDF386D...) with a ed25519 key"
       },
       {
         "id": "clean_host_e5",
@@ -63,9 +62,9 @@
       },
       {
         "id": "evidence_debt",
-        "ok": true,
+        "ok": false,
         "owner": "none",
-        "detail": "unnamed product files 0 <= baseline 0"
+        "detail": "unnamed product files grew 0 -> 1"
       }
     ]
   },
