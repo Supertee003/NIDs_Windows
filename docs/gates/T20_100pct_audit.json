@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "d1166b4",
+  "commit": "ce257c1",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE"
@@ -36,7 +36,7 @@
         "id": "truth_artifacts",
         "ok": true,
         "owner": "none",
-        "detail": "TRUTH_VALID — artifacts carry build source 87e780e (ancestor of HEAD; source history and worktree clean)"
+        "detail": "TRUTH_VALID — artifacts carry build source 069356b (ancestor of HEAD; source history and worktree clean)"
       },
       {
         "id": "component_audit",
@@ -66,7 +66,7 @@
         "id": "evidence_debt",
         "ok": true,
         "owner": "none",
-        "detail": "unnamed product files 379 <= baseline 379"
+        "detail": "unnamed product files 170 <= baseline 170"
       }
     ]
   },
