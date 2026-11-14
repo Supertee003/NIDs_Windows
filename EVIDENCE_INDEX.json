@@ -1,5 +1,5 @@
 {
-  "head_sha": "cc3518db0887daed8048027de5beca56dd62e07b",
+  "head_sha": "e4c218886cc219e599abde8765a22a20c45a17d8",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-14",
   "generator_version": "3.0",
@@ -6093,6 +6093,36 @@
         "In-place upgrade from the old AUTO_START install was not exercised.",
         "Uninstall ordering is pinned by text, not by a run."
       ]
+    },
+    {
+      "id": "REG-HKCU-001-E2-20261114",
+      "head_sha": "e4c2188",
+      "timestamp": "2026-11-14",
+      "title": "User-hive registry watcher, named registry alerts, and the key path in the record",
+      "level": "E2",
+      "component": "src/windows/registry_monitor.zig, src/pipeline/telemetry_threads.zig, tools/aegisctl.py",
+      "flow_id": "HOST-REGISTRY",
+      "description": "The HKCU Run canary produced no alert. Three defects: startAll opened only two HKLM roots, so HKCU rule 3 had no watcher; a SYSTEM service's HKCU is SYSTEM's hive, not the interactive user's; and registryThread pushed an empty payload, so any registry alert was unattributable (payload_len=0). startAll now enumerates HKEY_USERS and opens <SID>\\Software\\Microsoft\\Windows\\CurrentVersion\\Run for every loaded hive; each watcher carries an event path (HKU\\<SID>\\...\\Run, SID retained) and a match path (HKCU\\...\\Run, one rule for all users); rule 3 is registered; the key path is pushed as the event payload; and CLI enrichment maps native ids 1/2/3 to REG-HKLM-RUN / REG-HKLM-SERVICES / REG-HKCU-RUN instead of UNKNOWN_RULE. zig build test: 2,091 passed / 10 skipped / 0 failed; zig build produces 680510ABB14E328A. E2 only: the host has not run the new build or the HKCU canary.",
+      "evidence_artifact": "analysis/current-head/REG-HKCU-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/REG-HKCU-001-20261114.md",
+        "src/windows/registry_monitor.zig",
+        "src/pipeline/telemetry_threads.zig",
+        "tools/aegisctl.py",
+        "tests/tools/test_aegisctl_alerts.py"
+      ],
+      "commands": [
+        "zig build test --summary all",
+        "zig build",
+        "python -m pytest -q tests/tools/test_aegisctl_alerts.py"
+      ],
+      "limitations": [
+        "E2 only; the host has not run 680510AB or the HKCU canary.",
+        "Hives loaded after the registry thread starts are not watched until restart; logon-time monitoring needs a re-scan.",
+        "The watcher fires on any change under the Run key (RegNotify does not report the value name).",
+        "ETW registry paths are still not normalized into the HKCU rule; the native watcher is the authority.",
+        "Forensic retention (~16k records) still requires prompt querying."
+      ]
     }
   ],
   "known_gaps": [
@@ -12000,7 +12030,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 96,
+    "E2_count": 97,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 86,

@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-13T09:08:43.985805+00:00",
+  "generated_at": "2026-11-14T09:56:00.862615+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1562,
+  "total_files": 1569,
   "by_class": {
-    "canonical-docs": 388,
+    "canonical-docs": 392,
     "canonical-build": 192,
     "unclassified": 17,
-    "canonical-source": 665,
-    "canonical-test": 233,
+    "canonical-source": 667,
+    "canonical-test": 234,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -591,6 +591,12 @@
       "size": 4908
     },
     {
+      "path": "analysis/current-head/INSTALLER-BOOT-MODEL-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4038
+    },
+    {
       "path": "analysis/current-head/issue-29-adr0012-measurement-gate-contradiction-20261108.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -681,16 +687,34 @@
       "size": 4451
     },
     {
+      "path": "analysis/current-head/RC-FINAL-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3654
+    },
+    {
       "path": "analysis/current-head/READINESS-CAUSE-001-20261110.md",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4746
     },
     {
+      "path": "analysis/current-head/REG-HKCU-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3697
+    },
+    {
       "path": "analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 5062
+    },
+    {
+      "path": "analysis/current-head/SOAK-21H-BUDGET-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3468
     },
     {
       "path": "analysis/current-head/SOAK-25H-20261113.md",
@@ -3432,7 +3456,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1151820
+      "size": 1159737
     },
     {
       "path": "FLOW_MAP.json",
@@ -3540,7 +3564,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 237980
+      "size": 238458
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3816,7 +3840,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 197103
+      "size": 197479
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -5043,6 +5067,12 @@
       "size": 5182
     },
     {
+      "path": "scripts/boot-sequence.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4571
+    },
+    {
       "path": "scripts/build_all.bat",
       "class": "canonical-build",
       "role": "build-config",
@@ -5319,10 +5349,16 @@
       "size": 6483
     },
     {
+      "path": "scripts/install-boot-task.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3675
+    },
+    {
       "path": "scripts/install_aegis.ps1",
       "class": "canonical-source",
       "role": "source",
-      "size": 6425
+      "size": 7021
     },
     {
       "path": "scripts/install_drivers.bat",
@@ -6528,7 +6564,7 @@
       "path": "src/pipeline/telemetry_threads.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 42742
+      "size": 43435
     },
     {
       "path": "src/platform/win32_pipe.zig",
@@ -7542,7 +7578,7 @@
       "path": "src/windows/registry_monitor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 12882
+      "size": 17393
     },
     {
       "path": "src/windows/registry_trie.zig",
@@ -8025,6 +8061,12 @@
       "size": 12763
     },
     {
+      "path": "tests/release/test_boot_model_packaging.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 2030
+    },
+    {
       "path": "tests/release/test_ci_gates.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -8496,7 +8538,7 @@
       "path": "tests/tools/test_aegisctl_alerts.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 2668
+      "size": 3114
     },
     {
       "path": "tests/tools/test_aegisctl_diagnose.py",
@@ -8556,7 +8598,7 @@
       "path": "tests/tools/test_control_retry.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 2673
+      "size": 3302
     },
     {
       "path": "tests/tools/test_graph.py",
@@ -8844,7 +8886,7 @@
       "path": "tools/aegisctl/api/control_api.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 64993
+      "size": 65175
     },
     {
       "path": "tools/aegisctl/client.py",
@@ -8898,7 +8940,7 @@
       "path": "tools/aegisctl.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 113524
+      "size": 114389
     },
     {
       "path": "tools/audit_kernel_runtime.py",
@@ -8994,7 +9036,7 @@
       "path": "tools/installer.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 26511
+      "size": 27671
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/__init__.py",
@@ -9387,5 +9429,5 @@
       "size": 624
     }
   ],
-  "source_commit": "cc3518d"
+  "source_commit": "e4c2188"
 }

@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-13T09:08:43.988716+00:00",
+  "generated_at": "2026-11-14T09:56:00.867267+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1562,
+  "total_files": 1569,
   "by_role": {
-    "documentation": 374,
+    "documentation": 378,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
-    "source": 369,
-    "test-artifact": 233,
+    "source": 371,
+    "test-artifact": 234,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -708,6 +708,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/INSTALLER-BOOT-MODEL-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/issue-29-adr0012-measurement-gate-contradiction-20261108.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -768,11 +772,23 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/RC-FINAL-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/READINESS-CAUSE-001-20261110.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/REG-HKCU-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/SOAK-21H-BUDGET-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -3676,6 +3692,10 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "scripts/boot-sequence.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "scripts/build_all.bat": {
       "class": "canonical-build",
       "role": "build-config"
@@ -3857,6 +3877,10 @@
       "role": "source"
     },
     "scripts/generate_rule_qualification_matrix.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/install-boot-task.ps1": {
       "class": "canonical-source",
       "role": "source"
     },
@@ -5664,6 +5688,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/release/test_boot_model_packaging.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/release/test_ci_gates.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -6573,5 +6601,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "cc3518d"
+  "source_commit": "e4c2188"
 }
