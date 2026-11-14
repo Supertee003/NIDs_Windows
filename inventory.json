@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T17:13:52.535160+00:00",
+  "generated_at": "2026-11-14T17:34:11.865699+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1831,
+  "total_files": 1834,
   "by_class": {
-    "canonical-docs": 425,
+    "canonical-docs": 427,
     "canonical-build": 210,
     "unclassified": 18,
     "canonical-source": 828,
-    "canonical-test": 278,
+    "canonical-test": 279,
     "canonical-config": 38,
     "legacy": 34
   },
@@ -552,7 +552,13 @@
       "path": "analysis/current-head/E6-BURST-001-20261114.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2931
+      "size": 3325
+    },
+    {
+      "path": "analysis/current-head/E6-L4-CAPTURE-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4035
     },
     {
       "path": "analysis/current-head/ETW-FILE-DEDUPE-001-20261110.md",
@@ -817,6 +823,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4746
+    },
+    {
+      "path": "analysis/current-head/READY-PROMOTION-PLAN-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5772
     },
     {
       "path": "analysis/current-head/REG-HKCU-001-20261114.md",
@@ -3636,7 +3648,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1266739
+      "size": 1272414
     },
     {
       "path": "FLOW_MAP.json",
@@ -3744,7 +3756,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 281929
+      "size": 282247
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4020,7 +4032,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 231844
+      "size": 232094
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -9456,13 +9468,19 @@
       "path": "tests/integration/test_e4_live_pipeline.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 7612
+      "size": 8644
     },
     {
       "path": "tests/integration/test_e6_attack_burst.py",
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 4032
+    },
+    {
+      "path": "tests/integration/test_e6_l4_scan_detection.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 4908
     },
     {
       "path": "tests/ips/test_t18_ips_canary_xdr.py",

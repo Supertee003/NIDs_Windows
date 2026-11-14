@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T17:13:52.537967+00:00",
+  "generated_at": "2026-11-14T17:34:11.868604+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1831,
+  "total_files": 1834,
   "by_role": {
-    "documentation": 411,
+    "documentation": 413,
     "build-config": 199,
     "other": 18,
     "lockfile": 6,
     "rust-build": 4,
     "source": 532,
-    "test-artifact": 278,
+    "test-artifact": 279,
     "config-data": 38,
     "architecture-decision": 12,
     "step-document": 2,
@@ -684,6 +684,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/E6-L4-CAPTURE-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/ETW-FILE-DEDUPE-001-20261110.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -857,6 +861,10 @@
       "role": "documentation"
     },
     "analysis/current-head/READINESS-CAUSE-001-20261110.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/READY-PROMOTION-PLAN-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -6621,6 +6629,10 @@
       "role": "test-artifact"
     },
     "tests/integration/test_e6_attack_burst.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/integration/test_e6_l4_scan_detection.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
