@@ -7659,6 +7659,35 @@
         "Loopback is not captured here, so scan-based numbers describe background traffic, not the stimulus.",
         "No claim about L7 content rules, which need payload bytes on the canonical path."
       ]
+    },
+    {
+      "id": "L7-PATH-001-E2-20261114",
+      "head_sha": "9a69186",
+      "timestamp": "2026-11-14",
+      "title": "Payload bytes reach the Aho-Corasick matcher on the canonical path, but no test joins a rule to a decoded frame",
+      "level": "E2",
+      "component": "nose/capture.go, src/capture/nose_pipe_reader.zig, src/pipeline/event_queue.zig, src/pipeline/event_processor.zig, build.zig",
+      "flow_id": "DETECT-003",
+      "description": "Read of the L7 content path plus two recorded gaps. The path by construction: nose/capture.go captureAttachment attaches the raw frame to the v3 envelope with a CRC over exactly those bytes (bounded by EventV3MaxPayload, truncation marked), src/capture/nose_pipe_reader.zig:427 passes frame.payload into pipeline_queue.pushDecodedFrame, src/pipeline/event_queue.zig:616 pins that a wire-decoded v3 frame carries its payload through the queue gate, and src/pipeline/event_processor.zig:276-299 runs active_ac.matchFirst(payload_slice) for every event with payload_len above zero whose source is not capture_host_net, setting ev.rule_id, kind signature_match and incrementing g_pipeline_detections on a hit. zig build test exits 0 and that build includes the queue-gate test and the Aho-Corasick suite. What is missing: L7-NO-JOIN-001, no test loads a pattern from Rules.json and asserts that a frame decoded from the v3 wire produces that rule id through matchFirst, so L7 detection is E2 by construction and not E4 by observation, and no live L7 hit was observed in this session because the sensor does not capture loopback (CAPTURE-LOOPBACK-001). A lab interface plus a benign marker payload is the proper instrument; scripts/aegis_event_gen.py sends synthetic metadata events rather than wire frames, so using it as detection proof would be a production mock. BUILD-NETINT-001: zig build test-network-integration fails to compile at HEAD with 'src/tests/federation/federation_tcp.zig:5:17: error: import of file outside module path ../../federation/federation_tcp.zig' (Build Summary 0/3 steps succeeded, 1 failed) because build.zig:218 roots that step at src/tests/federation, whose module path forbids the parent import in Zig 0.13, so the loopback TCP integration tests never run and no release gate calls the step. Smallest fix is a one-line build.zig change pointing root_source_file at src/federation/federation_tcp.zig, or a module rooted at src; not applied because build.zig is in RUNTIME_PATHS and a commit there makes the running soak stale.",
+      "evidence_artifact": "analysis/current-head/L7-PATH-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/L7-PATH-001-20261114.md",
+        "nose/capture.go",
+        "src/capture/nose_pipe_reader.zig",
+        "src/pipeline/event_queue.zig",
+        "src/pipeline/event_processor.zig",
+        "build.zig"
+      ],
+      "commands": [
+        "zig build test",
+        "zig build test-network-integration"
+      ],
+      "limitations": [
+        "No live L7 detection claim: E2 plus a code read.",
+        "The queue-gate test proves bytes are kept, not that a rule matches them.",
+        "test-network-integration is unrelated to L7 but is the step that would have caught a broken import, and it is broken.",
+        "Both fixes need src/ or build.zig, which the open soak window forbids until 2026-11-15T22:20:15."
+      ]
     }
   ],
   "known_gaps": [
@@ -13595,18 +13624,41 @@
       "title": "Loopback traffic is not captured by this install, so a self-test cannot feed detection",
       "detail": "Two 5 s windows: 162 npcap_sensor records idle versus 87 during a 150-port loopback scan. E4/E6 detection gates must use a lab interface (VMnet) instead of 127.0.0.1.",
       "blocked_by": "requires a lab interface; product captures whatever interface nose was configured with"
+    },
+    {
+      "id": "L7-NO-JOIN-001",
+      "status": "OPEN",
+      "severity": "P1",
+      "level": "E2",
+      "found_at": "2026-11-14",
+      "found_by": "analysis/current-head/L7-PATH-001-20261114.md",
+      "title": "No test joins a Rules.json pattern to a nose-decoded payload, and no live L7 hit has been observed",
+      "detail": "nose attaches v3 payload bytes, the queue carries them (event_queue.zig:616), and event_processor.zig:276-299 runs matchFirst over them, but the three pieces are tested only in isolation. L7 detection is E2 by construction, not E4 by observation; the loopback sensor gap (CAPTURE-LOOPBACK-001) blocks a live probe on this host.",
+      "blocked_by": "needs a lab interface (VMnet) for a live proof and a src/ test for the join; src/ is blocked while the soak window is open"
+    },
+    {
+      "id": "BUILD-NETINT-001",
+      "status": "OPEN",
+      "severity": "P2",
+      "level": "E1",
+      "found_at": "2026-11-14",
+      "found_by": "zig build test-network-integration",
+      "title": "zig build test-network-integration fails to compile: import of file outside module path",
+      "detail": "src/tests/federation/federation_tcp.zig:5 imports ../../federation/federation_tcp.zig while build.zig:218 roots the step at src/tests/federation, illegal in Zig 0.13. Build Summary 0/3 steps succeeded; the loopback TCP integration tests never run and no release gate calls the step.",
+      "fix": "one-line build.zig change: root_source_file at src/federation/federation_tcp.zig, or a module rooted at src/ imported by the test",
+      "blocked_by": "build.zig is in RUNTIME_PATHS; a commit there makes the running soak stale"
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 117,
+    "E2_count": 118,
     "E3_count": 14,
     "E4_count": 3,
     "E5_count": 89,
     "E6_count": 1,
     "E7_count": 1,
     "E5_with_artifact_count": 39,
-    "known_gaps_count": 274
+    "known_gaps_count": 276
   }
 }
