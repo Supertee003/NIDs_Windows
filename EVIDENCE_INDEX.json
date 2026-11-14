@@ -7631,6 +7631,34 @@
         "E4 here is a CLI-surface reading on a live daemon; no daemon behaviour changed.",
         "state_machine_disagrees is a heuristic over published facts, pinned by four cases."
       ]
+    },
+    {
+      "id": "E6-L4-CAPTURE-001-E4-20261114",
+      "head_sha": "PENDING",
+      "timestamp": "2026-11-14",
+      "title": "Live rule path is empty: no rule-tagged forensic record exists, and loopback traffic is not what this install captures",
+      "level": "E4",
+      "component": "tests/integration/test_e6_l4_scan_detection.py, tests/integration/test_e4_live_pipeline.py, live AEGIS daemon, configs/Rules.json",
+      "flow_id": "DETECT-002",
+      "description": "Negative live measurement of the detection rule path, plus a correction to an earlier gate. configs/Rules.json ships three L4 rules with real rate configuration (R9006 distinct_dst_ports 20/10000 ms, R9002 count 50/1000 ms, R9007 per-packet FLAGS) and src/pipeline/event_processor.zig:307 evaluates them for ev.source == .capture_npcap, which canonical Go-Nose frames map to via event_queue.legacySourceFor, so the path exists for production traffic. Measurement: across 1000 retained forensic records, zero carry a non-zero rule_id; a 150-port loopback SYN scan then --after head produced 187 new records with rule_id histogram {0: 187} (host_telemetry 121, file_sensor 36, npcap_sensor 30), repeated three times with the same result. The caveat is recorded with the number: this install does not capture localhost traffic (idle 162 npcap_sensor records per 5 s versus 87 during the scan), so the scan never reached the sensor and the measurement proves that no rule-tagged record exists in the live stream, not that R9006 is broken. Recorded as two open gaps: DETECT-L4-001 (the L4 rule path is unproven and never tagged anything here, narrowing the earlier GAP-L4-FLAGS-LIVE-UNPROVEN) and CAPTURE-LOOPBACK-001 (a loopback self-test cannot feed detection on this install; detection gates need a lab interface). The slice also corrects a gate I wrote earlier this session: test_real_loopback_traffic_reaches_the_ring asserted Packets captured and ring records do not go backwards, which an idle host satisfies, so it could not fail; it is replaced by test_the_sensor_keeps_writing_evidence, which measures the sensor's own npcap_sensor stream over three consecutive windows and fails if all are empty. New tests/integration/test_e6_l4_scan_detection.py adds a precondition test that deliberately does not claim the scan reached the sensor, and test_a_syn_scan_is_tagged_by_an_l4_rule as xfail(strict=True) carrying DETECT-L4-001. Suite: 11 passed, 2 xfailed in 89.01s for tests/integration. Not measured: whether the flags lane is empty, the rate window is mis-keyed, or the installed binary predates the flags commit (three different fixes), and whether L7 content rules match, since that needs payload bytes on the canonical path.",
+      "evidence_artifact": "analysis/current-head/E6-L4-CAPTURE-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/E6-L4-CAPTURE-001-20261114.md",
+        "tests/integration/test_e6_l4_scan_detection.py",
+        "tests/integration/test_e4_live_pipeline.py",
+        "configs/Rules.json"
+      ],
+      "commands": [
+        "python -m pytest -q tests/integration/",
+        "python tools/aegisctl.py forensics list --limit 1000 --all",
+        "python tools/aegisctl.py forensics list --after <head> --limit 1000"
+      ],
+      "limitations": [
+        "A negative measurement, not a diagnosis: empty flags lane, mis-keyed rate window and an older installed binary are three different fixes.",
+        "Loopback is not captured here, so nothing was injected into the sensor on purpose; a lab-interface rerun is the only proper test.",
+        "No claim about L7 content rules, which need payload bytes on the canonical path.",
+        "The xfail is a tripwire, not a fix."
+      ]
     }
   ],
   "known_gaps": [
@@ -13545,6 +13573,28 @@
       "blocked_by": "src/ change would invalidate the running 24 h soak window (2026-11-14T22:20:15 -> 2026-11-15T22:20:15)",
       "root_cause": "src/daemon.zig:854-860 transitions the lifecycle ONCE from bridge_init.allActive() sampled right after bridge_init.initAll(); nothing re-promotes it, and recomputeHealth() only handles failed->degraded and degraded->recovering with no caller.",
       "current_reporting": "CLI-STATE-001 (2026-11-14) makes readiness name it: state_machine_degraded_but_health_facts_ready; the gate still refuses."
+    },
+    {
+      "id": "DETECT-L4-001",
+      "status": "OPEN",
+      "severity": "P1",
+      "level": "E4",
+      "found_at": "2026-11-14",
+      "found_by": "tests/integration/test_e6_l4_scan_detection.py",
+      "title": "L4 rules (R9006/R9002/R9007) never tag a forensic record in the live stream",
+      "detail": "Zero records with a non-zero rule_id across 1000 retained records; a 150-port SYN scan added 187 records, all rule_id 0, three times. Loopback is not captured here (162 idle vs 87 during the scan per 5 s), so the scan did not reach the sensor: the claim is 'no rule hit observed', not 'R9006 is broken'.",
+      "blocked_by": "needs a lab interface stimulus and a check of the installed build's flags lane; src/ changes are blocked while the soak window is open"
+    },
+    {
+      "id": "CAPTURE-LOOPBACK-001",
+      "status": "OPEN",
+      "severity": "P2",
+      "level": "E4",
+      "found_at": "2026-11-14",
+      "found_by": "tests/integration/test_e4_live_pipeline.py",
+      "title": "Loopback traffic is not captured by this install, so a self-test cannot feed detection",
+      "detail": "Two 5 s windows: 162 npcap_sensor records idle versus 87 during a 150-port loopback scan. E4/E6 detection gates must use a lab interface (VMnet) instead of 127.0.0.1.",
+      "blocked_by": "requires a lab interface; product captures whatever interface nose was configured with"
     }
   ],
   "evidence_level_summary": {
@@ -13552,11 +13602,11 @@
     "E1_count": 21,
     "E2_count": 117,
     "E3_count": 14,
-    "E4_count": 2,
+    "E4_count": 3,
     "E5_count": 89,
     "E6_count": 1,
     "E7_count": 1,
     "E5_with_artifact_count": 39,
-    "known_gaps_count": 272
+    "known_gaps_count": 274
   }
 }

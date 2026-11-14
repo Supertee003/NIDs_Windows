@@ -102,34 +102,65 @@ def test_records_read_back_are_canonical_and_verified() -> None:
         assert record.get("source_name"), record
 
 
-@needs_daemon
-def test_real_loopback_traffic_reaches_the_ring() -> None:
-    """Generate traffic the sensor can see, then watch the ring and counters move."""
-    before_status = _status_text()
-    before_packets = _int_field(before_status, "Packets captured")
-    before_ring = int(_json("forensics", "verify").get("records") or 0)
+SCAN_PORTS = 150
+SETTLE_SECONDS = 5.0
 
-    # Real TCP connects on loopback; nothing is sent to any external host.
-    for port in (9, 80, 443, 8080):
+
+def _head_seq() -> int:
+    listing = _json("forensics", "list", "--limit", "1000", "--all")
+    records = listing.get("records") or []
+    assert records, "the forensic ring is empty; nothing to measure against"
+    return max(int(record["record_seq"]) for record in records)
+
+
+def _npcap_records_since(seq: int) -> int:
+    listing = _json("forensics", "list", "--after", str(seq), "--limit", "1000")
+    return sum(
+        1 for record in (listing.get("records") or [])
+        if record.get("source_name") == "npcap_sensor"
+    )
+
+
+def _scan() -> None:
+    for port in range(1, SCAN_PORTS + 1):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(0.5)
+        sock.settimeout(0.05)
         try:
             sock.connect(("127.0.0.1", port))
         except OSError:
             pass
         finally:
             sock.close()
-    time.sleep(3.0)
 
-    after_status = _status_text()
-    after_packets = _int_field(after_status, "Packets captured")
-    after_ring = int(_json("forensics", "verify").get("records") or 0)
 
-    assert after_packets >= before_packets, (before_packets, after_packets)
-    assert after_ring >= before_ring, (before_ring, after_ring)
-    # The sensor must be moving under live traffic; if the host is idle both
-    # counters can legitimately stand still, so this is a floor, not a delta.
-    assert after_packets > 0 and after_ring > 0
+@needs_daemon
+def test_the_sensor_keeps_writing_evidence() -> None:
+    """The sensor's own record stream is live and continuous.
+
+    Earlier versions of this check were not evidence. "Packets captured does not
+    go backwards" is satisfied by an idle host, and attributing growth to
+    traffic we generate turned out to be impossible here: two 5 s windows
+    measured on 2026-11-14 gave 162 sensor records idle vs 87 during a 150-port
+    loopback scan, so localhost traffic is **not** what this install captures.
+    That limit is recorded as `CAPTURE-LOOPBACK-001` and it means the detection
+    gates cannot be fed by a self-test on loopback; they need a lab interface.
+
+    What this asserts is the part that is true and measurable: the sensor keeps
+    producing verified records in consecutive windows.
+    """
+    # A quiet host can legitimately write nothing for a few seconds, so measure
+    # three windows and require the sensor to be alive in at least one of them.
+    windows: list[int] = []
+    for _ in range(3):
+        seq = _head_seq()
+        time.sleep(SETTLE_SECONDS)
+        windows.append(_npcap_records_since(seq))
+
+    assert any(count > 0 for count in windows), (
+        "the sensor wrote no npcap_sensor record in three consecutive 5 s windows: "
+        f"{windows}"
+    )
+    assert _int_field(_status_text(), "Packets captured") > 0
 
 
 @needs_daemon
