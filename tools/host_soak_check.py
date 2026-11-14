@@ -18,6 +18,21 @@ dropped queue rows still produced PASS. Every criterion below is now fail-closed
     shed could pass a "zero loss" soak while still discarding rows,
   * no SCM 7031/7034 restart for AegisNids inside the window.
 
+SOAK-BASELINE-001: the counters above are cumulative for the life of the
+process, so a window that starts at process start also charges the window with
+whatever happened in its first minutes. A deploy plus its canaries can burn a
+full 24 h budget before the host settles, after which the process loses nothing
+for the rest of the day — and the gate cannot tell that apart from steady loss.
+`--baseline` records the counters at window start (or reads a recorded one) and
+then gates the *growth* since that point:
+
+  * every counter is reported twice — absolute and delta since the baseline —
+    so nothing is hidden, the pre-window part is visible in the artifact,
+  * a counter that goes backwards means the process restarted inside the window
+    and fails closed,
+  * without `--baseline` the old absolute comparison applies unchanged, so a
+    historical verdict can still be reproduced exactly.
+
 Usage:
     python tools/host_soak_check.py --start 2026-11-10T02:13:00
     python tools/host_soak_check.py --start ... --hours 24 --loss-budget 0 --json out.json
@@ -133,6 +148,42 @@ def restart_events(started: dt.datetime) -> list[str]:
     return [line.strip() for line in proc.stdout.splitlines() if line.strip()]
 
 
+def _counter_problems(
+    name: str,
+    now_value,
+    base_value,
+    budget: int,
+    *,
+    baseline_mode: bool,
+    absolute: bool,
+) -> list[str]:
+    """Compare one counter with its budget, either absolutely or since baseline.
+
+    Fail-closed: a missing or non-numeric value is a problem, never a pass.
+    """
+    if not isinstance(now_value, (int, float)):
+        return [f"{name} unavailable in the live payload"]
+    if not baseline_mode:
+        if now_value > budget:
+            return [f"{name}={int(now_value)} exceeds the loss budget {budget}"]
+        return []
+    if not isinstance(base_value, (int, float)):
+        return [f"baseline has no numeric {name}; refusing to score the window"]
+    if now_value < base_value:
+        return [
+            f"{name} went backwards ({int(now_value)} < baseline {int(base_value)}): "
+            "the process restarted inside the window, so the delta is meaningless"
+        ]
+    delta = int(now_value - base_value)
+    if delta > budget:
+        return [
+            f"{name} grew by {delta} inside the window "
+            f"(baseline {int(base_value)}, now {int(now_value)}) "
+            f"exceeding the {'policy-shed' if absolute else 'loss'} budget {budget}"
+        ]
+    return []
+
+
 def evaluate(
     *,
     elapsed_h: float,
@@ -145,6 +196,7 @@ def evaluate(
     restarts: list[str],
     loss_budget: int,
     shed_budget: int = 0,
+    baseline: dict | None = None,
 ) -> tuple[list[str], bool]:
     """Return (problems, complete). Pure function so the verdict is testable."""
     problems: list[str] = []
@@ -164,6 +216,7 @@ def evaluate(
                     "(process restarted mid-soak)"
                 )
 
+    baseline_mode = baseline is not None
     if "error" in health:
         problems.append(f"daemon health unavailable: {health['error']}")
     else:
@@ -173,20 +226,33 @@ def evaluate(
                 f" (state={health.get('state')}, runtime_state={health.get('runtime_state')})"
             )
         integrity = health.get("data_integrity") or {}
+        base_integrity = (baseline or {}).get("data_integrity") or {}
         for key in LOSS_COUNTERS:
-            value = integrity.get(key)
-            if isinstance(value, (int, float)) and value > loss_budget:
-                problems.append(f"{key}={int(value)} exceeds the loss budget {loss_budget}")
+            problems.extend(
+                _counter_problems(
+                    key,
+                    integrity.get(key),
+                    base_integrity.get(key),
+                    loss_budget,
+                    baseline_mode=baseline_mode,
+                    absolute=False,
+                )
+            )
 
     if queue is not None:
         if "error" in queue:
             problems.append(f"queue stats unavailable: {queue['error']}")
         else:
-            shed = queue.get("shed_overload")
-            if isinstance(shed, (int, float)) and shed > shed_budget:
-                problems.append(
-                    f"shed_overload={int(shed)} exceeds the policy-shed budget {shed_budget}"
+            problems.extend(
+                _counter_problems(
+                    "shed_overload",
+                    queue.get("shed_overload"),
+                    (baseline or {}).get("shed_overload"),
+                    shed_budget,
+                    baseline_mode=baseline_mode,
+                    absolute=True,
                 )
+            )
 
     if restarts:
         problems.append(
@@ -218,6 +284,24 @@ def main(argv: list[str] | None = None) -> int:
         help="owner-approved number of deliberate policy-shed rows allowed (default 0)",
     )
     parser.add_argument("--json", type=pathlib.Path, default=None)
+    parser.add_argument(
+        "--baseline",
+        default=None,
+        help=(
+            "'auto' to snapshot the counters now (the window starts here), or the "
+            "path of a snapshot recorded earlier. Gates growth since that point and "
+            "still reports the absolute counters."
+        ),
+    )
+    parser.add_argument(
+        "--baseline-out",
+        type=pathlib.Path,
+        default=None,
+        help=(
+            "where `--baseline auto` writes the snapshot; later runs pass that "
+            "file back with --baseline. Defaults to <json>.baseline.json."
+        ),
+    )
     parser.add_argument("--expect", nargs="*", default=list(SERVICES), help="services that must run")
     args = parser.parse_args(argv)
 
@@ -238,6 +322,39 @@ def main(argv: list[str] | None = None) -> int:
     elapsed = now - started
     elapsed_h = elapsed.total_seconds() / 3600
 
+    # SOAK-BASELINE-001: the counters are cumulative for the process, so an
+    # absolute gate charges this window with whatever ran before it. `auto`
+    # anchors the window at this moment and snapshots the counters; a path
+    # replays an earlier anchor.
+    baseline: dict | None = None
+    if args.baseline:
+        if args.baseline == "auto":
+            snap_health = daemon_health()
+            snap_queue = daemon_queue()
+            if "error" in snap_health or "error" in snap_queue:
+                print("cannot snapshot the baseline: daemon unreachable", file=sys.stderr)
+                return 3
+            baseline = {
+                "recorded_at": now.isoformat(timespec="seconds"),
+                "data_integrity": snap_health.get("data_integrity") or {},
+                "shed_overload": snap_queue.get("shed_overload"),
+            }
+            out_path = args.baseline_out or (
+                args.json.with_suffix(".baseline.json") if args.json else None
+            )
+            if out_path is not None:
+                out_path.write_text(
+                    json.dumps(baseline, indent=2) + "\n", encoding="utf-8", newline="\n"
+                )
+            started = now
+            elapsed_h = 0.0
+        else:
+            base_path = pathlib.Path(args.baseline)
+            if not base_path.exists():
+                print(f"baseline file not found: {base_path}", file=sys.stderr)
+                return 3
+            baseline = json.loads(base_path.read_text(encoding="utf-8"))
+
     states = service_states()
     status = daemon_status()
     health = daemon_health()
@@ -255,6 +372,7 @@ def main(argv: list[str] | None = None) -> int:
         restarts=restarts,
         loss_budget=args.loss_budget,
         shed_budget=args.shed_budget,
+        baseline=baseline,
     )
     verdict = "FAIL" if problems else ("PASS" if complete else "IN_PROGRESS")
 
@@ -277,6 +395,31 @@ def main(argv: list[str] | None = None) -> int:
         "scm_restarts": restarts,
         "problems": problems,
     }
+    if baseline is not None:
+        # Both views, always: the delta is what the gate scores, the absolute
+        # value is what the host actually recorded since the process started.
+        now_integrity = report["data_integrity"]
+        base_integrity = baseline.get("data_integrity") or {}
+        report["baseline"] = baseline
+        report["counters_absolute"] = {
+            **{k: now_integrity.get(k) for k in LOSS_COUNTERS},
+            "shed_overload": report["shed_overload"],
+        }
+        report["counters_delta"] = {
+            k: (
+                now_integrity.get(k) - base_integrity[k]
+                if isinstance(now_integrity.get(k), (int, float))
+                and isinstance(base_integrity.get(k), (int, float))
+                else None
+            )
+            for k in LOSS_COUNTERS
+        }
+        report["counters_delta"]["shed_overload"] = (
+            report["shed_overload"] - baseline["shed_overload"]
+            if isinstance(report["shed_overload"], (int, float))
+            and isinstance(baseline.get("shed_overload"), (int, float))
+            else None
+        )
 
     text = json.dumps(report, indent=2)
     if args.json:

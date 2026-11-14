@@ -24,6 +24,24 @@ def load_tool():
 RUNNING = {name: "RUNNING" for name in ("AegisNids", "AegisAggregator", "AegisWfp", "AegisMinifilter")}
 
 
+def zero_integrity(**over) -> dict:
+    """A complete data_integrity block, as the daemon actually emits it.
+
+    SOAK-BASELINE-001 made a missing counter fail closed (an unread counter is
+    not evidence of zero loss), so the fixtures carry all six keys.
+    """
+    block = {
+        "queue_dropped_total": 0,
+        "nose_frames_rejected": 0,
+        "nose_frames_dropped": 0,
+        "nose_pipe_errors": 0,
+        "minifilter_ring_dropped": 0,
+        "minifilter_pipeline_dropped": 0,
+    }
+    block.update(over)
+    return block
+
+
 def base_kwargs(**over):
     kwargs = dict(
         elapsed_h=25.0,
@@ -31,7 +49,7 @@ def base_kwargs(**over):
         states=dict(RUNNING),
         expect=tuple(RUNNING),
         status={"state": "RUNNING", "uptime_ms": 25 * 3_600_000},
-        health={"state": "RUNNING", "degraded": False, "data_integrity": {}},
+        health={"state": "RUNNING", "degraded": False, "data_integrity": zero_integrity()},
         queue={"shed_overload": 0},
         restarts=[],
         loss_budget=0,
@@ -75,7 +93,7 @@ def test_owner_approved_budget_allows_bounded_loss() -> None:
             health={
                 "state": "RUNNING",
                 "degraded": False,
-                "data_integrity": {"queue_dropped_total": 1_500},
+                "data_integrity": zero_integrity(queue_dropped_total=1_500),
             },
         )
     )
@@ -127,3 +145,96 @@ def test_queue_stats_unavailable_fails_closed() -> None:
         **base_kwargs(queue={"error": "control_daemon_query_failed"})
     )
     assert any("queue stats unavailable" in p for p in problems)
+
+
+# ── SOAK-BASELINE-001 ───────────────────────────────────────────────────────
+#
+# The counters are cumulative for the process, so the absolute gate charges a
+# window with everything that happened since process start. Observed on the
+# host: a driver deploy plus its canaries shed 5,310 ETW rows in the first
+# ~20 minutes, then the process shed nothing for the next two hours. Under the
+# absolute rule that window can never pass, even if it is clean from then on;
+# under a baseline rule it passes *and* the pre-window burst stays visible in
+# the artifact. Both behaviours are pinned here.
+
+def _baseline() -> dict:
+    return {
+        "recorded_at": "2026-11-14T18:55:00",
+        "data_integrity": {
+            "queue_dropped_total": 2_898,
+            "nose_frames_rejected": 0,
+            "nose_frames_dropped": 0,
+            "nose_pipe_errors": 0,
+            "minifilter_ring_dropped": 0,
+            "minifilter_pipeline_dropped": 0,
+        },
+        "shed_overload": 5_310,
+    }
+
+
+def _live_after_baseline() -> dict:
+    return {
+        "state": "RUNNING",
+        "degraded": False,
+        "data_integrity": {
+            "queue_dropped_total": 2_898,
+            "nose_frames_rejected": 0,
+            "nose_frames_dropped": 0,
+            "nose_pipe_errors": 0,
+            "minifilter_ring_dropped": 0,
+            "minifilter_pipeline_dropped": 0,
+        },
+    }
+
+
+def test_baseline_ignores_the_pre_window_burst_but_keeps_it_reported() -> None:
+    problems, complete = load_tool().evaluate(
+        **base_kwargs(
+            health=_live_after_baseline(),
+            queue={"shed_overload": 5_310},
+            loss_budget=3_500,
+            shed_budget=4_000,
+            baseline=_baseline(),
+        )
+    )
+    assert problems == []
+    assert complete is True
+
+
+def test_baseline_still_fails_on_growth_inside_the_window() -> None:
+    live = _live_after_baseline()
+    live["data_integrity"] = dict(live["data_integrity"], queue_dropped_total=2_898 + 3_501)
+    problems, _ = load_tool().evaluate(
+        **base_kwargs(
+            health=live,
+            queue={"shed_overload": 5_310 + 4_001},
+            loss_budget=3_500,
+            shed_budget=4_000,
+            baseline=_baseline(),
+        )
+    )
+    assert any("queue_dropped_total grew by 3501" in p for p in problems)
+    assert any("shed_overload grew by 4001" in p for p in problems)
+
+
+def test_baseline_counter_going_backwards_fails_closed() -> None:
+    live = _live_after_baseline()
+    live["data_integrity"] = dict(live["data_integrity"], queue_dropped_total=0)
+    problems, _ = load_tool().evaluate(
+        **base_kwargs(health=live, queue={"shed_overload": 5_310}, baseline=_baseline())
+    )
+    assert any("queue_dropped_total went backwards" in p for p in problems)
+
+
+def test_baseline_missing_a_counter_fails_closed() -> None:
+    base = _baseline()
+    base["data_integrity"].pop("minifilter_ring_dropped")
+    problems, _ = load_tool().evaluate(
+        **base_kwargs(
+            health=_live_after_baseline(),
+            queue={"shed_overload": 5_310},
+            baseline=base,
+        )
+    )
+    assert any("baseline has no numeric minifilter_ring_dropped" in p for p in problems)
+
