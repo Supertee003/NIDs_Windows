@@ -43,6 +43,7 @@ if ($Rollback) {
 if ($Uninstall) {
     if (-not (Test-Path $InstallRoot)) { throw "Install root not found: $InstallRoot" }
     Stop-Aegis
+    schtasks.exe /delete /tn AegisBootSequence /f 2>$null | Out-Null
     if (sc.exe query AegisNids 2>$null) { sc.exe delete AegisNids | Out-Null }
     $driverQc = (sc.exe qc AegisWfp 2>$null) -join ' '
     if ($driverQc -match [regex]::Escape($InstallRoot)) {
@@ -120,14 +121,23 @@ if (-not $driverSvc) {
 }
 
 # Core service: identical contract to the NSIS installer (tools/installer.py)
-# and docs/DEPLOYMENT.md - auto-start + restart-on-failure recovery.
+# and docs/DEPLOYMENT.md - DEMAND_START + restart-on-failure recovery. The
+# AegisBootSequence task installed below is the only loader (BOOT-RING-LOSS-001).
 $svcBin = Join-Path $InstallRoot 'runtime\aegis_nids.exe'
 if (-not (sc.exe query AegisNids 2>$null)) {
-    sc.exe create AegisNids binPath= $svcBin start= auto | Out-Null
+    sc.exe create AegisNids binPath= $svcBin start= demand | Out-Null
     sc.exe description AegisNids "AEGIS Network Intrusion Detection System" | Out-Null
     sc.exe failure AegisNids reset= 86400 actions= restart/5000/restart/15000/restart/60000 | Out-Null
-    Write-Host "Registered service AegisNids (auto-start + restart-on-failure)" -ForegroundColor Green
+    Write-Host "Registered service AegisNids (demand-start + restart-on-failure)" -ForegroundColor Green
 }
+
+# LOSS-BUDGET-001: the accepted envelope, the demand-start model and the boot
+# loader ship with the bundle. Fail the install if they cannot be installed.
+$bootSetup = Join-Path $InstallRoot 'scripts\install-boot-task.ps1'
+if (-not (Test-Path $bootSetup)) { throw "Boot-task installer missing: $bootSetup" }
+& $bootSetup -LossBudget 3500
+if ($LASTEXITCODE -ne 0) { throw "Boot-task / loss-budget setup failed (exit $LASTEXITCODE)" }
+
 sc.exe start AegisNids | Out-Null
 if ($LASTEXITCODE -ne 0) {
     Write-Warning "sc.exe start AegisNids returned $LASTEXITCODE; check the service state."

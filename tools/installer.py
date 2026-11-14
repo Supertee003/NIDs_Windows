@@ -259,8 +259,17 @@ Section "Install"
   SetOutPath "$INSTDIR"
   File "build_manifest.json"
 
-  ; Service registration (auto-start, restart on failure)
-  nsExec::ExecToLog 'sc create AegisNids binPath= "$INSTDIR\runtime\aegis_nids.exe" start= auto'
+  ; BOOT-RING-LOSS-001 / LOSS-BUDGET-001: the boot loader and its installer
+  ; must ship with the product. The task, start mode and loss budget are
+  ; installed below by install-boot-task.ps1; without these files a fresh
+  ; install would come back AUTO_START and blind after a reboot.
+  SetOutPath "$INSTDIR\scripts"
+  File "scripts\boot-sequence.ps1"
+  File "scripts\install-boot-task.ps1"
+  SetOutPath "$INSTDIR"
+
+  ; Service registration (demand-start: AegisBootSequence is the loader)
+  nsExec::ExecToLog 'sc create AegisNids binPath= "$INSTDIR\runtime\aegis_nids.exe" start= demand'
   nsExec::ExecToLog 'sc description AegisNids "AEGIS Network Intrusion Detection System"'
   nsExec::ExecToLog 'sc failure AegisNids reset= 86400 actions= restart/5000/restart/15000/restart/60000'
 
@@ -324,6 +333,17 @@ Section "Install"
   ${Else}
     DetailPrint "AEGIS: aegis_minifilter.sys not in payload - AegisMinifilter service not registered (build it: scripts\wdk_build_minifilter.ps1)"
   ${EndIf}
+
+  ; BOOT-RING-LOSS-001 / LOSS-BUDGET-001: install the loader, the demand-start
+  ; model and the loss budget before anything starts the daemon. Failure aborts
+  ; setup: an install that cannot come back after reboot is not an install.
+  nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\scripts\install-boot-task.ps1"'
+  Pop $0
+  StrCmp $0 "0" boot_model_ok
+    MessageBox MB_ICONSTOP "AEGIS: boot task / loss budget setup failed (install-boot-task.ps1). Setup aborted; the service was not started."
+    Abort
+  boot_model_ok:
+  DetailPrint "AEGIS: AegisBootSequence + AEGIS_LOSS_BUDGET installed"
 
   ; Start menu shortcuts
   CreateDirectory "$SMPROGRAMS\AEGIS NIDS"
@@ -394,6 +414,7 @@ Section "Uninstall"
   nsExec::ExecToLog "sc stop AegisNids"
   nsExec::ExecToLog "taskkill /f /im aegis_nids.exe"
   Sleep 2000
+  nsExec::ExecToLog "schtasks /delete /tn AegisBootSequence /f"
   nsExec::ExecToLog "sc delete AegisNids"
   ; Kernel telemetry drivers (DEPLOY-120): unload before delete before
   ; removing the System32 copies. The altitude values live inside the
@@ -440,6 +461,7 @@ Section "Uninstall"
   RMDir "$SMPROGRAMS\AEGIS NIDS"
   RMDir /r "$INSTDIR\runtime"
   RMDir /r "$INSTDIR\drivers"
+  RMDir /r "$INSTDIR\scripts"
   Delete "$INSTDIR\build_manifest.json"
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids"
 
