@@ -113,8 +113,16 @@ def test_the_ring_keeps_accepting_records_before_asking_about_detection() -> Non
     ),
 )
 def test_a_syn_scan_is_tagged_by_an_l4_rule() -> None:
+    """Only **sensor** records count: a tagged file or registry record is not the scan.
+
+    The first version counted any tagged record in the window, which produced two
+    XPASSes that could not be attributed to the scan — the daemon also tags file
+    and registry telemetry (R1001-style rules). Attribution is part of the claim,
+    so only `npcap_sensor` records are counted here.
+    """
     rounds: list[int] = []
-    tagged = 0
+    sensor_tagged = 0
+    other_tagged = 0
     for _ in range(3):
         before = int(_json("metrics").get("detections") or 0)
         _scan()
@@ -122,5 +130,14 @@ def test_a_syn_scan_is_tagged_by_an_l4_rule() -> None:
         rounds.append(int(_json("metrics").get("detections") or 0) - before)
         seq = _head_seq()
         records = _json("forensics", "list", "--after", str(seq), "--limit", "1000").get("records") or []
-        tagged += sum(1 for r in records if int(r.get("rule_id") or 0) != 0)
-    assert tagged > 0, f"no rule-tagged record in three scan rounds (detections deltas {rounds})"
+        for record in records:
+            if int(record.get("rule_id") or 0) == 0:
+                continue
+            if record.get("source_name") == "npcap_sensor":
+                sensor_tagged += 1
+            else:
+                other_tagged += 1
+    assert sensor_tagged > 0, (
+        "no sensor record was rule-tagged in three scan rounds "
+        f"(detections deltas {rounds}, tagged non-sensor records {other_tagged})"
+    )
