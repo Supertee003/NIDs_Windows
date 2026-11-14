@@ -7448,6 +7448,39 @@
         "The INFs were checked structurally (sections present), not with infverif.",
         "The .cat catalogs referenced by the INFs come from signing, which the owner holds."
       ]
+    },
+    {
+      "id": "SIGN-RELEASE-001-E7-20261114",
+      "head_sha": "6cb07d1",
+      "timestamp": "2026-11-14",
+      "title": "The release-signature gate now has an artifact: an ed25519 signature over the release SHA256SUMS",
+      "level": "E7",
+      "component": "tools/sign_release.py, tests/tools/test_sign_release.py, release/T20-final/7234d7a (302 files)",
+      "flow_id": "REL-004",
+      "description": "The release_signature gate demanded signatures.json carrying signature, public_key and signed_digest beside a SHA256SUMS it re-hashes, and the repository could not produce one: release/T20-final/46b93dc/signatures.json held four informational fields, rust-src/bin/aegis_keygen.rs is a standalone keygen built by nothing, and src/policy/policy_signing.zig signs policy objects rather than a release tree. tools/sign_release.py now generates a raw 32-byte ed25519 seed with mode 600 printing only the public key, signs the bytes of SHA256SUMS while preserving the reference fields already in signatures.json, and verifies digest-then-signature. The private key stays on the host in gitignored .keys/ and is never printed. tests/tools/test_sign_release.py asserts against the gate's own evaluator tools/final_audit.evaluate_signature rather than a restatement, and covers tampered SHA256SUMS, flipped signature byte, unsigned record, missing record and the shipped reference record. The release candidate was assembled with tools/release_candidate.py (RC PASS, 302 files, SBOM af21e1bc17431e1d), signed, and verified: signed_digest BA861CB56EDF386D123E47BABD31FBF0AA1B4287AB6D25E73C92B7BF331B61E5, public key txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o=. final_audit reports PASS for release_signature. 9 signer tests passed. Explicit limitations: the signature proves the tree was not altered after signing, not who the signer is (no certificate, timestamp authority or HSM); the private key exists only on this host and must be backed up offline; the signed tree reflects dist/ as assembled rather than a fresh build of every component.",
+      "evidence_artifact": "analysis/current-head/SIGN-RELEASE-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/SIGN-RELEASE-001-20261114.md",
+        "tools/sign_release.py",
+        "tests/tools/test_sign_release.py",
+        "release/T20-final/7234d7a/signatures.json",
+        "release/T20-final/7234d7a/SHA256SUMS",
+        "tools/release_candidate.py",
+        ".gitignore"
+      ],
+      "commands": [
+        "python -m pytest -q tests/tools/test_sign_release.py",
+        "python tools/release_candidate.py",
+        "python tools/sign_release.py --sign --dir release/T20-final/7234d7a --key-file .keys/aegis-release.ed25519",
+        "python tools/sign_release.py --verify --dir release/T20-final/7234d7a",
+        "python tools/final_audit.py --release-check"
+      ],
+      "limitations": [
+        "The signature proves integrity of the tree after signing, not the identity of the signer: no certificate, timestamp authority or HSM is involved.",
+        "The private key lives only at .keys/aegis-release.ed25519 on this host; losing it prevents re-signing with the same identity, and leaking it voids the signature.",
+        "The signed tree reflects dist/ as assembled by release_candidate.py, not a fresh rebuild of every component.",
+        "Any commit touching src, nose, brain, ts_policy, shared, contracts, drivers, go, build.zig, CMakeLists.txt, Cargo.toml or rust-src after 2026-11-14T22:20:15 invalidates the running soak and requires re-assembly and re-signing."
+      ]
     }
   ],
   "known_gaps": [
@@ -13360,7 +13393,7 @@
     "E4_count": 0,
     "E5_count": 89,
     "E6_count": 0,
-    "E7_count": 0,
+    "E7_count": 1,
     "E5_with_artifact_count": 39,
     "known_gaps_count": 271
   }

@@ -125,3 +125,7 @@ installer.generated.nsi
 installer-*.nsi
 aegis-installer-*.exe
 aegis_setup.exe
+
+# SIGN-RELEASE-001: private signing keys never enter the repository
+.keys/
+*.ed25519
