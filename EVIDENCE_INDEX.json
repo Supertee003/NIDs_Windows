@@ -6151,6 +6151,33 @@
         "Forensic retention is ~16k records; prompt querying or the anchored scan is required.",
         "A --rule filter for alerts is not implemented; R1004 noise can still fill the early page."
       ]
+    },
+    {
+      "id": "R1005-HOSTS-E5-20261114",
+      "head_sha": "e4c2188",
+      "timestamp": "2026-11-14",
+      "title": "hosts path rule detected on the host, and it fires on a read",
+      "level": "E5",
+      "component": "src/capture/minifilter_reader.zig, src/pipeline/event_processor.zig, configs/Rules.json",
+      "flow_id": "HOST-FILE",
+      "description": "Installed 680510ABB14E328A (source e4c2188). A read-only Get-Content of C:\\Windows\\System32\\drivers\\etc\\hosts, followed by the anchored alert scan (--limit 5000), returned five R1005 'hosts File Modification' alerts (seq 231465-231469 and 232488, payload 58/99 bytes, source file_sensor, verified=true) and two R1001 'System32 Write Attempt' alerts (payload 42), plus 677 R1004 DLL noise records. The read did not modify hosts. This closes the earlier 'R1005 = 0' ambiguity (the alert scan was reading the oldest ring pages), and exposes a detection-quality defect: the minifilter lane emits IRP_MJ_CREATE for read-only opens, and the path rules have no operation filter, so reading hosts raises a High 'modification' alert and reading System32 raises 'write attempt'. Detection-only was confirmed simultaneously: enforce status shows prevention_gate=closed, host_effect_capable=false, host_effect_confirmed=false; the alert's action=Block is catalog intent, not a host effect.",
+      "evidence_artifact": "analysis/current-head/R1005-HOSTS-E5-20261114.md",
+      "artifacts": [
+        "analysis/current-head/R1005-HOSTS-E5-20261114.md",
+        "admin-evidence/host-window-006-20261111/canary-hosts-read.json"
+      ],
+      "commands": [
+        "Get-Content C:\\Windows\\System32\\drivers\\etc\\hosts -Raw",
+        "python tools/aegisctl.py alerts --limit 5000 --json",
+        "python tools/aegisctl.py enforce status"
+      ],
+      "limitations": [
+        "One host, one read canary.",
+        "The path rules fire on open/read, not only write; operation-level filtering is not implemented.",
+        "The alert action 'Block' is catalog intent; detection-only was confirmed by enforce status.",
+        "R1004 noise (677 in the same window) still crowds the alert surface; a --rule filter is the next ergonomic fix.",
+        "Forensic retention still requires the anchored scan and a large limit."
+      ]
     }
   ],
   "known_gaps": [
@@ -12061,10 +12088,10 @@
     "E2_count": 97,
     "E3_count": 12,
     "E4_count": 0,
-    "E5_count": 87,
+    "E5_count": 88,
     "E6_count": 0,
     "E7_count": 0,
-    "E5_with_artifact_count": 37,
+    "E5_with_artifact_count": 38,
     "known_gaps_count": 271
   }
 }
