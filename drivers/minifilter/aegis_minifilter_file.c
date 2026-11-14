@@ -3,16 +3,52 @@
  *
  * C5: PostCreate writes file event to ring buffer.
  * PreWrite / PreSetInfo: passthrough (future enhancement).
+ *
+ * FIM-WRITE-INTENT-001: every IRP_MJ_CREATE used to reach the ring, including
+ * read-only opens. The path rules (R1001 "System32 Write Attempt", R1005
+ * "hosts File Modification") therefore fired on a plain Get-Content. The
+ * pre-create callback now classifies the open from DesiredAccess and
+ * CreateDisposition and parks a one-bit sentinel in the callback context;
+ * the post-op emits only for write/create intent. No record/ABI change.
  */
 
 #include "aegis_minifilter.h"
 
+static BOOLEAN AegisWriteIntent(PFLT_CALLBACK_DATA data)
+{
+    ACCESS_MASK access;
+    ULONG disposition;
+
+    if (data == NULL || data->Iopb == NULL)
+        return FALSE;
+
+    access = data->Iopb->Parameters.Create.SecurityContext->DesiredAccess;
+    disposition = (data->Iopb->Parameters.Create.Options >> 24) & 0xFF;
+
+    if (access & (FILE_WRITE_DATA | FILE_APPEND_DATA | FILE_WRITE_ATTRIBUTES |
+                  DELETE | WRITE_DAC | WRITE_OWNER))
+        return TRUE;
+
+    switch (disposition) {
+    case FILE_SUPERSEDE:
+    case FILE_CREATE:
+    case FILE_OVERWRITE:
+    case FILE_OVERWRITE_IF:
+        return TRUE;
+    default:
+        return FALSE;
+    }
+}
+
 FLT_PREOP_CALLBACK_STATUS AegisPreCreate(
     PFLT_CALLBACK_DATA data, PCFLT_RELATED_OBJECTS fltObjects, PVOID* ctx)
 {
-    UNREFERENCED_PARAMETER(data);
     UNREFERENCED_PARAMETER(fltObjects);
-    UNREFERENCED_PARAMETER(ctx);
+
+    /* One-bit sentinel: the record struct stays unchanged, and the post-op
+     * does not touch the (possibly freed) security context. */
+    if (ctx != NULL)
+        *ctx = AegisWriteIntent(data) ? (PVOID)(ULONG_PTR)1 : NULL;
     return FLT_PREOP_SUCCESS_WITH_CALLBACK;
 }
 
@@ -25,8 +61,12 @@ FLT_POSTOP_CALLBACK_STATUS AegisPostOperation(
     WCHAR pathBuf[256];
 
     UNREFERENCED_PARAMETER(fltObjects);
-    UNREFERENCED_PARAMETER(ctx);
     UNREFERENCED_PARAMETER(flags);
+
+    /* FIM-WRITE-INTENT-001: a read-only open carries no sentinel and must
+     * not become a "write attempt"/"modification" alert. */
+    if (ctx == NULL)
+        return FLT_POSTOP_FINISHED_PROCESSING;
 
     if (!g_EventRing)
         return FLT_POSTOP_FINISHED_PROCESSING;
