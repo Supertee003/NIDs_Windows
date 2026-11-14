@@ -171,11 +171,21 @@ pub const PepResponse = extern struct {
 };
 
 /// PEP decision values.
+///
+/// ORDER-001 / CONTRACT-OPERATOR-001: this is the same ordinal space as the
+/// live enum in `src/policy/pep_bindings.zig` (which the Rust `DECISION_*`
+/// constants in `rust-src/lib.rs` mirror, and which
+/// `contracts/operator_contract_v1.json` declares). It used to stop at four
+/// values, so `escalate = 4` and `drop = 5` — the two the assessment path
+/// actually returns — had no member here while the test below still passed by
+/// checking only the shared four. Keep every member; do not renumber.
 pub const PepDecision = enum(u8) {
     allow = 0,
     block = 1,
     rate_limit = 2,
     quarantine = 3,
+    escalate = 4,
+    drop = 5,
 };
 
 // Zig PEP FFI signatures (QUARANTINED, see below).
