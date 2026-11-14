@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T13:41:12.924603+00:00",
+  "generated_at": "2026-11-14T13:57:44.425354+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1591,
+  "total_files": 1593,
   "by_role": {
-    "documentation": 390,
+    "documentation": 391,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
     "source": 373,
-    "test-artifact": 242,
+    "test-artifact": 243,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -577,6 +577,10 @@
       "role": "documentation"
     },
     "analysis/current-head/BOOT-MODEL-002-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/BOOT-MODEL-003-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -5785,6 +5789,10 @@
       "role": "test-artifact"
     },
     "tests/release/test_manifest_selection_rule.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/release/test_packaged_scripts.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

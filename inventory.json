@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T13:41:12.919882+00:00",
+  "generated_at": "2026-11-14T13:57:44.420692+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1591,
+  "total_files": 1593,
   "by_class": {
-    "canonical-docs": 404,
+    "canonical-docs": 405,
     "canonical-build": 192,
     "unclassified": 17,
     "canonical-source": 669,
-    "canonical-test": 242,
+    "canonical-test": 243,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -399,6 +399,12 @@
       "size": 3165
     },
     {
+      "path": "analysis/current-head/BOOT-MODEL-003-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4103
+    },
+    {
       "path": "analysis/current-head/BOOT-RING-LOSS-001-20261111.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -516,7 +522,7 @@
       "path": "analysis/current-head/evidence-debt-baseline.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 21547
+      "size": 19768
     },
     {
       "path": "analysis/current-head/FIM-PROBE-IDENTITY-COMMENT-001-20261109.md",
@@ -1758,7 +1764,7 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 135410
+      "size": 135414
     },
     {
       "path": "build_truth.json",
@@ -3528,7 +3534,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1177929
+      "size": 1191206
     },
     {
       "path": "FLOW_MAP.json",
@@ -3636,7 +3642,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 242681
+      "size": 243003
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3912,7 +3918,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 200782
+      "size": 201032
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -5478,7 +5484,7 @@
       "path": "scripts/package_release.ps1",
       "class": "canonical-source",
       "role": "source",
-      "size": 4519
+      "size": 5116
     },
     {
       "path": "scripts/pep_analysis.py",
@@ -8209,6 +8215,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 4359
+    },
+    {
+      "path": "tests/release/test_packaged_scripts.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 7875
     },
     {
       "path": "tests/release/test_refresh_adopt.py",
