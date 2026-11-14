@@ -13,7 +13,10 @@ echo  AEGIS NOSE v5.0 - Starting...
 echo ============================================================
 echo.
 
-set "NOSE=D:\NIds_Windows\nose"
+REM OPS-PORTABLE-001: absolute drive paths made this script usable on one
+REM machine only. %~dp0 is this file's own directory (with trailing backslash).
+set "NOSE=%~dp0"
+if "%NOSE:~-1%"=="\" set "NOSE=%NOSE:~0,-1%"
 
 if not exist "%NOSE%\go.mod" (
     echo   [ERR] go.mod not found in %NOSE%

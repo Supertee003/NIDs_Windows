@@ -7,6 +7,25 @@ REM  Delete old v4.0/v2.0 files before deploy v5.0/v3.0
 REM  FIX: No Unicode, no 2>nul inside parens, no emoji
 REM ============================================================
 
+REM ============================================================
+REM  OPS-PORTABLE-001 / DESTRUCTIVE-SCRIPT-001
+REM  This is a one-time v4.0/v2.0 -> v5.0/v3.0 migration script, and it
+REM  DELETES TRACKED REPOSITORY FILES: run_nose.bat, nose/README.md,
+REM  mouth/Cargo.toml, mouth/Cargo.lock, mouth/.gitignore and mouth/src.
+REM  Running it on a current checkout removes files git tracks. It now
+REM  refuses to run without the explicit flag below, and it is not part of
+REM  any build or test path.
+REM ============================================================
+
+if /i not "%~1"=="--run-cleanup" (
+    echo.
+    echo   [BLOCKED] This script deletes tracked files from the repository.
+    echo   It was a one-time v4.0 to v5.0 migration step. If you really mean
+    echo   it, re-run with:  %~nx0 --run-cleanup
+    echo.
+    exit /b 2
+)
+
 echo.
 echo ============================================================
 echo  AEGIS NIDS - Full Cleanup Script v2.1
@@ -14,8 +33,10 @@ echo  Delete old v4.0/v2.0 files before deploy v5.0/v3.0
 echo ============================================================
 echo.
 
-set "NOSE=D:\NIds_Windows\nose"
-set "MOUTH=D:\NIds_Windows\mouth"
+REM Repo-relative paths: this file lives in nose\
+set "NOSE=%~dp0"
+if "%NOSE:~-1%"=="\" set "NOSE=%NOSE:~0,-1%"
+set "MOUTH=%NOSE%\..\mouth"
 set "NOSE_ERR=0"
 
 REM ============================================================
