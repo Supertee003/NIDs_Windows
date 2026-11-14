@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T14:33:15.295538+00:00",
+  "generated_at": "2026-11-14T14:39:07.049070+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1603,
+  "total_files": 1605,
   "by_class": {
-    "canonical-docs": 410,
+    "canonical-docs": 411,
     "canonical-build": 192,
     "unclassified": 17,
     "canonical-source": 668,
-    "canonical-test": 248,
+    "canonical-test": 249,
     "canonical-config": 34,
     "legacy": 34
   },
@@ -703,6 +703,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4085
+    },
+    {
+      "path": "analysis/current-head/NOSE-TOOLCHAIN-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3602
     },
     {
       "path": "analysis/current-head/PAYLOAD-ENVELOPE-V3-001-20261109.md",
@@ -3564,7 +3570,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1225567
+      "size": 1229190
     },
     {
       "path": "FLOW_MAP.json",
@@ -3672,7 +3678,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 244600
+      "size": 244918
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3948,7 +3954,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 202290
+      "size": 202538
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -8815,6 +8821,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 2645
+    },
+    {
+      "path": "tests/tools/test_nose_toolchain.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 5352
     },
     {
       "path": "tests/tools/test_notifier_failclosed.py",

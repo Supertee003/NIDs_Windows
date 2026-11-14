@@ -7176,6 +7176,60 @@
         "policy_ir.Action legitimately differs (it has pass and escalate); this documents it rather than unifying it, since unification is a wire change.",
         "Rust ACTION_* is asserted equal to the contract, not directly to policy_ir.Action; the contract is the middle term."
       ]
+    },
+    {
+      "id": "NOSE-TOOLCHAIN-001-E2-20261114",
+      "head_sha": "0951f40",
+      "timestamp": "2026-11-14",
+      "title": "The nose Go module now has pins that run go vet, go build and a test compile",
+      "level": "E2",
+      "component": "nose/ (24 Go files, go.mod, go.sum), tests/tools/test_nose_toolchain.py",
+      "flow_id": "CAPTURE-001",
+      "description": "The packet-acquisition half of the product had no gate in tests/ that invoked the Go toolchain; a break there waited for a human to run go test by hand. tests/tools/test_nose_toolchain.py adds six pins: go vet ./... exits 0 with empty stderr; go build produces a binary; go test -run XXXNO_SUCH_TEST -count=1 . compiles every test file without opening a live capture adapter; the build-constrained set is exactly capture_pipe_test.go [windows], traffic_sys_other.go [!windows] and traffic_sys_windows.go [windows] so a new platform-excluded file must be looked at; traffic_sys_other.go stays at or below 60 non-blank lines (11 today) because logic behind an excluded tag is unverified; and it parses under gofmt -e. Measured before the change: go vet, go build and the compile-only go test all exit 0, while GOOS=linux GOARCH=amd64 go build fails inside github.com/google/gopacket/pcap@v1.1.19 for want of cgo/libpcap - meaning traffic_sys_other.go is compiled by no build reachable in this repository, which is why only its syntax and size are pinned. gofmt -l lists all 24 tracked files for alignment reasons only; they are deliberately left unformatted because reformatting nose/ during a running soak sample would move the source commit for whitespace. 6 passed; mutation (appending a malformed func to traffic_sys_other.go) fails test_the_uncompilable_fallback_still_parses; restored returns 6 passed.",
+      "evidence_artifact": "analysis/current-head/NOSE-TOOLCHAIN-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/NOSE-TOOLCHAIN-001-20261114.md",
+        "tests/tools/test_nose_toolchain.py",
+        "nose/canonical.go",
+        "nose/canonical_test.go",
+        "nose/capture.go",
+        "nose/capture_hermetic_test.go",
+        "nose/capture_pipe_test.go",
+        "nose/collectors.go",
+        "nose/collectors_test.go",
+        "nose/go.mod",
+        "nose/go.sum",
+        "nose/golden_path_ffi.go",
+        "nose/golden_path_ffi_test.go",
+        "nose/headless_test.go",
+        "nose/inject.go",
+        "nose/main.go",
+        "nose/main_test.go",
+        "nose/model.go",
+        "nose/payload_v3_test.go",
+        "nose/pipe_writer.go",
+        "nose/pipe_writer_test.go",
+        "nose/styles.go",
+        "nose/talkers_live.go",
+        "nose/talkers_live_test.go",
+        "nose/traffic_sys_other.go",
+        "nose/traffic_sys_windows.go",
+        "nose/traffic_sys_windows_test.go",
+        "nose/verdict_authority_test.go"
+      ],
+      "commands": [
+        "python -m pytest -q tests/tools/test_nose_toolchain.py",
+        "go vet ./... (cwd nose)",
+        "go build . (cwd nose)",
+        "go test -run XXXNO_SUCH_TEST -count=1 . (cwd nose)"
+      ],
+      "limitations": [
+        "E2: no capture test is executed; compiles is not captures.",
+        "traffic_sys_other.go behaviour is unverified on every platform (excluded on Windows, unreachable on Linux because the dependency needs libpcap).",
+        "gofmt formatting is not pinned: all 24 files differ by alignment only, deliberately left alone during the running soak.",
+        "go.mod/go.sum are exercised implicitly by go build/vet, not asserted separately.",
+        "The .bat helpers in nose/ are not covered."
+      ]
     }
   ],
   "known_gaps": [
@@ -13083,7 +13137,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 112,
+    "E2_count": 113,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 89,

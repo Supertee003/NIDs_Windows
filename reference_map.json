@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T14:33:15.298081+00:00",
+  "generated_at": "2026-11-14T14:39:07.053000+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1603,
+  "total_files": 1605,
   "by_role": {
-    "documentation": 396,
+    "documentation": 397,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
     "source": 372,
-    "test-artifact": 248,
+    "test-artifact": 249,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -781,6 +781,10 @@
       "role": "documentation"
     },
     "analysis/current-head/LOSS-BUDGET-001-20261113.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/NOSE-TOOLCHAIN-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -6189,6 +6193,10 @@
       "role": "test-artifact"
     },
     "tests/tools/test_no_shadow_dll.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/tools/test_nose_toolchain.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
