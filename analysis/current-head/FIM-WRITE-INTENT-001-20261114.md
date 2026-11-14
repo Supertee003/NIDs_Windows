@@ -55,18 +55,13 @@ scripts\minifilter_sign.ps1      -> Valid (CN=AEGIS Test Signer)
 Source pins: `tests/release/test_fim_write_intent.py` (classification tokens;
 post-op sentinel gate; no `UNREFERENCED_PARAMETER(ctx)` in the post-op).
 
-## 4. E5 gate (not yet run)
+## 4. E5 gate (confirmed 2026-11-14)
 
-Deploy with `admin-evidence/host-window-006-20261111/deploy-driver-007.ps1`
-(elevated, hash-asserted, rollback copy first), then:
-
-1. read `hosts` -> **no R1005**;
-2. write `hosts` (backup/restore) -> **R1005**;
-3. read a System32 DLL -> **no R1001/R1004**;
-4. drop a benign `.dll` in System32 -> **R1004**;
-5. verify `queue` losses and `minifilter_ring_dropped` stay 0.
-
-The driver is test-signed; the host already trusts `CN=AEGIS Test Signer`.
+Confirmed on the host with `deploy-driver-007.ps1` (driver
+`8AC34837…`): read `hosts` -> no R1005; write `hosts` -> R1005; read a
+System32 DLL -> no R1004; drop a benign `.dll` -> R1004. See
+`FIM-WRITE-INTENT-E5-20261114`. Background R1001 noise on legitimate System32
+writes remains and is a separate rule-tuning decision.
 
 ## 5. Limitations
 

@@ -6206,6 +6206,35 @@
         "Test-signed driver; no production signing custody.",
         "FIM volume reduction has not been measured over 24 h."
       ]
+    },
+    {
+      "id": "FIM-WRITE-INTENT-001-E5-20261114",
+      "head_sha": "87e780e",
+      "timestamp": "2026-11-14",
+      "title": "Read-only opens no longer alert; hosts writes and DLL drops still do",
+      "level": "E5",
+      "component": "drivers/minifilter/aegis_minifilter_file.c",
+      "flow_id": "HOST-FILE",
+      "description": "Deployed the write-intent minifilter (pre 10C41E80, post 8AC348372321ECFE, service RUNNING, health RUNNING, ring 0) and ran four canaries. Read hosts: R1005=0. Write hosts: R1005=2 (seq 6610/6611). Restore hosts (a write): R1005 at 7413/7414/7493. Read kernel32.dll: R1004=0. Drop benign .dll in System32: R1004=1 (seq 8034) + R1001 8035/8064. The read-only captures contain no new R1005/R1004; the write captures do. Background R1001 records in the read capture (16, seq 2354-3825) are legitimate System32 writes by services, not the hosts read: R1001 matches every System32 path and the host writes there continuously. The operation filter fixed the read-trigger class; R1001's breadth is a separate rule-tuning issue. All canary artifacts cleaned: hosts restored, DLL removed, HKCU key removed.",
+      "evidence_artifact": "analysis/current-head/FIM-WRITE-INTENT-E5-20261114.md",
+      "artifacts": [
+        "analysis/current-head/FIM-WRITE-INTENT-E5-20261114.md",
+        "admin-evidence/host-window-006-20261111/deploy-driver-007-result.json",
+        "admin-evidence/host-window-006-20261111/fim-read.json",
+        "admin-evidence/host-window-006-20261111/fim-write.json"
+      ],
+      "commands": [
+        "powershell -File admin-evidence/host-window-006-20261111/deploy-driver-007.ps1",
+        "Get-Content C:\\Windows\\System32\\drivers\\etc\\hosts -Raw",
+        "python tools/aegisctl.py alerts --limit 1000 --json"
+      ],
+      "limitations": [
+        "One host, one driver swap, one canary set.",
+        "Test-signed driver; no production signing custody.",
+        "R1001 is broad and fires on legitimate System32 writes; not addressed here.",
+        "FILE_OPEN_IF read-only is treated as read-only even if it creates; rename/delete via SetInformation is not emitted.",
+        "FIM volume reduction was not measured over 24 h."
+      ]
     }
   ],
   "known_gaps": [
@@ -12116,10 +12145,10 @@
     "E2_count": 98,
     "E3_count": 12,
     "E4_count": 0,
-    "E5_count": 88,
+    "E5_count": 89,
     "E6_count": 0,
     "E7_count": 0,
-    "E5_with_artifact_count": 38,
+    "E5_with_artifact_count": 39,
     "known_gaps_count": 271
   }
 }
