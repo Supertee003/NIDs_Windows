@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T13:14:00.202488+00:00",
+  "generated_at": "2026-11-14T13:41:12.924603+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1589,
+  "total_files": 1591,
   "by_role": {
-    "documentation": 389,
+    "documentation": 390,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
     "source": 373,
-    "test-artifact": 241,
+    "test-artifact": 242,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -757,6 +757,10 @@
       "role": "documentation"
     },
     "analysis/current-head/KIND-ATTR-001-20261110.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/LEGACY-INERT-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -5993,6 +5997,10 @@
       "role": "test-artifact"
     },
     "tests/security/test_l4_rate_config.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_legacy_quarantine.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

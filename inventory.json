@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T13:14:00.198747+00:00",
+  "generated_at": "2026-11-14T13:41:12.919882+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1589,
+  "total_files": 1591,
   "by_class": {
-    "canonical-docs": 403,
+    "canonical-docs": 404,
     "canonical-build": 192,
     "unclassified": 17,
     "canonical-source": 669,
-    "canonical-test": 241,
+    "canonical-test": 242,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -667,6 +667,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 5621
+    },
+    {
+      "path": "analysis/current-head/LEGACY-INERT-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4077
     },
     {
       "path": "analysis/current-head/LOSS-BUDGET-001-20261113.md",
@@ -3522,7 +3528,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1173645
+      "size": 1177929
     },
     {
       "path": "FLOW_MAP.json",
@@ -3630,7 +3636,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 242365
+      "size": 242681
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3906,7 +3912,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 200534
+      "size": 200782
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -8523,6 +8529,12 @@
       "size": 2759
     },
     {
+      "path": "tests/security/test_legacy_quarantine.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 6885
+    },
+    {
       "path": "tests/security/test_loopback_only.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -9162,109 +9174,109 @@
       "path": "tools/legacy/aegisctl_commands_quarantined/__init__.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 1002
+      "size": 1578
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/alerts.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 2796
+      "size": 3370
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/api.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 1255
+      "size": 1826
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/backup.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 585
+      "size": 1159
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/canary.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 2746
+      "size": 3320
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/console.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 12167
+      "size": 12742
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/dashboard.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 2157
+      "size": 2734
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/events.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 1473
+      "size": 2047
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/forensic.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 1715
+      "size": 2291
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/intelligence.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 2112
+      "size": 2692
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/logs.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 828
+      "size": 1400
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/network.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 7929
+      "size": 8504
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/policy.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 2959
+      "size": 3533
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/rules.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 5065
+      "size": 5638
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/simulate.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 2397
+      "size": 2973
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/status.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 6753
+      "size": 7327
     },
     {
       "path": "tools/legacy/aegisctl_lifecycle_quarantined.py",
       "class": "legacy",
       "role": "quarantined",
-      "size": 8978
+      "size": 9546
     },
     {
       "path": "tools/legacy/backup_recovery.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 5563
+      "size": 6116
     },
     {
       "path": "tools/legacy/Dashboard.py.before-unified-snapshot",
@@ -9276,49 +9288,49 @@
       "path": "tools/legacy/fix_component_labels_v2.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 1401
+      "size": 1962
     },
     {
       "path": "tools/legacy/fix_console.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 3795
+      "size": 4346
     },
     {
       "path": "tools/legacy/fix_console2.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 3398
+      "size": 3948
     },
     {
       "path": "tools/legacy/fix_forensics_parser.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 1675
+      "size": 2233
     },
     {
       "path": "tools/legacy/patch_forensics_cli.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 2514
+      "size": 3071
     },
     {
       "path": "tools/legacy/patch_forensics_list.zig.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 4120
+      "size": 4682
     },
     {
       "path": "tools/legacy/patch_graph_daemon.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 5234
+      "size": 5790
     },
     {
       "path": "tools/legacy/patch_graph_watch.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 5603
+      "size": 6158
     },
     {
       "path": "tools/legacy/rust_shield_orphan_quarantined/Cargo.toml",
@@ -9348,13 +9360,13 @@
       "path": "tools/legacy/update_auth.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 852
+      "size": 1401
     },
     {
       "path": "tools/legacy/update_console.py",
       "class": "legacy",
       "role": "legacy-source",
-      "size": 9748
+      "size": 10300
     },
     {
       "path": "tools/probe_control_pipe.py",

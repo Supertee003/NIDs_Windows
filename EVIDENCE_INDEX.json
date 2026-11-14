@@ -6425,6 +6425,65 @@
         "install-boot-task.ps1 is pinned structurally only; its sc config path runs elevated against a real service.",
         "boot_task_loader_installed stays FAIL on this host because the boot task points at admin-evidence, not C:\\Program Files\\AEGIS NIDS; that is the clean_host_e5 gate, unchanged by this patch."
       ]
+    },
+    {
+      "id": "LEGACY-INERT-001-E2-20261114",
+      "head_sha": "a63732a",
+      "timestamp": "2026-11-14",
+      "title": "The quarantine directory still ran: 28 scripts could rewrite tracked files",
+      "level": "E2",
+      "component": "tools/legacy/, tests/security/test_legacy_quarantine.py",
+      "flow_id": "REL-002",
+      "description": "tools/legacy/ was described as quarantined but nothing enforced it. Its patchers rewrite tracked files if run (patch_graph_daemon.py -> scripts/aegis_graph.py; fix_console.py/fix_console2.py/update_console.py -> tools/aegisctl/commands/console.py; update_auth.py -> AUTHORITY_MAP.json, a truth artifact), and fix_console.py:95 held an unterminated f-string (\"\"\"\" closing a triple-quoted block), so a repository-wide compile gate could not pass - the 2026-09-27 health audit recorded it as debt and it stayed. Fix: line 95 closes the f-string and the block, so the file parses; every one of the 28 tracked .py files now carries a quarantine header and a `raise SystemExit(\"QUARANTINED: <path> must not run...\")` guard placed after any docstring and from __future__ import, leaving the historical bodies intact but unreachable, because the guard exits before any statement of the body. 61 pins: the census refuses a new unclassified file under the directory (and an allowlist entry naming a vanished file); per-file ast.parse refuses the fix_console.py:95 error class; per-file guard check refuses a file whose first statement is not the guard or a guard that does not name its own path; update_auth.py is executed for real and must exit non-zero without changing AUTHORITY_MAP.json's sha256; `compileall tools/legacy` must exit 0 (it exited 1 before); no product file in .py/.ps1/.zig/.go/.rs/.ts/.c/.nsi may name tools/legacy; and the orphan Rust crate must not be a Cargo workspace member or be named by a build file. Mutation control: deleting the guard from update_auth.py fails 2 pins, restoring returns 61 passed.",
+      "evidence_artifact": "analysis/current-head/LEGACY-INERT-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/LEGACY-INERT-001-20261114.md",
+        "tests/security/test_legacy_quarantine.py",
+        "tools/legacy/Dashboard.py.before-unified-snapshot",
+        "tools/legacy/aegisctl_commands_quarantined/__init__.py",
+        "tools/legacy/aegisctl_commands_quarantined/alerts.py",
+        "tools/legacy/aegisctl_commands_quarantined/api.py",
+        "tools/legacy/aegisctl_commands_quarantined/backup.py",
+        "tools/legacy/aegisctl_commands_quarantined/canary.py",
+        "tools/legacy/aegisctl_commands_quarantined/console.py",
+        "tools/legacy/aegisctl_commands_quarantined/dashboard.py",
+        "tools/legacy/aegisctl_commands_quarantined/events.py",
+        "tools/legacy/aegisctl_commands_quarantined/forensic.py",
+        "tools/legacy/aegisctl_commands_quarantined/intelligence.py",
+        "tools/legacy/aegisctl_commands_quarantined/logs.py",
+        "tools/legacy/aegisctl_commands_quarantined/network.py",
+        "tools/legacy/aegisctl_commands_quarantined/policy.py",
+        "tools/legacy/aegisctl_commands_quarantined/rules.py",
+        "tools/legacy/aegisctl_commands_quarantined/simulate.py",
+        "tools/legacy/aegisctl_commands_quarantined/status.py",
+        "tools/legacy/aegisctl_lifecycle_quarantined.py",
+        "tools/legacy/backup_recovery.py",
+        "tools/legacy/fix_component_labels_v2.py",
+        "tools/legacy/fix_console.py",
+        "tools/legacy/fix_console2.py",
+        "tools/legacy/fix_forensics_parser.py",
+        "tools/legacy/patch_forensics_cli.py",
+        "tools/legacy/patch_forensics_list.zig.py",
+        "tools/legacy/patch_graph_daemon.py",
+        "tools/legacy/patch_graph_watch.py",
+        "tools/legacy/rust_shield_orphan_quarantined/Cargo.toml",
+        "tools/legacy/rust_shield_orphan_quarantined/src/lib.rs",
+        "tools/legacy/rust_shield_orphan_quarantined/src/main.rs",
+        "tools/legacy/rust_shield_orphan_quarantined/src/pep.rs",
+        "tools/legacy/update_auth.py",
+        "tools/legacy/update_console.py"
+      ],
+      "commands": [
+        "python -m pytest -q tests/security/test_legacy_quarantine.py",
+        "python -m compileall -q tools/legacy",
+        "python tools/legacy/update_auth.py"
+      ],
+      "limitations": [
+        "E2: no runtime behaviour changed, so there is nothing to verify at E5.",
+        "The guard is a runtime refusal, not a deletion; the bodies remain readable by design, and deleting the directory is an owner decision.",
+        "The orphan Rust crate is inert by absence (no workspace, no build file), which is not proof that nobody builds it by hand.",
+        "tools/legacy/Dashboard.py.before-unified-snapshot is allowlisted as data (no .py suffix, never executed) rather than guarded."
+      ]
     }
   ],
   "known_gaps": [
@@ -12332,7 +12391,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 105,
+    "E2_count": 106,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 89,
