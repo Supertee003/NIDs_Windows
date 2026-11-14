@@ -7514,7 +7514,7 @@
     },
     {
       "id": "E4-FLOW-001-E4-20261114",
-      "head_sha": "PENDING",
+      "head_sha": "0638924",
       "timestamp": "2026-11-14",
       "title": "First system-integration gate: live packet flow reaches the forensic ring and returns through the CLI",
       "level": "E4",
@@ -7539,6 +7539,67 @@
         "Loopback TCP is a weak stimulus; it does not prove an external interface or a noisy link behaves the same.",
         "DEFECT-READY-001 (degraded with no named component) remains open; xfail is bookkeeping, not a fix.",
         "Without a running daemon the gate skips, so a CI runner without the product proves nothing."
+      ]
+    },
+    {
+      "id": "E6-BURST-001-E6-20261114",
+      "head_sha": "7b5e0d7",
+      "timestamp": "2026-11-14",
+      "title": "Attack-shaped burst in front of the live pipeline: captured, scored, and never enforced",
+      "level": "E6",
+      "component": "tests/integration/test_e6_attack_burst.py, live AEGIS daemon, tools/aegisctl.py",
+      "flow_id": "DETECT-001",
+      "description": "EVIDENCE_INDEX counted E6_count 0: no gate had ever put attack-shaped traffic in front of the running pipeline, so both 'AEGIS sees an attack' and 'AEGIS does not act on an attack' were unasserted. tests/integration/test_e6_attack_burst.py opens 150 TCP connections across localhost ports (a port scan of the host itself; nothing leaves the machine) and reads the product's own metrics before and after with a 5 s settle. Observed delta on the live host: detections +1, anomalies +52, forensic_records +4299, packets_captured +3171, blocks +0, confirmed_blocks +0, confirmed_quarantines +0; health --json reports rust_pep.host_effect_capable false. The gate asserts forensic_records growth (evidence), packets_captured growth (the sensor saw it), anomalies growth (it was scored, not merely stored) and that blocks, confirmed_blocks and confirmed_quarantines remain 0 with host_effect_capable false (the detection-only invariant, which fails loudly if the product ever starts enforcing). 2 passed in 30.46s. Limitations stated in the record: a localhost port scan is not a real attack; detections moved by only 1 while anomalies moved by 52, so detection strength is weak and depends on the 23 loaded rules; there is no false-positive rate, no ground-truth pcap (the repository ships none) and no second host or protocol family; and policy_ir.loaded false was observed in metrics while health reports policies_loaded 6, recorded as an open question rather than resolved.",
+      "evidence_artifact": "analysis/current-head/E6-BURST-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/E6-BURST-001-20261114.md",
+        "tests/integration/test_e6_attack_burst.py",
+        "tools/aegisctl.py"
+      ],
+      "commands": [
+        "python -m pytest -q tests/integration/test_e6_attack_burst.py",
+        "python tools/aegisctl.py metrics",
+        "python tools/aegisctl.py health --json"
+      ],
+      "limitations": [
+        "A localhost port scan is not a real attack; it exercises the burst and scoring path only.",
+        "detections moved by 1 while anomalies moved by 52: detection strength is weak and ruleset-dependent.",
+        "No false-positive rate, no labelled pcap, one host, one protocol family.",
+        "policy_ir.loaded false in metrics versus policies_loaded 6 in health is an open contradiction, not resolved."
+      ]
+    },
+    {
+      "id": "DRIVER-BUILD-001-E3-20261114",
+      "head_sha": "7b5e0d7",
+      "timestamp": "2026-11-14",
+      "title": "Both kernel drivers compile and link with the real WDK toolchain",
+      "level": "E3",
+      "component": "drivers/wfp_callout, drivers/minifilter, scripts/wdk_build_production.ps1, scripts/wdk_build_minifilter.ps1, tests/integration/test_driver_build.py",
+      "flow_id": "DRIVER-001",
+      "description": "DRIVER-SYNTAX-001 could only syntax-check the minifilter sources because nothing built drivers/. The WDK is installed on this host and both canonical scripts work: scripts/wdk_build_production.ps1 produced build/x64/wfp/aegis_wfp.sys (41472 bytes, SHA-256 2ECE7D52DEBFD45DC15FF381B659CE7391C4A4DF89B65746D8F4B5103988C71C) and scripts/wdk_build_minifilter.ps1 produced build/x64/minifilter/aegis_minifilter.sys (10240 bytes, SHA-256 D011BB60F527FBBA53B4236AB40A3F7274D30269F3F89121D55AABB538D786AC), compiling aegis_minifilter.c, _comm.c, _file.c and _proc.c. The WFP compile emits two C4996 deprecation warnings for ExAllocatePoolWithTag. tests/integration/test_driver_build.py asserts for each build: exit 0, BUILD OK, no FAIL:, the artifact exists above a size floor (16 KiB WFP, 4 KiB minifilter) and the printed SHA-256 equals the file on disk; plus a pin that no test in the suite invokes a signing, service or driver-swap script, because those change host kernel state. Both build tests skip when PowerShell or the WDK headers are absent. Suite result: 9 passed, 1 xfailed in 49.04s across tests/integration. Not verified: the binaries were not signed, installed, loaded or unloaded; whether the WFP callout blocks or the minifilter attaches; unload cleanup; and the .cat catalogs the INFs reference are produced by owner signing.",
+      "evidence_artifact": "analysis/current-head/DRIVER-BUILD-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/DRIVER-BUILD-001-20261114.md",
+        "tests/integration/test_driver_build.py",
+        "scripts/wdk_build_production.ps1",
+        "scripts/wdk_build_minifilter.ps1",
+        "drivers/wfp_callout/aegis_wfp.c",
+        "drivers/wfp_callout/aegis_wfp_callout.c",
+        "drivers/minifilter/aegis_minifilter.c",
+        "drivers/minifilter/aegis_minifilter_comm.c",
+        "drivers/minifilter/aegis_minifilter_file.c",
+        "drivers/minifilter/aegis_minifilter_proc.c"
+      ],
+      "commands": [
+        "python -m pytest -q tests/integration/test_driver_build.py",
+        "powershell -ExecutionPolicy Bypass -File scripts/wdk_build_production.ps1",
+        "powershell -ExecutionPolicy Bypass -File scripts/wdk_build_minifilter.ps1"
+      ],
+      "limitations": [
+        "Compiling is not running: the binaries were not signed, installed, loaded or unloaded.",
+        "No enforcement test: whether the WFP callout blocks a flow or the minifilter attaches is unverified.",
+        "No .cat catalog; the INFs reference catalogs that owner signing produces.",
+        "ExAllocatePoolWithTag deprecation in the WFP driver is a future compatibility risk."
       ]
     }
   ],
@@ -13458,10 +13519,10 @@
     "E0_count": 0,
     "E1_count": 21,
     "E2_count": 117,
-    "E3_count": 13,
+    "E3_count": 14,
     "E4_count": 1,
     "E5_count": 89,
-    "E6_count": 0,
+    "E6_count": 1,
     "E7_count": 1,
     "E5_with_artifact_count": 39,
     "known_gaps_count": 271

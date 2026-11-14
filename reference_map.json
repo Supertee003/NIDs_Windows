@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T15:45:02.866808+00:00",
+  "generated_at": "2026-11-14T16:06:20.589356+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1823,
+  "total_files": 1829,
   "by_role": {
-    "documentation": 407,
+    "documentation": 410,
     "build-config": 199,
     "other": 18,
     "lockfile": 6,
     "rust-build": 4,
     "source": 532,
-    "test-artifact": 274,
+    "test-artifact": 277,
     "config-data": 38,
     "architecture-decision": 12,
     "step-document": 2,
@@ -656,6 +656,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/DRIVER-BUILD-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/DRIVER-PACKAGING-001-20261110.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -664,7 +668,15 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/E4-FLOW-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/E5-CLEAN-HOST-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/E6-BURST-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -6593,6 +6605,18 @@
       "role": "test-artifact"
     },
     "tests/host_telemetry/test_t11_single_convention_ingress.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/integration/test_driver_build.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/integration/test_e4_live_pipeline.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/integration/test_e6_attack_burst.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

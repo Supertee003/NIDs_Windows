@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T15:45:02.862065+00:00",
+  "generated_at": "2026-11-14T16:06:20.583832+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1823,
+  "total_files": 1829,
   "by_class": {
-    "canonical-docs": 421,
+    "canonical-docs": 424,
     "canonical-build": 210,
     "unclassified": 18,
     "canonical-source": 828,
-    "canonical-test": 274,
+    "canonical-test": 277,
     "canonical-config": 38,
     "legacy": 34
   },
@@ -513,6 +513,12 @@
       "size": 27718
     },
     {
+      "path": "analysis/current-head/DRIVER-BUILD-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3158
+    },
+    {
       "path": "analysis/current-head/DRIVER-PACKAGING-001-20261110.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -525,10 +531,22 @@
       "size": 3464
     },
     {
+      "path": "analysis/current-head/E4-FLOW-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3944
+    },
+    {
       "path": "analysis/current-head/E5-CLEAN-HOST-001-20261114.md",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4176
+    },
+    {
+      "path": "analysis/current-head/E6-BURST-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2931
     },
     {
       "path": "analysis/current-head/ETW-FILE-DEDUPE-001-20261110.md",
@@ -3612,7 +3630,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1252580
+      "size": 1262513
     },
     {
       "path": "FLOW_MAP.json",
@@ -3720,7 +3738,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 280530
+      "size": 280983
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3996,7 +4014,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 230750
+      "size": 231102
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -9421,6 +9439,24 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 3219
+    },
+    {
+      "path": "tests/integration/test_driver_build.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 4295
+    },
+    {
+      "path": "tests/integration/test_e4_live_pipeline.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 6449
+    },
+    {
+      "path": "tests/integration/test_e6_attack_burst.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 4032
     },
     {
       "path": "tests/ips/test_t18_ips_canary_xdr.py",
