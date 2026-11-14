@@ -7481,6 +7481,36 @@
         "The signed tree reflects dist/ as assembled by release_candidate.py, not a fresh rebuild of every component.",
         "Any commit touching src, nose, brain, ts_policy, shared, contracts, drivers, go, build.zig, CMakeLists.txt, Cargo.toml or rust-src after 2026-11-14T22:20:15 invalidates the running soak and requires re-assembly and re-signing."
       ]
+    },
+    {
+      "id": "RELEASE-WAIVER-001-E2-20261114",
+      "head_sha": "c052e10",
+      "timestamp": "2026-11-14",
+      "title": "An owner waiver is recorded as an exception, never as a passing soak gate",
+      "level": "E2",
+      "component": "tools/final_audit.py (waiver channel), docs/gates/waivers.json, tests/release/test_release_waivers.py",
+      "flow_id": "REL-003",
+      "description": "The owner decided to ship without waiting for the 24 h soak window. Rather than fabricate a PASS artifact at 24.0/24.0 h - which would satisfy the gate and be false, and would contradict AGENTS.md and the audit's own rule that a missing cell is reported with its gap and never silently waived - the audit gained an explicit waiver channel. docs/gates/waivers.json holds entries with gate_id, reason, accepted_by, accepted_at and a non-empty not_proven list, plus optional expires_at. load_waivers validates them and ignores entries with a missing field, an unknown gate id, an empty not_proven or an unparsable/expired expiry. apply_waivers marks the gate waived and rewrites the detail to 'WAIVED by owner (<time>): <reason>' while never setting ok. release_verdict gains shippable_with_waiver, waived and unwaived next to the unchanged shippable. --release-check still exits 1; --release-check --accept-waivers exits 0 only when nothing is unwaived and still prints that the release is not fully shippable. Both outputs keep 'NOT SHIPPABLE (waived by owner: soak_24h, unproven)' and the markdown lists what is not proven. 8 pins: a waiver never sets ok; a closed gate is not marked waived; malformed, unknown-gate, empty-not_proven and expired waivers are ignored; a future expiry is accepted; the verdict separates shippable from shippable_with_waiver; an unwaived open gate still blocks with the flag; a missing waivers file means no waivers. Observed: --release-check exit 1 with soak_24h WAIVED; --release-check --accept-waivers exit 0 with the same row.",
+      "evidence_artifact": "analysis/current-head/RELEASE-WAIVER-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/RELEASE-WAIVER-001-20261114.md",
+        "tools/final_audit.py",
+        "docs/gates/waivers.json",
+        "docs/gates/T20_100pct_audit.json",
+        "docs/gates/T20_100pct_audit.md",
+        "tests/release/test_release_waivers.py"
+      ],
+      "commands": [
+        "python -m pytest -q tests/release/test_release_waivers.py",
+        "python tools/final_audit.py --release-check",
+        "python tools/final_audit.py --release-check --accept-waivers"
+      ],
+      "limitations": [
+        "The release is not 100 percent: five of six gates are proven, the sixth is waived by the owner and unproven.",
+        "Waivers are plain JSON in the repository, editable by anyone with commit access; they are governance, not cryptography.",
+        "The waiver does not expire, so it keeps applying to later builds until someone removes it.",
+        "Deleting the entry restores the hard gate; a real 24 h run after 2026-11-15T22:20:15 can close it if no RUNTIME_PATHS commit lands in between."
+      ]
     }
   ],
   "known_gaps": [
@@ -13388,7 +13418,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 116,
+    "E2_count": 117,
     "E3_count": 13,
     "E4_count": 0,
     "E5_count": 89,
