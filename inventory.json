@@ -1,17 +1,17 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T13:57:44.420692+00:00",
+  "generated_at": "2026-11-14T14:06:19.641716+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1593,
+  "total_files": 1595,
   "by_class": {
-    "canonical-docs": 405,
+    "canonical-docs": 406,
     "canonical-build": 192,
     "unclassified": 17,
-    "canonical-source": 669,
-    "canonical-test": 243,
+    "canonical-source": 668,
+    "canonical-test": 244,
     "canonical-config": 34,
-    "legacy": 33
+    "legacy": 34
   },
   "files": [
     {
@@ -522,7 +522,7 @@
       "path": "analysis/current-head/evidence-debt-baseline.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 19768
+      "size": 16117
     },
     {
       "path": "analysis/current-head/FIM-PROBE-IDENTITY-COMMENT-001-20261109.md",
@@ -853,6 +853,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4647
+    },
+    {
+      "path": "analysis/current-head/TOOLS-IMPORT-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3858
     },
     {
       "path": "analysis/current-head/VERDICT-AUTH-001-20261110.md",
@@ -3534,7 +3540,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1191206
+      "size": 1195636
     },
     {
       "path": "FLOW_MAP.json",
@@ -3642,7 +3648,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 243003
+      "size": 243317
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3918,7 +3924,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 201032
+      "size": 201278
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -4986,7 +4992,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23767
+      "size": 23219
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -8631,6 +8637,12 @@
       "size": 12005
     },
     {
+      "path": "tests/security/test_tools_import_hygiene.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 5864
+    },
+    {
       "path": "tests/security/test_version_truth.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -9108,7 +9120,7 @@
       "path": "tools/create_manifest.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 20208
+      "size": 21922
     },
     {
       "path": "tools/deploy_windows.py",
@@ -9381,10 +9393,16 @@
       "size": 10300
     },
     {
+      "path": "tools/legacy/update_health_cmd.py",
+      "class": "legacy",
+      "role": "legacy-source",
+      "size": 2942
+    },
+    {
       "path": "tools/probe_control_pipe.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 2010
+      "size": 2906
     },
     {
       "path": "tools/rebuild_truth.py",
@@ -9445,12 +9463,6 @@
       "class": "canonical-source",
       "role": "source",
       "size": 12402
-    },
-    {
-      "path": "tools/update_health_cmd.py",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 2319
     },
     {
       "path": "tools/upgrade_rollback.py",
