@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T14:50:22.377725+00:00",
+  "generated_at": "2026-11-14T15:00:10.926738+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1609,
+  "total_files": 1611,
   "by_class": {
-    "canonical-docs": 413,
+    "canonical-docs": 414,
     "canonical-build": 192,
     "unclassified": 17,
     "canonical-source": 668,
-    "canonical-test": 251,
+    "canonical-test": 252,
     "canonical-config": 34,
     "legacy": 34
   },
@@ -540,7 +540,7 @@
       "path": "analysis/current-head/evidence-debt-baseline.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 2893
+      "size": 1205
     },
     {
       "path": "analysis/current-head/FIM-PROBE-IDENTITY-COMMENT-001-20261109.md",
@@ -709,6 +709,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4085
+    },
+    {
+      "path": "analysis/current-head/NATIVE-BUILD-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4370
     },
     {
       "path": "analysis/current-head/NOSE-TOOLCHAIN-001-20261114.md",
@@ -1800,7 +1806,7 @@
       "path": "bridge/CMakeLists.txt",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5098
+      "size": 5417
     },
     {
       "path": "build.zig",
@@ -3690,7 +3696,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 245552
+      "size": 245871
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3804,7 +3810,7 @@
       "path": "nose/cleanup_nose_mouth.bat",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 5552
+      "size": 6467
     },
     {
       "path": "nose/collectors.go",
@@ -3900,7 +3906,7 @@
       "path": "nose/run_nose.bat",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1136
+      "size": 1327
     },
     {
       "path": "nose/styles.go",
@@ -3966,7 +3972,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 203037
+      "size": 203288
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -8277,6 +8283,12 @@
       "size": 4359
     },
     {
+      "path": "tests/release/test_native_build_and_scripts.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 6568
+    },
+    {
       "path": "tests/release/test_packaged_scripts.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -9669,5 +9681,5 @@
       "size": 624
     }
   ],
-  "source_commit": "164043a"
+  "source_commit": "8aa43c0"
 }

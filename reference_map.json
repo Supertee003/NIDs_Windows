@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T14:50:22.383159+00:00",
+  "generated_at": "2026-11-14T15:00:10.930933+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1609,
+  "total_files": 1611,
   "by_role": {
-    "documentation": 399,
+    "documentation": 400,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
     "source": 372,
-    "test-artifact": 251,
+    "test-artifact": 252,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -785,6 +785,10 @@
       "role": "documentation"
     },
     "analysis/current-head/LOSS-BUDGET-001-20261113.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/NATIVE-BUILD-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -5832,6 +5836,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/release/test_native_build_and_scripts.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/release/test_packaged_scripts.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -6761,5 +6769,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "164043a"
+  "source_commit": "8aa43c0"
 }
