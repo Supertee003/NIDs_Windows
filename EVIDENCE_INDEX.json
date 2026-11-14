@@ -6340,6 +6340,37 @@
         "The install stage's silent NSIS switch (/S) is exercised only as a printed plan here; the real install path was last proven by the hand-run window on 2026-11-14, not by this script.",
         "The runbook cannot restore a clean image; using it on a dirty host produces evidence about that host, not about a fresh install."
       ]
+    },
+    {
+      "id": "RELEASE-BOARD-001-E2-20261114",
+      "head_sha": "f685b93",
+      "timestamp": "2026-11-14",
+      "title": "The audit tool no longer calls a complete component audit a shippable release",
+      "level": "E2",
+      "component": "tools/final_audit.py (release gates), tests/release/test_release_board.py, CONTRIBUTING.md",
+      "flow_id": "REL-002",
+      "description": "tools/final_audit.py printed '100% PRODUCTION VERIFIED' whenever the component audit (66/66 modules across ten dimensions, five specialized holds, golden path declared) was complete, while RC-FINAL-20261114 recorded ~85% for a shippable release: a contradictory-source-of-truth pair, which AGENTS.md makes a stop-the-line condition. The declaration is now split: component_audit COMPLETE/INCOMPLETE, and release SHIPPABLE/NOT SHIPPABLE computed from six fail-closed gates — truth.py verify, the component audit, a release signature (signature + public_key + signed_digest whose digest matches the SHA256SUMS it covers), a clean-host preflight PASS whose boot-task loader lives under the install directory (so a hand-fixed lab host cannot close it), a 24 h soak with required_hours >= 24, verdict PASS, no problems and a checked_at after the newest runtime-tree commit (an older PASS is reported as predating the build, and unreadable freshness fails closed), and the evidence-debt ratchet. The live board reports component audit COMPLETE, release NOT SHIPPABLE with three open gates naming their owners (signature=owner, clean_host=owner, soak=time); --check keeps the component meaning, --release-check exits 1 while any gate is open. 16 pins in tests/release/test_release_board.py cover each way a false ship verdict could be produced, including an AST pin (docstring removed) that refuses the string '100% PRODUCTION VERIFIED' in executable code. docs/gates/T20_100pct_audit.* keep their names but now carry both halves; CONTRIBUTING documents the two checks.",
+      "evidence_artifact": "analysis/current-head/RELEASE-BOARD-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/RELEASE-BOARD-001-20261114.md",
+        "tools/final_audit.py",
+        "tests/release/test_release_board.py",
+        "docs/gates/T20_100pct_audit.md",
+        "docs/gates/T20_100pct_audit.json",
+        "CONTRIBUTING.md"
+      ],
+      "commands": [
+        "python tools/final_audit.py",
+        "python tools/final_audit.py --check",
+        "python tools/final_audit.py --release-check",
+        "python -m pytest -q tests/release/test_release_board.py"
+      ],
+      "limitations": [
+        "E2: the gate logic is pinned, but the gates themselves are open on this host — the board shows what is unproven, it does not prove it.",
+        "Release gates are evaluated against local artifacts under admin-evidence/, which is git-ignored; on a different machine the board reports the gates open until that machine records its own evidence.",
+        "Soak freshness is compared with the commit time of tracked runtime paths; an uncommitted runtime change is invisible to that rule (the soak would look fresh for a build that is not the working tree).",
+        "The signature gate proves a signature artifact covers the exact SHA256SUMS bytes; it does not verify the cryptography (that needs the custodian's public key, which is the point of the owner gate)."
+      ]
     }
   ],
   "known_gaps": [
@@ -12247,7 +12278,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 102,
+    "E2_count": 103,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 89,

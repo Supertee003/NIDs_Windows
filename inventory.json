@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T12:20:25.405679+00:00",
+  "generated_at": "2026-11-14T12:27:46.953969+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1583,
+  "total_files": 1585,
   "by_class": {
-    "canonical-docs": 400,
+    "canonical-docs": 401,
     "canonical-build": 192,
     "unclassified": 17,
     "canonical-source": 669,
-    "canonical-test": 238,
+    "canonical-test": 239,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -745,6 +745,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 2775
+    },
+    {
+      "path": "analysis/current-head/RELEASE-BOARD-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6828
     },
     {
       "path": "analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md",
@@ -2034,7 +2040,7 @@
       "path": "CONTRIBUTING.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2034
+      "size": 2503
     },
     {
       "path": "docs/adr/0001-architecture-lock.md",
@@ -2556,13 +2562,13 @@
       "path": "docs/gates/T20_100pct_audit.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 51126
+      "size": 57306
     },
     {
       "path": "docs/gates/T20_100pct_audit.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 458
+      "size": 1665
     },
     {
       "path": "docs/gates/T20_final_regression.json",
@@ -3504,7 +3510,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1167163
+      "size": 1170538
     },
     {
       "path": "FLOW_MAP.json",
@@ -3612,7 +3618,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 240953
+      "size": 241723
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3888,7 +3894,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 199430
+      "size": 200030
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -8181,6 +8187,12 @@
       "size": 3337
     },
     {
+      "path": "tests/release/test_release_board.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 10063
+    },
+    {
       "path": "tests/release/test_release_tooling.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -9072,7 +9084,7 @@
       "path": "tools/final_audit.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 18371
+      "size": 33911
     },
     {
       "path": "tools/final_regression.py",
