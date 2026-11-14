@@ -6,7 +6,7 @@
 
 - Component audit: **COMPLETE**
 - Release: **NOT SHIPPABLE** — open gates: release_signature, clean_host_e5, soak_24h
-- Commit: `222cfe3`
+- Commit: `ba97bc0`
 - Part I modules: 66/66 pass
 - Part I production failures: 0
 - Part II holds: 5/5
@@ -20,8 +20,8 @@
 | `component_audit` | PASS | none | modules 66/66, prod failures 0, part_ii 5/5, golden path declared=True |
 | `release_signature` | OPEN | owner | release\T20-final\46b93dc\signatures.json is a reference record, not a signature (needs signature, public_key, signed_digest) |
 | `clean_host_e5` | OPEN | owner | no PASS artifact (admin-evidence\host-window-006-20261111\preflight-20261114.json); open checks ['boot_task_loader_installed'] |
-| `soak_24h` | OPEN | time | admin-evidence\host-window-006-20261111\soak-24h-delta-latest.json is IN_PROGRESS at 2.04/24.0 h |
-| `evidence_debt` | PASS | none | unnamed product files 528 <= baseline 528 |
+| `soak_24h` | OPEN | time | admin-evidence\host-window-006-20261111\soak-24h-delta-latest.json is IN_PROGRESS at 2.49/24.0 h |
+| `evidence_debt` | PASS | none | unnamed product files 527 <= baseline 527 |
 
 ## Part II - specialized holds
 
