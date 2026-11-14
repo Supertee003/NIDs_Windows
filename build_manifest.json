@@ -504,8 +504,8 @@
     },
     {
       "path": "bridge/CMakeLists.txt",
-      "size": 4955,
-      "sha256": "5f721afca1ea254aeba38560dff1671f8e6f9d8529532e44633c2e3cb307ba6f",
+      "size": 5269,
+      "sha256": "5452a0b2a799c2c2b5bcf772b10933bda9d87bf3ec89179bbdd5fb1049b9c894",
       "language": "data"
     },
     {
@@ -888,8 +888,8 @@
     },
     {
       "path": "nose/cleanup_nose_mouth.bat",
-      "size": 5552,
-      "sha256": "59e9823f0cc805ef5b4e9b3c98449efffebc4c73b3e8176a0e398163d15f69b6",
+      "size": 6467,
+      "sha256": "75ad9974abe5b9232675c0502db6e4c17a50623a5030820be56e19e90b93a0da",
       "language": "script"
     },
     {
@@ -972,8 +972,8 @@
     },
     {
       "path": "nose/run_nose.bat",
-      "size": 1090,
-      "sha256": "434d625bfaa0340c479bd2496fddc22197dc9791610618828c57ec545542419b",
+      "size": 1274,
+      "sha256": "b901c8611ddaf05a128ed6ef51e2b3cbd9db72cfc46fc62e0d12c66d554dcf4a",
       "language": "script"
     },
     {
@@ -1021,7 +1021,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "cb768b1570c1260b4cee7a1353063a1982c9be540ebdb5fb375015e6d24eb1a8",
+      "sha256": "4ea00b5a3d974139a92bfeee6aca38d5b3b95ce950f7fd70d846cbbfac9fac3d",
       "language": "json"
     },
     {
