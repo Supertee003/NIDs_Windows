@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T12:01:54.285201+00:00",
+  "generated_at": "2026-11-14T12:13:12.172870+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1575,
+  "total_files": 1578,
   "by_role": {
-    "documentation": 383,
+    "documentation": 384,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
-    "source": 371,
-    "test-artifact": 235,
+    "source": 372,
+    "test-artifact": 236,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -753,6 +753,10 @@
       "role": "documentation"
     },
     "analysis/current-head/PAYLOAD-ENVELOPE-V3-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/PREFLIGHT-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -5732,6 +5736,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/release/test_host_preflight.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/release/test_installer_template.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -6349,6 +6357,10 @@
       "role": "source"
     },
     "tools/golden_path_evidence.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "tools/host_preflight.py": {
       "class": "canonical-source",
       "role": "source"
     },

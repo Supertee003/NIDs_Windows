@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T12:01:54.281084+00:00",
+  "generated_at": "2026-11-14T12:13:12.166770+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1575,
+  "total_files": 1578,
   "by_class": {
-    "canonical-docs": 397,
+    "canonical-docs": 398,
     "canonical-build": 192,
     "unclassified": 17,
-    "canonical-source": 667,
-    "canonical-test": 235,
+    "canonical-source": 668,
+    "canonical-test": 236,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -663,6 +663,12 @@
       "size": 5767
     },
     {
+      "path": "analysis/current-head/PREFLIGHT-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5027
+    },
+    {
       "path": "analysis/current-head/prepatch-working-tree-safety.diff",
       "class": "unclassified",
       "role": "other",
@@ -708,7 +714,7 @@
       "path": "analysis/current-head/RC-FINAL-20261114.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3654
+      "size": 5124
     },
     {
       "path": "analysis/current-head/READINESS-CAUSE-001-20261110.md",
@@ -3486,7 +3492,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1159496
+      "size": 1162259
     },
     {
       "path": "FLOW_MAP.json",
@@ -3594,7 +3600,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 240178
+      "size": 240510
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3852,7 +3858,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 10041
+      "size": 9693
     },
     {
       "path": "pytest.ini",
@@ -3870,7 +3876,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 198825
+      "size": 199089
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -8127,6 +8133,12 @@
       "size": 2847
     },
     {
+      "path": "tests/release/test_host_preflight.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 6000
+    },
+    {
       "path": "tests/release/test_installer_template.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -9055,6 +9067,12 @@
       "class": "canonical-source",
       "role": "source",
       "size": 12412
+    },
+    {
+      "path": "tools/host_preflight.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 11902
     },
     {
       "path": "tools/host_soak_check.py",

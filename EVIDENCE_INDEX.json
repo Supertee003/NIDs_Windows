@@ -6261,6 +6261,33 @@
         "Absolute budget semantics are unchanged when --baseline is omitted, so an operator who does not pass a baseline still gets the old (stricter, window-poisoning) behaviour.",
         "The baseline is a snapshot, not a series: a restart between anchor and check voids the window rather than resuming it."
       ]
+    },
+    {
+      "id": "PREFLIGHT-001-E2-20261114",
+      "head_sha": "0f38342",
+      "timestamp": "2026-11-14",
+      "title": "One tracked command now answers the clean-host boot gate, and it refuses to pass a hand-fixed host",
+      "level": "E2",
+      "component": "tools/host_preflight.py, tests/release/test_host_preflight.py",
+      "flow_id": "REL-002",
+      "description": "INSTALLER-BOOT-MODEL-001 shipped demand-start services, the AegisBootSequence task and AEGIS_LOSS_BUDGET, but its E5 gate was six checks a human had to remember after a fresh install and reboot — the same shape of oversight that produced the 2026-11-11 boot failure. tools/host_preflight.py reads sc qc, the service Environment registry value, schtasks /v, the driver states and the control pipe, and emits a JSON verdict over 12 checks: service start type is DEMAND_START, the loss budget is on the service, the boot task exists/enabled/SYSTEM/last-result 0, the task's loader lives under the install directory, both drivers are RUNNING, the daemon is RUNNING and not degraded with the same budget, minifilter_ring_dropped is 0, and the daemon has an optional uptime floor. Every check fails closed on an unreadable value. Live run on the lab host: 11 PASS + 1 FAIL naming boot_task_loader_installed, because that host is hand-fixed from admin-evidence and never ran the installer — exactly the distinction a boot gate must not blur. 10 pins in tests/release/test_host_preflight.py cover each failure mode (AUTO_START, lab loader, failed task, missing task, stopped driver, unreadable health, ring loss, budget mismatch, uptime floor) plus a check-set census so the rules cannot shrink silently. Full suite: zig build test EXIT 0, pytest 1,118 passed / 7 skipped.",
+      "evidence_artifact": "analysis/current-head/PREFLIGHT-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/PREFLIGHT-001-20261114.md",
+        "tools/host_preflight.py",
+        "tests/release/test_host_preflight.py"
+      ],
+      "commands": [
+        "python tools/host_preflight.py --loss-budget 3500 --json admin-evidence/host-window-006-20261111/preflight-20261114.json",
+        "python -m pytest -q tests/release/test_host_preflight.py",
+        "zig build test",
+        "python -m pytest -q"
+      ],
+      "limitations": [
+        "E2 + a live run on a hand-fixed lab host. A clean-host install + reboot + preflight run is still the E5 gate and has not happened.",
+        "The tool cannot tell a fresh install from an install over an old one; the upgrade path remains untested.",
+        "It does not verify installed binary digests — stage_helpers.py --check owns those, and duplicating them here would create a second source of truth for the same hashes."
+      ]
     }
   ],
   "known_gaps": [
@@ -12168,7 +12195,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 99,
+    "E2_count": 100,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 89,
