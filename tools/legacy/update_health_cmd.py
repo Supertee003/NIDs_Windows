@@ -1,6 +1,17 @@
 #!/usr/bin/env python3
 """Update aegisctl.py cmd_health function to use new RuntimeHealth."""
 
+# QUARANTINED (LEGACY-INERT-001): retained for history only.
+# Nothing in the runtime imports this file and the installer does not ship it.
+# This one was worse than history: its body sat at module level, so merely
+# importing it read tools/aegisctl.py, 'replaced' cmd_health and wrote the file
+# back. Its target never held the old body (getRuntimeHealth does not appear in
+# aegisctl.py), so it could only rewrite the tree for nothing. Moved here by
+# TOOLS-IMPORT-001; the guard exits before any of that.
+raise SystemExit(
+    "QUARANTINED: tools/legacy/update_health_cmd.py must not run; retained for history only."
+)
+
 import sys
 
 with open("tools/aegisctl.py", "r") as f:
