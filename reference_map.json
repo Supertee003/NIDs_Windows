@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T15:26:04.121774+00:00",
+  "generated_at": "2026-11-14T15:45:02.866808+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1820,
+  "total_files": 1823,
   "by_role": {
-    "documentation": 406,
-    "build-config": 198,
+    "documentation": 407,
+    "build-config": 199,
     "other": 18,
     "lockfile": 6,
     "rust-build": 4,
     "source": 532,
-    "test-artifact": 273,
+    "test-artifact": 274,
     "config-data": 38,
     "architecture-decision": 12,
     "step-document": 2,
@@ -853,6 +853,10 @@
       "role": "documentation"
     },
     "analysis/current-head/RELEASE-BOARD-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/RELEASE-WAIVER-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -2127,6 +2131,10 @@
     "docs/gates/T20_golden_path_evidence/5dfc77d/evidence.md": {
       "class": "canonical-docs",
       "role": "documentation"
+    },
+    "docs/gates/waivers.json": {
+      "class": "canonical-build",
+      "role": "build-config"
     },
     "docs/historical/AEGIS_BACKEND_FRONTEND_STABILIZATION_PLAN_2026-09-25.md": {
       "class": "canonical-docs",
@@ -6681,6 +6689,10 @@
       "role": "test-artifact"
     },
     "tests/release/test_release_tooling.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/release/test_release_waivers.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

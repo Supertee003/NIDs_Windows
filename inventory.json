@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T15:26:04.116826+00:00",
+  "generated_at": "2026-11-14T15:45:02.862065+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1820,
+  "total_files": 1823,
   "by_class": {
-    "canonical-docs": 420,
-    "canonical-build": 209,
+    "canonical-docs": 421,
+    "canonical-build": 210,
     "unclassified": 18,
     "canonical-source": 828,
-    "canonical-test": 273,
+    "canonical-test": 274,
     "canonical-config": 38,
     "legacy": 34
   },
@@ -811,6 +811,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 6828
+    },
+    {
+      "path": "analysis/current-head/RELEASE-WAIVER-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3595
     },
     {
       "path": "analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md",
@@ -2652,13 +2658,13 @@
       "path": "docs/gates/T20_100pct_audit.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 57240
+      "size": 58100
     },
     {
       "path": "docs/gates/T20_100pct_audit.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 1623
+      "size": 2302
     },
     {
       "path": "docs/gates/T20_final_regression.json",
@@ -2719,6 +2725,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 2942
+    },
+    {
+      "path": "docs/gates/waivers.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1004
     },
     {
       "path": "docs/historical/AEGIS_BACKEND_FRONTEND_STABILIZATION_PLAN_2026-09-25.md",
@@ -3600,7 +3612,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1249470
+      "size": 1252580
     },
     {
       "path": "FLOW_MAP.json",
@@ -3708,7 +3720,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 246509
+      "size": 280530
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3966,7 +3978,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 10041
+      "size": 9693
     },
     {
       "path": "pytest.ini",
@@ -3984,7 +3996,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 203791
+      "size": 230750
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -9555,6 +9567,12 @@
       "size": 12581
     },
     {
+      "path": "tests/release/test_release_waivers.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3944
+    },
+    {
       "path": "tests/release/test_t17_perf_ci_installer.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -10488,7 +10506,7 @@
       "path": "tools/final_audit.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 33911
+      "size": 38311
     },
     {
       "path": "tools/final_regression.py",
