@@ -63,6 +63,9 @@ Installer changes:
 ```
 python -m pytest -q tests/release/test_boot_model_packaging.py  -> 4 passed
 python tools/installer.py --generate --nsi .work/installer-test.nsi -> ok
+python tools/installer.py --package --nsi installer-package-test.nsi \
+    --output .work/aegis-installer-test.exe
+  -> makensis ok; installer built, 6,128,413 bytes
 ```
 
 Generated NSIS contains:
@@ -85,9 +88,9 @@ boot sequence starts the daemon before the minifilter.
 - **E2, not E5.** No clean Windows VM has run this installer and rebooted. The
   E5 gate is: fresh install on a clean host, reboot, `AegisBootSequence` runs,
   all services RUNNING, `loss_budget=3500`, `minifilter_ring_dropped=0`.
-- **The NSIS binary was not built here.** `makensis` is present on this host but
-  the generated script was not compiled into an `.exe`; the syntax is inspected,
-  not executed. `tools/installer.py --package` is the next check.
+- **The installer binary was built but not installed.** `makensis` produced
+  `aegis-installer-5.0.0.exe` (6,128,413 bytes) from this source; no clean host
+  has run it. The E5 gate remains install + reboot + probe.
 - **Upgrade path.** The installer sets demand on an existing service, but an
   in-place upgrade from the old AUTO_START install was not exercised.
 - **Uninstall ordering** is pinned by text, not by a run: the task is deleted

@@ -6072,7 +6072,7 @@
       "level": "E2",
       "component": "tools/installer.py, scripts/install_aegis.ps1, scripts/boot-sequence.ps1, scripts/install-boot-task.ps1",
       "flow_id": "QLOSS",
-      "description": "RC-FINAL limitation 5: the lab host was fixed by hand but a fresh install still created AegisNids AUTO_START, never registered AegisBootSequence and never wrote AEGIS_LOSS_BUDGET, so a new machine would reproduce the boot-ring loss. Both installers now create AegisNids DEMAND_START; the NSIS installer ships scripts/boot-sequence.ps1 and scripts/install-boot-task.ps1, calls the task installer after driver registration and aborts setup if it fails, and uninstall deletes the task and scripts dir; the bundle installer uses the same contract and throws on failure. install-boot-task.ps1 writes AEGIS_LOSS_BUDGET=3500 into the service Environment (preserving others), enforces DEMAND_START, and registers AegisBootSequence (AtStartup, SYSTEM, 20s). boot-sequence.ps1 starts WFP, then the daemon, then the minifilter, and writes a probe under ProgramData; its sc.exe State parser is the fixed Out-String form. 4 packaging tests pass; generated NSIS contains the demand create, both File directives, the task setup call and the uninstall delete; full pytest 1,112 passed / 7 skipped / 0 failed. E2 only: no clean-host install+reboot yet.",
+      "description": "RC-FINAL limitation 5: the lab host was fixed by hand but a fresh install still created AegisNids AUTO_START, never registered AegisBootSequence and never wrote AEGIS_LOSS_BUDGET, so a new machine would reproduce the boot-ring loss. Both installers now create AegisNids DEMAND_START; the NSIS installer ships scripts/boot-sequence.ps1 and scripts/install-boot-task.ps1, calls the task installer after driver registration and aborts setup if it fails, and uninstall deletes the task and scripts dir; the bundle installer uses the same contract and throws on failure. install-boot-task.ps1 writes AEGIS_LOSS_BUDGET=3500 into the service Environment (preserving others), enforces DEMAND_START, and registers AegisBootSequence (AtStartup, SYSTEM, 20s). boot-sequence.ps1 starts WFP, then the daemon, then the minifilter, and writes a probe under ProgramData; its sc.exe State parser is the fixed Out-String form. 4 packaging tests pass; makensis built the installer from this source (6,128,413 bytes, no errors); full pytest 1,112 passed / 7 skipped / 0 failed. E2 only: no clean-host install+reboot yet.",
       "evidence_artifact": "analysis/current-head/INSTALLER-BOOT-MODEL-001-20261114.md",
       "artifacts": [
         "analysis/current-head/INSTALLER-BOOT-MODEL-001-20261114.md",
@@ -6088,8 +6088,8 @@
         "python -m pytest tests -q"
       ],
       "limitations": [
-        "E2 only: no clean Windows VM has run the installer and rebooted.",
-        "The generated NSIS was inspected but not compiled with makensis in this slice.",
+        "E2 only: no clean Windows VM has run the built installer and rebooted.",
+        "The installer was built but not installed; the E5 gate is install + reboot + probe.",
         "In-place upgrade from the old AUTO_START install was not exercised.",
         "Uninstall ordering is pinned by text, not by a run."
       ]
