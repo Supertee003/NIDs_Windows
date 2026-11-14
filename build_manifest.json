@@ -1021,7 +1021,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "b303adda2172ff9d3120da51eb1480a6d736ff69e019721ab225faef18bc8255",
+      "sha256": "502979a16b5de787be219b46cc092cfd3370c2cba065ea0e0d9cfc596e355037",
       "language": "json"
     },
     {
@@ -1494,8 +1494,8 @@
     },
     {
       "path": "scripts/package_release.ps1",
-      "size": 4519,
-      "sha256": "929c23080c3d0c5f9bb7d0ba000cda45dcede17a4f412377f9a17721ddb814f5",
+      "size": 5116,
+      "sha256": "9215326f137a6122813357ecea094bf76751123d16aec9f42ba2a26a6e0fe6e6",
       "language": "script"
     },
     {
