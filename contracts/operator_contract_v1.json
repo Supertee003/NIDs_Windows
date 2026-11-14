@@ -16,6 +16,16 @@
     "ESCALATE": 4,
     "DROP": 5
   },
+  "pep_request_action_ordinals": {
+    "PASS": 0,
+    "LOG": 1,
+    "ALERT": 2,
+    "RATE_LIMIT": 3,
+    "BLOCK": 4,
+    "QUARANTINE": 5,
+    "ESCALATE": 6
+  },
+  "pep_request_action_note": "The FFI requested_action ABI (src/policy/policy_ir.zig `Action`, mirrored by ACTION_* in rust-src/lib.rs). Three ordinal spaces exist and none may be compared with another: policy_action_ordinals (BLOCK=2), pep_decision_ordinals (BLOCK=1) and this one (BLOCK=4). Convert, never cast.",
   "rule": "PolicyAction and PepDecision are different namespaces; their BLOCK values must not be compared directly.",
   "enforcement_receipt": {
     "version": 1,

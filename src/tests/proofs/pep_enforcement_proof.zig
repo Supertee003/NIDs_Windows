@@ -25,6 +25,15 @@ const std = @import("std");
 // v5.0: "PEP is the security authority. It validates, then executes.
 //        It cannot decide what action to take -- that's Policy's job."
 
+/// ACTION-SPACES-001: this proof's enum had `rate_limit = 3` and
+/// `quarantine = 4`, i.e. the two values swapped relative to the frozen space
+/// every other module uses (`src/contract/canonical_event.zig`,
+/// `src/forensic/policy_contract.zig`, `src/policy/policy_engine.zig`:
+/// quarantine = 3, rate_limit = 4). The proof only compared tags, so nothing
+/// mis-executed, but it declared a `u8` ordinal space that disagreed with the
+/// contract it exists to prove — and `policy_contract.zig` has a test devoted
+/// to "never swap rate_limit/quarantine". Keep this list identical to the
+/// canonical space; the order is part of the contract, not a style choice.
 pub const EnforcementAction = enum(u8) {
     /// No action (default, allow traffic).
     allow = 0,
@@ -32,10 +41,10 @@ pub const EnforcementAction = enum(u8) {
     alert = 1,
     /// Block traffic (e.g., add IP to blocklist).
     block = 2,
-    /// Rate-limit traffic from source.
-    rate_limit = 3,
     /// Quarantine source (isolate, no traffic).
-    quarantine = 4,
+    quarantine = 3,
+    /// Rate-limit traffic from source.
+    rate_limit = 4,
     /// Log only (silent, no alert).
     log_only = 5,
 
