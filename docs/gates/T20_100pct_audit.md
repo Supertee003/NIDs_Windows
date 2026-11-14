@@ -5,8 +5,8 @@
 > release; the two are reported separately and never merged.
 
 - Component audit: **COMPLETE**
-- Release: **NOT SHIPPABLE** — open gates: release_signature, clean_host_e5, soak_24h
-- Commit: `b1f8c7c`
+- Release: **NOT SHIPPABLE** — open gates: release_signature, soak_24h
+- Commit: `0aee80f`
 - Part I modules: 66/66 pass
 - Part I production failures: 0
 - Part II holds: 5/5
@@ -19,8 +19,8 @@
 | `truth_artifacts` | PASS | none | TRUTH_VALID — artifacts carry build source 1fa877c (ancestor of HEAD; source history and worktree clean) |
 | `component_audit` | PASS | none | modules 66/66, prod failures 0, part_ii 5/5, golden path declared=True |
 | `release_signature` | OPEN | owner | release\T20-final\46b93dc\signatures.json is a reference record, not a signature (needs signature, public_key, signed_digest) |
-| `clean_host_e5` | OPEN | owner | no PASS artifact (admin-evidence\host-window-006-20261111\preflight-20261114.json); open checks ['boot_task_loader_installed'] |
-| `soak_24h` | OPEN | time | admin-evidence\host-window-006-20261111\soak-24h-delta-latest.json is IN_PROGRESS at 2.49/24.0 h |
+| `clean_host_e5` | PASS | owner | admin-evidence\e5-clean-host-20261114-222014\preflight-20261114-222014.json PASS with the loader under C:\Program Files\AEGIS NIDS |
+| `soak_24h` | OPEN | time | admin-evidence\e5-clean-host-20261114-222014\soak-24h-20261114-222014.json is IN_PROGRESS at 0.0/24.0 h |
 | `evidence_debt` | PASS | none | unnamed product files 0 <= baseline 0 |
 
 ## Part II - specialized holds

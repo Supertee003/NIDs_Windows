@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "b1f8c7c",
+  "commit": "0aee80f",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE"
@@ -24,7 +24,6 @@
     "shippable": false,
     "open": [
       "release_signature",
-      "clean_host_e5",
       "soak_24h"
     ],
     "owners": [
@@ -52,15 +51,15 @@
       },
       {
         "id": "clean_host_e5",
-        "ok": false,
+        "ok": true,
         "owner": "owner",
-        "detail": "no PASS artifact (admin-evidence\\host-window-006-20261111\\preflight-20261114.json); open checks ['boot_task_loader_installed']"
+        "detail": "admin-evidence\\e5-clean-host-20261114-222014\\preflight-20261114-222014.json PASS with the loader under C:\\Program Files\\AEGIS NIDS"
       },
       {
         "id": "soak_24h",
         "ok": false,
         "owner": "time",
-        "detail": "admin-evidence\\host-window-006-20261111\\soak-24h-delta-latest.json is IN_PROGRESS at 2.49/24.0 h"
+        "detail": "admin-evidence\\e5-clean-host-20261114-222014\\soak-24h-20261114-222014.json is IN_PROGRESS at 0.0/24.0 h"
       },
       {
         "id": "evidence_debt",
