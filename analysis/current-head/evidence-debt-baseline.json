@@ -2,7 +2,7 @@
   "id": "EVIDENCE-DEBT-BASELINE",
   "rule": "unnamed product files may shrink but never grow; trim this file in the same patch that names one",
   "source_commit": "e4c2188",
-  "count": 528,
+  "count": 527,
   "unnamed": [
     "aegis_dashboard/Cargo.lock",
     "aegis_dashboard/Cargo.toml",
@@ -477,7 +477,6 @@
     "tools/config_validator.py",
     "tools/deploy_windows.py",
     "tools/etw_provider_probe.c",
-    "tools/final_audit.py",
     "tools/final_regression.py",
     "tools/golden_path_evidence.py",
     "tools/inspect_pe_exports.py",
