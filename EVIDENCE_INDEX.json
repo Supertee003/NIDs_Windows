@@ -7027,6 +7027,59 @@
         "This does not re-prove the forbidden-edge property; test_forbidden_edges.py owns it.",
         "capture/npcap_test_live.zig is classified TOOL_ONLY rather than removed: giving it a target or deleting it is an owner decision."
       ]
+    },
+    {
+      "id": "CONFIG-VALIDATE-001-E2-20261114",
+      "head_sha": "30cc21e",
+      "timestamp": "2026-11-14",
+      "title": "The config validator crashed instead of reporting, and its report could crash too",
+      "level": "E2",
+      "component": "configs/, tools/config_validator.py, tests/tools/test_config_validator.py",
+      "flow_id": "REL-002",
+      "description": "Running the shipped validator against the shipped configs produced tracebacks, not diagnostics. `--config configs/aegis.conf` (a .conf file sitting next to the JSON configs) died with an uncaught JSONDecodeError and Python's exit code, and a wrong --schema path did the same via FileNotFoundError. Worse, `--config configs/policies.json` raised UnicodeEncodeError while PRINTING the failure report: the module's status literals were stored as mojibake (UTF-8 bytes decoded as cp1252 in the file's history) and a cp1252 console cannot encode them, so the report could crash where the config did not. Fix: main() wraps schema and config loading in try/except (OSError, ValueError) and returns exit 2 with 'ERROR: cannot read config <path> as JSON/TOML: ...' on stderr, names a non-object config, prints ASCII status lines (OK: / FAIL:), and prints --normalize output with ensure_ascii=True while file output keeps ensure_ascii=False. Verified on the real files: runtime.json -> 'OK: config valid' exit 0; aegis.conf -> exit 2 with a diagnostic; policies.json -> 4 'Missing required field' lines exit 1; missing schema -> exit 2. 31 pins: each of those behaviours runs the real CLI in a subprocess and forbids 'Traceback' in the combined output; a non-ASCII config filename must not turn a failure into UnicodeEncodeError; all 24 configs/**/*.json files parse; and no *.before-*/*.bak shadow copy may be named by the bundle payload. configs/Rules.json.before-reload-test is a genuinely stale snapshot (it lacks the rate_mode/rate_threshold/rate_window_ms fields and the tightened hosts regex of the live Rules.json) that 01-build-inventory.md already called an unclassified file that must not be packaged. Mutation control: removing the load_config try/except fails test_a_non_json_config_is_reported_not_traced_back; restoring returns 31 passed.",
+      "evidence_artifact": "analysis/current-head/CONFIG-VALIDATE-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/CONFIG-VALIDATE-001-20261114.md",
+        "tools/config_validator.py",
+        "tests/tools/test_config_validator.py",
+        "configs/Rules.json",
+        "configs/Rules.json.before-reload-test",
+        "configs/aegis.conf",
+        "configs/canary_tests.json",
+        "configs/cluster.example.json",
+        "configs/policies.json",
+        "configs/policy_trust.example.json",
+        "configs/runtime.json",
+        "configs/schema.json",
+        "configs/siem_config.json",
+        "configs/test/cluster_config.json",
+        "configs/test/etw_realtime_config.json",
+        "configs/test/federation_bench_config.json",
+        "configs/test/federation_config.json",
+        "configs/test/federation_tcp_config.json",
+        "configs/test/federation_tls_config.json",
+        "configs/test/host_correlator_config.json",
+        "configs/test/host_telemetry_config.json",
+        "configs/test/host_telemetry_detectors_config.json",
+        "configs/test/host_telemetry_mock_config.json",
+        "configs/test/host_telemetry_scenarios_config.json",
+        "configs/test/injection_detector_config.json",
+        "configs/test/integration_test_config.json",
+        "configs/test/perf_benchmark_config.json",
+        "configs/test/registry_trie_config.json",
+        "configs/test/windows_adapters_config.json"
+      ],
+      "commands": [
+        "python -m pytest -q tests/tools/test_config_validator.py",
+        "python tools/config_validator.py --config configs/runtime.json --strict",
+        "python tools/config_validator.py --config configs/aegis.conf --strict"
+      ],
+      "limitations": [
+        "E2: jsonschema is not installed here, so validation ran through the module's required-key fallback; a schema-only violation was not exercised.",
+        "The stale rules shadow copy still exists; deleting a tracked file is a disposition decision, so the pins only keep it out of the package.",
+        "configs/aegis.conf is not validated by anything (the loader understands .json/.toml only); whether it is live configuration or documentation is unanswered.",
+        "Only configs/runtime.json was checked against the schema; the other 23 JSON files are pinned as parseable, not conformant (several are fixtures with a deliberate different shape)."
+      ]
     }
   ],
   "known_gaps": [
@@ -12934,7 +12987,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 109,
+    "E2_count": 110,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 89,
