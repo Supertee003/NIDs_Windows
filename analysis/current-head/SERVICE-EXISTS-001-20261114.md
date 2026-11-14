@@ -108,7 +108,7 @@ the bug must not be readable as the bug.
 |---|---|
 | `pytest tests/release/test_installer_service_guards.py tests/release/test_release_tooling.py` | 16 passed |
 | premise measurement | `exit=1060`, `stdout_len=122`, `truthy=True`, `WOULD_SKIP` |
-| `pytest tests/release` | 145 passed (previously 1 failing: the stale `start= auto` pin) |
+| `pytest tests/release` | 135 passed (previously 1 failing: the stale `start= auto` pin) |
 
 ## 6. Residual
 

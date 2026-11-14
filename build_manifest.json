@@ -1452,8 +1452,8 @@
     },
     {
       "path": "scripts/install_aegis.ps1",
-      "size": 7021,
-      "sha256": "2e4d59755639b642aa2f9bd04dc00e1948f3b45a7d1e743241f228c4b61515d8",
+      "size": 7923,
+      "sha256": "b13f648d4cd863bb4c7be8815d9f7eab6afcc7fdc462a8195599d32f9e33e5f2",
       "language": "script"
     },
     {

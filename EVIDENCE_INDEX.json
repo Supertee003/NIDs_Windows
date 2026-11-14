@@ -6371,6 +6371,33 @@
         "Soak freshness is compared with the commit time of tracked runtime paths; an uncommitted runtime change is invisible to that rule (the soak would look fresh for a build that is not the working tree).",
         "The signature gate proves a signature artifact covers the exact SHA256SUMS bytes; it does not verify the cryptography (that needs the custodian's public key, which is the point of the owner gate)."
       ]
+    },
+    {
+      "id": "SERVICE-EXISTS-001-E2-20261114",
+      "head_sha": "c61f974",
+      "timestamp": "2026-11-14",
+      "title": "The bundled installer never created its services on a clean host: sc.exe writes to stdout",
+      "level": "E2",
+      "component": "scripts/install_aegis.ps1, tests/release/test_installer_service_guards.py, tests/release/test_release_tooling.py",
+      "flow_id": "REL-002",
+      "description": "scripts/install_aegis.ps1 guarded both service registrations with the OUTPUT of `sc.exe query` (`$driverSvc = sc.exe query AegisWfp`; `if (-not (sc.exe query AegisNids))`). Measured on the host: querying an absent service exits 1060 and writes 122 characters to STDOUT, so the output is always truthy, `-not` is always false, and neither `sc.exe create` ran on a machine without the service — the exact clean-host case the guard existed for. The bundle install would copy files, skip both creates, install the boot task, warn on `sc.exe start`, and print 'Installed AEGIS NIDS' on a host with no AegisNids service and no AegisWfp driver. The NSIS installer was unaffected because tools/installer.py issues sc create unconditionally, which is why the hand-run deployment worked and the bundle path would not have. Both creates were also piped to Out-Null, hiding a genuine failure. Fix: discard both streams with `*> $null`, test `$LASTEXITCODE -eq 0` for existence, throw when a create fails, and repair the uninstall branch's inverted test. The stale pin that required `start= auto` (contradicting INSTALLER-BOOT-MODEL-001, and failing) now requires demand-start, refuses AUTO_START and requires install-boot-task.ps1. 5 new pins: the sc.exe stdout premise measured against the real binary, no truthiness test on sc.exe query in any spelling, every query followed by a LASTEXITCODE test, every create followed by throw-on-nonzero and never piped to Out-Null, and wfp_service.ps1's already-correct check preserved. tests/release: 135 passed.",
+      "evidence_artifact": "analysis/current-head/SERVICE-EXISTS-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/SERVICE-EXISTS-001-20261114.md",
+        "scripts/install_aegis.ps1",
+        "tests/release/test_installer_service_guards.py",
+        "tests/release/test_release_tooling.py"
+      ],
+      "commands": [
+        "python -m pytest -q tests/release/test_installer_service_guards.py tests/release/test_release_tooling.py",
+        "python -m pytest -q tests/release",
+        "sc.exe query AegisNoSuchSvcXYZ (exit 1060, 122 bytes on stdout)"
+      ],
+      "limitations": [
+        "E2 + E1: the premise is measured and the fix is pinned structurally, but the installer has not been run elevated from this session, so service creation on a clean host is still the E5 gate.",
+        "The NSIS installer and the bundle script still differ in idempotency strategy (unconditional create vs query-then-create); unifying them is a separate decision.",
+        "Only the two services in install_aegis.ps1 were measured; other scripts that query kernel services were read but not exercised."
+      ]
     }
   ],
   "known_gaps": [
@@ -12278,7 +12305,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 103,
+    "E2_count": 104,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 89,

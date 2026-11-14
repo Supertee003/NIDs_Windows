@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T12:27:46.957305+00:00",
+  "generated_at": "2026-11-14T12:33:11.268919+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1585,
+  "total_files": 1587,
   "by_role": {
-    "documentation": 387,
+    "documentation": 388,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
     "source": 373,
-    "test-artifact": 239,
+    "test-artifact": 240,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -817,6 +817,10 @@
       "role": "documentation"
     },
     "analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/SERVICE-EXISTS-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -5757,6 +5761,10 @@
       "role": "test-artifact"
     },
     "tests/release/test_host_preflight.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/release/test_installer_service_guards.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
