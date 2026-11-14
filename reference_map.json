@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T14:39:07.053000+00:00",
+  "generated_at": "2026-11-14T14:42:52.754045+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1605,
+  "total_files": 1607,
   "by_role": {
-    "documentation": 397,
+    "documentation": 398,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
     "source": 372,
-    "test-artifact": 249,
+    "test-artifact": 250,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -693,6 +693,10 @@
       "role": "documentation"
     },
     "analysis/current-head/FOR-BATCH-001-20261108.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/FOREIGN-TOOLCHAIN-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -6181,6 +6185,10 @@
       "role": "test-artifact"
     },
     "tests/tools/test_control_retry.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/tools/test_foreign_toolchains.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
