@@ -7369,6 +7369,54 @@
         "Cargo pins are offline-only: with an empty cache they skip instead of fetching.",
         "The 88 and 21 case floors count collected tests, not coverage; a weakened assertion keeps the count."
       ]
+    },
+    {
+      "id": "NATIVE-BUILD-001-E3-20261114",
+      "head_sha": "8aa43c0",
+      "timestamp": "2026-11-14",
+      "title": "The native bridge could not link from a clean checkout, and a tracked script deleted tracked files",
+      "level": "E3",
+      "component": "bridge/ (C++ IPC bridge), src/windows/ (aegis_wfp.c, fim_native.c), nose/*.bat, mouth/build_mouth.bat, src/tests/stubs/, tests/release/test_native_build_and_scripts.py",
+      "flow_id": "FFI-001",
+      "description": "Three defects, none covered by a check. (1) bridge/CMakeLists.txt points every target at <repo>/dist, a gitignored directory a clean tree does not have; configure succeeded and the MSVC link then failed with LNK1104: cannot open file 'D:/NIDs_Windows/dist/aegis_ipc.dll' because MSBuild does not create output directories. file(MAKE_DIRECTORY) at configure time, before the first add_library, fixes it. (2) nose/run_nose.bat and nose/cleanup_nose_mouth.bat hardcoded an absolute D:/NIds_Windows path, a different case than the real path and useless on another host; both now derive their directory from %~dp0 with trailing-backslash trimming. (3) nose/cleanup_nose_mouth.bat is a one-time v4-to-v5 migration that deletes run_nose.bat, nose/README.md, mouth/Cargo.toml, mouth/Cargo.lock, mouth/.gitignore and mouth/src - tracked files - with no prompt; it now refuses to run without --run-cleanup (exit /b 2 before any del/rmdir) and states which tracked files it removes. Also recorded: src/tests/stubs/etw_helper_stub.c and fim_helper_stub.c appear in no CMakeLists.txt and not in build.zig, so nothing compiles them. tests/release/test_native_build_and_scripts.py pins all of it with 9 checks, including real MSVC builds (Visual Studio 17 2022 generator) of the three root DLLs aegis_wfp_user/aegis_etw_helper/aegis_fim_helper and of the bridge into dist/aegis_ipc.dll. 9 passed twice; mutation (removing the gate block) fails test_the_destructive_cleanup_script_stays_gated. An honest note is recorded: the first two runs failed at link with LNK1104 while a stale dist/aegis_ipc.dll from September 24 was in the way - moving it aside let the link succeed.",
+      "evidence_artifact": "analysis/current-head/NATIVE-BUILD-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/NATIVE-BUILD-001-20261114.md",
+        "tests/release/test_native_build_and_scripts.py",
+        "CMakeLists.txt",
+        "bridge/CMakeLists.txt",
+        "bridge/__init__.py",
+        "bridge/aegis_adapter.cpp",
+        "bridge/aegis_adapter.hpp",
+        "bridge/aegis_adapter_selftest_main.cpp",
+        "bridge/aegis_bridge_main.cpp",
+        "bridge/aegis_packet_parser.cpp",
+        "bridge/aegis_packet_parser.hpp",
+        "src/windows/aegis_wfp.c",
+        "src/windows/fim_native.c",
+        "nose/run_nose.bat",
+        "nose/cleanup_nose_mouth.bat",
+        "mouth/build_mouth.bat",
+        "src/tests/stubs/etw_helper_stub.c",
+        "src/tests/stubs/fim_helper_stub.c",
+        "nose/README_DEPLOY.txt",
+        "mouth/README_DEPLOY.txt",
+        "mouth/.gitignore",
+        "brain/aegis_brain_cython/README.md",
+        "go/aggregator/README.md"
+      ],
+      "commands": [
+        "python -m pytest -q tests/release/test_native_build_and_scripts.py",
+        "cmake -S . -B <tmp> -G 'Visual Studio 17 2022' -A x64 ; cmake --build <tmp> --config Release",
+        "cmake -S bridge -B <tmp> -G 'Visual Studio 17 2022' -A x64 ; cmake --build <tmp> --config Release"
+      ],
+      "limitations": [
+        "E3 means built and linked, not loaded: the three DLLs were not loaded by the runtime and the bridge DLL was not exercised over its IPC.",
+        "The pins skip without cmake or a Visual Studio instance, so a non-Windows runner reports skips rather than proof.",
+        "The cleanup gate is a guard, not a fix: the script still deletes tracked files if run with --run-cleanup, which is the owner's call to remove.",
+        "drivers/ (6 files) and rust-src/bin/aegis_keygen.rs remain unbuilt: the drivers need the WDK and test signing, the keygen is a standalone owner tool with no crate.",
+        "The 5 doc/config files named here (two README_DEPLOY.txt, mouth/.gitignore, two README.md) were inspected for consistency only; no executable check covers them."
+      ]
     }
   ],
   "known_gaps": [
@@ -13277,7 +13325,7 @@
     "E0_count": 0,
     "E1_count": 21,
     "E2_count": 115,
-    "E3_count": 12,
+    "E3_count": 13,
     "E4_count": 0,
     "E5_count": 89,
     "E6_count": 0,
