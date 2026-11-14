@@ -473,11 +473,75 @@ def release_gates(facts: dict) -> list[dict]:
     return gates
 
 
+WAIVERS_PATH = REPO / "docs" / "gates" / "waivers.json"
+WAIVER_REQUIRED = ("gate_id", "reason", "accepted_by", "accepted_at", "not_proven")
+
+
+def load_waivers(path: Path | None = None) -> dict[str, dict]:
+    """Read the owner's explicit waivers, keyed by gate id.
+
+    A waiver never turns a gate into PASS: `ok` stays False and the gate is
+    reported as `WAIVED`, with what is *not* proven carried along in the record.
+    A malformed, unknown-gate or expired waiver is ignored, not trusted -
+    "never silently waived" cuts both ways.
+    """
+    data = _read_json(path or WAIVERS_PATH) or {}
+    entries = data.get("waivers")
+    if not isinstance(entries, list):
+        return {}
+    known = {
+        "truth_artifacts", "component_audit", "release_signature",
+        "clean_host_e5", "soak_24h", "evidence_debt",
+    }
+    now = dt.datetime.now()
+    out: dict[str, dict] = {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        if any(not entry.get(field) for field in WAIVER_REQUIRED):
+            continue
+        if entry["gate_id"] not in known:
+            continue
+        if not isinstance(entry.get("not_proven"), list) or not entry["not_proven"]:
+            continue
+        expires = parse_timestamp(entry.get("expires_at")) if entry.get("expires_at") else None
+        if entry.get("expires_at") and expires is None:
+            continue
+        if expires is not None and expires < now:
+            continue
+        out[entry["gate_id"]] = entry
+    return out
+
+
+def apply_waivers(gates: list[dict], waivers: dict[str, dict]) -> list[dict]:
+    """Mark open gates the owner has explicitly waived. Never sets `ok`."""
+    for gate in gates:
+        waiver = waivers.get(gate["id"])
+        if gate["ok"] or waiver is None:
+            continue
+        gate["waived"] = True
+        gate["waiver"] = {
+            "reason": waiver["reason"],
+            "accepted_by": waiver["accepted_by"],
+            "accepted_at": waiver["accepted_at"],
+            "not_proven": list(waiver["not_proven"]),
+        }
+        gate["detail"] = f"WAIVED by {waiver['accepted_by']} ({waiver['accepted_at']}): {waiver['reason']}"
+    return gates
+
+
 def release_verdict(gates: list[dict]) -> dict:
     open_gates = [g for g in gates if not g["ok"]]
+    waived = [g for g in open_gates if g.get("waived")]
+    unwaived = [g for g in open_gates if not g.get("waived")]
     return {
         "shippable": not open_gates,
+        # All gates are either closed or explicitly waived: a release the owner
+        # can ship with a visible exception, never a PASS.
+        "shippable_with_waiver": not unwaived,
         "open": [g["id"] for g in open_gates],
+        "waived": [g["id"] for g in waived],
+        "unwaived": [g["id"] for g in unwaived],
         "owners": sorted({g["owner"] for g in open_gates if g["owner"] != "none"}),
     }
 
@@ -609,6 +673,9 @@ def main() -> int:
                     help="exit non-zero unless the component audit is complete")
     ap.add_argument("--release-check", action="store_true",
                     help="exit non-zero unless every release gate is closed (shippable)")
+    ap.add_argument("--accept-waivers", action="store_true",
+                    help=("treat gates waived in docs/gates/waivers.json as satisfied for "
+                          "the exit code; waived gates are still printed as WAIVED, never PASS"))
     args = ap.parse_args()
     eng = AuditEngine()
 
@@ -662,7 +729,7 @@ def main() -> int:
             f"golden path declared={gp_steps_real}"
         ),
     }
-    gates = release_gates(facts)
+    gates = apply_waivers(release_gates(facts), load_waivers())
     verdict = release_verdict(gates)
 
     out = {
@@ -670,7 +737,12 @@ def main() -> int:
         "commit": _git_short(),
         "declaration": {
             "component_audit": "COMPLETE" if component_complete else "INCOMPLETE",
-            "release": "SHIPPABLE" if verdict["shippable"] else "NOT SHIPPABLE",
+            "release": (
+                "SHIPPABLE" if verdict["shippable"]
+                else f"NOT SHIPPABLE (waived by owner: {', '.join(verdict['waived'])}, unproven)"
+                if verdict["waived"]
+                else "NOT SHIPPABLE"
+            ),
         },
         "part_i": {
             "total_modules": len(rows),
@@ -683,7 +755,10 @@ def main() -> int:
         "component_audit_complete": component_complete,
         "release": {
             "shippable": verdict["shippable"],
+            "shippable_with_waiver": verdict["shippable_with_waiver"],
             "open": verdict["open"],
+            "waived": verdict["waived"],
+            "unwaived": verdict["unwaived"],
             "owners": verdict["owners"],
             "gates": gates,
         },
@@ -700,13 +775,24 @@ def main() -> int:
     print(f"release: {out['declaration']['release']} "
           f"({len(verdict['open'])}/{len(gates)} gates open)")
     for gate in gates:
-        print(f"  {'PASS' if gate['ok'] else 'OPEN'}  {gate['id']:<18} "
+        state = "PASS" if gate["ok"] else ("WAIVED" if gate.get("waived") else "OPEN")
+        print(f"  {state:<6}  {gate['id']:<18} "
               f"[{gate['owner']}] {gate['detail']}")
+    if verdict["waived"] and not args.accept_waivers:
+        print(f"note: {', '.join(verdict['waived'])} waived by the owner, but this run did "
+              "not accept waivers (pass --accept-waivers to count them)")
     if args.check and not component_complete:
         print("FAIL: the component audit is incomplete", file=sys.stderr)
         return 1
-    if args.release_check and not verdict["shippable"]:
-        print(f"FAIL: release gates open: {', '.join(verdict['open'])}", file=sys.stderr)
+    if args.release_check:
+        if verdict["shippable"]:
+            return 0
+        if args.accept_waivers and verdict["shippable_with_waiver"]:
+            print(f"FAIL: not a full shippable release; shipping with owner waiver on "
+                  f"{', '.join(verdict['waived'])} (unproven)", file=sys.stderr)
+            return 0
+        print(f"FAIL: release gates open: {', '.join(verdict['unwaived'] or verdict['open'])}",
+              file=sys.stderr)
         return 1
     return 0
 
@@ -744,9 +830,22 @@ def write_md(out: dict) -> None:
     ]
     for gate in release["gates"]:
         detail = str(gate["detail"]).replace("|", "\\|")
+        state = "PASS" if gate["ok"] else ("WAIVED" if gate.get("waived") else "OPEN")
         lines.append(
-            f"| `{gate['id']}` | {'PASS' if gate['ok'] else 'OPEN'} | {gate['owner']} | {detail} |"
+            f"| `{gate['id']}` | {state} | {gate['owner']} | {detail} |"
         )
+    if release.get("waived"):
+        lines += ["", "### Owner waivers (exceptions, not proof)", ""]
+        for gate in release["gates"]:
+            waiver = gate.get("waiver")
+            if not waiver:
+                continue
+            lines.append(
+                f"- `{gate['id']}` — accepted by {waiver['accepted_by']} at "
+                f"{waiver['accepted_at']}: {waiver['reason']}"
+            )
+            for item in waiver["not_proven"]:
+                lines.append(f"  - not proven: {item}")
     lines += ["", "## Part II - specialized holds", ""]
     for k, v in out["part_ii"].items():
         lines.append(f"- {k}: {'PASS' if v else 'FAIL'}")

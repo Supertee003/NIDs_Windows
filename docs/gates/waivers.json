@@ -1,0 +1,17 @@
+{
+  "id": "RELEASE-WAIVERS",
+  "rule": "A waiver is an explicit owner exception, never a pass. A waived gate stays ok=false and is printed as WAIVED; the audit only returns success for it when run with --accept-waivers, and even then it says the release is not fully shippable. Delete an entry to restore the hard gate.",
+  "waivers": [
+    {
+      "gate_id": "soak_24h",
+      "reason": "Owner decided not to wait for the 24 h window and to ship on the evidence collected so far.",
+      "accepted_by": "owner",
+      "accepted_at": "2026-11-14T22:35:00",
+      "not_proven": [
+        "No 24 h continuous window has been observed for this build; the recorded window had 0.4 of 24.0 h elapsed.",
+        "Absence of dropped rows, restarts, DEGRADED reports and SCM 7031/7034 events is proven only for the observed fraction of the window.",
+        "The 24 h claim cannot be reconstructed later from this artifact; a future window must be run separately if the claim is ever needed."
+      ]
+    }
+  ]
+}
