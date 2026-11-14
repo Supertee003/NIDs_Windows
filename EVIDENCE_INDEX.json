@@ -1,5 +1,5 @@
 {
-  "head_sha": "0f0c029ee0c601a9b838f72f4d48bb50f2bf94ee",
+  "head_sha": "164043aaa26987567831a6dceaf68f22e58751ec",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-14",
   "generator_version": "3.0",
@@ -7142,6 +7142,40 @@
         "The reader census matches file names, so a comment naming the file counts as a reader; the other pins provide the validation.",
         "shared/runtime/components.json passed the census on existing readers (scripts/doc_checker.py, tests/runtime/test_aegisctl.py); its content was not audited here."
       ]
+    },
+    {
+      "id": "ACTION-SPACES-001-E2-20261114",
+      "head_sha": "164043a",
+      "timestamp": "2026-11-14",
+      "title": "The PEP proof harness transposed quarantine and rate_limit in its action enum",
+      "level": "E2",
+      "component": "src/tests/proofs/pep_enforcement_proof.zig, contracts/operator_contract_v1.json, tests/contracts/test_action_spaces.py",
+      "flow_id": "FFI-002",
+      "description": "Comparing every action-ordinal declaration found three numberings and one transposition. The canonical six-value space (allow0 alert1 block2 quarantine3 rate_limit4 log_only5) is declared identically in src/contract/canonical_event.zig, src/forensic/policy_contract.zig and src/policy/policy_engine.zig, but src/tests/proofs/pep_enforcement_proof.zig declared allow0 alert1 block2 rate_limit3 quarantine4 - the two restricted actions swapped - inside u8 fields of structs the proof compares, in the file whose output becomes evidence. Nothing executed wrongly because the proof compared tags, but a declared space that disagrees with the contract is inherited by any later ordinal cast, and src/policy/policy_contract.zig already has a test named 'quarantine and rate_limit are not interchangeable'. The second finding is that the FFI space was undocumented: src/policy/policy_ir.zig Action (pass0 log1 alert2 rate_limit3 block4 quarantine5 escalate6, mirrored exactly by ACTION_* in rust-src/lib.rs) is the requested_action ABI the Rust PEP receives per pep_bindings.zig, yet contracts/operator_contract_v1.json declared only two of the three spaces, so BLOCK reads as 2 in one document and 4 in the ABI with nothing saying why. Fix: the proof enum is renumbered to quarantine=3, rate_limit=4 with a comment naming the four modules sharing the space; the contract gains pep_request_action_ordinals plus a note that three spaces exist and none may be compared with another (convert, never cast); and tests/contracts/test_action_spaces.py pins all four canonical declarations equal to policy_action_ordinals, policy_ir.Action and Rust ACTION_* equal to pep_request_action_ordinals, the ordinal collision between the spaces (frozen 4=QUARANTINE equals FFI 4=BLOCK; frozen 2=BLOCK equals FFI 2=ALERT) so the note stays true, no .zig file casting an action into a canonical policy_action byte, and the existence of the intToEnum-based converter in policy_contract.zig. 16 passed together with test_operator_contract.py; zig build and zig build test exit 0. Mutation control: restoring the transposed proof enum fails test_canonical_action_space_is_identical_everywhere for that file; restoring returns 8 passed.",
+      "evidence_artifact": "analysis/current-head/ACTION-SPACES-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/ACTION-SPACES-001-20261114.md",
+        "tests/contracts/test_action_spaces.py",
+        "contracts/operator_contract_v1.json",
+        "src/tests/proofs/pep_enforcement_proof.zig",
+        "src/policy/policy_ir.zig",
+        "src/policy/policy_engine.zig",
+        "src/policy/policy_contract.zig",
+        "src/contract/canonical_event.zig",
+        "src/forensic/policy_contract.zig",
+        "rust-src/lib.rs"
+      ],
+      "commands": [
+        "python -m pytest -q tests/contracts/test_action_spaces.py tests/contracts/test_operator_contract.py",
+        "zig build",
+        "zig build test"
+      ],
+      "limitations": [
+        "E2: the proof harness was not run against a live PEP; only its declared ordinal space was corrected.",
+        "The cast ban is syntactic and covers the two shapes present today; a cast through an intermediate variable would pass.",
+        "policy_ir.Action legitimately differs (it has pass and escalate); this documents it rather than unifying it, since unification is a wire change.",
+        "Rust ACTION_* is asserted equal to the contract, not directly to policy_ir.Action; the contract is the middle term."
+      ]
     }
   ],
   "known_gaps": [
@@ -13049,7 +13083,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 111,
+    "E2_count": 112,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 89,

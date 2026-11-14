@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T14:26:49.961416+00:00",
+  "generated_at": "2026-11-14T14:33:15.298081+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1601,
+  "total_files": 1603,
   "by_role": {
-    "documentation": 395,
+    "documentation": 396,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
     "source": 372,
-    "test-artifact": 247,
+    "test-artifact": 248,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -573,6 +573,10 @@
       "role": "documentation"
     },
     "analysis/current-head/09-backlog-triage-20261108.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/ACTION-SPACES-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -5648,6 +5652,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "tests/contracts/test_action_spaces.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/contracts/test_canonical_context_flags.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -6729,5 +6737,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "0f0c029"
+  "source_commit": "164043a"
 }

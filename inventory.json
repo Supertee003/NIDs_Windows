@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T14:26:49.957114+00:00",
+  "generated_at": "2026-11-14T14:33:15.295538+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1601,
+  "total_files": 1603,
   "by_class": {
-    "canonical-docs": 409,
+    "canonical-docs": 410,
     "canonical-build": 192,
     "unclassified": 17,
     "canonical-source": 668,
-    "canonical-test": 247,
+    "canonical-test": 248,
     "canonical-config": 34,
     "legacy": 34
   },
@@ -393,6 +393,12 @@
       "size": 12058
     },
     {
+      "path": "analysis/current-head/ACTION-SPACES-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4555
+    },
+    {
       "path": "analysis/current-head/BOOT-MODEL-002-20261114.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -534,7 +540,7 @@
       "path": "analysis/current-head/evidence-debt-baseline.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 5575
+      "size": 4388
     },
     {
       "path": "analysis/current-head/FIM-PROBE-IDENTITY-COMMENT-001-20261109.md",
@@ -2082,7 +2088,7 @@
       "path": "contracts/operator_contract_v1.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 925
+      "size": 1402
     },
     {
       "path": "CONTRIBUTING.md",
@@ -3558,7 +3564,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1221631
+      "size": 1225567
     },
     {
       "path": "FLOW_MAP.json",
@@ -3666,7 +3672,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 244277
+      "size": 244600
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3924,7 +3930,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9693
+      "size": 10041
     },
     {
       "path": "pytest.ini",
@@ -3942,7 +3948,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 202034
+      "size": 202290
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -7464,7 +7470,7 @@
       "path": "src/tests/proofs/pep_enforcement_proof.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 42508
+      "size": 43179
     },
     {
       "path": "src/tests/proofs/performance_tuning_proof.zig",
@@ -7999,6 +8005,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 697
+    },
+    {
+      "path": "tests/contracts/test_action_spaces.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 5991
     },
     {
       "path": "tests/contracts/test_canonical_context_flags.py",
@@ -9621,5 +9633,5 @@
       "size": 624
     }
   ],
-  "source_commit": "0f0c029"
+  "source_commit": "164043a"
 }
