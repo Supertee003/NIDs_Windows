@@ -6288,6 +6288,58 @@
         "The tool cannot tell a fresh install from an install over an old one; the upgrade path remains untested.",
         "It does not verify installed binary digests — stage_helpers.py --check owns those, and duplicating them here would create a second source of truth for the same hashes."
       ]
+    },
+    {
+      "id": "CLI-LOGS-RESOLVER-001-E2-20261114",
+      "head_sha": "3a59d68",
+      "timestamp": "2026-11-14",
+      "title": "Every runtime path in aegisctl now goes through the one redirectable resolver",
+      "level": "E2",
+      "component": "tools/aegisctl.py (_logs_dir), tests/tools/test_aegisctl_logs_resolver.py",
+      "flow_id": "VER-EVIDENCE-INTEGRITY",
+      "description": "TEST-HYGIENE-S301 closed the two candidate-list commands and recorded five remaining hand-built runtime paths as residual: aegis_core.ndjson in _event_log_candidates and in the _event_log_path fallback, canary_last.json on read and write, and anomalous.json for the brain inbox. Same defect class: a path no fixture can redirect, so a test or lab run that exercises the command writes tracked tree state or reads the wrong file. All five now go through _logs_dir() (AEGIS_LOGS_DIR override, production default <repo>/logs). Pinned structurally: the literal TOOLS_DIR.parent / 'logs' may appear exactly once, inside the resolver, and the other spellings are refused; plus behavioural proof that canary report reads a receipt from AEGIS_LOGS_DIR (exit 0) and that with no receipt it reports available=false, exit 3, creating no file. 4 tests in the new file, 428 across tests/security+tests/tools.",
+      "evidence_artifact": "analysis/current-head/CLI-LOGS-RESOLVER-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/CLI-LOGS-RESOLVER-001-20261114.md",
+        "tools/aegisctl.py",
+        "tests/tools/test_aegisctl_logs_resolver.py"
+      ],
+      "commands": [
+        "python -m pytest -q tests/tools/test_aegisctl_logs_resolver.py",
+        "python -m pytest -q tests/security tests/tools"
+      ],
+      "limitations": [
+        "E2 only: no host execution belongs to this patch.",
+        "Other tools/*.py files were not audited for the same pattern; the claim is scoped to tools/aegisctl.py."
+      ]
+    },
+    {
+      "id": "E5-CLEAN-HOST-001-E2-20261114",
+      "head_sha": "2d83cfb",
+      "timestamp": "2026-11-14",
+      "title": "The clean-host gate is now two commands, and the runbook cannot report a verdict it did not reach",
+      "level": "E2",
+      "component": "scripts/e5-clean-host.ps1, tests/release/test_e5_runbook.py, tools/installer.py build",
+      "flow_id": "REL-002",
+      "description": "RC-FINAL item 5, INSTALLER-BOOT-MODEL-001 and PREFLIGHT-001 all ended at the same unrun procedure: install on a clean host, reboot, verify the boot model. A remembered checklist is how the 2026-11-11 boot failure survived review, so scripts/e5-clean-host.ps1 reduces it to -Stage Install (elevated: hash-assert the installer, silent install, reboot) and -Stage Verify (post-reboot: host_preflight.py with a 5 min uptime floor + a 24 h soak window anchored with --baseline auto), writing both JSON artifacts into admin-evidence/e5-clean-host-<ts>/. The runbook fails closed on non-elevation, on a missing installer, and on a hash mismatch; -DryRun prints every command and changes nothing; a dry run prints 'SKIPPED (dry run)' and 'RESULT: DRY-RUN' rather than PASS, because Invoke-External returns 0 without running; and the soak anchor is taken even when preflight fails. Exercised on the lab host: install dry run detected the freshly built dist/aegis-installer-5.0.0.exe (sha256 B618AE7B..., 6,129,989 bytes) and printed the plan; Verify without elevation was refused; Verify dry run printed the plan and claimed nothing; a missing installer failed non-zero. The installer was rebuilt from current source, re-proving the boot-model packaging is buildable. 14 pins across the runbook and the preflight gate. This is E2 by design: no clean host has run it.",
+      "evidence_artifact": "analysis/current-head/E5-CLEAN-HOST-001-20261114.md",
+      "artifacts": [
+        "analysis/current-head/E5-CLEAN-HOST-001-20261114.md",
+        "scripts/e5-clean-host.ps1",
+        "tests/release/test_e5_runbook.py",
+        "tools/host_preflight.py"
+      ],
+      "commands": [
+        "python tools/installer.py --package --output dist/aegis-installer-5.0.0.exe",
+        "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/e5-clean-host.ps1 -Stage Install -DryRun",
+        "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/e5-clean-host.ps1 -Stage Verify -DryRun",
+        "python -m pytest -q tests/release/test_e5_runbook.py tests/release/test_host_preflight.py"
+      ],
+      "limitations": [
+        "E2: the clean-host install and reboot have not happened, so the boot-model E5 gate stays open.",
+        "The install stage's silent NSIS switch (/S) is exercised only as a printed plan here; the real install path was last proven by the hand-run window on 2026-11-14, not by this script.",
+        "The runbook cannot restore a clean image; using it on a dirty host produces evidence about that host, not about a fresh install."
+      ]
     }
   ],
   "known_gaps": [
@@ -12195,7 +12247,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 100,
+    "E2_count": 102,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 89,

@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T12:13:12.172870+00:00",
+  "generated_at": "2026-11-14T12:20:25.409482+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1578,
+  "total_files": 1583,
   "by_role": {
-    "documentation": 384,
+    "documentation": 386,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
-    "source": 372,
-    "test-artifact": 236,
+    "source": 373,
+    "test-artifact": 238,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -596,6 +596,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/CLI-LOGS-RESOLVER-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/CONTROL-AUTH-001-20261110.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -633,6 +637,10 @@
       "role": "documentation"
     },
     "analysis/current-head/DRIVER-PACKAGING-001-20261110.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/E5-CLEAN-HOST-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -3788,6 +3796,10 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "scripts/e5-clean-host.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "scripts/e5-o2-remote-sink.json": {
       "class": "canonical-build",
       "role": "build-config"
@@ -5724,6 +5736,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/release/test_e5_runbook.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/release/test_evidence_index_valid.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -6049,6 +6065,10 @@
       "role": "test-artifact"
     },
     "tests/tools/test_aegisctl_incidents.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/tools/test_aegisctl_logs_resolver.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

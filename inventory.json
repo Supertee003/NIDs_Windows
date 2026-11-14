@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T12:13:12.166770+00:00",
+  "generated_at": "2026-11-14T12:20:25.405679+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1578,
+  "total_files": 1583,
   "by_class": {
-    "canonical-docs": 398,
+    "canonical-docs": 400,
     "canonical-build": 192,
     "unclassified": 17,
-    "canonical-source": 668,
-    "canonical-test": 236,
+    "canonical-source": 669,
+    "canonical-test": 238,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -423,6 +423,12 @@
       "size": 307
     },
     {
+      "path": "analysis/current-head/CLI-LOGS-RESOLVER-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2551
+    },
+    {
       "path": "analysis/current-head/CONTROL-AUTH-001-20261110.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -481,6 +487,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 5729
+    },
+    {
+      "path": "analysis/current-head/E5-CLEAN-HOST-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4176
     },
     {
       "path": "analysis/current-head/ETW-FILE-DEDUPE-001-20261110.md",
@@ -3492,7 +3504,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1162259
+      "size": 1167163
     },
     {
       "path": "FLOW_MAP.json",
@@ -3600,7 +3612,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 240510
+      "size": 240953
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3876,7 +3888,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 199089
+      "size": 199430
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -5209,6 +5221,12 @@
       "class": "canonical-source",
       "role": "source",
       "size": 11606
+    },
+    {
+      "path": "scripts/e5-clean-host.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6454
     },
     {
       "path": "scripts/e5-o2-remote-sink.json",
@@ -8115,6 +8133,12 @@
       "size": 5491
     },
     {
+      "path": "tests/release/test_e5_runbook.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 2737
+    },
+    {
       "path": "tests/release/test_evidence_index_valid.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -8607,6 +8631,12 @@
       "size": 5867
     },
     {
+      "path": "tests/tools/test_aegisctl_logs_resolver.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3378
+    },
+    {
       "path": "tests/tools/test_aegisctl_queue.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -8988,7 +9018,7 @@
       "path": "tools/aegisctl.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 115161
+      "size": 115075
     },
     {
       "path": "tools/audit_kernel_runtime.py",
