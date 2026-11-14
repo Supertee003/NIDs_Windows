@@ -1011,7 +1011,7 @@ def _event_log_candidates() -> list[Path]:
         return [Path(override)]
     return [
         Path(r"C:\Windows\System32\logs\aegis_core.ndjson"),
-        TOOLS_DIR.parent / "logs" / "aegis_core.ndjson",
+        _logs_dir() / "aegis_core.ndjson",
     ]
 
 
@@ -1039,7 +1039,7 @@ def _event_log() -> Path:
     selected = _select_event_log(_event_log_candidates())
     if selected is not None:
         return selected
-    return TOOLS_DIR.parent / "logs" / "aegis_core.ndjson"
+    return _logs_dir() / "aegis_core.ndjson"
 
 
 def _event_log_note(path: Path) -> str:
@@ -1400,7 +1400,7 @@ def cmd_canary(args) -> int:
         }, sort_keys=True))
         return 0
     if sub == "report":
-        receipt_path = TOOLS_DIR.parent / "logs" / "canary_last.json"
+        receipt_path = _logs_dir() / "canary_last.json"
         try:
             print(json.dumps(json.loads(receipt_path.read_text(encoding="utf-8")), sort_keys=True))
             return 0
@@ -1465,8 +1465,8 @@ def cmd_canary(args) -> int:
     if engine_count is not None and engine_count != len(by_id):
         result["engine_drift"] = {"file": len(by_id), "engine": engine_count}
     try:
-        (TOOLS_DIR.parent / "logs").mkdir(parents=True, exist_ok=True)
-        (TOOLS_DIR.parent / "logs" / "canary_last.json").write_text(
+        _logs_dir().mkdir(parents=True, exist_ok=True)
+        (_logs_dir() / "canary_last.json").write_text(
             json.dumps(result, sort_keys=True), encoding="utf-8")
     except OSError:
         pass  # receipt is best-effort; the stdout verdict is authoritative
@@ -2178,7 +2178,7 @@ def cmd_brain(args) -> int:
     inbox: list = []
     try:
         from collections import deque
-        log_path = TOOLS_DIR.parent / "logs" / "anomalous.json"
+        log_path = _logs_dir() / "anomalous.json"
         with open(log_path, encoding="utf-8", errors="replace") as fh:
             tail = deque(fh, maxlen=max(want, 1))
         for line in tail:
