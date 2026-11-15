@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "829e85e",
+  "commit": "42e9413",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE"
@@ -50,7 +50,7 @@
         "id": "release_signature",
         "ok": true,
         "owner": "owner",
-        "detail": "release\\T20-final\\7234d7a\\signatures.json signs SHA256SUMS (BA861CB56EDF386D...) with a ed25519 key"
+        "detail": "release\\T20-final\\9ebee9b\\signatures.json signs SHA256SUMS (9F87BF36D28149F5...) with a ed25519 key; commit 9ebee9b contains runtime 7c604d5"
       },
       {
         "id": "clean_host_e5",
@@ -62,7 +62,7 @@
         "id": "soak_24h",
         "ok": false,
         "owner": "time",
-        "detail": "admin-evidence\\e5-clean-host-20261115-soak2\\soak-24h-delta-latest.json is IN_PROGRESS at 0.0/24.0 h"
+        "detail": "admin-evidence\\e5-clean-host-20261115-soak2\\soak-24h-delta-latest.json is IN_PROGRESS at 6.67/24.0 h"
       },
       {
         "id": "evidence_debt",

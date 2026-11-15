@@ -56,6 +56,16 @@ def _gate(tree: Path, repo: Path) -> dict:
         "algorithm": data.get("algorithm"),
         "signed_digest": data.get("signed_digest"),
         "actual_digest": final_audit._sha256(sums) if sums.exists() else None,
+        "commit": data.get("commit"),
+        "signed_at": data.get("signed_at"),
+        # This test is about signature bytes, not history: the tree is a tmp
+        # fixture whose commit is not a real one, so stand in for what
+        # collect_release_facts() would report for a current commit. The
+        # history rules have their own pins in test_release_board.py.
+        "commit_time": "2026-11-16T00:00:00",
+        "commit_in_history": True,
+        "commit_contains_runtime": True,
+        "runtime_commit": "deadbee",
     })
     return final_audit.evaluate_signature(facts)
 

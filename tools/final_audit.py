@@ -347,30 +347,55 @@ def parse_timestamp(value) -> dt.datetime | None:
 
 
 def evaluate_signature(artifacts: list[dict]) -> dict:
-    """A signature gate passes only on a complete, matching detached signature."""
+    """The newest release record must be a signature over a current tree.
+
+    Selecting the first complete signature in path order is wrong twice over:
+    a release built from an older tree passes while a newer one sits beside it,
+    and a newer *unsigned* record is never seen at all. The record that would
+    actually ship is the newest one, so that is the one judged — by commit date,
+    then signing date. If it is a reference record, covers the wrong bytes, or
+    comes from a commit that is not in this history or predates the current
+    runtime tree, the gate is open and does not fall back to an older tree.
+    """
     if not artifacts:
         return {"ok": False, "detail": "no release signature artifact exists"}
-    near = []
-    for art in artifacts:
-        path = art.get("path") or "?"
-        if not (art.get("signature") and art.get("public_key") and art.get("signed_digest")):
-            near.append(f"{path} is a reference record, not a signature "
-                        "(needs signature, public_key, signed_digest)")
-            continue
-        actual = art.get("actual_digest")
-        if not actual:
-            near.append(f"{path} signs a digest but the SHA256SUMS it covers is absent")
-            continue
-        if str(actual).upper() != str(art["signed_digest"]).upper():
-            near.append(f"{path} signs {str(art['signed_digest'])[:16]}... but SHA256SUMS "
-                        f"hashes to {str(actual)[:16]}...")
-            continue
-        return {
-            "ok": True,
-            "detail": f"{path} signs SHA256SUMS ({str(actual)[:16]}...) "
-                      f"with a {art.get('algorithm') or 'declared'} key",
-        }
-    return {"ok": False, "detail": "; ".join(near)}
+
+    def recency(art: dict):
+        when = parse_timestamp(art.get("commit_time")) or parse_timestamp(art.get("signed_at"))
+        return (when is not None, when or dt.datetime.min, str(art.get("path") or ""))
+
+    newest = max(artifacts, key=recency)
+    path = newest.get("path") or "?"
+    commit = str(newest.get("commit") or "")
+
+    if not (newest.get("signature") and newest.get("public_key") and newest.get("signed_digest")):
+        return {"ok": False,
+                "detail": f"the newest release record {path} is a reference record, "
+                          "not a signature (needs signature, public_key, signed_digest)"}
+    actual = newest.get("actual_digest")
+    if not actual:
+        return {"ok": False,
+                "detail": f"{path} signs a digest but the SHA256SUMS it covers is absent"}
+    if str(actual).upper() != str(newest["signed_digest"]).upper():
+        return {"ok": False,
+                "detail": f"{path} signs {str(newest['signed_digest'])[:16]}... but SHA256SUMS "
+                          f"hashes to {str(actual)[:16]}..."}
+    if newest.get("commit_in_history") is not True:
+        return {"ok": False,
+                "detail": f"{path} signs a tree whose commit {commit or '(unrecorded)'} "
+                          "is not in HEAD's history"}
+    runtime = newest.get("runtime_commit")
+    if newest.get("commit_contains_runtime") is not True:
+        return {"ok": False,
+                "detail": f"{path} was built from {commit or '(unrecorded)'}, which does not "
+                          f"contain the current runtime commit {runtime or '(unreadable)'}; "
+                          "the signed tree predates the shipped runtime"}
+    return {
+        "ok": True,
+        "detail": f"{path} signs SHA256SUMS ({str(actual)[:16]}...) with a "
+                  f"{newest.get('algorithm') or 'declared'} key; commit {commit[:7]} "
+                  f"contains runtime {str(runtime or '')[:7]}",
+    }
 
 
 def evaluate_clean_host(artifacts: list[dict]) -> dict:
@@ -563,21 +588,55 @@ def _read_json(path: Path) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
-def _runtime_source_time(repo: Path) -> dt.datetime | None:
-    """Local commit time of the newest runtime-tree change.
-
-    A soak recorded before that moment measured a different build, so its PASS
-    cannot close a gate for this one ("never treat an old report as current
-    truth"). Returns None when git cannot answer; the gate then fails closed.
-    """
+def _git(repo: Path, *args: str) -> tuple[int, str]:
+    """Run one git query; a failure is a result (1, ""), never an exception."""
     try:
-        out = subprocess.run(
-            ["git", "log", "-1", "--format=%cI", "--", *RUNTIME_PATHS],
-            capture_output=True, text=True, timeout=120, cwd=str(repo),
-        ).stdout.strip()
+        proc = subprocess.run(
+            ["git", *args], capture_output=True, text=True, timeout=120, cwd=str(repo),
+        )
     except (OSError, subprocess.SubprocessError):
+        return 1, ""
+    return proc.returncode, (proc.stdout or "").strip()
+
+
+def _runtime_source(repo: Path) -> tuple[str | None, dt.datetime | None]:
+    """Newest commit that touched the runtime tree, and its local commit time.
+
+    A soak or a release recorded before that commit measured a different build,
+    so it cannot close a gate for this one ("never treat an old report as
+    current truth"). Returns (None, None) when git cannot answer; both gates
+    then fail closed.
+    """
+    code, out = _git(repo, "log", "-1", "--format=%H%n%cI", "--", *RUNTIME_PATHS)
+    if code != 0:
+        return None, None
+    lines = [line.strip() for line in out.splitlines() if line.strip()]
+    if len(lines) < 2:
+        return None, None
+    return lines[0], parse_timestamp(lines[1])
+
+
+def _commit_time(repo: Path, commit: str | None) -> str | None:
+    if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-fA-F]{7,40}", commit):
         return None
-    return parse_timestamp(out)
+    code, out = _git(repo, "show", "-s", "--format=%cI", commit)
+    return out if code == 0 and out else None
+
+
+def _is_ancestor(repo: Path, older: str | None, newer: str | None) -> bool | None:
+    """True when *older* is an ancestor of *newer*; None when that is unknowable."""
+    if not isinstance(older, str) or not isinstance(newer, str):
+        return None
+    if not re.fullmatch(r"[0-9a-fA-F]{7,40}", older):
+        return None
+    if newer != "HEAD" and not re.fullmatch(r"[0-9a-fA-F]{7,40}", newer):
+        return None
+    code, _ = _git(repo, "merge-base", "--is-ancestor", older, newer)
+    if code == 0:
+        return True
+    if code == 1:
+        return False
+    return None
 
 
 def collect_release_facts(repo: Path = REPO) -> dict:
@@ -596,6 +655,9 @@ def collect_release_facts(repo: Path = REPO) -> dict:
     except (OSError, subprocess.SubprocessError) as exc:
         facts["truth"] = {"ok": False, "detail": f"truth.py did not run: {exc}"}
 
+    runtime_commit, source_time = _runtime_source(repo)
+    facts["runtime_commit"] = runtime_commit
+
     signatures = []
     for path in sorted([*(repo / "release").glob("*/signatures.json"),
                         *(repo / "release").glob("*/*/signatures.json")]):
@@ -603,6 +665,7 @@ def collect_release_facts(repo: Path = REPO) -> dict:
         if data is None:
             continue
         sums = path.parent / "SHA256SUMS"
+        commit = data.get("commit")
         signatures.append({
             "path": str(path.relative_to(repo)),
             "signature": data.get("signature"),
@@ -610,6 +673,12 @@ def collect_release_facts(repo: Path = REPO) -> dict:
             "algorithm": data.get("algorithm"),
             "signed_digest": data.get("signed_digest"),
             "actual_digest": _sha256(sums) if sums.exists() else None,
+            "commit": commit,
+            "signed_at": data.get("signed_at"),
+            "commit_time": _commit_time(repo, commit),
+            "commit_in_history": _is_ancestor(repo, commit, "HEAD"),
+            "commit_contains_runtime": _is_ancestor(repo, runtime_commit, commit),
+            "runtime_commit": runtime_commit,
         })
     facts["signatures"] = signatures
 
@@ -628,7 +697,6 @@ def collect_release_facts(repo: Path = REPO) -> dict:
     facts["preflights"] = preflights
 
     soaks = []
-    source_time = _runtime_source_time(repo)
     for path in sorted((repo / "admin-evidence").glob("**/soak-*.json")):
         if path.name.endswith(".baseline.json"):
             continue

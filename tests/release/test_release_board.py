@@ -47,6 +47,12 @@ def facts(**over) -> dict:
                 "algorithm": "ed25519",
                 "signed_digest": "A" * 64,
                 "actual_digest": "A" * 64,
+                "commit": "abc1234",
+                "commit_time": "2026-11-16T08:00:00",
+                "signed_at": "2026-11-16T08:05:00",
+                "commit_in_history": True,
+                "commit_contains_runtime": True,
+                "runtime_commit": "def5678",
             }
         ],
         "preflights": [
@@ -76,6 +82,25 @@ def facts(**over) -> dict:
 
 def gates(**over) -> dict:
     return {g["id"]: g for g in TOOL_MOD.release_gates(facts(**over))}
+
+
+def signed(path: str, commit: str, commit_time: str, signed_at: str, **over) -> dict:
+    art = {
+        "path": path,
+        "signature": "MEUCIQ...",
+        "public_key": "ed25519:AAA...",
+        "algorithm": "ed25519",
+        "signed_digest": "A" * 64,
+        "actual_digest": "A" * 64,
+        "commit": commit,
+        "commit_time": commit_time,
+        "signed_at": signed_at,
+        "commit_in_history": True,
+        "commit_contains_runtime": True,
+        "runtime_commit": "7c604d5",
+    }
+    art.update(over)
+    return art
 
 
 def test_a_fully_evidenced_release_is_shippable() -> None:
@@ -156,6 +181,83 @@ def test_a_signature_without_the_sums_it_covers_fails() -> None:
         "actual_digest": None,
     }])
     assert opened["release_signature"]["ok"] is False
+
+
+def test_the_newest_signed_tree_is_judged_not_the_first_path() -> None:
+    """Alphabetical order put 7234d7a first even after 9ebee9b was rebuilt."""
+    older = signed("release/T20-final/7234d7a/signatures.json", "7234d7a",
+                   "2026-11-14T22:24:00", "2026-11-14T22:24:44")
+    newer = signed("release/T20-final/9ebee9b/signatures.json", "9ebee9b",
+                   "2026-11-15T16:13:00", "2026-11-15T16:13:36")
+    gate = gates(signatures=[older, newer])["release_signature"]
+    assert gate["ok"] is True
+    assert "9ebee9b" in gate["detail"]
+    assert "7234d7a" not in gate["detail"]
+
+
+def test_a_signed_tree_that_predates_the_runtime_commit_fails() -> None:
+    gate = gates(signatures=[signed(
+        "release/T20-final/7234d7a/signatures.json", "7234d7a",
+        "2026-11-14T22:24:00", "2026-11-14T22:24:44",
+        commit_contains_runtime=False, runtime_commit="7c604d5",
+    )])["release_signature"]
+    assert gate["ok"] is False
+    assert "does not contain the current runtime commit 7c604d5" in gate["detail"]
+
+
+def test_a_signed_tree_whose_commit_is_not_in_history_fails() -> None:
+    gate = gates(signatures=[signed(
+        "release/T20-final/deadbee/signatures.json", "deadbee",
+        "2026-11-16T00:00:00", "2026-11-16T00:01:00",
+        commit_in_history=False,
+    )])["release_signature"]
+    assert gate["ok"] is False
+    assert "not in HEAD's history" in gate["detail"]
+
+
+def test_a_newer_reference_record_blocks_an_older_signature() -> None:
+    """A tree built after the signed one, but never signed, is the one that ships."""
+    older = signed("release/T20-final/7234d7a/signatures.json", "7234d7a",
+                   "2026-11-14T22:24:00", "2026-11-14T22:24:44")
+    newer = {
+        "path": "release/T20-final/beef123/signatures.json",
+        "signature": None,
+        "public_key": None,
+        "algorithm": None,
+        "signed_digest": None,
+        "actual_digest": "B" * 64,
+        "commit": "beef123",
+        "commit_time": "2026-11-16T10:00:00",
+        "signed_at": None,
+        "commit_in_history": True,
+        "commit_contains_runtime": True,
+        "runtime_commit": "7c604d5",
+    }
+    gate = gates(signatures=[older, newer])["release_signature"]
+    assert gate["ok"] is False
+    assert "newest release record" in gate["detail"]
+    assert "reference record" in gate["detail"]
+
+
+def test_a_newer_tampered_signature_does_not_fall_back_to_an_older_pass() -> None:
+    older = signed("release/T20-final/7234d7a/signatures.json", "7234d7a",
+                   "2026-11-14T22:24:00", "2026-11-14T22:24:44")
+    newer = signed("release/T20-final/9ebee9b/signatures.json", "9ebee9b",
+                   "2026-11-15T16:13:00", "2026-11-15T16:13:36",
+                   actual_digest="C" * 64)
+    gate = gates(signatures=[older, newer])["release_signature"]
+    assert gate["ok"] is False
+    assert "SHA256SUMS hashes to" in gate["detail"]
+
+
+def test_signature_freshness_unknown_fails_closed() -> None:
+    gate = gates(signatures=[signed(
+        "release/T20-final/9ebee9b/signatures.json", "9ebee9b",
+        "2026-11-15T16:13:00", "2026-11-15T16:13:36",
+        commit_contains_runtime=None,
+    )])["release_signature"]
+    assert gate["ok"] is False
+    assert "does not contain the current runtime commit" in gate["detail"]
 
 
 def test_a_lab_host_pass_does_not_close_the_clean_host_gate() -> None:
