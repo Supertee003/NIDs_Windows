@@ -109,6 +109,14 @@ window; that decision is recorded in `GAP-TRIAGE-20261116.md` §6.
 - Protocol-anomaly IDs (`10000 + kind`) are observe-only evidence and absent
   from `Rules.json`; the runbook now documents how to exercise and read them
   (`docs/runbooks/RB-022-wifi-bridged-lab.md`).
+- `tests/integration/test_e6_attack_burst.py` is not sound as written: its
+  150-port scan targets `127.0.0.1`, which Npcap does not capture
+  (`CAPTURE-LOOPBACK-001`), so its `forensic_records` / `packets_captured` /
+  `anomalies` deltas can be satisfied by ambient host traffic. The 2026-11-14
+  note in that file already recorded +52 ambient anomalies. Decision is
+  post-soak: attribute through a captured path like the L4 sibling, or xfail the
+  scored assertion against `CAPTURE-LOOPBACK-001`. The host-effect test in the
+  same file stays valid as an invariant; it is not a detection proof.
 
 ## 6. Closeout checklist
 
