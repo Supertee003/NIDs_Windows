@@ -91,6 +91,8 @@ const RuntimeSupervisor = struct {
     nose_reader: ?std.Thread = null,
     wfp_telemetry: ?std.Thread = null,
     minifilter: ?std.Thread = null,
+    /// READY-PROMOTION-001 lifecycle sampler.
+    lifecycle: ?std.Thread = null,
     direct_capture: ?std.Thread = null,
     etw: ?std.Thread = null,
     fim: ?std.Thread = null,
@@ -119,6 +121,7 @@ const RuntimeSupervisor = struct {
         if (self.nose_reader) |thread| thread.join();
         self.nose_reader = null;
         if (self.wfp_telemetry) |thread| thread.join();
+        if (self.lifecycle) |thread| thread.join();
         self.wfp_telemetry = null;
         if (self.minifilter) |thread| thread.join();
         self.minifilter = null;
@@ -211,6 +214,35 @@ pub fn installDiagnosticFileSink(alloc: std.mem.Allocator, dir_override: ?[]cons
     g_diag_tee = diag.TeeSink.init(diag.StderrSink.init(), g_diag_file_sink.?.sink());
     diag.Logger.setSink(g_diag_tee.?.sink());
     return true;
+}
+
+/// READY-PROMOTION-001: the lifecycle is sampled on a timer, not once at
+/// startup. Before this, a bridge that became ready a second after init left the
+/// process reporting DEGRADED until the next restart, while the health contract
+/// derived from live facts said RUNNING -- two answers from one runtime.
+///
+/// The promotion rule itself lives in RuntimeState.reconcileLifecycle; this loop
+/// only supplies the facts and the clock, so there is no second authority.
+fn lifecycleLoop(stop: *const std.atomic.Value(bool)) void {
+    var last_dropped = state.g_nose_frames_dropped.load(.acquire);
+    while (!stop.load(.acquire)) {
+        std.time.sleep(5 * std.time.ns_per_s);
+        if (stop.load(.acquire)) break;
+        const dropped = state.g_nose_frames_dropped.load(.acquire);
+        const facts = runtime_sm.RuntimeState.LifecycleFacts{
+            .pipeline_ready = state.g_pipeline_ready.load(.acquire),
+            .pipeline_failed = (state.workerFailureMask() & 0x01) != 0,
+            .bridge_ready = bridge_init.allActive(),
+            // New loss since the previous sample is the loss fact: cumulative
+            // counters must not keep the runtime degraded forever, and recent
+            // loss must not be averaged away.
+            .data_loss_observed = dropped > last_dropped,
+        };
+        last_dropped = dropped;
+        if (runtime_sm.g_runtime.reconcileLifecycle(std.time.milliTimestamp(), facts)) |next| {
+            diag.info("lifecycle reconciled to {s}", .{next.toString()});
+        }
+    }
 }
 
 pub fn runDaemon() !void {
@@ -730,6 +762,12 @@ pub fn runDaemon() !void {
         // adapter is the sole device owner (no handle taken here), so this
         // cannot race or blind anything. See wfp_telemetry.zig for the
         // never-inspect-never-block contract.
+        // READY-PROMOTION-001: sample the lifecycle off the startup path.
+        supervisor.lifecycle = std.Thread.spawn(.{}, lifecycleLoop, .{&state.g_stop_requested}) catch |err| blk: {
+            diag.warn("failed to spawn lifecycle sampler: {} — lifecycle stays at its startup value", .{err});
+            break :blk null;
+        };
+
         supervisor.wfp_telemetry = std.Thread.spawn(.{}, wfp_telemetry.telemetryLoop, .{&state.g_stop_requested}) catch |err| blk: {
             diag.warn("failed to spawn WFP telemetry thread: {} — kernel flow telemetry disabled", .{err});
             break :blk null;

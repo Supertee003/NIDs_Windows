@@ -164,6 +164,11 @@ pub const RuntimeState = struct {
     build: []const u8 = "zig-0.13.0",
     mutex: std.Thread.Mutex = .{},
 
+    /// READY-PROMOTION-001: consecutive healthy samples behind a promotion.
+    /// Kept in the state, not in a caller, so no second authority exists.
+    promote_streak: u8 = 0,
+    last_sample_ms: i64 = 0,
+
     /// Register a subsystem at startup.
     pub fn registerSubsystem(self: *RuntimeState, id: SubsystemId, name: []const u8, version: []const u8, capabilities: []const u8) void {
         self.mutex.lock();
@@ -268,6 +273,79 @@ pub const RuntimeState = struct {
         } else if (all_healthy and self.system_state == .degraded) {
             self.system_state = .recovering;
         }
+    }
+
+    /// READY-PROMOTION-001. Healthy samples needed before each promotion step
+    /// and the minimum spacing between counted samples.
+    pub const PROMOTION_SAMPLES: u8 = 3;
+    pub const PROMOTION_MIN_INTERVAL_MS: i64 = 5_000;
+
+    /// The facts a promotion may depend on. They are the same booleans the
+    /// health contract publishes, which is the point: the lifecycle cannot be
+    /// promoted on something health does not also believe.
+    pub const LifecycleFacts = struct {
+        pipeline_ready: bool = false,
+        pipeline_failed: bool = false,
+        bridge_ready: bool = false,
+        data_loss_observed: bool = false,
+
+        pub fn allClear(self: LifecycleFacts) bool {
+            return self.pipeline_ready and !self.pipeline_failed and self.bridge_ready and !self.data_loss_observed;
+        }
+    };
+
+    /// Apply one lifecycle sample. Returns the new state when it changed.
+    ///
+    /// DEFECT-READY-001 was that the daemon sampled this once at startup and
+    /// never again, so a bridge that came up a second later left the process
+    /// DEGRADED until the next restart. DEMOTE is immediate (a failed subsystem
+    /// or fresh loss must not be averaged away); PROMOTE needs
+    /// PROMOTION_SAMPLES consecutive clear samples at least
+    /// PROMOTION_MIN_INTERVAL_MS apart, so a flapping bridge cannot hide.
+    pub fn reconcileLifecycle(self: *RuntimeState, now_ms: i64, facts: LifecycleFacts) ?SystemState {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+
+        var subsystems_healthy = true;
+        for (self.subsystems[0..self.subsystem_count]) |sub| {
+            if (!sub.isHealthy()) subsystems_healthy = false;
+        }
+        const clear = facts.allClear() and subsystems_healthy;
+
+        if (!clear) {
+            self.promote_streak = 0;
+            if (self.system_state == .running or self.system_state == .recovering) {
+                const old = self.system_state;
+                self.system_state = .degraded;
+                std.log.info("[STATE] System: {s} -> {s} (live facts disagree)", .{ old.toString(), self.system_state.toString() });
+                return self.system_state;
+            }
+            return null;
+        }
+
+        if (self.last_sample_ms != 0 and now_ms - self.last_sample_ms < PROMOTION_MIN_INTERVAL_MS) {
+            return null; // Too soon to count another sample; a fast poll must not promote.
+        }
+        self.last_sample_ms = now_ms;
+        if (self.promote_streak < PROMOTION_SAMPLES) self.promote_streak += 1;
+        if (self.promote_streak < PROMOTION_SAMPLES) return null;
+
+        const next: ?SystemState = switch (self.system_state) {
+            .degraded => .recovering,
+            .recovering => .running,
+            .starting, .ready => .running,
+            else => null,
+        };
+        if (next) |n| {
+            if (!self.system_state.canTransition(n)) return null;
+            const old = self.system_state;
+            self.system_state = n;
+            std.log.info("[STATE] System: {s} -> {s} ({} clear samples)", .{ old.toString(), n.toString(), self.promote_streak });
+            // Each step is paid for on its own: RECOVERING -> RUNNING must also
+            // wait PROMOTION_SAMPLES, so the streak restarts after every step.
+            self.promote_streak = 0;
+        }
+        return next;
     }
 
     /// Get a subsystem by ID.
@@ -589,4 +667,99 @@ test "healthJson accepts loss at or below the owner-approved budget" {
     try std.testing.expect(std.mem.indexOf(u8, out, "\"state\":\"RUNNING\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"degraded\":false") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"loss_budget\":2") != null);
+}
+
+test "READY-PROMOTION: three clear samples promote DEGRADED -> RECOVERING -> RUNNING" {
+    var rs = RuntimeState{};
+    rs.registerSubsystem(.zig, "zig", "5.0.0", "");
+    rs.subsystemStarted(.zig, 1);
+    rs.system_state = .degraded;
+    const clear = RuntimeState.LifecycleFacts{
+        .pipeline_ready = true,
+        .pipeline_failed = false,
+        .bridge_ready = true,
+        .data_loss_observed = false,
+    };
+    var t: i64 = 1_000;
+    const step = RuntimeState.PROMOTION_MIN_INTERVAL_MS;
+    // Two samples are not enough; the third promotes.
+    try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, clear));
+    t += step;
+    try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, clear));
+    t += step;
+    try std.testing.expectEqual(@as(?SystemState, SystemState.recovering), rs.reconcileLifecycle(t, clear));
+    try std.testing.expectEqual(SystemState.recovering, rs.system_state);
+    t += step;
+    try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, clear));
+    t += step;
+    try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, clear));
+    t += step;
+    try std.testing.expectEqual(@as(?SystemState, SystemState.running), rs.reconcileLifecycle(t, clear));
+    try std.testing.expectEqual(SystemState.running, rs.system_state);
+}
+
+test "READY-PROMOTION: a failure inside the hysteresis window resets the streak" {
+    var rs = RuntimeState{};
+    rs.registerSubsystem(.zig, "zig", "5.0.0", "");
+    rs.subsystemStarted(.zig, 1);
+    rs.system_state = .degraded;
+    const clear = RuntimeState.LifecycleFacts{ .pipeline_ready = true, .bridge_ready = true };
+    var t: i64 = 1_000;
+    _ = rs.reconcileLifecycle(t, clear);
+    t += RuntimeState.PROMOTION_MIN_INTERVAL_MS;
+    _ = rs.reconcileLifecycle(t, clear);
+    // One bad sample between them, then the streak must start again from zero.
+    t += RuntimeState.PROMOTION_MIN_INTERVAL_MS;
+    const bad = RuntimeState.LifecycleFacts{ .pipeline_ready = false, .bridge_ready = true };
+    try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, bad));
+    try std.testing.expectEqual(SystemState.degraded, rs.system_state);
+    t += RuntimeState.PROMOTION_MIN_INTERVAL_MS;
+    try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, clear));
+    try std.testing.expectEqual(SystemState.degraded, rs.system_state);
+}
+
+test "READY-PROMOTION: data loss above budget blocks promotion even with every worker ready" {
+    var rs = RuntimeState{};
+    rs.registerSubsystem(.zig, "zig", "5.0.0", "");
+    rs.subsystemStarted(.zig, 1);
+    rs.system_state = .degraded;
+    const lossy = RuntimeState.LifecycleFacts{
+        .pipeline_ready = true,
+        .pipeline_failed = false,
+        .bridge_ready = true,
+        .data_loss_observed = true,
+    };
+    var t: i64 = 1_000;
+    var i: usize = 0;
+    while (i < 10) : (i += 1) {
+        try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, lossy));
+        t += RuntimeState.PROMOTION_MIN_INTERVAL_MS;
+    }
+    try std.testing.expectEqual(SystemState.degraded, rs.system_state);
+}
+
+test "READY-PROMOTION: a fast poll cannot accumulate samples" {
+    var rs = RuntimeState{};
+    rs.registerSubsystem(.zig, "zig", "5.0.0", "");
+    rs.subsystemStarted(.zig, 1);
+    rs.system_state = .degraded;
+    const clear = RuntimeState.LifecycleFacts{ .pipeline_ready = true, .bridge_ready = true };
+    var t: i64 = 1_000;
+    var i: usize = 0;
+    // 20 samples 100 ms apart are 2 s of evidence, not 3 x 5 s.
+    while (i < 20) : (i += 1) {
+        _ = rs.reconcileLifecycle(t, clear);
+        t += 100;
+    }
+    try std.testing.expectEqual(SystemState.degraded, rs.system_state);
+}
+
+test "READY-PROMOTION: losing a required fact demotes RUNNING immediately" {
+    var rs = RuntimeState{};
+    rs.registerSubsystem(.zig, "zig", "5.0.0", "");
+    rs.subsystemStarted(.zig, 1);
+    rs.system_state = .running;
+    const bad = RuntimeState.LifecycleFacts{ .pipeline_ready = true, .bridge_ready = false };
+    try std.testing.expectEqual(@as(?SystemState, SystemState.degraded), rs.reconcileLifecycle(1_000, bad));
+    try std.testing.expectEqual(SystemState.degraded, rs.system_state);
 }
