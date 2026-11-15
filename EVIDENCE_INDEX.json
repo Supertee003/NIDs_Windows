@@ -13968,7 +13968,8 @@
       "finding": "The slice is wired and compile-tested at E2. Direct Npcap and L7 anomaly modules remain LAB/observe-only until a disjoint-interface Windows host run supplies E5 evidence. Rust PEP remains the sole privileged authority.",
       "evidence_artifact": "admin-evidence/ids-l7-003-20261031/closeout.md",
       "status": "OPEN",
-      "next_step": "direct Npcap capture on a lab interface (VMnet) to extract payload to protocol anomaly; loopback is not captured by this install (CAPTURE-LOOPBACK-001) and no live L7 hit has been observed. The rules-document -> matcher join is now unit-pinned (L7-JOIN-001-E1-20261114), which removes the 'no join' part of this blocker but not the live-capture part.",
+      "current_observation": "2026-11-16: a live signature-lane payload match was observed on the canonical Wi-Fi path (R2003 firing on TLS bytes, 366 rows, all observed with host_effect_confirmed false). That proves Nose v3 payloads reach the AC matcher without a restart, but it is a cross-layer false positive (RULE-LAYER-SCOPE-001), not a protocol-anomaly hit; the HTTP/DNS/TLS/SMB anomaly rules themselves remain unobserved live.",
+      "next_step": "after SOAK2-20261115 closes, run RB-022 with one malformed HTTP request to a listener on the sensor's own IPv4 (192.168.1.39), which the Wi-Fi path carries without a restart; then record the anomaly rule id from the forensic path. Loopback is not captured by this install (CAPTURE-LOOPBACK-001). The rules-document -> matcher join is unit-pinned (L7-JOIN-001-E1-20261114).",
       "status_basis": "entry.result=PASS_WITH_OPEN_BLOCKER at head 3d4a0fd (2026-10-31): the pass is partial or carries an open blocker"
     },
     {
