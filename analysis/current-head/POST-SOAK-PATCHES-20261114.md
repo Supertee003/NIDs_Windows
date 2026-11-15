@@ -1,9 +1,14 @@
-# POST-SOAK-PATCHES — three ready patches for 2026-11-15T22:20:15
+# POST-SOAK-PATCHES — the patches that were waiting on the soak window
 
 **Created:** 2026-11-14
-**Why they wait:** every one of them touches `src/` or `build.zig`, both of which
-are in `RUNTIME_PATHS`. A commit there makes the running 24 h soak stale, so the
-work is prepared rather than applied.
+**Why they waited:** every one of them touches `src/` or `build.zig`, both of
+which are in `RUNTIME_PATHS`. A commit there makes the running 24 h soak stale.
+
+**That reason has expired.** The window itself failed at 16.95 h on
+`shed_overload` (`SOAK-SHED-001`), so there is nothing left to protect and the
+patches can proceed now. The fresh window should start **after** they land and the
+daemon is reinstalled, with the shed budget sized for the load that includes live
+gates.
 
 Each is written so the window's end is mechanical, not investigative.
 
