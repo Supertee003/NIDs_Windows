@@ -2,7 +2,10 @@ name: AEGIS CI
 
 on:
   push:
-    branches: [main, develop, release/*]
+    # `codex/**` is the delivery branch: without it the only branch that ever
+    # carries shippable work never ran CI, so "green CI" was a claim about
+    # main, not about the commit being released.
+    branches: [main, develop, release/*, "codex/**"]
   pull_request:
     branches: [main, develop]
   workflow_dispatch:
