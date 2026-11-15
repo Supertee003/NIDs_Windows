@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-15T09:14:25.892408+00:00",
+  "generated_at": "2026-11-15T09:22:23.890324+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 2045,
@@ -3672,7 +3672,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1337585
+      "size": 1341085
     },
     {
       "path": "FLOW_MAP.json",
@@ -3780,7 +3780,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 283843
+      "size": 317423
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4038,7 +4038,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9992
+      "size": 9693
     },
     {
       "path": "pytest.ini",
@@ -4056,7 +4056,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 233350
+      "size": 259971
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -10722,7 +10722,7 @@
       "path": "tests/integration/test_e4_live_pipeline.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 9321
+      "size": 9375
     },
     {
       "path": "tests/integration/test_e6_attack_burst.py",
