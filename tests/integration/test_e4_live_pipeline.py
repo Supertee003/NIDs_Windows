@@ -180,17 +180,6 @@ def test_the_pipeline_loses_nothing_silently() -> None:
 
 
 @needs_daemon
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "DEFECT-READY-001: the daemon's state machine stays DEGRADED while its "
-        "health contract reports state RUNNING, degraded false, seven of seven "
-        "subsystems RUNNING and every worker ready. src/daemon.zig sets the "
-        "lifecycle once at startup and never re-promotes it, so status and the "
-        "health contract disagree for the whole run. Needs a source fix; remove "
-        "this marker when it is fixed (strict=True makes the fix visible)."
-    ),
-)
 def test_every_surface_agrees_about_health() -> None:
     """status, health and readiness must tell the same story.
 
@@ -199,7 +188,9 @@ def test_every_surface_agrees_about_health() -> None:
     requirement, not softened into a warning.
     """
     status = _status_text()
-    health = _json("health")
+    # `health` alone prints a human preamble and a Python dict repr; the
+    # contract under test is the machine payload, which is `--json`.
+    health = _json("health", "--json")
     readiness = _json("readiness")
 
     status_degraded = "DEGRADED" in status.splitlines()[1] if len(status.splitlines()) > 1 else False
@@ -215,24 +206,32 @@ def test_every_surface_agrees_about_health() -> None:
 
 
 @needs_daemon
-def test_readiness_names_the_state_machine_as_the_cause() -> None:
-    """CLI-STATE-001: the refusal must point at the state machine, not at nothing.
+def test_readiness_publishes_the_state_machine_and_never_degrades_anonymously() -> None:
+    """CLI-STATE-001 guard, re-read after READY-PROMOTION-001 removed the split.
 
-    The daemon's health contract is fully healthy on this host while its
-    lifecycle state machine stays DEGRADED. Before CLI-STATE-001 that arrived at
-    the gate as `degraded_without_named_component`; now it must name the cause.
+    Before the source fix this host's readiness was refused with
+    `state_machine_degraded_but_health_facts_ready` while the health contract was
+    green. The lifecycle now reconciles itself, so both surfaces report RUNNING
+    here -- which means the refusal path can no longer be reproduced live. What
+    survives is the invariant CLI-STATE-001 added: readiness always publishes the
+    state machine's own verdict (`state_machine_state`, `state_machine_disagrees`)
+    and a refusal always names a cause.
     """
-    # `readiness` exits 1 while its gate is closed; the refusal is the expected
-    # answer here, so parse stdout and assert on the verdict, not the exit code.
     proc = _ctl("readiness")
     assert "{" in proc.stdout, proc.stdout + proc.stderr
     readiness = json.loads(proc.stdout[proc.stdout.find("{"):])
-    assert proc.returncode == 1, proc.stdout
-    assert readiness["ready"] is False, readiness
     reasons = readiness["failure_reasons"]
-    assert "state_machine_degraded_but_health_facts_ready" in reasons, readiness
-    assert readiness["state_machine_state"] in {"DEGRADED", "RUNNING"}, readiness
 
+    assert readiness["state_machine_state"] in {"DEGRADED", "RUNNING"}, readiness
+    assert "state_machine_disagrees" in readiness, readiness
+    assert "degraded_without_named_component" not in reasons, readiness
+    if readiness["ready"]:
+        assert readiness["state_machine_disagrees"] is False, readiness
+    if not readiness["ready"]:
+        assert reasons, f"a refusal must name why: {readiness}"
+
+    # The status line carries the state machine's own verdict; the CLI-STATE-001
+    # note text only appears when the two surfaces disagree, which is the case
+    # this host no longer produces.
     status = _status_text()
     assert "State machine:" in status, status
-    assert "CLI-STATE-001" in status, status

@@ -7864,6 +7864,36 @@
         "The candidate is named for the records HEAD at build time (9ebee9b), whose build source commit is 7c604d5.",
         "No Windows Authenticode signature was applied; this is the project's ed25519 release signature over SHA256SUMS."
       ]
+    },
+    {
+      "id": "READY-PROMOTION-001-E5-20261114",
+      "head_sha": "168f957",
+      "timestamp": "2026-11-14",
+      "level": "E5",
+      "flow_id": "CTL-001",
+      "component": "C:\\Program Files\\AEGIS NIDS\runtime\u0007egis_nids.exe, AegisNids service, tools/aegisctl.py, tools/host_preflight.py",
+      "title": "The reinstalled daemon promotes itself to RUNNING and every surface now agrees",
+      "description": "The service binary was replaced with the build from the patched source (sha256 7955a6e3c9bb8ac4e5872114b33316aada74f09e39f48c0513ba6ffa58d71a18, identical to zig-out/bin/aegis_nids.exe, 5,247,488 B) after backing the previous executable up as aegis_nids.exe.prev, and the service was stopped and started. Within the first minute, with no operator action, `aegisctl status` reported State: RUNNING and State machine: RUNNING (this host had reported State machine: DEGRADED for the entire previous run), `health --json` reported state RUNNING / degraded false, and `readiness` returned ready true, degraded false, degraded_components [], failure_reasons [], state_machine_disagrees false, overage_gate true, 23 rules and 6 policies loaded, exit 0. That is DEFECT-READY-001 gone on the live host: the lifecycle is now reconciled from the same facts the health contract publishes, instead of being sampled once at startup. host_preflight.py reported zero failed checks against the new process (daemon uptime, minifilter ring clean, loss counters). The E4 gate file was updated with it: the strict xfail on test_every_surface_agrees_about_health is removed and the CLI-STATE-001 check now pins the post-fix contract, and all six tests in tests/integration/test_e4_live_pipeline.py pass.",
+      "evidence_artifact": "analysis/current-head/READY-PROMOTION-PLAN-20261114.md",
+      "artifacts": [
+        "tests/integration/test_e4_live_pipeline.py",
+        "src/control/state_machine.zig",
+        "src/daemon.zig"
+      ],
+      "commands": [
+        "sha256sum 'C:/Program Files/AEGIS NIDS/runtime/aegis_nids.exe' zig-out/bin/aegis_nids.exe",
+        "python tools/aegisctl.py status",
+        "python tools/aegisctl.py health --json",
+        "python tools/aegisctl.py readiness",
+        "python tools/host_preflight.py",
+        "python -m pytest -q tests/integration/test_e4_live_pipeline.py"
+      ],
+      "limitations": [
+        "One host, one observation window of minutes: the promotion was seen once, not across restarts or a soak.",
+        "The clean_host_e5 gate was not re-run end to end; host_preflight passed with zero failures but that is its own narrower check.",
+        "The full unit and release suites were green before this reinstall and the E4 file plus tools/release/security were green after; the whole suite was not repeated after the install.",
+        "Rollback is a file copy: the previous binary is at runtime\u0007egis_nids.exe.prev."
+      ]
     }
   ],
   "known_gaps": [
@@ -14239,7 +14269,7 @@
     },
     {
       "id": "DEFECT-READY-001",
-      "status": "OPEN",
+      "status": "CLOSED",
       "level": "E4",
       "found_by": "tests/integration/test_e4_live_pipeline.py",
       "found_at": "2026-11-14",
@@ -14249,7 +14279,9 @@
       "root_cause": "src/daemon.zig:854-860 transitions the lifecycle ONCE from bridge_init.allActive() sampled right after bridge_init.initAll(); nothing re-promotes it, and recomputeHealth() only handles failed->degraded and degraded->recovering with no caller.",
       "current_reporting": "CLI-STATE-001 (2026-11-14) makes readiness name it: state_machine_degraded_but_health_facts_ready; the gate still refuses.",
       "next_step": "SOURCE FIXED (READY-PROMOTION-001-E2-20261114); the installed runtime still carries the old one-shot transition. Rebuild the bundle, install with elevation, rerun clean_host_e5, and remove the xfail from tests/integration/test_e4_live_pipeline.py once status and health agree on the new process.",
-      "source_fix_head": "5c6102a"
+      "source_fix_head": "5c6102a",
+      "reverified_by": "READY-PROMOTION-001-E5-20261114",
+      "closed_note": "The reinstalled daemon reconciles its lifecycle from live facts and reports RUNNING on status, health and readiness; the strict xfail is removed from the E4 gate."
     },
     {
       "id": "DETECT-L4-001",
@@ -14333,7 +14365,7 @@
     },
     {
       "id": "READY-PROMOTION-001",
-      "status": "OPEN",
+      "status": "CLOSED",
       "severity": "P1",
       "level": "E2",
       "head_sha": "5c6102a",
@@ -14341,7 +14373,10 @@
       "found_by": "READY-PROMOTION-001-E2-20261114",
       "title": "Promotion logic is in source but the installed runtime is still the pre-patch build",
       "detail": "src carries reconcileLifecycle and daemon.lifecycleLoop (zig build test green), but C:\\Program Files\\AEGIS NIDS\runtime\u0007egis_nids.exe was installed from build source 1fa877c, which samples the lifecycle once. Until it is reinstalled the live host still reports DEGRADED while health says RUNNING, which is the build/runtime mismatch listed as a stop-the-line trigger.",
-      "next_step": "rebuild the release bundle, install it with elevation (scripts/install_aegis.ps1 -BundleRoot <bundle>), rerun clean_host_e5, confirm status and health agree on the new process, then remove the DEFECT-READY-001 xfail and rerun the E4 gate"
+      "next_step": "rebuild the release bundle, install it with elevation (scripts/install_aegis.ps1 -BundleRoot <bundle>), rerun clean_host_e5, confirm status and health agree on the new process, then remove the DEFECT-READY-001 xfail and rerun the E4 gate",
+      "reverified_by": "READY-PROMOTION-001-E5-20261114",
+      "closed_note": "Installed the patched build (sha256 7955a6e3...) over the service binary after backing up aegis_nids.exe.prev; the live host reports RUNNING on every surface.",
+      "remaining": "A clean_host_e5 rerun and a fresh soak window from this build are still open work."
     }
   ],
   "evidence_level_summary": {
@@ -14350,7 +14385,7 @@
     "E2_count": 121,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 89,
+    "E5_count": 90,
     "E6_count": 1,
     "E7_count": 2,
     "E5_with_artifact_count": 39,
