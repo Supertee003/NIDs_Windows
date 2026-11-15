@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-15T08:31:59.483607+00:00",
+  "generated_at": "2026-11-15T08:42:04.099811+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1841,
@@ -3672,7 +3672,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1330756
+      "size": 1345057
     },
     {
       "path": "FLOW_MAP.json",
@@ -3780,7 +3780,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 282740
+      "size": 283843
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4038,7 +4038,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9693
+      "size": 9992
     },
     {
       "path": "pytest.ini",
@@ -4056,7 +4056,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 232485
+      "size": 233350
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -7500,7 +7500,7 @@
       "path": "src/control/state_machine.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 27575
+      "size": 35414
     },
     {
       "path": "src/control.zig",
@@ -7644,7 +7644,7 @@
       "path": "src/daemon.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 49251
+      "size": 51271
     },
     {
       "path": "src/detection/anomaly_detector.zig",
@@ -11061,5 +11061,5 @@
       "size": 624
     }
   ],
-  "source_commit": "f593c03"
+  "source_commit": "7c604d5"
 }
