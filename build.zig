@@ -215,7 +215,11 @@ pub fn build(b: *std.Build) void {
     // a separate target makes `zig build test` hermetic under restricted
     // hosts while preserving an explicit authorized-host proof command.
     const network_integration_tests = b.addTest(.{
-        .root_source_file = b.path("src/tests/federation/federation_tcp.zig"),
+        // BUILD-NETINT-001: the aggregator file lives under src/tests/ and
+        // cannot import ../../federation while it is the module root, which
+        // made this step fail to compile. Root the step at the module whose
+        // tests we want to run.
+        .root_source_file = b.path("src/federation/federation_tcp.zig"),
         .target = target,
         .optimize = optimize,
     });

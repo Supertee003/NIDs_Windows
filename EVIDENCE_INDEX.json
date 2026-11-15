@@ -7767,6 +7767,53 @@
         "No claim of daemon instability: no restart, drop or error counter moved.",
         "The failed window still shows 16.95 h with dropped 0 and no restarts."
       ]
+    },
+    {
+      "id": "BUILD-NETINT-001-E1-20261114",
+      "head_sha": "885b570",
+      "timestamp": "2026-11-14",
+      "level": "E1",
+      "flow_id": "BUILD-001",
+      "component": "build.zig, src/federation/federation_tcp.zig",
+      "title": "The network-integration test step compiles and runs again after rooting it at the module under test",
+      "description": "BUILD-NETINT-001 recorded that `zig build test-network-integration` failed with `import of file outside module path` at src/tests/federation/federation_tcp.zig:5. Cause: that aggregator file was the step's module root, so its `@import(\"../../federation/federation_tcp.zig\")` pointed outside the module. The fix roots the step at src/federation/federation_tcp.zig, whose own test block is what the step is named for. After the change the step exits 0, and `zig build test` (which now also carries the L7 join tests) exits 0 with 2103 tests, 10 skipped, 0 failed.",
+      "evidence_artifact": "analysis/current-head/SOAK-SHED-001-20261114.md",
+      "artifacts": [
+        "build.zig",
+        "src/federation/federation_tcp.zig",
+        "src/all_tests.zig"
+      ],
+      "commands": [
+        "zig build test-network-integration",
+        "zig build test"
+      ],
+      "limitations": [
+        "Proves the step builds and its tests pass; it does not add coverage that was missing, it restores one that never ran."
+      ]
+    },
+    {
+      "id": "L7-JOIN-001-E1-20261114",
+      "head_sha": "885b570",
+      "timestamp": "2026-11-14",
+      "level": "E1",
+      "flow_id": "L7-001",
+      "component": "src/tests/pipeline/l7_join_test.zig, src/pipeline/rule_loader.zig, src/pipeline/event_queue.zig, src/detection/signature_engine.zig",
+      "title": "A Rules.json pattern now matches a payload that arrived through the v3 envelope and the queue",
+      "description": "L7-PATH-001 showed that payload reaches the matcher but that no test joined the two halves: the v3 gate test proves bytes survive and the matcher tests prove the automaton matches, never that a rule loaded from the rules document fires on a frame that came in through the queue. The new test loads a single L7 rule (R0056, match_pattern `' OR 1=1`), serializes a frame carrying an HTTP request that contains the pattern, pushes it through pushDecodedFrame, pops it, and asserts matchFirst returns exactly hashRuleId(\"R0056\") (2107512682). A second test sends a benign request down the same path and asserts no match, so the first cannot pass on a wildcard. Two contract details surfaced while writing it: an IPv4 event must pass null identity lanes to serializeV3 (supplying a 16-byte lane returns error.UnexpectedV6Address) and payload_length is u32 so the length needs an explicit intCast. Both tests are wired into src/all_tests.zig and `zig build test` exits 0.",
+      "evidence_artifact": "analysis/current-head/L7-PATH-001-20261114.md",
+      "artifacts": [
+        "src/tests/pipeline/l7_join_test.zig",
+        "src/all_tests.zig",
+        "src/pipeline/rule_loader.zig",
+        "src/pipeline/event_queue.zig"
+      ],
+      "commands": [
+        "zig build test"
+      ],
+      "limitations": [
+        "Unit-level join on a synthetic frame, not a captured packet; the live-capture half of L7 still needs the lab interface.",
+        "The rule document is a fixture, not the shipped Rules.json."
+      ]
     }
   ],
   "known_gaps": [
@@ -14186,7 +14233,7 @@
     },
     {
       "id": "BUILD-NETINT-001",
-      "status": "OPEN",
+      "status": "CLOSED",
       "severity": "P2",
       "level": "E1",
       "found_at": "2026-11-14",
@@ -14194,7 +14241,10 @@
       "title": "zig build test-network-integration fails to compile: import of file outside module path",
       "detail": "src/tests/federation/federation_tcp.zig:5 imports ../../federation/federation_tcp.zig while build.zig:218 roots the step at src/tests/federation, illegal in Zig 0.13. Build Summary 0/3 steps succeeded; the loopback TCP integration tests never run and no release gate calls the step.",
       "fix": "one-line build.zig change: root_source_file at src/federation/federation_tcp.zig, or a module rooted at src/ imported by the test",
-      "blocked_by": "build.zig is in RUNTIME_PATHS; a commit there makes the running soak stale"
+      "blocked_by": "build.zig is in RUNTIME_PATHS; a commit there makes the running soak stale",
+      "closed_at_head": "885b570",
+      "reverified_by": "BUILD-NETINT-001-E1-20261114",
+      "closed_note": "Rooted the step at src/federation/federation_tcp.zig; `zig build test-network-integration` exits 0."
     },
     {
       "id": "RC-STALE-001",
@@ -14219,11 +14269,25 @@
       "title": "The 24 h window fails on shed_overload 15163 vs budget 4000 because live gates ran inside it",
       "detail": "dropped stayed 0 and no loss counter moved, but admission shed 15163 events (0.2% of 7.4M pushed) during operator-generated adversarial load. The window is invalid as a clean-host result; a fresh window must start after the prepared patches land and the daemon is reinstalled, with the shed budget sized for gates or the gates run outside the window.",
       "next_step": "restart the soak from a new baseline after the patches, and either run live gates before the window or size the shed budget for them"
+    },
+    {
+      "id": "L7-JOIN-001",
+      "status": "CLOSED",
+      "severity": "P2",
+      "level": "E1",
+      "head_sha": "885b570",
+      "timestamp": "2026-11-14",
+      "found_by": "analysis/current-head/L7-PATH-001-20261114.md",
+      "title": "No test joined a rules-document pattern to a frame that came through the v3 queue",
+      "detail": "The two halves were each covered and the join was not: v3 bytes survive the queue gate, the automaton matches strings, nothing asserted that a rule id from the rules document fires on a queued frame.",
+      "closed_at_head": "885b570",
+      "reverified_by": "L7-JOIN-001-E1-20261114",
+      "closed_note": "src/tests/pipeline/l7_join_test.zig loads R0056, pushes a v3 frame carrying the pattern, and asserts matchFirst returns hashRuleId(\"R0056\"); a benign control asserts no match."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 21,
+    "E1_count": 23,
     "E2_count": 120,
     "E3_count": 14,
     "E4_count": 4,
@@ -14231,7 +14295,7 @@
     "E6_count": 1,
     "E7_count": 1,
     "E5_with_artifact_count": 39,
-    "known_gaps_count": 278
+    "known_gaps_count": 279
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
 }

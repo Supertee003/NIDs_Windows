@@ -30,5 +30,9 @@ def test_real_socket_tests_require_explicit_network_integration_opt_in():
 def test_real_socket_target_is_separate_and_sets_opt_in_marker():
     build = (ROOT / "build.zig").read_text(encoding="utf-8")
     assert 'b.step("test-network-integration"' in build
-    assert 'b.path("src/tests/federation/federation_tcp.zig")' in build
+    # BUILD-NETINT-001: the step was rooted at src/tests/federation/federation_tcp.zig,
+    # an aggregator that imports ../../federation and therefore could not compile as
+    # a module root -- so this step never ran. It is rooted at the module under test now.
+    assert 'b.path("src/federation/federation_tcp.zig")' in build
+    assert 'b.path("src/tests/federation/federation_tcp.zig")' not in build
     assert 'setEnvironmentVariable("AEGIS_TCP_INTEGRATION", "1")' in build

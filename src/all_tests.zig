@@ -162,6 +162,8 @@ comptime {
     // permanent. Zero behavior change: every one of these already runs.
     _ = @import("pipeline/l4_matcher.zig");
     _ = @import("pipeline/rule_loader.zig");
+    // L7-JOIN-001: the acquisition -> matcher join, pinned.
+    _ = @import("tests/pipeline/l7_join_test.zig");
     _ = @import("detection/threat_tracker.zig");
     _ = @import("detection/correlator.zig");
     _ = @import("detection/signature_engine.zig");
