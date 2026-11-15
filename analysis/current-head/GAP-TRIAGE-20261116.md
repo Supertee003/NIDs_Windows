@@ -201,8 +201,9 @@ Two things changed after this triage was written, in the same night:
    broken in letter. The measured cost was 0 drops / 0 shed / 0 quota_shed in
    both windows, and the soak gate still reports `problems []`, `scm_restarts []`
    at 7.4 h — but the deviation is recorded in §6 of the detection record rather
-   than hidden, and whether the window stands is the owner's decision, not this
-   document's.
+   than hidden. **Owner decision, 2026-11-16 ~00:25 local: keep the window**;
+   the closeout must state the deviation, and no further scan or gate runs before
+   16:50:31.
 
 The control also found `RULE-LAYER-SCOPE-001` (P3, v1.1): the AC matcher applies
 `KERNEL_PROCESS` payload rules to TLS bytes, so R2003 fires on ordinary HTTPS. It

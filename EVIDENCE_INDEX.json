@@ -8010,7 +8010,7 @@
         "E5 for one rule and one stimulus class: R9002 and R9007 were not exercised.",
         "The source was the victim host itself (TEST-NET destination), not a remote Kali attacker; R9006 keys its window on the source address, and the remote-source case is not exercised here.",
         "SYN-only probes carry no application payload, so this is no L7 proof; IDS-L7-003 stays open.",
-        "The 40-port and 10-port bursts ran inside SOAK2-20261115, whose declaration said no live gate activity. Measured cost was 0 drops / 0 shed / 0 quota_shed, and the soak gate's declared criteria still hold, but the letter of the declaration is broken and the deviation is recorded in section 6 of the analysis file; keeping or restarting the window is an owner decision.",
+        "The 40-port and 10-port bursts ran inside SOAK2-20261115, whose declaration said no live gate activity. Measured cost was 0 drops / 0 shed / 0 quota_shed, and the soak gate's declared criteria still hold, but the letter of the declaration is broken and the deviation is recorded in section 6 of the analysis file. The owner decided on 2026-11-16 to keep the window and disclose the deviation in the closeout.",
         "flows_active fell 4,092 -> 94 across the positive window; it is not a loss counter, queue depth stayed 0, and the cause was not measured.",
         "The control's SYNs are not independently proven to have reached the wire; the positive run is what proves the method reaches the sensor, so the control is a threshold comparison, not a second capture proof."
       ]
