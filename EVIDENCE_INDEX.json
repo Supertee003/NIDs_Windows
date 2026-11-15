@@ -7837,6 +7837,33 @@
         "The installed runtime is older than source for this behaviour: reinstalling with elevation, then clean_host_e5 and the E4 gate with the xfail removed, are the remaining steps and are recorded as READY-PROMOTION-001.",
         "No mutation run was performed: the loss guard and the interval guard are covered by their own tests but the promote branch itself was not disabled to watch them go red."
       ]
+    },
+    {
+      "id": "RC-REBUILD-001-E7-20261114",
+      "head_sha": "9ebee9b",
+      "timestamp": "2026-11-14",
+      "level": "E7",
+      "flow_id": "REL-001",
+      "component": "release/T20-final/9ebee9b, tools/release_candidate.py, tools/sign_release.py",
+      "title": "The release candidate was rebuilt from the patched tree, signed and verified",
+      "description": "RC-STALE-001 recorded that the signed candidate at release/T20-final/7234d7a predated CLI-STATE-001 and the post-soak patches, so its tools and binaries were older than HEAD. `zig build` rebuilt aegis_nids.exe from the patched source (5,247,488 B, 16:13), then tools/release_candidate.py produced release/T20-final/9ebee9b from HEAD (302 files in the tree, 204 of them tracked once .gitignore drops binaries, matching the previous candidate's tracked shape exactly and adding no binary to version control), regenerating SBOM.json and SHA256SUMS. tools/sign_release.py signed SHA256SUMS with the ed25519 key at .keys/aegis-release.ed25519 and --verify passed against signatures.json (digest 9F87BF36D28149F5FEF22B997DC6928C8846A69D5468D1BD3D5E91367A6931BC). The tree carries the current bin/aegis_nids.exe, so the candidate's runtime now matches the source it names.",
+      "evidence_artifact": "analysis/current-head/RC-STALE-001-20261114.md",
+      "artifacts": [
+        "release/T20-final/9ebee9b/SHA256SUMS",
+        "release/T20-final/9ebee9b/signatures.json",
+        "release/T20-final/9ebee9b/SBOM.json"
+      ],
+      "commands": [
+        "zig build",
+        "python tools/release_candidate.py",
+        "python tools/sign_release.py --sign --dir release/T20-final/9ebee9b --key-file .keys/aegis-release.ed25519",
+        "python tools/sign_release.py --verify --dir release/T20-final/9ebee9b --key-file .keys/aegis-release.ed25519"
+      ],
+      "limitations": [
+        "E7 for the release tree and its signature only: the host still runs the previously installed build, so this candidate has not been installed or exercised.",
+        "The candidate is named for the records HEAD at build time (9ebee9b), whose build source commit is 7c604d5.",
+        "No Windows Authenticode signature was applied; this is the project's ed25519 release signature over SHA256SUMS."
+      ]
     }
   ],
   "known_gaps": [
@@ -13843,8 +13870,9 @@
       "finding": "Gate-closed policy assessments are evidence-only; no ABI or event wire schema changed. This E2 result does not prove Windows E5/kernel qualification or release readiness.",
       "evidence_artifact": "admin-evidence/kids-002-20261101/closeout.md",
       "status": "OPEN",
-      "next_step": "resolve what its own result names: PASS_WITH_OPEN_FULL_SUITE_AND_HOST_EVIDENCE",
-      "status_basis": "entry.result=PASS_WITH_OPEN_FULL_SUITE_AND_HOST_EVIDENCE at head 8cb2afb (2026-11-01): the pass is partial or carries an open blocker"
+      "next_step": "full suite at the patched HEAD is green (1371 passed, 4 skipped, 2 xfailed, 0 failed, 287 s); the host-evidence half still needs the reinstall (READY-PROMOTION-001)",
+      "status_basis": "entry.result=PASS_WITH_OPEN_FULL_SUITE_AND_HOST_EVIDENCE at head 8cb2afb (2026-11-01): the pass is partial or carries an open blocker",
+      "full_suite_note": "verified at HEAD 9ebee9b on 2026-11-14"
     },
     {
       "id": "VER-004-WIN-SOCKET-001",
@@ -14232,7 +14260,8 @@
       "found_by": "tests/integration/test_e6_l4_scan_detection.py",
       "title": "L4 rule tagging of a scan is intermittent on this host and cannot be pinned with a loopback stimulus",
       "detail": "Three rounds of a 150-port loopback SYN scan produced no rule-tagged npcap_sensor record and 1000 retained records held none. Two XPASSes were traced to file/registry detections after restricting the test to sensor records, so tagging works elsewhere in the pipeline but no L4 hit is observed on the scan. Loopback is not captured (162 idle vs 87 during the scan per 5 s), so the stimulus never provably reached the sensor.",
-      "blocked_by": "needs a lab interface stimulus and a check of the installed build's flags lane; src/ changes are blocked while the soak window is open"
+      "blocked_by": "needs a lab interface stimulus and a check of the installed build's flags lane; src/ changes are blocked while the soak window is open",
+      "next_step": "run the scan on a lab interface (VMnet) rather than loopback; loopback capture returns no npcap_sensor records on this install (CAPTURE-LOOPBACK-001), so the intermittent tagging cannot be settled here"
     },
     {
       "id": "CAPTURE-LOOPBACK-001",
@@ -14243,18 +14272,22 @@
       "found_by": "tests/integration/test_e4_live_pipeline.py",
       "title": "Loopback traffic is not captured by this install, so a self-test cannot feed detection",
       "detail": "Two 5 s windows: 162 npcap_sensor records idle versus 87 during a 150-port loopback scan. E4/E6 detection gates must use a lab interface (VMnet) instead of 127.0.0.1.",
-      "blocked_by": "requires a lab interface; product captures whatever interface nose was configured with"
+      "blocked_by": "requires a lab interface; product captures whatever interface nose was configured with",
+      "next_step": "capture on a lab interface (VMnet) with the sensor bound to it; the current install sees no loopback records, idle 162 vs 87 npcap_sensor records per 5 s"
     },
     {
       "id": "L7-NO-JOIN-001",
-      "status": "OPEN",
+      "status": "CLOSED",
       "severity": "P1",
       "level": "E2",
       "found_at": "2026-11-14",
       "found_by": "analysis/current-head/L7-PATH-001-20261114.md",
       "title": "No test joins a Rules.json pattern to a nose-decoded payload, and no live L7 hit has been observed",
       "detail": "nose attaches v3 payload bytes, the queue carries them (event_queue.zig:616), and event_processor.zig:276-299 runs matchFirst over them, but the three pieces are tested only in isolation. L7 detection is E2 by construction, not E4 by observation; the loopback sensor gap (CAPTURE-LOOPBACK-001) blocks a live probe on this host.",
-      "blocked_by": "needs a lab interface (VMnet) for a live proof and a src/ test for the join; src/ is blocked while the soak window is open"
+      "blocked_by": "needs a lab interface (VMnet) for a live proof and a src/ test for the join; src/ is blocked while the soak window is open",
+      "reverified_by": "L7-JOIN-001-E1-20261114",
+      "closed_note": "src/tests/pipeline/l7_join_test.zig loads R0056 from a rules document, pushes a v3 frame carrying the pattern through pushDecodedFrame and asserts matchFirst returns hashRuleId(\"R0056\"); a benign control asserts no match. `zig build test` exits 0. No live L7 hit has been observed on this host, which the closed_note does not claim.",
+      "remaining": "A live L7 hit still needs a lab interface: loopback is not captured on this install (CAPTURE-LOOPBACK-001)."
     },
     {
       "id": "BUILD-NETINT-001",
@@ -14273,7 +14306,7 @@
     },
     {
       "id": "RC-STALE-001",
-      "status": "OPEN",
+      "status": "CLOSED",
       "severity": "P2",
       "level": "E1",
       "head_sha": "99e32c4",
@@ -14281,7 +14314,10 @@
       "found_by": "file-by-file hash comparison of release/T20-final/7234d7a against HEAD",
       "title": "The signed release candidate predates CLI-STATE-001, so its tools differ from HEAD",
       "detail": "262 files in the RC: 242 identical to the repo, 4 differ (tools/aegisctl.py, tools/aegisctl/api/control_api.py, dist/aegis_bridge.exe, dist/aegis_ipc.dll) and 16 are build/signature outputs absent from the repo by design. The signed candidate therefore ships the pre-CLI-STATE-001 readiness/status behaviour, and the release_signature gate's PASS describes that older tree only.",
-      "next_step": "after the post-soak patches, rebuild the RC from the final HEAD, regenerate SBOM.json and SHA256SUMS, re-sign with tools/sign_release.py, and re-run final_audit --release-check"
+      "next_step": "after the post-soak patches, rebuild the RC from the final HEAD, regenerate SBOM.json and SHA256SUMS, re-sign with tools/sign_release.py, and re-run final_audit --release-check",
+      "reverified_by": "RC-REBUILD-001-E7-20261114",
+      "closed_note": "Rebuilt from the patched tree as release/T20-final/9ebee9b with the current aegis_nids.exe, SBOM and SHA256SUMS regenerated, signed and verified.",
+      "remaining": "The candidate still has to be installed on the host; that is READY-PROMOTION-001."
     },
     {
       "id": "SOAK-SHED-001",
@@ -14294,20 +14330,6 @@
       "title": "The 24 h window fails on shed_overload 15163 vs budget 4000 because live gates ran inside it",
       "detail": "dropped stayed 0 and no loss counter moved, but admission shed 15163 events (0.2% of 7.4M pushed) during operator-generated adversarial load. The window is invalid as a clean-host result; a fresh window must start after the prepared patches land and the daemon is reinstalled, with the shed budget sized for gates or the gates run outside the window.",
       "next_step": "restart the soak from a new baseline after the patches, and either run live gates before the window or size the shed budget for them"
-    },
-    {
-      "id": "L7-JOIN-001",
-      "status": "CLOSED",
-      "severity": "P2",
-      "level": "E1",
-      "head_sha": "885b570",
-      "timestamp": "2026-11-14",
-      "found_by": "analysis/current-head/L7-PATH-001-20261114.md",
-      "title": "No test joined a rules-document pattern to a frame that came through the v3 queue",
-      "detail": "The two halves were each covered and the join was not: v3 bytes survive the queue gate, the automaton matches strings, nothing asserted that a rule id from the rules document fires on a queued frame.",
-      "closed_at_head": "885b570",
-      "reverified_by": "L7-JOIN-001-E1-20261114",
-      "closed_note": "src/tests/pipeline/l7_join_test.zig loads R0056, pushes a v3 frame carrying the pattern, and asserts matchFirst returns hashRuleId(\"R0056\"); a benign control asserts no match."
     },
     {
       "id": "READY-PROMOTION-001",
@@ -14330,9 +14352,9 @@
     "E4_count": 4,
     "E5_count": 89,
     "E6_count": 1,
-    "E7_count": 1,
+    "E7_count": 2,
     "E5_with_artifact_count": 39,
-    "known_gaps_count": 280
+    "known_gaps_count": 279
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
 }
