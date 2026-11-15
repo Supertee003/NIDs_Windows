@@ -1,4 +1,4 @@
-"""DETECT-L4-001: a SYN scan must be *tagged* by a rule, not merely stored.
+"""The loopback SYN scan cannot reach the sensor; the rule path itself is proven.
 
 `configs/Rules.json` ships three L4 rules and R9006 is a real rate rule
 (`rate_mode: distinct_dst_ports`, `rate_threshold: 20`, `rate_window_ms: 10000`).
@@ -6,20 +6,18 @@
 `ev.source == .capture_npcap`, and canonical nose frames map to exactly that
 source, so the code path exists for production traffic.
 
-On this host it does not fire. Measured on 2026-11-14: a 150-port loopback SYN
-scan produced **zero** forensic records carrying a non-zero `rule_id`, and across
-1000 retained records at the time of measurement no record at all carried one.
-One caveat belongs with that number rather than hidden under it: this install
-does not capture localhost traffic at all (idle 162 sensor records per 5 s vs 87
-during the scan, recorded as `CAPTURE-LOOPBACK-001`), so the scan itself never
-reached the sensor. The measurement therefore says what it says - no rule-tagged
-record exists in the live stream - and it cannot by itself prove R9006 is broken.
+`DETECT-L4-001` was closed on 2026-11-16 on that canonical path, not here: a
+40-port SYN burst from this host over the Wi-Fi NIC produced one R9006 row and a
+10-port control produced none
+(`admin-evidence/lab-l4-testnet-20261116/`,
+`admin-evidence/lab-l4-testnet-negative-20261116/`, and
+`analysis/current-head/DETECT-L4-001-20261116.md`).
 
-The test below is the tripwire, not the fix: it is `xfail(strict=True)` with the
-defect id, so it is never counted as a pass and a fix turns the suite red until
-the marker is removed. The open gap is also recorded in `EVIDENCE_INDEX.known_gaps`
-as `DETECT-L4-001`, and `GAP-L4-FLAGS-LIVE-UNPROVEN` already said the live flags
-lane was unproven - this measurement says it is not working on this host.
+This test still drives `127.0.0.1`, which this install does not capture
+(`CAPTURE-LOOPBACK-001`), so it remains xfail for a *stimulus* reason: an xfail
+here does not say the rule path is broken. It stays as the tripwire for the day
+someone points it at a captured interface - a pass would mean the loopback limit
+is gone. `strict=False` on purpose: both outcomes are informative.
 
 Nothing here is about enforcement: AEGIS is detection-only, and a rule hit would
 only raise a record and a counter.
@@ -103,13 +101,12 @@ def test_the_ring_keeps_accepting_records_before_asking_about_detection() -> Non
 @pytest.mark.xfail(
     strict=False,
     reason=(
-        "DETECT-L4-001: whether an L4 rule tags a scan is not deterministic on "
-        "this host. A 150-port SYN scan produced no rule-tagged record on three "
-        "measured runs, and one run of the full suite produced a tagged record "
-        "(this test XPASSed), so neither 'it fires' nor 'it cannot fire' is "
-        "proven. Loopback is also not captured here (CAPTURE-LOOPBACK-001), so "
-        "the stimulus cannot be shown to have reached the sensor. Non-strict on "
-        "purpose: both outcomes are informative until a lab-interface run pins it."
+        "CAPTURE-LOOPBACK-001: this test drives 127.0.0.1, which this install "
+        "does not capture, so the scan cannot be shown to reach the sensor. The "
+        "rule path itself was proven on the Wi-Fi NIC on 2026-11-16 "
+        "(DETECT-L4-001 closed: 40 ports -> one R9006 row, 10 ports -> none). "
+        "Non-strict on purpose: an XPASS would mean loopback capture started "
+        "working, which is worth seeing."
     ),
 )
 def test_a_syn_scan_is_tagged_by_an_l4_rule() -> None:

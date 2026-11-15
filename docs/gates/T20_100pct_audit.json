@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "72cc75e",
+  "commit": "6af61c8",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE"
@@ -62,7 +62,7 @@
         "id": "soak_24h",
         "ok": false,
         "owner": "time",
-        "detail": "admin-evidence\\e5-clean-host-20261115-soak2\\soak-24h-delta-latest.json is IN_PROGRESS at 6.67/24.0 h"
+        "detail": "admin-evidence\\e5-clean-host-20261115-soak2\\soak-24h-delta-latest.json is IN_PROGRESS at 6.32/24.0 h"
       },
       {
         "id": "evidence_debt",

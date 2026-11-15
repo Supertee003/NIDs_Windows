@@ -184,3 +184,28 @@ interface, or xfail it the way its L4 sibling already is), not in the product.
 | Kali boot + flood | burns the 2,113-drop headroom the closeout needs |
 | Port scans, `zig build test`, full `pytest` | same headroom |
 | Editing `admin-evidence/**` by hand | evidence is producer-owned; a hand-edit is a fabrication |
+
+---
+
+## 6. Postscript (2026-11-16, 00:20 local / 17:20Z)
+
+Two things changed after this triage was written, in the same night:
+
+1. **#7 `DETECT-L4-001` is closed.** A 40-port SYN burst to TEST-NET over the
+   Wi-Fi NIC produced exactly one R9006 row; a 10-port control produced none.
+   Record: `analysis/current-head/DETECT-L4-001-20261116.md`; artifacts:
+   `admin-evidence/lab-l4-testnet-20261116/` and
+   `admin-evidence/lab-l4-testnet-negative-20261116/`.
+2. **That proof ran inside the window.** §5 above says "Port scans … same
+   headroom", and `SOAK2-20261115.md` says no live gates before 16:50. Both were
+   broken in letter. The measured cost was 0 drops / 0 shed / 0 quota_shed in
+   both windows, and the soak gate still reports `problems []`, `scm_restarts []`
+   at 7.4 h — but the deviation is recorded in §6 of the detection record rather
+   than hidden, and whether the window stands is the owner's decision, not this
+   document's.
+
+The control also found `RULE-LAYER-SCOPE-001` (P3, v1.1): the AC matcher applies
+`KERNEL_PROCESS` payload rules to TLS bytes, so R2003 fires on ordinary HTTPS. It
+does not affect the L4 proof, but it is exactly why "a row named our IP" is a weak
+signal on its own.
+

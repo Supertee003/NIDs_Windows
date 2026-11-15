@@ -1,7 +1,7 @@
 {
   "head_sha": "7c604d5b0022157020e20e78045cc2c97a337ddd",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-14",
+  "last_updated_at": "2026-11-16",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -7967,6 +7967,53 @@
         "commit_contains_runtime covers RUNTIME_PATHS only; changes under scripts/, tools/ or docs/ after the release commit do not open the gate because they do not change the running binary.",
         "No full-suite run was made in this patch: the 24 h window SOAK2-20261115 is open and the full battery is scheduled after it closes."
       ]
+    },
+    {
+      "id": "DETECT-L4-001-E5-20261116",
+      "head_sha": "6af61c8",
+      "timestamp": "2026-11-16",
+      "title": "A 40-port SYN burst is tagged by R9006 on the live Wi-Fi path; ten ports are not",
+      "level": "E5",
+      "component": "tools/lab_attack_window.py, configs/Rules.json (R9006), src/pipeline/event_processor.zig:307, src/pipeline/event_queue.zig:480, nose/capture.go (captureAttachment)",
+      "flow_id": "DATA-001",
+      "severity": "P1",
+      "description": "DETECT-L4-001 asked whether an L4 rule tags a scan; its loopback stimulus never reached the sensor (CAPTURE-LOOPBACK-001), so the question stayed open. This run used the path the release ships: the service binary (sha256 7955A6E3..., identical to zig-out and the signed RC) captured 26,727 frames on the Killer Wi-Fi NIC while this host sent 40 TCP SYNs to 192.0.2.1 ports 1-40 in 2.30 s. Exactly one row was appended for src 192.168.1.39: R9006 (FNV 1745456278, 'TCP SYN Stealth Scan') at 2026-11-15T17:07:45.820Z, session 12215, 66-byte attachment, enforcement_status observed. A 10-port control in a second window appended zero R9006 rows, and a census of the whole evidence log (118,634 parsed rows) finds only two R9006 rows ever, both scan-shaped bursts (192.168.126.10 on 2026-11-14 and 192.168.1.39 on 2026-11-16). dropped/shed/quota_shed deltas were 0 in both windows; the detection-only invariant held. The same control exposed an adjacent finding (R2003 matching TLS bytes because the AC ignores rule layer), recorded as RULE-LAYER-SCOPE-001 and deliberately excluded from this closure.",
+      "evidence_artifact": "analysis/current-head/DETECT-L4-001-20261116.md",
+      "artifacts": [
+        "analysis/current-head/DETECT-L4-001-20261116.md",
+        "admin-evidence/lab-l4-testnet-20261116/attack-window-20261115T170859Z.json",
+        "admin-evidence/lab-l4-testnet-20261116/attack-window-20261115T170859Z.md",
+        "admin-evidence/lab-l4-testnet-negative-20261116/attack-window-20261115T171024Z.json",
+        "admin-evidence/lab-l4-testnet-negative-20261116/attack-window-20261115T171024Z.md",
+        "tests/integration/test_e6_l4_scan_detection.py"
+      ],
+      "artifact_note": "admin-evidence/ is local-only and git-ignored; paths are workspace-relative so a host audit can find the producer-owned files. The tracked records are the analysis file and the test docstring.",
+      "commands": [
+        "python tools\\lab_attack_window.py --label l4-testnet-20261116 --seconds 75 --expect-src 192.168.1.39",
+        "40 x socket.connect(('192.0.2.1', port)) for ports 1-40, 50 ms timeout, 2.30 s",
+        "python tools\\lab_attack_window.py --label l4-testnet-negative-20261116 --seconds 45 --expect-src 192.168.1.39",
+        "10 x socket.connect(('192.0.2.1', port)) for ports 1-10, 50 ms timeout, 0.58 s"
+      ],
+      "expected": "positive: wire ingress advances, at least one appended row names 192.168.1.39 and resolves to R9006 (>= 20 distinct dst ports in 10 s); control: below 20 ports, zero R9006 rows; both: dropped_total and shed_overload deltas 0",
+      "actual": "positive PASS: +26,727 frames, +121 rows, 1 attributed row = R9006 (1745456278), dropped/shed/quota_shed +0. control: +16,107 frames, R9006 0; the tool's PASS came from an ambient R2003 row on the host's own TLS session, which is why the per-rule table is the control. Census: 2 R9006 rows in 118,634 log rows, both scans.",
+      "result": "PASS",
+      "closes_gap": "DETECT-L4-001",
+      "host_effect_confirmed": false,
+      "prevention_gate": "closed",
+      "tests": [
+        "python -m pytest -q tests/release tests/tools/test_lab_attack_window.py tests/tools/test_runbooks.py tests/tools/test_sign_release.py",
+        "python tools/rebuild_truth.py",
+        "python tools/truth.py verify",
+        "python tools/release_engineering.py --verify"
+      ],
+      "limitations": [
+        "E5 for one rule and one stimulus class: R9002 and R9007 were not exercised.",
+        "The source was the victim host itself (TEST-NET destination), not a remote Kali attacker; R9006 keys its window on the source address, and the remote-source case is not exercised here.",
+        "SYN-only probes carry no application payload, so this is no L7 proof; IDS-L7-003 stays open.",
+        "The 40-port and 10-port bursts ran inside SOAK2-20261115, whose declaration said no live gate activity. Measured cost was 0 drops / 0 shed / 0 quota_shed, and the soak gate's declared criteria still hold, but the letter of the declaration is broken and the deviation is recorded in section 6 of the analysis file; keeping or restarting the window is an owner decision.",
+        "flows_active fell 4,092 -> 94 across the positive window; it is not a loss counter, queue depth stayed 0, and the cause was not measured.",
+        "The control's SYNs are not independently proven to have reached the wire; the positive run is what proves the method reaches the sensor, so the control is a threshold comparison, not a second capture proof."
+      ]
     }
   ],
   "known_gaps": [
@@ -14360,15 +14407,27 @@
     },
     {
       "id": "DETECT-L4-001",
-      "status": "OPEN",
+      "status": "CLOSED",
       "severity": "P1",
       "level": "E4",
       "found_at": "2026-11-14",
       "found_by": "tests/integration/test_e6_l4_scan_detection.py",
       "title": "L4 rule tagging of a scan is intermittent on this host and cannot be pinned with a loopback stimulus",
       "detail": "Three rounds of a 150-port loopback SYN scan produced no rule-tagged npcap_sensor record and 1000 retained records held none. Two XPASSes were traced to file/registry detections after restricting the test to sensor records, so tagging works elsewhere in the pipeline but no L4 hit is observed on the scan. Loopback is not captured (162 idle vs 87 during the scan per 5 s), so the stimulus never provably reached the sensor.",
-      "blocked_by": "needs a lab interface stimulus and a check of the installed build's flags lane; src/ changes are blocked while the soak window is open",
-      "next_step": "run the scan on a lab interface (VMnet) rather than loopback; loopback capture returns no npcap_sensor records on this install (CAPTURE-LOOPBACK-001), so the intermittent tagging cannot be settled here"
+      "blocked_by": "HISTORICAL: needed a lab-interface stimulus and a check of the installed build's flags lane; src/ changes were blocked while the soak window was open",
+      "next_step": "HISTORICAL: run the scan on a lab interface (VMnet) rather than loopback; loopback capture returns no npcap_sensor records on this install (CAPTURE-LOOPBACK-001)",
+      "closed_at": "2026-11-16",
+      "closed_by": "DETECT-L4-001-E5-20261116",
+      "closed_head": "6af61c8",
+      "closure": "Proven on the canonical path the release ships, with the installed binary (sha256 7955A6E3...): a 40-port SYN burst from 192.168.1.39 over the Wi-Fi NIC produced exactly one R9006 row (FNV 1745456278) at 2026-11-15T17:07:45.820Z with dropped/shed/quota_shed deltas of 0, and a 10-port control produced zero R9006 rows. A census of the whole evidence log (118,634 parsed rows) finds only two R9006 rows ever: the control-era VM-subnet burst at 2026-11-14T10:20:50Z (192.168.126.10) and this one. The intermittency was the loopback stimulus, not the rule path; the flags lane, the rate-window keying and the current binary all worked in the same run.",
+      "closure_evidence": [
+        "admin-evidence/lab-l4-testnet-20261116/attack-window-20261115T170859Z.json",
+        "admin-evidence/lab-l4-testnet-20261116/attack-window-20261115T170859Z.md",
+        "admin-evidence/lab-l4-testnet-negative-20261116/attack-window-20261115T171024Z.json",
+        "admin-evidence/lab-l4-testnet-negative-20261116/attack-window-20261115T171024Z.md",
+        "analysis/current-head/DETECT-L4-001-20261116.md"
+      ],
+      "closure_limit": "One rule (R9006), one stimulus class, one interface, one host. The source was the victim host itself, not a remote Kali attacker; no L7 claim; all rows observed with host_effect_confirmed false."
     },
     {
       "id": "CAPTURE-LOOPBACK-001",
@@ -14452,6 +14511,19 @@
       "reverified_by": "READY-PROMOTION-001-E5-20261114",
       "closed_note": "Installed the patched build (sha256 7955a6e3...) over the service binary after backing up aegis_nids.exe.prev; the live host reports RUNNING on every surface.",
       "remaining": "A clean_host_e5 rerun and a fresh soak window from this build are still open work."
+    },
+    {
+      "id": "RULE-LAYER-SCOPE-001",
+      "status": "OPEN",
+      "severity": "P3",
+      "level": "E1",
+      "found_at": "2026-11-16",
+      "found_by": "admin-evidence/lab-l4-testnet-negative-20261116 control plus an aegis_core.ndjson census",
+      "title": "The Aho-Corasick matcher applies KERNEL_PROCESS payload rules to network bytes, so TLS traffic raises R2003",
+      "detail": "R2003 (PowerShell Cradle Download, layer KERNEL_PROCESS, pattern IEX|DownloadString|DownloadFile|PS_CRADLE|Net.WebClient) matched 366 wire events: 291 with src_port 443, 324 at the 1024-byte Nose attachment cap, remote IPv6/IPv4 sources, dst_port absent. src/pipeline/event_processor.zig:280 runs the AC matcher over qe.payload for every source except capture_host_net and never consults the rule's layer, so a three-byte token inside an encrypted TLS record becomes a PowerShell-cradle detection. Every row is enforcement_status observed with host_effect_confirmed false (prevention gate closed), so this is alert quality, not host authority. Found while establishing the negative control for DETECT-L4-001: the victim host's own outbound TLS session produced an attributed row that had nothing to do with the stimulus.",
+      "blocked_by": "the fix is a src/ edit (event_processor.zig AC rule selection by layer/source) and any source change reopens SOAK2-20261115",
+      "next_step": "v1.1: scope the AC rule set to rules whose layer matches the event source (network payloads get L7 rules only), or skip payloads that are not decoded application data, and add a pin that a TLS record cannot produce a KERNEL_PROCESS rule id",
+      "observed_in": "C:\\Windows\\System32\\logs\\aegis_core.ndjson, 118,634 parsed rows spanning 2026-11-14T10:12:46Z..2026-11-15T17:11:05Z"
     }
   ],
   "evidence_level_summary": {
@@ -14460,11 +14532,11 @@
     "E2_count": 122,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 92,
+    "E5_count": 93,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 42,
-    "known_gaps_count": 279
+    "E5_with_artifact_count": 43,
+    "known_gaps_count": 280
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
 }

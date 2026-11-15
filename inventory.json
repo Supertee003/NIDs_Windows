@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-15T16:08:27.965694+00:00",
+  "generated_at": "2026-11-15T17:19:08.756208+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 2047,
+  "total_files": 2053,
   "by_class": {
-    "canonical-docs": 437,
+    "canonical-docs": 441,
     "canonical-build": 227,
     "unclassified": 19,
-    "canonical-source": 987,
-    "canonical-test": 301,
+    "canonical-source": 988,
+    "canonical-test": 302,
     "canonical-config": 42,
     "legacy": 34
   },
@@ -168,7 +168,7 @@
       "path": ".github/workflows/ci.yml",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 13183
+      "size": 13397
     },
     {
       "path": ".github/workflows/host-regression.yml",
@@ -507,6 +507,12 @@
       "size": 666
     },
     {
+      "path": "analysis/current-head/DETECT-L4-001-20261116.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 10675
+    },
+    {
       "path": "analysis/current-head/detection-only-baseline.json",
       "class": "canonical-build",
       "role": "build-config",
@@ -639,6 +645,12 @@
       "size": 4600
     },
     {
+      "path": "analysis/current-head/GAP-TRIAGE-20261116.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 11270
+    },
+    {
       "path": "analysis/current-head/GATE-HONESTY-001-20261110.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -745,6 +757,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4641
+    },
+    {
+      "path": "analysis/current-head/LAB-WIFI-001-20261116.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 7793
     },
     {
       "path": "analysis/current-head/LEGACY-INERT-001-20261114.md",
@@ -3189,10 +3207,16 @@
       "size": 38302
     },
     {
+      "path": "docs/runbooks/RB-022-wifi-bridged-lab.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 7144
+    },
+    {
       "path": "docs/runbooks/README.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4141
+      "size": 4289
     },
     {
       "path": "docs/runtime/COMPONENT_MATRIX.md",
@@ -3684,7 +3708,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1347681
+      "size": 1355926
     },
     {
       "path": "FLOW_MAP.json",
@@ -10746,7 +10770,7 @@
       "path": "tests/integration/test_e6_l4_scan_detection.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 5719
+      "size": 5268
     },
     {
       "path": "tests/ips/test_t18_ips_canary_xdr.py",
@@ -11445,6 +11469,12 @@
       "size": 3360
     },
     {
+      "path": "tests/tools/test_lab_attack_window.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 11222
+    },
+    {
       "path": "tests/tools/test_legacy_pointers.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -11899,6 +11929,12 @@
       "class": "canonical-source",
       "role": "source",
       "size": 27671
+    },
+    {
+      "path": "tools/lab_attack_window.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 24475
     },
     {
       "path": "tools/legacy/aegisctl_commands_quarantined/__init__.py",
