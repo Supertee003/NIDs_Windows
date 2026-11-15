@@ -111,6 +111,58 @@ port it listens on:
 python -m http.server 80
 ```
 
+#### Protocol-anomaly lane (separate from `Rules.json`)
+
+The five L7 rules above are **signature** rules: text matched by Aho-Corasick,
+identified by the FNV-1a hash of their `Rules.json` id. A second, independent
+lane parses HTTP/DNS/TLS/SMB structure and reports RFC-shape anomalies with
+`rule_id = 10000 + kind` (`src/detection/proto_anomaly.zig`). Those numeric ids
+are **not** in `Rules.json`; the event processor records them as observe-only
+evidence and never promotes them to `matched_rule_id`, so they cannot reach
+policy, PEP, or the ActionDispatcher (`event_processor.zig:335-352`).
+
+The lane only runs for `source == .capture_npcap` with a non-empty payload, and
+it needs the raw Ethernet frame. Canonical Go Nose satisfies both: it attaches
+the raw Npcap frame bytes as the v3 payload (`nose/capture.go:180,232-264`), the
+pipe reader submits those bytes (`nose_pipe_reader.zig:427`), and the queue maps
+`npcap_sensor` to `capture_npcap` (`event_queue.zig:322`). `l7_payload.zig`
+then accepts Ethernet + IPv4/IPv6 + TCP with a valid data offset (at least 20
+bytes) or UDP, and returns the transport payload. Supported ports: HTTP
+`80/8080/8000/8081`, DNS `53`, TLS `443/8443`, SMB `445/139`.
+
+A minimal HTTP stimulus, no admin required:
+
+```powershell
+# victim: listening so the handshake completes and a payload exists
+python -m http.server 8080
+```
+
+```bash
+# Kali: HTTP/1.1 without a Host header -> kind 4, rule 10004
+printf 'GET / HTTP/1.1\r\n\r\n' | nc -w 3 192.168.1.39 8080
+```
+
+Expected row in `C:\Windows\System32\logs\aegis_core.ndjson`:
+
+```
+"event":"protocol_anomaly","rule":"10004","level":"warn",
+"enforcement_status":"observed","host_effect_confirmed":false
+```
+
+Read it with the same window tool (`--expect-src <kali-ip>`), but interpret the
+`per rule` table by hand: `lab_attack_window.py` resolves numeric ids against
+`Rules.json`, so this lane prints as `rule=10004 UNKNOWN`. **`UNKNOWN` here is
+the expected label, not an error** — the control signal is the `10004` row with
+the attacker's `src_ip`, not a catalog name. If `enforcement_status` ever reads
+`enforced`, stop: the lane is observe-only by construction.
+
+Known kinds an operator can aim at deliberately: `10001` invalid method, `10003`
+invalid version, `10004` missing Host, `10005` oversize DNS label, `10008` TLS
+zero ciphers, `10011` malformed SMB. The request must arrive within the first
+1024 payload bytes (the Nose v3 bound); ordinary requests are far below it. One
+well-formed request produces no row, so send the malformed shape **and** keep a
+well-formed control in the same window.
+
 ### 4. Read the verdict
 
 The tool prints and writes `admin-evidence/lab-<label>/attack-window-*.{json,md}`:
@@ -167,3 +219,9 @@ append-only by design.
   were on different segments. Fix the topology, re-run step 1.
 - L7 detections require a completed connection and payload. A SYN-only scan
   exercises L4 only, by design.
+- **The protocol-anomaly lane is not a signature match.** It reports structural
+  anomalies under ids `10000 + kind`, which are absent from `Rules.json` and
+  therefore print as `UNKNOWN` in the window tool. Do not add them to the
+  catalog to make the label nicer: they are observe-only evidence, not policy.
+  Each malformed request produces one row, so a flood of them grows the evidence
+  log at line rate — keep anomaly stimuli short.
