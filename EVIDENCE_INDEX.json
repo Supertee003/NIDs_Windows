@@ -7814,6 +7814,29 @@
         "Unit-level join on a synthetic frame, not a captured packet; the live-capture half of L7 still needs the lab interface.",
         "The rule document is a fixture, not the shipped Rules.json."
       ]
+    },
+    {
+      "id": "READY-PROMOTION-001-E2-20261114",
+      "head_sha": "5c6102a",
+      "timestamp": "2026-11-14",
+      "level": "E2",
+      "flow_id": "CTL-001",
+      "component": "src/control/state_machine.zig, src/daemon.zig",
+      "title": "The runtime lifecycle is reconciled on a timer, with hysteresis, instead of sampled once at startup",
+      "description": "DEFECT-READY-001: src/daemon.zig sampled bridge_init.allActive() once after init and moved the lifecycle to degraded if any bridge was not yet attested, and nothing re-evaluated it. recomputeHealth() mapped failed->degraded and degraded->recovering but had no timer and no caller for recovering->running, so status said DEGRADED for the life of the process while health, derived from live facts, said RUNNING. The patch moves the rule into RuntimeState.reconcileLifecycle(now_ms, facts): the facts are the same four booleans the health contract publishes (pipeline_ready, pipeline_failed, bridge_ready, data_loss_observed) plus subsystem health; any disagreeing fact demotes immediately (running or recovering -> degraded) because a real failure must not be averaged away; promotion needs PROMOTION_SAMPLES=3 consecutive clear samples at least PROMOTION_MIN_INTERVAL_MS=5000 apart, so a fast poll cannot accumulate evidence, and the streak resets after each step so RECOVERING -> RUNNING pays its own three samples. daemon.lifecycleLoop supplies the facts every five seconds and is joined by the supervisor on shutdown; data_loss_observed is new loss since the previous sample, so a cumulative counter cannot pin the runtime degraded forever and recent loss is not averaged away. Four tests in state_machine.zig pin the promote path, streak reset on one bad sample, the loss guard, the fast-poll guard and immediate demotion. zig build test exits 0.",
+      "evidence_artifact": "analysis/current-head/READY-PROMOTION-PLAN-20261114.md",
+      "artifacts": [
+        "src/control/state_machine.zig",
+        "src/daemon.zig"
+      ],
+      "commands": [
+        "zig build test"
+      ],
+      "limitations": [
+        "E2 only: the live host still runs the previously installed build, so the promotion has not been observed on a process yet.",
+        "The installed runtime is older than source for this behaviour: reinstalling with elevation, then clean_host_e5 and the E4 gate with the xfail removed, are the remaining steps and are recorded as READY-PROMOTION-001.",
+        "No mutation run was performed: the loss guard and the interval guard are covered by their own tests but the promote branch itself was not disabled to watch them go red."
+      ]
     }
   ],
   "known_gaps": [
@@ -14196,7 +14219,9 @@
       "detail": "health --json: state DEGRADED, degraded true, subsystems 7/7 RUNNING, workers.failed false, failure_reasons []. readiness: degraded true, degraded_components [], failure_reasons ['degraded_without_named_component','state_degraded'], overall_gate false. Contradicts AGENTS.md STOP-THE-LINE (degraded without named component).",
       "blocked_by": "src/ change would invalidate the running 24 h soak window (2026-11-14T22:20:15 -> 2026-11-15T22:20:15)",
       "root_cause": "src/daemon.zig:854-860 transitions the lifecycle ONCE from bridge_init.allActive() sampled right after bridge_init.initAll(); nothing re-promotes it, and recomputeHealth() only handles failed->degraded and degraded->recovering with no caller.",
-      "current_reporting": "CLI-STATE-001 (2026-11-14) makes readiness name it: state_machine_degraded_but_health_facts_ready; the gate still refuses."
+      "current_reporting": "CLI-STATE-001 (2026-11-14) makes readiness name it: state_machine_degraded_but_health_facts_ready; the gate still refuses.",
+      "next_step": "SOURCE FIXED (READY-PROMOTION-001-E2-20261114); the installed runtime still carries the old one-shot transition. Rebuild the bundle, install with elevation, rerun clean_host_e5, and remove the xfail from tests/integration/test_e4_live_pipeline.py once status and health agree on the new process.",
+      "source_fix_head": "5c6102a"
     },
     {
       "id": "DETECT-L4-001",
@@ -14283,19 +14308,31 @@
       "closed_at_head": "885b570",
       "reverified_by": "L7-JOIN-001-E1-20261114",
       "closed_note": "src/tests/pipeline/l7_join_test.zig loads R0056, pushes a v3 frame carrying the pattern, and asserts matchFirst returns hashRuleId(\"R0056\"); a benign control asserts no match."
+    },
+    {
+      "id": "READY-PROMOTION-001",
+      "status": "OPEN",
+      "severity": "P1",
+      "level": "E2",
+      "head_sha": "5c6102a",
+      "timestamp": "2026-11-14",
+      "found_by": "READY-PROMOTION-001-E2-20261114",
+      "title": "Promotion logic is in source but the installed runtime is still the pre-patch build",
+      "detail": "src carries reconcileLifecycle and daemon.lifecycleLoop (zig build test green), but C:\\Program Files\\AEGIS NIDS\runtime\u0007egis_nids.exe was installed from build source 1fa877c, which samples the lifecycle once. Until it is reinstalled the live host still reports DEGRADED while health says RUNNING, which is the build/runtime mismatch listed as a stop-the-line trigger.",
+      "next_step": "rebuild the release bundle, install it with elevation (scripts/install_aegis.ps1 -BundleRoot <bundle>), rerun clean_host_e5, confirm status and health agree on the new process, then remove the DEFECT-READY-001 xfail and rerun the E4 gate"
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 23,
-    "E2_count": 120,
+    "E2_count": 121,
     "E3_count": 14,
     "E4_count": 4,
     "E5_count": 89,
     "E6_count": 1,
     "E7_count": 1,
     "E5_with_artifact_count": 39,
-    "known_gaps_count": 279
+    "known_gaps_count": 280
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
 }

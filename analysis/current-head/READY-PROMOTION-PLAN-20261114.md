@@ -1,9 +1,8 @@
 # READY-PROMOTION-001 — patch plan for DEFECT-READY-001 (not applied)
 
 **Created:** 2026-11-14
-**Status:** PLANNED — cannot be applied while the 24 h soak window is open.
-**Blocked until:** `2026-11-15T22:20:15` (window start + 24 h). Any `src/`
-commit after `2026-11-14T22:20:15` makes the soak stale.
+**Status:** SOURCE APPLIED (`7c604d5`, E2) — installed runtime NOT updated; elevation required.
+**Unblocked:** the soak window failed at 16.95 h on `shed_overload` (`SOAK-SHED-001`), so there was nothing left to protect and the patch landed. The fresh window starts after the reinstall below.
 
 This document is the patch transaction, written now so the window's end is a
 one-shot job rather than a fresh investigation.
