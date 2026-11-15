@@ -156,6 +156,25 @@ Then, in this order (each step's failure stops the next):
 proofs for `#7` and `#2`, because a VM boot and a scan add load that must not
 land inside the window being measured.
 
+### 4.1 What the `host_live` batch will report, before it is run
+
+`pytest -m host_live --collect-only` selects **18 tests in 6 files**. Three of
+them cannot be green on this host, and that is a property of the tests, not of
+the product:
+
+| Test | Expected | Why |
+|---|---|---|
+| `test_e6_l4_scan_detection::test_a_syn_scan_is_tagged_by_an_l4_rule` | `xfailed` | deliberate `xfail(strict=True)` tripwire for `DETECT-L4-001` |
+| `test_e6_attack_burst::test_a_localhost_port_scan_is_captured_and_scored` | **red** | asserts an *anomaly* from a 127.0.0.1 scan; the sensor never opens the loopback device (`CAPTURE-LOOPBACK-001`) |
+| `test_driver_build::test_the_driver_builds[...]` | `skipped` if the WDK is absent | WDK presence, not product behaviour |
+
+The 150-port loopback scan is **not** run before the window closes: it is the one
+stimulus this host cannot observe, so it can only cost headroom. Tomorrow's record
+must attribute that red to `CAPTURE-LOOPBACK-001` and must not present it as a new
+detection regression — and the fix belongs in the test (drive it through a real
+interface, or xfail it the way its L4 sibling already is), not in the product.
+
+
 ## 5. What must not happen before the window closes
 
 | Forbidden | Why |
