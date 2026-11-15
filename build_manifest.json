@@ -1021,7 +1021,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "f545db208726efd806b25268f6c00f2078152fbe3fd0bcb455b0a3770496f8dd",
+      "sha256": "1ca6a5c4fc29aee0aaae29024cbd13cc66d65219bbec9a794706bab55f9bff17",
       "language": "json"
     },
     {
@@ -3690,8 +3690,8 @@
     },
     {
       "path": "tools/final_audit.py",
-      "size": 38311,
-      "sha256": "23c59e39cfd26d98eee873244ccea2f38d5159c2e8fb9283fd8b634f14bce822",
+      "size": 41546,
+      "sha256": "3c56ca8160635290e2e30ef710eff8edc44d359b365cdb6f2a7479e42314387c",
       "language": "python/cython"
     },
     {
