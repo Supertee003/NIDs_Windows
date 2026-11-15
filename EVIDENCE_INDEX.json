@@ -14388,7 +14388,7 @@
     "E5_count": 90,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 39,
+    "E5_with_artifact_count": 40,
     "known_gaps_count": 279
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
