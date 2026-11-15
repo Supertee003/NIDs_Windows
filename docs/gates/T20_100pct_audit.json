@@ -1,9 +1,9 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "ed97ed1",
+  "commit": "829e85e",
   "declaration": {
     "component_audit": "COMPLETE",
-    "release": "NOT SHIPPABLE (waived by owner: soak_24h, unproven)"
+    "release": "NOT SHIPPABLE"
   },
   "part_i": {
     "total_modules": 66,
@@ -22,14 +22,14 @@
   "component_audit_complete": true,
   "release": {
     "shippable": false,
-    "shippable_with_waiver": true,
+    "shippable_with_waiver": false,
     "open": [
       "soak_24h"
     ],
-    "waived": [
+    "waived": [],
+    "unwaived": [
       "soak_24h"
     ],
-    "unwaived": [],
     "owners": [
       "time"
     ],
@@ -38,7 +38,7 @@
         "id": "truth_artifacts",
         "ok": true,
         "owner": "none",
-        "detail": "TRUTH_VALID — artifacts carry build source 1fa877c (ancestor of HEAD; source history and worktree clean)"
+        "detail": "TRUTH_VALID — artifacts carry build source 7c604d5 (ancestor of HEAD; source history and worktree clean)"
       },
       {
         "id": "component_audit",
@@ -62,18 +62,7 @@
         "id": "soak_24h",
         "ok": false,
         "owner": "time",
-        "detail": "WAIVED by owner (2026-11-14T22:35:00): Owner decided not to wait for the 24 h window and to ship on the evidence collected so far.",
-        "waived": true,
-        "waiver": {
-          "reason": "Owner decided not to wait for the 24 h window and to ship on the evidence collected so far.",
-          "accepted_by": "owner",
-          "accepted_at": "2026-11-14T22:35:00",
-          "not_proven": [
-            "No 24 h continuous window has been observed for this build; the recorded window had 0.4 of 24.0 h elapsed.",
-            "Absence of dropped rows, restarts, DEGRADED reports and SCM 7031/7034 events is proven only for the observed fraction of the window.",
-            "The 24 h claim cannot be reconstructed later from this artifact; a future window must be run separately if the claim is ever needed."
-          ]
-        }
+        "detail": "admin-evidence\\e5-clean-host-20261115-soak2\\soak-24h-delta-latest.json is IN_PROGRESS at 0.0/24.0 h"
       },
       {
         "id": "evidence_debt",

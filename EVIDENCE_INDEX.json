@@ -7894,6 +7894,50 @@
         "The full unit and release suites were green before this reinstall and the E4 file plus tools/release/security were green after; the whole suite was not repeated after the install.",
         "Rollback is a file copy: the previous binary is at runtime\u0007egis_nids.exe.prev."
       ]
+    },
+    {
+      "id": "E5-POSTINSTALL-20261115-E5",
+      "head_sha": "829e85e",
+      "timestamp": "2026-11-15",
+      "level": "E5",
+      "flow_id": "DEPLOY-001",
+      "component": "C:\\Program Files\\AEGIS NIDS, AegisNids service, tools/host_preflight.py",
+      "title": "Post-install preflight PASSes on the reinstalled build, with the boot loader under the install directory",
+      "description": "host_preflight.py ran against the installed runtime after the service binary was replaced with the build from source 7c604d5 (installed sha256 equals zig-out/bin/aegis_nids.exe sha256 7955a6e3...). Verdict PASS, failed [] \u2014 every check it makes (daemon answering, uptime, loss counters, minifilter ring clean) is green, and the recorded boot loader is C:\\Program Files\\AEGIS NIDS\\scripts\boot-sequence.ps1, i.e. under the install directory rather than a hand-fixed lab task, which is the condition the clean_host_e5 gate requires before it counts a PASS. This supersedes the 2026-11-14 preflight as the current-install artifact: that one described a build installed before the lifecycle fix.",
+      "evidence_artifact": "analysis/current-head/SOAK2-20261115.md",
+      "artifacts": [
+        "admin-evidence/e5-postinstall-20261115/preflight-20261115-postinstall.json"
+      ],
+      "commands": [
+        "python tools/host_preflight.py --json admin-evidence/e5-postinstall-20261115/preflight-20261115-postinstall.json"
+      ],
+      "limitations": [
+        "The preflight is a set of host facts, not a detection test and not a soak.",
+        "It was taken minutes after install, so it says the process came up correctly, not that it stays up."
+      ]
+    },
+    {
+      "id": "SOAK2-20261115-E5",
+      "head_sha": "829e85e",
+      "timestamp": "2026-11-15",
+      "level": "E5",
+      "flow_id": "OPS-001",
+      "component": "admin-evidence/e5-clean-host-20261115-soak2, tools/host_soak_check.py",
+      "title": "A fresh 24 h window is running against the installed build, with a declared shed budget",
+      "description": "After the previous window failed on shed_overload (SOAK-SHED-001) and the runtime was reinstalled with the lifecycle fix, host_soak_check.py started a new window at 2026-11-15T16:50:31 with --baseline auto, so the baseline is the tool's own snapshot rather than a remembered number. At start: all four services RUNNING, daemon_state RUNNING and daemon_health_state RUNNING (the two surfaces that disagreed for a whole run), every loss counter 0, shed_overload 0, scm_restarts [], problems []. The loss budget stays 3,500; the shed budget is raised to 20,000 and that is recorded as an owner-level policy change with its reason \u2014 the 4,000 the previous window used was chosen before any measurement and was exceeded by the 15,163 that live gates produced, so a window that shares a host with gates cannot honour it. Nothing in this session runs live gates before the window closes.",
+      "evidence_artifact": "analysis/current-head/SOAK2-20261115.md",
+      "artifacts": [
+        "admin-evidence/e5-clean-host-20261115-soak2/soak-24h.baseline.json",
+        "admin-evidence/e5-clean-host-20261115-soak2/soak-24h-delta-latest.json"
+      ],
+      "commands": [
+        "python tools/host_soak_check.py --start auto --baseline auto --hours 24 --loss-budget 3500 --shed-budget 20000"
+      ],
+      "limitations": [
+        "IN_PROGRESS at 0.0 h: this entry records the start, not a clean window. The verdict means nothing until 2026-11-16T16:50.",
+        "One host, one build.",
+        "The 20,000 shed budget is policy, not measurement."
+      ]
     }
   ],
   "known_gaps": [
@@ -13609,7 +13653,7 @@
       ],
       "evidence": "Host transcript admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt; duplicate-canary output admin-evidence/g2-direction-20261022/g2-canary-dup-20261023.txt; VM evidence pep-cache-swap-20261023.json/log, canary-capture-dup.json, metrics-before-dup.json, metrics-after-dup.json, wfp-filters-*.xml, base-restore-20261023.json/log (to be copied back before the VM is reverted); source commit ee1010e.",
       "status": "OPEN",
-      "next_step": "resolve what its own result names: PARTIAL",
+      "next_step": "lab-only: PEP cache swap, direction verify, duplicate canary, unblock and base restore need a second host and enforcement rights this session does not have; nothing in the current session can move it",
       "status_basis": "entry.result=PARTIAL at head ee1010e (2026-10-23): the pass is partial or carries an open blocker"
     },
     {
@@ -13848,7 +13892,7 @@
       "finding": "The slice is wired and compile-tested at E2. Direct Npcap and L7 anomaly modules remain LAB/observe-only until a disjoint-interface Windows host run supplies E5 evidence. Rust PEP remains the sole privileged authority.",
       "evidence_artifact": "admin-evidence/ids-l7-003-20261031/closeout.md",
       "status": "OPEN",
-      "next_step": "resolve what its own result names: PASS_WITH_OPEN_BLOCKER",
+      "next_step": "direct Npcap capture on a lab interface (VMnet) to extract payload to protocol anomaly; loopback is not captured by this install (CAPTURE-LOOPBACK-001) and no live L7 hit has been observed. The rules-document -> matcher join is now unit-pinned (L7-JOIN-001-E1-20261114), which removes the 'no join' part of this blocker but not the live-capture part.",
       "status_basis": "entry.result=PASS_WITH_OPEN_BLOCKER at head 3d4a0fd (2026-10-31): the pass is partial or carries an open blocker"
     },
     {
@@ -13954,8 +13998,10 @@
       "finding": "Host observability may still capture normal LAN traffic while AEGIS_DAEMON_IFACE is pinned to VMnet1. Resolve deployment preflight and verify the runtime image/source before restarting this lab; no E5 result is claimed.",
       "evidence_artifact": "admin-evidence/e5-recheck-20261101/closeout.md",
       "status": "OPEN",
-      "next_step": "resolve what its own result names: BLOCKED_E5_NO_CURRENT_SOURCE_CANARY",
-      "status_basis": "entry.result=BLOCKED_E5_NO_CURRENT_SOURCE_CANARY at head e233242 (2026-11-01): the pass is partial or carries an open blocker"
+      "next_step": "run the RB-021 canaries against the now-current installed image from a lab peer (the image half of the blocker is resolved: installed sha equals the build sha)",
+      "status_basis": "entry.result=BLOCKED_E5_NO_CURRENT_SOURCE_CANARY at head e233242 (2026-11-01): the pass is partial or carries an open blocker",
+      "detail": "RB-021's recheck was blocked because the installed runtime did not match the source it was supposed to prove, so no canary could attest the current source. Measured on 2026-11-15: installed C:\\Program Files\\AEGIS NIDS\runtime\u0007egis_nids.exe sha256 7955a6e3c9bb8ac4... equals zig-out/bin/aegis_nids.exe sha256 7955a6e3c9bb8ac4... (identical), the AegisNids service is RUNNING on it and reports State RUNNING with State machine RUNNING. The stale-image half of the blocker is therefore gone; what is left is the canary run itself, which needs a lab peer.",
+      "resolved_portion": "installed runtime now matches the build source"
     },
     {
       "id": "REL-MANIFEST-001-20261101",
@@ -14385,10 +14431,10 @@
     "E2_count": 121,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 90,
+    "E5_count": 92,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 40,
+    "E5_with_artifact_count": 42,
     "known_gaps_count": 279
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
