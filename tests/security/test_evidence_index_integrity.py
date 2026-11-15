@@ -8,12 +8,17 @@ historical entries predate the rule and are allowlisted by id, so the test
 fails on any new one instead of rewriting history.
 
 R-13 — an entry whose artifact path no longer exists. Deletions are allowed,
-but the index has to follow them.
+but the index has to follow them. `admin-evidence/` is the exception by policy:
+AGENTS.md keeps it local-only and git-ignored, so a CI checkout never has those
+files. Such paths are recorded, not verifiable; the test pins that the exception
+is real (`test_admin_evidence_is_local_only_by_policy`) so it cannot silently
+become a hole for tracked files.
 """
 from __future__ import annotations
 
 import json
 import re
+import subprocess
 from collections import Counter
 from pathlib import Path
 
@@ -21,6 +26,11 @@ ROOT = Path(__file__).resolve().parents[2]
 INDEX = ROOT / "EVIDENCE_INDEX.json"
 HOLLOW = ROOT / "analysis" / "current-head" / "hollow-evidence-baseline.json"
 LEVELS = {"E0", "E1", "E2", "E3", "E4", "E5", "E6", "E7"}
+
+# Producer-owned evidence that is deliberately never committed (AGENTS.md:
+# "admin-evidence/ stays local-only and git-ignored"). A clean checkout cannot
+# contain it, so its absence is not a broken pointer.
+LOCAL_ONLY = ("admin-evidence/",)
 
 # Historical entries written before the anchor rule. Do not add to this set;
 # fix the entry instead.
@@ -74,10 +84,30 @@ def test_artifact_paths_exist() -> None:
     missing: list[str] = []
     for entry in _index()["evidence"]:
         for rel in entry.get("artifacts") or []:
+            if rel.startswith(LOCAL_ONLY):
+                continue
             if not (ROOT / rel).exists():
                 missing.append(f"{entry['id']} -> {rel}")
     assert not missing, "evidence points at files that no longer exist:\n  " + (
         "\n  ".join(missing)
+    )
+
+
+def test_admin_evidence_is_local_only_by_policy() -> None:
+    """The skip above is only honest while `admin-evidence/` is git-ignored.
+
+    If the directory is ever committed, every recorded path becomes checkable
+    again and this test fails, forcing the exception to be reconsidered rather
+    than left as a silent hole.
+    """
+    proc = subprocess.run(
+        ["git", "check-ignore", "-q", "admin-evidence/probe"],
+        cwd=ROOT,
+        capture_output=True,
+    )
+    assert proc.returncode == 0, (
+        "admin-evidence/ is no longer git-ignored; remove LOCAL_ONLY from the "
+        "artifact-path check (the files are now part of the checkout)"
     )
 
 
