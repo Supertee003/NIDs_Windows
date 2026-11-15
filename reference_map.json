@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-15T09:26:34.027985+00:00",
+  "generated_at": "2026-11-15T09:56:46.105905+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 2045,
+  "total_files": 2046,
   "by_role": {
-    "documentation": 421,
+    "documentation": 422,
     "build-config": 216,
     "other": 19,
     "lockfile": 6,
@@ -937,6 +937,10 @@
       "role": "documentation"
     },
     "analysis/current-head/SOAK-SHED-BUDGET-001-20261111.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/SOAK2-20261115.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
