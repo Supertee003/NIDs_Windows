@@ -66,13 +66,16 @@ The window record stated two predictions that measurement falsified. Both are
 recorded here because a closeout that only lists wins is not a closeout.
 
 1. **"`dropped` stays at 0."** Actual: 1,387 ETW `reg_change` rows were
-   quota-shed, first visible by `2026-11-15T17:07` and flat at every sample
-   since. The build did what the quota is designed to do; the prediction was
-   wrong, not the code.
+   quota-shed. They were already present in the 23:09 local gate sample
+   (6.32 h), so they predate every operator stimulus; the L4 before-snapshot at
+   00:07 local also read 1,387. The build did what the quota is designed to do;
+   the prediction was wrong, not the code.
 2. **"Nothing in this session will run live gates before 16:50."** Actual: the
-   40-port proof and its 10-port control ran at `17:07`/`17:10` (see §4). The
-   measured cost was 0 dropped, 0 overload shed, 0 quota growth, so the window
-   survived - but the deviation is disclosed, not hidden.
+   40-port proof and its 10-port control ran at `2026-11-16T00:07`/`00:10`
+   local (`2026-11-15T17:07Z`/`17:10Z` in the log and artifact names), i.e.
+   7.3 h into the window. The measured cost was 0 dropped, 0 overload shed,
+   0 quota growth, so the window survived - but the deviation is disclosed,
+   not hidden.
 3. **Overload shed was not zero after all.** The 23:09 gate sample read 0; by
    00:42 `shed_overload` was 1,094 and `depth_peak` had reached the 7,168 ETW
    occupancy cap. By construction (`telemetry_threads.zig:359-371`) this shed
@@ -87,7 +90,7 @@ recorded here because a closeout that only lists wins is not a closeout.
 It was run against the same Wi-Fi link the canonical Go Nose watches:
 
 - positive: 40 SYNs to `192.0.2.1:1-40` in 2.30 s, +26,727 captured frames,
-  exactly one R9006 row (`rule 1745456278`, `2026-11-15T17:07:45.820Z`);
+  exactly one R9006 row (`rule 1745456278`, `2026-11-15T17:07:45.820Z` UTC);
 - negative control: 10 SYNs in 0.58 s, R9006 = 0;
 - cost: `dropped` +0, `shed_overload` +0, `source_quota_shed` +0.
 
