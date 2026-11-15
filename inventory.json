@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T17:34:11.865699+00:00",
+  "generated_at": "2026-11-15T08:31:59.483607+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1834,
+  "total_files": 1841,
   "by_class": {
-    "canonical-docs": 427,
+    "canonical-docs": 431,
     "canonical-build": 210,
     "unclassified": 18,
     "canonical-source": 828,
-    "canonical-test": 279,
+    "canonical-test": 282,
     "canonical-config": 38,
     "legacy": 34
   },
@@ -558,7 +558,7 @@
       "path": "analysis/current-head/E6-L4-CAPTURE-001-20261114.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4035
+      "size": 4111
     },
     {
       "path": "analysis/current-head/ETW-FILE-DEDUPE-001-20261110.md",
@@ -631,6 +631,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 6330
+    },
+    {
+      "path": "analysis/current-head/GAP-STATUS-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4600
     },
     {
       "path": "analysis/current-head/GATE-HONESTY-001-20261110.md",
@@ -735,6 +741,12 @@
       "size": 5621
     },
     {
+      "path": "analysis/current-head/L7-PATH-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4641
+    },
+    {
       "path": "analysis/current-head/LEGACY-INERT-001-20261114.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -763,6 +775,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 5767
+    },
+    {
+      "path": "analysis/current-head/POST-SOAK-PATCHES-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4382
     },
     {
       "path": "analysis/current-head/PREFLIGHT-001-20261114.md",
@@ -907,6 +925,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 5639
+    },
+    {
+      "path": "analysis/current-head/SOAK-SHED-001-20261114.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3619
     },
     {
       "path": "analysis/current-head/SOAK-SHED-BUDGET-001-20261111.md",
@@ -1866,7 +1890,7 @@
       "path": "build.zig",
       "class": "canonical-source",
       "role": "source",
-      "size": 15015
+      "size": 15272
     },
     {
       "path": "build_manifest.json",
@@ -3648,7 +3672,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1272414
+      "size": 1330756
     },
     {
       "path": "FLOW_MAP.json",
@@ -3756,7 +3780,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 282247
+      "size": 282740
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4032,7 +4056,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 232094
+      "size": 232485
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -7278,7 +7302,7 @@
       "path": "src/all_tests.zig",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 11604
+      "size": 11717
     },
     {
       "path": "src/capture/flow_engine.zig",
@@ -8667,6 +8691,12 @@
       "size": 6680
     },
     {
+      "path": "src/tests/pipeline/l7_join_test.zig",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3934
+    },
+    {
       "path": "src/tests/policy/action_dispatcher.zig",
       "class": "canonical-source",
       "role": "production-source",
@@ -9468,7 +9498,7 @@
       "path": "tests/integration/test_e4_live_pipeline.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 8644
+      "size": 9321
     },
     {
       "path": "tests/integration/test_e6_attack_burst.py",
@@ -9480,7 +9510,7 @@
       "path": "tests/integration/test_e6_l4_scan_detection.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 4908
+      "size": 5719
     },
     {
       "path": "tests/ips/test_t18_ips_canary_xdr.py",
@@ -9573,6 +9603,12 @@
       "size": 2847
     },
     {
+      "path": "tests/release/test_historical_closures.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 4527
+    },
+    {
       "path": "tests/release/test_host_preflight.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -9589,6 +9625,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 15222
+    },
+    {
+      "path": "tests/release/test_known_gap_status.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3006
     },
     {
       "path": "tests/release/test_manifest_selection_rule.py",
@@ -9954,7 +9996,7 @@
       "path": "tests/security/test_network_test_scope.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 1460
+      "size": 1793
     },
     {
       "path": "tests/security/test_nose_log_discipline.py",
@@ -11019,5 +11061,5 @@
       "size": 624
     }
   ],
-  "source_commit": "1fa877c"
+  "source_commit": "f593c03"
 }

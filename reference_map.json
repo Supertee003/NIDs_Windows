@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-14T17:34:11.868604+00:00",
+  "generated_at": "2026-11-15T08:31:59.486416+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1834,
+  "total_files": 1841,
   "by_role": {
-    "documentation": 413,
+    "documentation": 417,
     "build-config": 199,
     "other": 18,
     "lockfile": 6,
     "rust-build": 4,
     "source": 532,
-    "test-artifact": 279,
+    "test-artifact": 282,
     "config-data": 38,
     "architecture-decision": 12,
     "step-document": 2,
@@ -736,6 +736,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/GAP-STATUS-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/GATE-HONESTY-001-20261110.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -804,6 +808,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/L7-PATH-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/LEGACY-INERT-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -821,6 +829,10 @@
       "role": "documentation"
     },
     "analysis/current-head/PAYLOAD-ENVELOPE-V3-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/POST-SOAK-PATCHES-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -917,6 +929,10 @@
       "role": "build-config"
     },
     "analysis/current-head/SOAK-GATE-002-20261110.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/SOAK-SHED-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -6092,6 +6108,10 @@
       "class": "canonical-source",
       "role": "production-source"
     },
+    "src/tests/pipeline/l7_join_test.zig": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "src/tests/policy/action_dispatcher.zig": {
       "class": "canonical-source",
       "role": "production-source"
@@ -6696,6 +6716,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/release/test_historical_closures.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/release/test_host_preflight.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -6705,6 +6729,10 @@
       "role": "test-artifact"
     },
     "tests/release/test_installer_template.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/release/test_known_gap_status.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -7661,5 +7689,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "1fa877c"
+  "source_commit": "f593c03"
 }
