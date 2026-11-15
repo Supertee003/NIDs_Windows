@@ -7634,7 +7634,7 @@
     },
     {
       "id": "E6-L4-CAPTURE-001-E4-20261114",
-      "head_sha": "PENDING",
+      "head_sha": "1de6e80",
       "timestamp": "2026-11-14",
       "title": "L4 rule tagging is intermittent, loopback is not captured, and two gates of mine were unsound",
       "level": "E4",
@@ -7941,7 +7941,7 @@
     },
     {
       "id": "SIGN-FRESH-001-E2-20261115",
-      "head_sha": "PENDING",
+      "head_sha": "72cc75e",
       "timestamp": "2026-11-15",
       "title": "The signature gate cited an older tree and could not tell it was stale",
       "level": "E2",
