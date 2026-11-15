@@ -7713,6 +7713,33 @@
         "The open count is a snapshot of a hand-maintained index; the guard keeps it well-formed, not correct.",
         "UNRECORDED may hide open defects, so 6 is a floor."
       ]
+    },
+    {
+      "id": "CLOSURE-RECHECK-001-E2-20261114",
+      "head_sha": "448e1b8",
+      "timestamp": "2026-11-14",
+      "title": "Four historical closure claims re-checked against the current tree and promoted to current closures",
+      "level": "E2",
+      "component": "tests/release/test_historical_closures.py, src/platform/win32_pipe.zig, tools/aegisctl/api/control_api.py, src/policy/wfp_ioctl.zig, src/core/rust_pep.zig, rust-src/lib.rs",
+      "flow_id": "EVID-001",
+      "description": "223 known_gaps entries were CLOSED_AT_RECORDED_HEAD: their own result claimed a pass at a past head and nobody had looked since. Four were picked because their claim is mechanical and are now re-checked at the current tree by tests/release/test_historical_closures.py, which promoted them to CLOSED with that file named as the basis. EVT-023 (control pipe path matches between Zig and Python): src/platform/win32_pipe.zig control_pipe_name and tools/aegisctl/api/control_api.py CONTROL_PIPE decode to the same Win32 path. EVT-039 and GAP-011 (no Zig to WFP bypass): src/policy/wfp_ioctl.zig defines only CTL_CODEs with FILE_READ_DATA (READ_EVENTS 0x800, GET_STATS 0x802), passes GENERIC_READ at the device open and never GENERIC_WRITE, and src/core/rust_pep.zig is the sole importer of the bridge (all_tests.zig excluded as the test aggregator). EVT-024 (Ed25519 with ring): rust-src/lib.rs uses ring::signature and still carries verify_policy_signature_verifies_real_ed25519 plus a real signature verification call rather than a hash comparison. 5 tests pass. This is a static re-verification (E1/E2), not a runtime proof; the other 219 historical closures remain CLOSED_AT_RECORDED_HEAD and untouched.",
+      "evidence_artifact": "analysis/current-head/GAP-STATUS-001-20261114.md",
+      "artifacts": [
+        "tests/release/test_historical_closures.py",
+        "src/platform/win32_pipe.zig",
+        "tools/aegisctl/api/control_api.py",
+        "src/policy/wfp_ioctl.zig",
+        "src/core/rust_pep.zig",
+        "rust-src/lib.rs"
+      ],
+      "commands": [
+        "python -m pytest -q tests/release/test_historical_closures.py"
+      ],
+      "limitations": [
+        "Static re-verification only: it proves the code shape the entry claimed, not runtime behaviour.",
+        "Four entries out of 223; the rest remain historical and unverified.",
+        "The tests assert against current file contents, so a rename would fail them for the wrong reason."
+      ]
     }
   ],
   "known_gaps": [
@@ -7812,7 +7839,10 @@
       ],
       "result": "PASS",
       "finding": "Control contract is clean: ONE transport (named pipe/TCP), ONE protocol (JSON), ONE authority (Zig runtime)",
-      "status": "UNRECORDED"
+      "status": "CLOSED",
+      "status_basis": "re-verified at the current tree by tests/release/test_historical_closures.py (head 448e1b8, 2026-11-14)",
+      "reverified_at_head": "448e1b8",
+      "reverified_by": "tests/release/test_historical_closures.py"
     },
     {
       "id": "EVT-024",
@@ -7834,7 +7864,10 @@
       ],
       "result": "PASS",
       "finding": "Ed25519 production verification NOW COMPLETE. GAP-001 fully closed.",
-      "status": "UNRECORDED"
+      "status": "CLOSED",
+      "status_basis": "re-verified at the current tree by tests/release/test_historical_closures.py (head 448e1b8, 2026-11-14)",
+      "reverified_at_head": "448e1b8",
+      "reverified_by": "tests/release/test_historical_closures.py"
     },
     {
       "id": "EVT-025",
@@ -7868,7 +7901,8 @@
       ],
       "result": "PASS",
       "finding": "Repository truth stabilized. All machine-readable artifacts synchronized.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head e6de1ae on 2026-09-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-027",
@@ -7903,7 +7937,8 @@
       ],
       "result": "PASS",
       "finding": "Architecture stabilized. Hub-and-spoke with plane separation. 5 contracts defined. All truth artifacts synchronized.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head e6de1ae on 2026-09-10; not re-verified at the current HEAD"
     },
     {
       "id": "GAP-008",
@@ -7983,7 +8018,9 @@
         "a negative control that fails when a second path appears"
       ],
       "resolution": "EVT-039: static audit confirmed no bypass. GENERIC_WRITE hardened.",
-      "evidence": "EVT-039 (GAP-011 CLOSED). wfp_ioctl.zig read-only. rust_pep.zig sole path to PEP FFI."
+      "evidence": "EVT-039 (GAP-011 CLOSED). wfp_ioctl.zig read-only. rust_pep.zig sole path to PEP FFI.",
+      "reverified_at_head": "448e1b8",
+      "reverified_by": "tests/release/test_historical_closures.py"
     },
     {
       "id": "GAP-012",
@@ -8093,7 +8130,8 @@
       ],
       "result": "PASS",
       "finding": "All machine maps now carry current HEAD 48eb2a72. No stale references remain.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 60c76fe on 2026-09-12; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-038",
@@ -8121,7 +8159,8 @@
       ],
       "result": "PASS",
       "finding": "Machine maps resynced to 60c76fe. CI evidence chain is BROKEN: no CI run covers HEAD 60c76fe. Must push and wait for CI to re-establish evidence chain.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 60c76fe on 2026-09-12; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-039",
@@ -8142,7 +8181,10 @@
       ],
       "result": "PASS",
       "finding": "GAP-011 CLOSED. No Zig\u00e2\u2020\u2019WFP bypass exists. GENERIC_WRITE removed from device handle. Authority invariant verified: Rust PEP is sole enforcement authority.",
-      "status": "UNRECORDED"
+      "status": "CLOSED",
+      "status_basis": "re-verified at the current tree by tests/release/test_historical_closures.py (head 448e1b8, 2026-11-14)",
+      "reverified_at_head": "448e1b8",
+      "reverified_by": "tests/release/test_historical_closures.py"
     },
     {
       "id": "EVT-040",
@@ -8168,7 +8210,8 @@
       ],
       "result": "PASS",
       "finding": "E3_count: 0\u00e2\u2020\u20198. First E3 evidence in repository. All 8 integration tests pass. Golden path verified at component integration level.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 60c76fe on 2026-09-12; not re-verified at the current HEAD"
     },
     {
       "id": "P0-POSTURE-001",
@@ -8188,7 +8231,8 @@
         "scripts/project2_runtime_gate.ps1"
       ],
       "finding": "Closed gate always reports detection-only; provider readiness alone never implies active enforcement.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 44439a2 on 2026-10-04; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-046",
@@ -8208,7 +8252,8 @@
       ],
       "result": "PASS",
       "finding": "No alignment UB; compression resolved; qtype/qclass tail correct.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head c04fef2 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-047",
@@ -8227,7 +8272,8 @@
       ],
       "result": "PASS",
       "finding": "Verdict stated at c04fef2; executable pin landed in EVT-048.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head c04fef2 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-048",
@@ -8247,7 +8293,8 @@
       ],
       "result": "PASS",
       "finding": "All parser verdicts now have executable pins; old pkt2 layout documented as vacuous.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 9928400 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-049",
@@ -8270,7 +8317,8 @@
       ],
       "result": "PASS",
       "finding": "11 phantom failures were a tool bug, not a system regression.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 6882b3b on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-050",
@@ -8294,7 +8342,8 @@
       ],
       "result": "PASS",
       "finding": "Additions only; no historical row rewritten.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 3b3c4d3 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-051",
@@ -8318,7 +8367,8 @@
       ],
       "result": "PASS",
       "finding": "Manifest now says what the code already enforces; no production behavior changed.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 210afbe on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-052",
@@ -8343,7 +8393,8 @@
       ],
       "result": "PASS",
       "finding": "Observed-0 readings are gone at the source; STEP-43 note flipped to CLOSED.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head b1ad149 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-053",
@@ -8365,7 +8416,8 @@
       ],
       "result": "PASS",
       "finding": "GAP-007 exit criteria complete without deleting anything; physical removal (PEP-001) remains a separate owner decision.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 6cdacea on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-054",
@@ -8389,7 +8441,8 @@
       ],
       "result": "PASS",
       "finding": "STEP 50 closed. Residuals: NSI body stays static (file_directive unused); new tool onboarding into build_manifest artifacts left to the manifest regen cycle (full --manifest regen pulls 26 unrelated drifted files, out of slice scope).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 59b9432 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-055",
@@ -8413,7 +8466,8 @@
       ],
       "result": "PASS",
       "finding": "Installer now grows with the build outputs instead of drifting from them; generated outputs no longer pollute git status.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 6d648f1 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-056",
@@ -8433,7 +8487,8 @@
       ],
       "result": "PASS",
       "finding": "Summary is now a pure function of the entries; future slices only bump the row they add to.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 6d648f1 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-057",
@@ -8454,7 +8509,8 @@
       ],
       "result": "PASS",
       "finding": "Manifest grows additively; the junk-exclusion policy and the stale bridge/build records remain explicitly open for a dedicated owner decision.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 1ff7fee on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-058",
@@ -8482,7 +8538,8 @@
       ],
       "result": "PASS",
       "finding": "Shield is a working runtime part again (load, consult, observe) with zero enforcement authority and zero deletions.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 087a865 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-059",
@@ -8503,7 +8560,8 @@
       ],
       "result": "PASS",
       "finding": "The exact FFI contract the loader depends on holds on the real binary; loader stays DynLib-only with unknown default elsewhere.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head de82caf on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-060",
@@ -8525,7 +8583,8 @@
       ],
       "result": "PASS",
       "finding": "Fail-closed is now an executed behavior, not just a code branch; full live success still needs NSIS (CI package-release covers that leg).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head e61de4e on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-061",
@@ -8544,7 +8603,8 @@
       ],
       "result": "PASS",
       "finding": "Multi-language build truth holds on-host; files_changed is empty by design (verification only, zero tree mutation).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 42b8d98 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-062",
@@ -8562,7 +8622,8 @@
       ],
       "result": "PASS",
       "finding": "Pre-slice behavior confirmed live; post-slice live proof is blocked operationally, not technically.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 42b8d98 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-063",
@@ -8582,7 +8643,8 @@
       ],
       "result": "PASS",
       "finding": "Product code was already correct; the test over-constrained the environment. Full sweep without -x relaunched to complete the rot picture.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 43d16d1 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-064",
@@ -8603,7 +8665,8 @@
       ],
       "result": "PASS",
       "finding": "Both findings closed without touching production code; full sweep green pending rerun.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head f1cae16 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-065",
@@ -8625,7 +8688,8 @@
       ],
       "result": "PASS",
       "finding": "Producer default preserved for operators; tests are hermetic again.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 005d519 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-066",
@@ -8645,7 +8709,8 @@
       ],
       "result": "PASS",
       "finding": "A HEAD-current binary is staged and proven startable; pipe handover stays an ops decision. files_changed is empty by design.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head f42b752 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-067",
@@ -8662,7 +8727,8 @@
       ],
       "result": "PASS",
       "finding": "Cython bridge verified on-host; files_changed is empty by design.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 9667599 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-068",
@@ -8684,7 +8750,8 @@
       ],
       "result": "PASS",
       "finding": "Synthesis is now labeled at the data layer, not just in display strings.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head b99aed2 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-069",
@@ -8703,7 +8770,8 @@
       ],
       "result": "PASS",
       "finding": "Gates now check what they claim; dead ACTION_DISPATCHER constant and stale test_results.txt names left untouched as historical.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 65d6a80 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-070",
@@ -8728,7 +8796,8 @@
       ],
       "result": "PASS",
       "finding": "Operator numbers are real OS telemetry; talkers stay synthetic until a capture-fed source lands (explicit next step).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head cdf2f68 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-071",
@@ -8753,7 +8822,8 @@
       ],
       "result": "PASS",
       "finding": "Talkers are observed, not invented, whenever the operator opts in; default behavior is byte-identical.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 3e91b37 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-072",
@@ -8773,7 +8843,8 @@
       ],
       "result": "PASS",
       "finding": "Leak-blind fuzzing is now fail-closed; the decoder path is leak-clean under the smoke workload.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head b573dc2 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-073",
@@ -8791,7 +8862,8 @@
       ],
       "result": "PASS",
       "finding": "Tree-wide green on current HEAD; files_changed is empty by design.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head fc1c799 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-074",
@@ -8813,7 +8885,8 @@
       ],
       "result": "PASS",
       "finding": "Single ownership restored at the shim layer; old daemons keep working byte-identically.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 8596fde on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-075",
@@ -8832,7 +8905,8 @@
       ],
       "result": "PASS",
       "finding": "No unexplained skips remain in the Zig suite.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 2f5fe74 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-076",
@@ -8855,7 +8929,8 @@
       ],
       "result": "PASS",
       "finding": "First required-evidence bullet (CLI detects foreign listeners) done; health-finding surfacing remains follow-up.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 283a8f7 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-077",
@@ -8877,7 +8952,8 @@
       ],
       "result": "PASS",
       "finding": "Orphan visibility is now continuous, not just on-demand; nothing is ever stopped or restarted by it.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 9a4330e on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-078",
@@ -8901,7 +8977,8 @@
       ],
       "result": "PASS",
       "finding": "Operator visibility now matches daemon capability; pretty-print stays minimal by design.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 9873349 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-079",
@@ -8921,7 +8998,8 @@
       ],
       "result": "PASS",
       "finding": "The rule is now reviewable next to the code that implements it.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head b9e9414 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-080",
@@ -8939,7 +9017,8 @@
       ],
       "result": "PASS",
       "finding": "Old mismatch findings are superseded records, not live defects; files_changed is empty by design.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 3ecc9d8 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-081",
@@ -8957,7 +9036,8 @@
       ],
       "result": "PASS",
       "finding": "Two of three bullets are done and proven; the gap is now an elevation-gated remainder, not an unknown.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 93917fb on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-082",
@@ -8977,7 +9057,8 @@
       ],
       "result": "PASS",
       "finding": "Inventory deltas now cover every production module added since DOC-MOD-112.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head d03081b on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-083",
@@ -8999,7 +9080,8 @@
       ],
       "result": "PASS",
       "finding": "Contract seam now pinned against silent reshaping; no production behavior change.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 5c92947 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-084",
@@ -9020,7 +9102,8 @@
       ],
       "result": "PASS",
       "finding": "Visualization and vocabulary now ship with the repo; no production change.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 1d4aca2 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-085",
@@ -9039,7 +9122,8 @@
       ],
       "result": "PASS",
       "finding": "Second repo-backed visualization ships; minifilter downstream remains the one explicitly marked unknown.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 0d5c299 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-086",
@@ -9060,7 +9144,8 @@
       ],
       "result": "PASS",
       "finding": "Dashboard shows what the daemon already reports; rendering parity follows the data contract.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head eeb3686 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-087",
@@ -9077,7 +9162,8 @@
       ],
       "result": "PASS",
       "finding": "Optional component verified present and green; files_changed is empty by design.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 5d5ba95 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-088",
@@ -9106,7 +9192,8 @@
       ],
       "result": "PASS",
       "finding": "No invisible bytes left in live sources; the remaining two problem files are quarantined history.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 3bf65ad on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-089",
@@ -9126,7 +9213,8 @@
       ],
       "result": "PASS",
       "finding": "The acquisition golden leg is now an executed test, not just static pins and manual probes.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 41f2827 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-090",
@@ -9144,7 +9232,8 @@
       ],
       "result": "PASS",
       "finding": "Optional SUPPORT sidecar verified live; no production files touched.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head f46eb48 on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-091",
@@ -9171,7 +9260,8 @@
       ],
       "result": "PASS",
       "finding": "The silent ETW loss now has three independent axes of proof: host registration (logman membership), manifest ground truth (wevtutil task/opcode names), and unit tests that fail if any constant or gate drifts. Live event flow (bullet 4 of GAP-012) remains elevation-gated behind the deployed-service boundary recorded in GAP-009/EVT-081.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head f18714c on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-092",
@@ -9193,7 +9283,8 @@
       ],
       "result": "PASS",
       "finding": "Bullet 5 is implemented and source-pinned but unverified at runtime: needs MSVC build of aegis_etw_helper plus a host run proving (a) valid GUIDs still start, (b) a bogus GUID returns -6 with no session, before GAP-012 can close. UPDATE (EVT-226, 2026-10-17): GAP-012 CLOSED 2026-10-09 (closed_by EVT-091+092+117+118); bullet 5 proven live by the MSVC probe (EVT-117: bogus GUID refused rc -6 pre-session, registered GUIDs accepted). Result PARTIAL -> PASS.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 4643c6f on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-093",
@@ -9214,7 +9305,8 @@
       ],
       "result": "PASS",
       "finding": "Rule and pins are in place with zero behavior change to the committed set. Remaining: run pytest (new pins), run --manifest on a scratch copy to diff the future set, then clean-checkout --verify. GAP-008 stays OPEN until then. UPDATE (EVT-226, 2026-10-17): GAP-008 CLOSED 2026-10-08 (closed_by EVT-102+EVT-103): hybrid set adopted (a871a32, 633 entries regenerated) and clean-clone --verify green at d0bd1a0 (597 present / 36 untracked-by-design / 0 mismatches); later lineage extended by EVT-223. Result PARTIAL -> PASS.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 4643c6f on 2026-10-07; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-094",
@@ -9237,7 +9329,8 @@
       ],
       "result": "PASS",
       "finding": "Zig side of quarantine receipts is contracted and pinned; positive-path proof needs the Rust quarantine-enforce path plus a live PEP. Supervisor and trust chains needed no code \u2014 verified complete by source inspection with remainders precisely bounded. UPDATE (EVT-226, 2026-10-17): positive path delivered and live-validated: Rust quarantine-enforce path shipped (EVT-112 per-flow quarantine enforced end-to-end at c8463df; EVT-113 enforce() mints quarantine receipts) and live-provider behavior proven on the deployed service (EVT-136 quarantine verb reachable; EVT-138 quarantine verb validated live). Result PARTIAL -> PASS.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 4643c6f on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-095",
@@ -9257,7 +9350,8 @@
       ],
       "result": "PASS",
       "finding": "Fix is implemented, pinned, and review-clean but unexecuted. If the two pytest failures persist after this fix with AEGIS_CLUSTER absent, the gauges failure is independent and gets its own gap. UPDATE (EVT-226, 2026-10-17): GAP-013 CLOSED 2026-10-08 (closed_by EVT-095+EVT-096+EVT-097) by the operator gate run: zig build + zig build test clean with no test.exe abort; core reaches RUNNING on the default path (envOr crash gone). Result PARTIAL -> PASS.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 84d25fd on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-096",
@@ -9281,7 +9375,8 @@
       ],
       "result": "PASS",
       "finding": "Crash class closed by construction plus HandlerFn contract pin; the 2 source-text pins updated to the owned-return shape and green solo. test_large_control_response passes solo (0.19s) \u2014 classified full-suite load flake, not a regression: its mock-server path shares no code with this patch. EVIDENCE JSON one-liner green. UPDATE (EVT-226, 2026-10-17): folded into the GAP-013 closure (closed_by lists EVT-096); the classified full-suite flake has not recurred - full suites green repeatedly since, latest 2026-10-17: 887 passed / 2 skipped / 27 subtests. Result PARTIAL -> PASS.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 84d25fd on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-097",
@@ -9301,7 +9396,8 @@
       ],
       "result": "PASS",
       "finding": "With this fix plus the daemon starting, both 84d25fd gate failures should clear. If gauges still fail while core passes, the fallback path needs a deeper look. UPDATE (EVT-226, 2026-10-17): GAP-013 CLOSED (closed_by EVT-095+EVT-096+EVT-097); the operator gate run confirmed status carries the gauges, and live health payloads have carried packets_captured/flows_active since. Result PARTIAL -> PASS.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 84d25fd on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-098",
@@ -9318,7 +9414,8 @@
       ],
       "result": "PASS",
       "finding": "All remaining work is now specified to file:line precision with proof batteries. Nothing actionable is left unspecified; everything left requires execution, elevation, or an owner semantics decision.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head fe7e060 on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-099",
@@ -9337,7 +9434,8 @@
       ],
       "result": "PASS",
       "finding": "Executed green: the index can no longer break or drift silently \u2014 any future break fails this pin.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 1028b66 on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-100",
@@ -9356,7 +9454,8 @@
       ],
       "result": "PASS",
       "finding": "The word complete is now defined two ways (user-mode plus telemetry vs full driver program) with a decision gate between them; every open item from EVT-091 through EVT-099 has a phase, an owner of proof, and a pass criterion.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 64df058 on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-101",
@@ -9375,7 +9474,8 @@
       ],
       "result": "PASS",
       "finding": "Rust, Go, and Python suites are green on the fixed tree. Zig suite explicitly green: Build Summary 4/4 steps succeeded, test run cached from the clean post-LIT-FREE execution. All verification batteries in this session are now closed with executed proof.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 39afa56 on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-102",
@@ -9397,7 +9497,8 @@
       ],
       "result": "PASS",
       "finding": "Bullets 1-2 of GAP-008 are closed with executed proof; bullet 3 (clean-checkout verify) is the only remainder and needs a fresh clone.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head a871a32 on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-103",
@@ -9419,7 +9520,8 @@
       ],
       "result": "PASS",
       "finding": "The stamp-lag pattern is now safe for digest-tracked files: pair-commit rule documented and proven by a clean checkout.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head d0bd1a0 on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-104",
@@ -9437,7 +9539,8 @@
       ],
       "result": "PASS",
       "finding": "GAP-008 bullet 3 closed by execution; GAP-014 opened for the untracked remainder. The operator still needs to run the intended block in D:\\NIDs_Windows to commit the GAP-008 closure.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head d0bd1a0 on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-105",
@@ -9457,7 +9560,8 @@
       ],
       "result": "PASS",
       "finding": "Working tree is clean for opensource subject to the history scan. Method limit recorded: classes swept, not every line read.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 6b37a0d on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-106",
@@ -9484,7 +9588,8 @@
       ],
       "result": "PASS",
       "finding": "Coverage discipline now exists as a document with verdicts; the next session continues round 2 (remaining: detection/xdr/forensic depth, .github parity, root scripts) instead of re-auditing these areas. UPDATE (EVT-226, 2026-10-17): round-2 remainder absorbed by the subsequent round tail - .github parity materialized (ci.yml + host-regression.yml tracked; host-regression.yml in the manifest include set) and detection/xdr/forensic depth was covered by later executed rounds. The round-1 verdict doc was a session artifact and never entered git history; its substance is the committed round-1 fixes (guards in scripts/check_summary.py + scripts/validate_operator_cli.py, tests/release/test_installer_template.py, orphan deletions in 7577641/33c2894). No re-audit item remains. Result PARTIAL -> PASS.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 6b37a0d on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-107",
@@ -9517,7 +9622,8 @@
       ],
       "result": "PASS",
       "finding": "Round 1 code complete unexecuted. Orphan-script deletion and mouth shutdown path remain operator-side; everything else awaits the standard gate battery. UPDATE (EVT-226, 2026-10-17): remainders resolved - the 7 orphan scripts were deleted in the round-1 commits (7577641/33c2894) and re-deleted during EVT-108 recovery; mouth shutdown was decided (EVT-114 OS-kill with in-code comment) and the mouth fate finalized KEEP with a live start/stop cycle (EVT-151); the static-.nsi deletion item was revoked by design - installer.nsi (QUARANTINED FOSSIL) and installer/aegis.nsi (SUPERSEDED reference) stay tracked with in-file notices, pinned by test_ac4_generated_installer_outputs_ignored (DEPLOY-119), generated output gitignored. Result PARTIAL -> PASS.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 6b37a0d on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-108",
@@ -9536,7 +9642,8 @@
       ],
       "result": "PASS",
       "finding": "Honesty requires recording own-process failures with mechanism, not just code defects. Recovery executed 2026-10-08: 12 files restored from 1fa1712, 7 scripts re-deleted, installer pins plus pagination solo green, committed 33c2894 on main with gates green post-stamp. Pending close: one confirmatory re-run of the 4 pre-refresh drift failures post-commit (fresh_deploy x3 plus drift detector) \u2014 they fail only on unrefreshed digests by mechanism, but green must be observed, not inferred. UPDATE (EVT-226, 2026-10-17): the confirmatory re-runs were performed since - fresh_deploy re-ran green live (latest EVT-220: 5/5 live fresh_deploy) and the drift detector / truth gate is green every round (latest TRUTH_VALID 2026-10-17). Result PARTIAL -> PASS.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 7577641 on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-109",
@@ -9565,7 +9672,8 @@
       ],
       "result": "PASS",
       "finding": "Backend pins round executed green end to end. Remaining Go pins (capture hermetic, ipc malformed, golden fixture, talkers symmetry) slated next round \u2014 now done in EVT-110 below.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 33c2894 on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-110",
@@ -9588,7 +9696,8 @@
       ],
       "result": "PASS",
       "finding": "Every TEST-WORTHY backend file from the inventory is now pinned, proven-justified, or recorded with its exact verification question. The twelve-file sweep is closed pending operator execution. UPDATE (EVT-226, 2026-10-17): operator execution performed - the sweep's pins run in every suite since; latest full suite 2026-10-17: 887 passed / 2 skipped / 27 subtests (also EVT-119 closed the one open join-tracing question from this round). Result PARTIAL -> PASS.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 7be7caa on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-111",
@@ -9610,7 +9719,8 @@
       ],
       "result": "PASS",
       "finding": "Closed fff0a3e with all EventFromPacket pins green. The pin earned its keep three times over: two author typos plus one genuine cross-language decoder difference.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 2be237d on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-112",
@@ -9635,7 +9745,8 @@
       ],
       "result": "PASS",
       "finding": "Executed green end to end at c8463df: the one Zig compile error in the round (saturating-add operator) was caught by the very gate battery this entry demanded, fixed to +|, and re-verified. Quarantine enforcement semantics now exist with proof on both sides of the FFI; only caller wiring and live proof remain.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 9c0d690 on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-113",
@@ -9656,7 +9767,8 @@
       ],
       "result": "PASS",
       "finding": "Closed with observed clean full run 2026-10-08: 731 passed, 0 failed, 7 skipped post-commit. Quarantine receipt chain complete with proof at every link except live-provider behavior (lab-gated).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 4cd4917 on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-114",
@@ -9678,7 +9790,8 @@
       ],
       "result": "PASS",
       "finding": "Everything delegable is done; the remainder is operator shell (mouth build, gitleaks, deletions, probe run, redeploy) plus elevation-gated live proofs. UPDATE (EVT-226, 2026-10-17): remainders resolved/superseded - the probe's verification question was answered live (EVT-117 MSVC run: bogus rc -6 pre-session); gitleaks history scan completed clean (EVT-135; .gitleaks.toml pinned); installer/aegis.nsi deletion revoked by design (tracked reference with in-file notice; DEPLOY-119 pins); driver binary rebuilt and re-signed (EVT-213; single current drivers/wfp_callout/aegis_wfp.sys on disk); redeploy + elevation-gated live proofs delivered by later E5 rounds. Result PARTIAL -> PASS.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 82860c4 on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-115",
@@ -9700,7 +9813,8 @@
       ],
       "result": "PASS",
       "finding": "Pinned contracts are load-bearing product decisions, not suggestions. This round-trip is the proof.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head d209e10 on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-116",
@@ -9722,7 +9836,8 @@
       ],
       "result": "PASS",
       "finding": "Closed with executed proof. The manifest now contains only version-controlled or explicitly-visible files.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 6b0b2db on 2026-10-08; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-117",
@@ -9742,7 +9857,8 @@
       ],
       "result": "PASS",
       "finding": "The silent-loss class is now closed at both layers: constants pinned to registration (EVT-091) and the helper refusing unregistered GUIDs pre-session, both proven live.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 6c8f81c on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-118",
@@ -9765,7 +9881,8 @@
       ],
       "result": "PASS",
       "finding": "The full vertical slice now has live E5 proof: ETW provider enable -> classified host_telemetry events -> forensic ring records -> control-plane query, on the deployed service. GAP-009 and GAP-012 are CLOSED. The mixed-vintage deployment failure mode (fresh exe + stale DLLs exits silently before main) is documented here as the reason deploys must always ship as one rebuilt set.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 045030d on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-119",
@@ -9789,7 +9906,8 @@
       ],
       "result": "PASS",
       "finding": "The cross-format IP question is settled with evidence at both layers: production joins happen in exactly one convention (proven by spawn-graph + convention inventory), and the split mechanism is pinned so any future re-enable of a bitcast producer fails loudly instead of silently halving detections.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 4458083 on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-120",
@@ -9815,7 +9933,8 @@
       ],
       "result": "PASS",
       "finding": "The operator can now SEE live rule matches from the terminal (alerts), and can SEND controlled fixtures at the daemon (fixed pipe) \u2014 but fixtures currently starve in an overflowing queue, which is exactly what GAP-015 pins down. Frontend slice F1 is complete; the loop-closure proof becomes GAP-015's regression pin.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 8e5229d on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-121",
@@ -9846,7 +9965,8 @@
       ],
       "result": "PASS",
       "finding": "GAP-015 bullet 2 is code-proven; bullets 3-4 (zero-drop fix + fixture loop) need the redeploy + numbers. The instrument turns the next slice from guessing into measuring: per-source drops will name the firehose, stage latencies will name the bottleneck.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head fcbd367 on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-122",
@@ -9870,7 +9990,8 @@
       ],
       "result": "PASS",
       "finding": "The consumer tail suspect is removed without touching detection semantics; the queue now absorbs 4x bursts. Whether drops stay zero under storm load is a live question for the redeploy soak, measured by the G1 instrument.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 71c1190 on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-123",
@@ -9894,7 +10015,8 @@
       ],
       "result": "PASS",
       "finding": "Send -> match -> verified alert is green on the deployed service. The investigation's real yield is methodological: on a 300-events/sec ring, every probe must be tip-anchored and immediate, and unwindowable cursors must not be dressed as windows. GAP-015 stays OPEN (P1) for storm proof and the p95 driver.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 1d0b49f on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-124",
@@ -9919,7 +10041,8 @@
       ],
       "result": "PASS",
       "finding": "The terminal surface is complete for observe-and-probe within the safety contracts: live status/rules/alerts/events/queue, scripted dashboard frames, and precise fixture guidance. The reverted bridge is the evidence the gates work \u2014 full pytest refused a convenience that contradicted fail-closed. Remaining frontend: F3 egui data source, F4 mouth fate, F5 web.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head cdb1a4a on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-125",
@@ -9941,7 +10064,8 @@
       ],
       "result": "PASS",
       "finding": "Every operator surface now defaults to live data: terminal (F1/F2) plus native GUI (F3). Remaining frontend: F4 mouth fate, F5 web.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 3eeadb1 on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-126",
@@ -9963,7 +10087,8 @@
       ],
       "result": "PASS",
       "finding": "Terminal, native GUI, and console TUI all default to live data with labeled provenance. Remaining frontend: F5 web (design first \u2014 no consumer exists for the vendored vis/tom-select libs).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 692a8b8 on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-127",
@@ -9987,7 +10112,8 @@
       ],
       "result": "PASS",
       "finding": "All four operator surfaces are live. The web slice's real yield is the storm proof: spot-check zero-drop claims are worthless on bursty ingress \u2014 only cumulative per-source counters tell the truth, and they now exist because of G1.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head b4ecfc4 on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-140",
@@ -10011,7 +10137,8 @@
       ],
       "result": "PASS",
       "finding": "Nothing we claimed is unproven at its claimed level; the two items that overstated (wrap test as regression, SSE as done) are corrected and closed. The system is audited ready for opening.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 0db149d on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-128",
@@ -10037,7 +10164,8 @@
       ],
       "result": "PASS",
       "finding": "The storm fix sheds the cheapest-duplicated class (Write, covered by NameCreate for new files) only when deep, counts the shed apart from overflow, and exposes composition for the next decision. Whether storms now absorb without overflow is a live question for the redeploy soak.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 56715b1 on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-130",
@@ -10065,7 +10193,8 @@
       ],
       "result": "PASS",
       "finding": "The 97.5% waste dies before decode; storm shedding covers the two cheapest-duplicated file classes at depth. Storm soak on the redeploy decides whether the queue finally holds.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 32546cf on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-131",
@@ -10091,7 +10220,8 @@
       ],
       "result": "PASS",
       "finding": "Storm handling is now complete by design: unsheddable creates, exempted first-writes, shed repeats, counted overflow, per-class composition to prove it. The redeploy soak watches shed vs exempt vs dropped.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 3d6aa42 on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-129",
@@ -10111,7 +10241,8 @@
       ],
       "result": "PASS",
       "finding": "Stop guessing at the queue: 97.5% of ETW cost dies after full decode. G4 moves the gate before the decode and sheds deletes at depth \u2014 both preserve every R1001/R1004 path.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 79c8add on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-143",
@@ -10133,7 +10264,8 @@
       ],
       "result": "PASS",
       "finding": "Green suite and open system coexist: environment-aware tests distinguish operator state (running brain) from product defects (import side effects). Flakes are load-coupled test fragility under a 1100/s ring, documented each time, never waved through silently.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 965a06a on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-148",
@@ -10156,7 +10288,8 @@
       ],
       "result": "PASS",
       "finding": "Contention is now budgeted and documented instead of surprising: transient collisions resolve, dead daemons still fail fast, and the next person to measure a soak knows not to pytest through it.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 1e89c85 on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-144",
@@ -10181,7 +10314,8 @@
       ],
       "result": "PASS",
       "finding": "Opening the system is now one memorized command with verified output instead of a dozen paste-blocks. The tool distrusts itself in the right places (frames not flags, kills verified, skips explicit).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 4a2c473 on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-145",
@@ -10205,7 +10339,8 @@
       ],
       "result": "PASS",
       "finding": "One launcher, one logic: the bat is habit and habit is preserved, while every decision lives in tested Python. Running the old phases against the service would have been an outage; now it cannot happen from this file.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 6cbed8f on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-146",
@@ -10228,7 +10363,8 @@
       ],
       "result": "PASS",
       "finding": "Displays are managed with the same discipline as the pipeline: verify, never assume; single-instance; stop what you started by exact identity.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head aafc61a on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-147",
@@ -10249,7 +10385,8 @@
       ],
       "result": "PASS",
       "finding": "Unknown is a first-class answer: the opener now reports it instead of failing healthy systems or zeroing live counters during contention.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head cc56296 on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-139",
@@ -10278,7 +10415,8 @@
       ],
       "result": "PASS",
       "finding": "Database (scattered-files reality documented, no DB to fix), security (hardening deltas applied, trust deployed via checklist), and external (dead listener ruled out, pipes documented/tightened, brain path runbooked) are each closed to the extent this host allows. What remains is operator decisions (AU scope, secrets provisioning, brain start) and lab/design slices, all named.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 808f6b6 on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-142",
@@ -10300,7 +10438,8 @@
       ],
       "result": "PASS",
       "finding": "Every acquisition path is now open and proven: ETW/FIM/registry (host), nose (network, content-matching), pipe (fixtures/brain returns), brain (analytics, listening). The system is opened; attack testing moves to the lab.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 77c9c6a on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-141",
@@ -10322,7 +10461,8 @@
       ],
       "result": "PASS",
       "finding": "The canonical network ingress was plumbed but padlocked: capture worked, delivery was impossible for any non-SYSTEM writer. One SDDL string reopens it under the same posture the sensor pipe already lives with.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 0db149d on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-133",
@@ -10348,7 +10488,8 @@
       ],
       "result": "PASS",
       "finding": "The crash classes that can kill a -ODebug daemon are now all pinned or graded; the service cannot die silently again once SCM recovery + watchdog land (operator one-liners).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 283780d on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-134",
@@ -10369,7 +10510,8 @@
       ],
       "result": "PASS",
       "finding": "Crash resilience is now structural (SCM) plus observed (watchdog); only time can close the last bullet.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head b0110e4 on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-138",
@@ -10391,7 +10533,8 @@
       ],
       "result": "PASS",
       "finding": "Every GAP-015 bullet is closed with executed evidence on the deployed service. The queue went from the system's blindest spot (silent 6-35% loss) to its most instrumented (per-source, per-class, per-stage, shed/exempt/drop separated).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 6d6fb0f on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-136",
@@ -10420,7 +10563,8 @@
       ],
       "result": "PASS",
       "finding": "Enforcement is now operable, not just implemented: a deterministic ceremony plus a quarantine verb with receipt proof, all reachable through documented control calls. The lab runbooks are executable as written.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 5efbce9 on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-137",
@@ -10445,7 +10589,8 @@
       ],
       "result": "PASS",
       "finding": "The p95 question is now instrumented rather than argued, the cursor windows instead of pretending, and the publish subset is proven executable. One redeploy carries G5-live plus all of this.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 09d558b on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-135",
@@ -10467,7 +10612,8 @@
       ],
       "result": "PASS",
       "finding": "The publish gate that blocked opensource work is satisfied: history holds no secrets, the pin keeps it that way, and the export set is measured. Remaining publish acts are operator presentation decisions (push vs subset export), not investigations.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 5efbce9 on 2026-10-09; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-149",
@@ -10506,7 +10652,8 @@
       ],
       "result": "PASS",
       "finding": "The launcher converges fast when everything is already up (433ms skip instead of a 95s hang), never duplicates displays, the GUI cannot freeze or flood the single control pipe, and the bat is parse-safe under real cmd.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head deaace2 on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-150",
@@ -10534,7 +10681,8 @@
       ],
       "result": "PASS",
       "finding": "The 2h blind gap class is closed by construction: SCM restarts twice, then the keeper converges everything SCM cannot (nose, brain, exhausted restarts) every 5 minutes once the operator runs the single admin command.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 018a2e3 on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-151",
@@ -10556,7 +10704,8 @@
       ],
       "result": "PASS",
       "finding": "Mouth stays. The shutdown-path NEEDS-HELP is closed by runtime test, not by code change.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head c1c2557 on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-152",
@@ -10579,7 +10728,8 @@
       ],
       "result": "PASS",
       "finding": "Push notification is now honestly UNOWNED instead of falsely deprecated-to-a-viewer. Resurrection must be deliberate.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head c1c2557 on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-153",
@@ -10600,7 +10750,8 @@
       ],
       "result": "PASS",
       "finding": "The enforcing cutover is fully specified and fully gated. Prod keeps telemetry + closed gate until lab evidence exists.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head c1c2557 on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-154",
@@ -10624,7 +10775,8 @@
       ],
       "result": "PASS",
       "finding": "Everything completable without elevation or a lab VM is done and pinned. What remains is exactly three operator-gated items: one admin command (keeper task), the secret provisioning block (RB-016/017), and the lab VM (RB-012..015 + warden cutover).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 22836dd on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-155",
@@ -10644,7 +10796,8 @@
       ],
       "result": "PASS",
       "finding": "Every toolchain builds green at this HEAD with zero production impact. Two notes for later: tracked tools/legacy/fix_console.py has a syntax error (legacy, untouched), and GAP-004 appears fixed (FIM helper links clean).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head fd2b413 on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-156",
@@ -10670,7 +10823,8 @@
       ],
       "result": "PASS",
       "finding": "Shutdown owns its threads again. The previously-dead HMAC tests now execute every suite. Deployed by the operator: hash match + new pid + green status. Deploy exposed GAP-017 (SCM stop never completes).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 8e6d2ca on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-157",
@@ -10695,7 +10849,8 @@
       ],
       "result": "PASS",
       "finding": "Posture is observable without ever moving the value. Provisioning (RB-016) still admin-gated.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 8e6d2ca on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-158",
@@ -10719,7 +10874,8 @@
       ],
       "result": "PASS",
       "finding": "Bridge compiles warning-free; the only unbuilt artifact is the live-locked DLL link.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 8e6d2ca on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-159",
@@ -10741,7 +10897,8 @@
       ],
       "result": "PASS",
       "finding": "The TUI is warning-free with identical behavior; the stats line can no longer silently mislabel.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 8e6d2ca on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-160",
@@ -10762,7 +10919,8 @@
       ],
       "result": "PASS",
       "finding": "Nose needs nothing. Saying so with evidence beats invented churn on a live capture path.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 8e6d2ca on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-161",
@@ -10784,7 +10942,8 @@
       ],
       "result": "PASS",
       "finding": "The terminal surface can no longer lie in either direction; the one unexplained stop remains explicitly unexplained, not papered over.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 11b9453 on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "GAP-017",
@@ -10827,7 +10986,8 @@
       ],
       "result": "PASS",
       "finding": "Each aegis now has a visible identity everywhere it matters. The fast/deep split keeps the snapshot cheap while the one-shot CLI tells the full truth.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 6b6d4f6 on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-163",
@@ -10859,7 +11019,8 @@
       ],
       "result": "PASS",
       "finding": "Concepts are now visible on CLI, web, watch, and GUI. The alias trap cannot recur through repo docs, and GAP-017 says exactly what is (un)proven.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head b52a34a on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-164",
@@ -10886,7 +11047,8 @@
       ],
       "result": "PASS",
       "finding": "No managed python can show a window anymore (pythonw task, windowless GUI spawn), runs cannot pile up (lock), and crashes leave a log trail. Observation of 2-3 popup-free minutes with the relaunched GUI is the operator-side close. Operator close-out: stop the old server + start fresh web, then 3 carefree minutes.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head a633c23 on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-165",
@@ -10922,7 +11084,8 @@
       ],
       "result": "PASS",
       "finding": "The old breadth is back on top of the new architecture: same menu the operator loved, none of the patterns that fought the service. Graphs now know receipts.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 89c33ec on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-166",
@@ -10961,7 +11124,8 @@
       ],
       "result": "PASS",
       "finding": "Every usable part is now either proven live, repaired, or retired with a true pointer. The runbooks went from Zig fairy tales to copy-paste procedures.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head b02f3c1 on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-167",
@@ -10987,7 +11151,8 @@
       ],
       "result": "PASS",
       "finding": "No script in the tree can silently kill the service anymore; the TS plane is proven, not assumed; every remaining deferred item genuinely needs lab, elevation, or an operator decision.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 918acae on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-168",
@@ -11018,7 +11183,8 @@
       ],
       "result": "PASS",
       "finding": "The scan backlog is empty except items that genuinely need lab, elevation, or an operator decision -- each labeled as such, none silently dropped.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head f14211b on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-169",
@@ -11039,7 +11205,8 @@
       ],
       "result": "PASS",
       "finding": "The crash story is fully told: old binaries asserted, new binary holds, watchers watch, tree leaks nothing. GAP-016 closed on its own criteria.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 536215c on 2026-10-10; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-170",
@@ -11063,7 +11230,8 @@
       ],
       "result": "PASS",
       "finding": "Nothing deleted, nothing merged: the map turns 30 confusing names into 5 role-shaped answers. Choosing is now lookup, not lore.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head cd4beb1 on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-172",
@@ -11085,7 +11253,8 @@
       ],
       "result": "PASS",
       "finding": "Rule management is real and safe: validated gates, explicit reload step, stable file format. The operator can add/edit/delete rules any time.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head d681db3 on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-171",
@@ -11108,7 +11277,8 @@
       ],
       "result": "PASS",
       "finding": "Supervision degrades by privilege, never by blindness: found-and-unstoppable reads cannot-stop, only truly-absent reads was-not-running.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 7d83c47 on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-173",
@@ -11135,7 +11305,8 @@
       ],
       "result": "PASS",
       "finding": "Every way into the system now tells the truth about where it goes. No wrapper launches anything retired, mislabeled, or duplicated.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 7d83c47 on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-174",
@@ -11160,7 +11331,8 @@
       ],
       "result": "PASS",
       "finding": "The design is sound; the file permissions are not. Fix the ACLs before guests arrive, and the model holds.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head c1f6735 on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "GAP-018",
@@ -11214,7 +11386,8 @@
       ],
       "result": "PASS",
       "finding": "A demo that says what it cannot prove is worth more than a proof that falls apart on stage. The two gaps it exposed are filed with owners.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head e353be0 on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-176",
@@ -11244,7 +11417,8 @@
       ],
       "result": "PASS",
       "finding": "Code-complete on both gaps; only the privileged deploy + live proof remain. The SDDL one-liner is the highest-leverage line of the session.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 865c515 on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-177",
@@ -11265,7 +11439,8 @@
       ],
       "result": "PASS",
       "finding": "The daemon now enforces at the pipe door and answers by rule. Both scan findings are closed with live evidence, not just code.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head dcd8e5a on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-178",
@@ -11292,7 +11467,8 @@
       ],
       "result": "PASS",
       "finding": "Skips are now either running proof or labeled design -- nothing hides behind 'occupied' anymore, and the suite touches prod exactly nowhere it didn't before.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 98a0611 on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-179",
@@ -11330,7 +11506,8 @@
       ],
       "result": "PASS",
       "finding": "The tree holds no unpinned work: every substantive change has a pin, every skip is either running proof or labeled design, and a refactor regression was caught by an existing pin before it could ship.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head d87d3dd on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-180",
@@ -11356,7 +11533,8 @@
       ],
       "result": "PASS",
       "finding": "One real bug fixed (dashboard depth); four operator-seen 'failures' proven to be correct behavior with live evidence, each traceable to its pin or contract line.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head b7f583c on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "GAP-020",
@@ -11394,7 +11572,8 @@
       ],
       "result": "PASS",
       "finding": "Skips are down to the single one that physically requires an elevated operator run; the attempt to eliminate the single-owner skip instead uncovered GAP-020, which is filed OPEN rather than paved over.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 47ff7ef on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-182",
@@ -11420,7 +11599,8 @@
       ],
       "result": "PASS",
       "finding": "The last skip was never a product failure: a stale build artifact shadowed the loader while every direct probe passed. The suite is now skip-free except the proof-gated single-owner harness skip (GAP-020), which is a contract assertion, not a gap.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 3412600 on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-183",
@@ -11439,7 +11619,8 @@
       ],
       "result": "PASS",
       "finding": "One watchdog, no duplicate; the launcher's SKIP vocabulary is fully accounted for and pinned.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 53a2071 on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-184",
@@ -11471,7 +11652,8 @@
       ],
       "result": "PASS",
       "finding": "Three slices fully proven in-tree; the fourth (S6) plus two elevated confirmations (T11 green on the new DLL, GAP-020 deploy) are operator-executed with exact commands. Nothing was claimed without its proof level attached.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 4dcacb1 on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-185",
@@ -11491,7 +11673,8 @@
       ],
       "result": "PASS",
       "finding": "WFP enforcement is now proven end to end on a clean host with no leftovers; the only remaining elevated step in the package is the GAP-020 daemon deploy, awaiting operator approval.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 518a3fe on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-186",
@@ -11511,7 +11694,8 @@
       ],
       "result": "PASS",
       "finding": "The daemon fleet is homogeneous again: tree, build, and prod all carry the fix. Zero OPEN gaps.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head e9f00d2 on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-187",
@@ -11532,7 +11716,8 @@
       ],
       "result": "PASS",
       "finding": "A test-only race with a test-only fix; product accumulation logic untouched. The dead-end stays documented so nobody retries overlapped Connect in a fixture.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head c519ee7 on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-188",
@@ -11556,7 +11741,8 @@
       ],
       "result": "PASS",
       "finding": "No display was actually down; the launcher can no longer be fooled by a windowless process, and SKIP rows tell the operator where to look.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 076ebb8 on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-189",
@@ -11580,7 +11766,8 @@
       ],
       "result": "PASS",
       "finding": "SKIP now means 'already visible or just made visible', never 'running somewhere unseen'.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 00943ff on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-190",
@@ -11601,7 +11788,8 @@
       ],
       "result": "PASS",
       "finding": "The manual the operator asked for, with every limit labeled in place rather than footnoted away.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head ff47843 on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-191",
@@ -11624,7 +11812,8 @@
       ],
       "result": "PASS",
       "finding": "Code-proven; the flag flips live only after the DLL ships beside the service binary and the service restarts.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head d5079ac on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-192",
@@ -11643,7 +11832,8 @@
       ],
       "result": "PASS",
       "finding": "The flag the operator asked for is true on prod. Advisory scope unchanged and restated: screening verdicts only, never enforcement.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head ceed798 on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-193",
@@ -11664,7 +11854,8 @@
       ],
       "result": "PASS",
       "finding": "The manual now covers every inspectable surface the operator asked about, with limits labeled where reads do not exist.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 29c6f1c on 2026-10-11; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-194",
@@ -11683,7 +11874,8 @@
       ],
       "result": "PASS",
       "finding": "Backend fully green as a kernel NIDS; frontend restored to 4/4. The only structural gap found is display supervision (nothing restarts dead displays) -- operator runs displays to converge, by design.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 3b56454 on 2026-10-13; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-195",
@@ -11702,7 +11894,8 @@
       ],
       "result": "PASS",
       "finding": "No open defects in tree, toolchains, or live host. Standing non-defects unchanged: Project-3 gate, dev signing, lab/VM, push/export, single-owner harness skip.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 35be024 on 2026-10-13; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-196",
@@ -11721,7 +11914,8 @@
       ],
       "result": "PASS",
       "finding": "No defects at depth. Two actionables, both operator-owned: disk pressure (2GB free) and the standing Project-3/dev-mode boundaries. Nothing in-tree to fix.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 1424b6b on 2026-10-13; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-197",
@@ -11749,7 +11943,8 @@
       ],
       "result": "PASS",
       "finding": "Everything short of live VM fire is built and pinned; the range procedure is ready for the operator to execute.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head d115c54 on 2026-10-13; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-198",
@@ -11776,7 +11971,8 @@
       ],
       "result": "PASS",
       "finding": "The scripts were the broken half of the first run; the NIDS half is still unproven until the lab feed is confirmed.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head db8db82 on 2026-10-13; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-199",
@@ -11797,7 +11993,8 @@
       ],
       "result": "PASS",
       "finding": "Every dark-fire cause so far was delivery, never detection. The range is one elevated feed + one victim listener away from first light.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 5ced94d on 2026-10-13; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-200",
@@ -11821,7 +12018,8 @@
       ],
       "result": "PASS",
       "finding": "The lab was unprovable by construction until this slice; the knob makes VMnet acquisition a restart away with zero prod-behavior change while unset.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 107f5d1 on 2026-10-13; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-201",
@@ -11844,7 +12042,8 @@
       ],
       "result": "PASS",
       "finding": "Cross-language identity is single-convention end to end; the lab's missing attribution was a display-layer byte swap on top of working detection.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head bb46455 on 2026-10-13; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-202",
@@ -11871,7 +12070,8 @@
       ],
       "result": "PASS",
       "finding": "Code-proven; live proof (capabilities.wfp true, WFP flow rows, state RUNNING) needs deploy+restart, then a full suite because health-projection pins may feel the capability flip.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head e8555f2 on 2026-10-15; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-203",
@@ -11892,7 +12092,8 @@
       ],
       "result": "PASS",
       "finding": "The DEGRADED flag told the truth end to end. The remaining work is outside the tree: a driver reinstall with a reboot window, awaiting operator approval.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 4783fd7 on 2026-10-15; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-204",
@@ -11913,7 +12114,8 @@
       ],
       "result": "PASS",
       "finding": "The wfp:false era is over without touching a single driver file. Next: lab fire against VMnet capture with correct-BE attribution.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head bcc91aa on 2026-10-15; not re-verified at the current HEAD"
     },
     {
       "id": "GAP-021",
@@ -11943,7 +12145,8 @@
       ],
       "result": "PASS",
       "finding": "Detection proved; attribution disputed and tracked. The lab pauses on victim revival, not on analysis.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head edc72e6 on 2026-10-15; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-206",
@@ -11963,7 +12166,8 @@
       ],
       "result": "PASS",
       "finding": "The range answers its founding question in the affirmative: kernel-observed wire attacks are detected and correctly attributed end to end.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head d0b60ce on 2026-10-15; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-207",
@@ -11989,7 +12193,8 @@
       ],
       "result": "PASS",
       "finding": "The verify hints across the range were pointing at a missing command; now they resolve.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 0844c4b on 2026-10-15; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-208",
@@ -12016,7 +12221,8 @@
       ],
       "result": "PASS",
       "finding": "Every display asked for now renders; the WFP rows await their driver + deploy round.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 745524e on 2026-10-15; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-209",
@@ -12038,7 +12244,8 @@
       ],
       "result": "PASS",
       "finding": "Kernel telemetry is live end to end; the display package from EVT-208 now has all four backends behind it.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head e01133a on 2026-10-15; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-210",
@@ -12071,7 +12278,8 @@
       ],
       "result": "PASS",
       "finding": "Per-incident detail is real tracker state on the wire; WFP flows have their own honest source bucket. E5: rendered live on the deployed build (open incident row + dedicated wfp bucket, 2026-10-16).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 80cf023 on 2026-10-15; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-211",
@@ -12107,7 +12315,8 @@
       ],
       "result": "PASS",
       "finding": "Kernel flow telemetry now reads through the single device owner with a persistent handle; provider absence renders as a labeled state in queue.stats, never a silent zero. Live row proof pending the deploy round. E5: real rows, real polls, honest idle on the deployed build (2026-10-16).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head cd4995a on 2026-10-15; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-212",
@@ -12136,7 +12345,8 @@
       ],
       "result": "PASS",
       "finding": "Daemon-only WFP starvation root-caused to an orphaned exclusive handle from boot attestation; the handle is now closed on adapter drop and attestation adopts the cached sole owner, so the daemon can hold and serve kernel flow telemetry itself. Live rows remain the deploy round's E5 proof. E5: the daemon served all kernel rows itself -- no probe assistance (2026-10-16).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 0c8c658 on 2026-10-15; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-213",
@@ -12170,7 +12380,8 @@
       ],
       "result": "PASS",
       "finding": "The kernel row display chain is now correct at every layer provable off-host: the callout binds (terminating-action filter), the writer and all consumers share one 48-byte packed stride, and an idle ring reads rc 0 bytes 0 instead of a fake failure. The live kernel row proof (E5) is the operator deploy round. E5: records flow end-to-end at the 48-byte stride with dropped=0 (2026-10-16).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 048bdeb on 2026-10-16; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-214",
@@ -12192,7 +12403,8 @@
         "docs/runbooks/RB-020-observability-manual.md",
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head a9b33c4 on 2026-10-16; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-215",
@@ -12218,7 +12430,8 @@
         "docs/runbooks/RB-021-hostonly-lab-proof.md",
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 3df3d37 on 2026-10-17; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-216",
@@ -12247,7 +12460,8 @@
         "EVIDENCE_INDEX.json",
         "build_manifest.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head f37b9ec on 2026-10-17; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-217",
@@ -12272,7 +12486,8 @@
         "docs/runbooks/RB-021-hostonly-lab-proof.md",
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 4e18683 on 2026-10-17; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-218",
@@ -12298,7 +12513,8 @@
         "tests/tools/test_aegisctl_diagnose.py",
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 2088031 on 2026-10-17; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-219",
@@ -12326,7 +12542,8 @@
         "docs/runbooks/RB-021-hostonly-lab-proof.md",
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 9f0df39 on 2026-10-17; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-220",
@@ -12364,7 +12581,8 @@
         "tests/release/test_installer_template.py",
         "docs/AEGIS_Operator_Usage_Manual.md"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head fd699ce on 2026-10-17; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-221",
@@ -12389,7 +12607,8 @@
       "files_changed": [
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head bd7122c on 2026-10-17; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-222",
@@ -12415,7 +12634,8 @@
         "src/control/state_machine.zig",
         "src/control/handler_registry.zig"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head eb25ec1 on 2026-10-17; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-223",
@@ -12440,7 +12660,8 @@
         "tests/release/test_refresh_adopt.py",
         "build_manifest.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head eb25ec1 on 2026-10-17; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-224",
@@ -12463,7 +12684,8 @@
       "files_changed": [
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 8aaec2a on 2026-10-17; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-225",
@@ -12488,7 +12710,8 @@
         "admin-evidence/web001-live-20261017/crosscheck.json",
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head a913fb5 on 2026-10-17; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-226",
@@ -12511,7 +12734,8 @@
       "files_changed": [
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head d6792aa on 2026-10-17; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-227",
@@ -12534,7 +12758,8 @@
       "files_changed": [
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 925bbaa on 2026-10-17; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-228",
@@ -12565,7 +12790,8 @@
         "rollback image preserved: admin-evidence/pep001-deploy-refresh-20261017/sec_monitor.dll.pre-PEP-001 = D0727B91...B45A6 (runtime sidecar anomaly noted; operator fix step issued)",
         "deployment refresh sidecar fixed (operator, 2026-10-17): runtime sec_monitor.dll.pre-PEP-001 = D0727B91...B45A6 verified on disk; deployed DLL untouched at 9C738984; service RUNNING"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head ee3b41a on 2026-10-17; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-229",
@@ -12590,7 +12816,8 @@
       "files_changed": [
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head c02ec54 on 2026-10-17; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-230",
@@ -12632,7 +12859,8 @@
         "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head fac1c55 on 2026-10-18; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-231",
@@ -12669,7 +12897,8 @@
         "build_manifest.json",
         "runtime_manifest.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head ab3bdb6 on 2026-10-18; not re-verified at the current HEAD"
     },
     {
       "id": "EVT-232",
@@ -12697,7 +12926,8 @@
         "build_manifest.json",
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 3ecc954 on 2026-10-18; not re-verified at the current HEAD"
     },
     {
       "id": "WEB-002",
@@ -12726,7 +12956,8 @@
         "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 390b7fa on 2026-10-18; not re-verified at the current HEAD"
     },
     {
       "id": "DEPLOY-120",
@@ -12755,7 +12986,8 @@
         "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 15f5139 on 2026-10-18; not re-verified at the current HEAD"
     },
     {
       "id": "NIC-001",
@@ -12780,7 +13012,8 @@
         "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 8cd4837 on 2026-10-18; not re-verified at the current HEAD"
     },
     {
       "id": "V6-QUEUE-DROP",
@@ -12810,7 +13043,8 @@
         "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
         "EVIDENCE_INDEX.json"
       ],
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 1a59711 on 2026-10-18; not re-verified at the current HEAD"
     },
     {
       "id": "SLICE-C-LAB",
@@ -12828,7 +13062,8 @@
       "description": "G1 closure per docs/KERNEL_NIDS_COMPLETION_PLAN.md section 13 and docs/SLICE_C_LAB_GATE_DESIGN.md (APPROVED/IMPLEMENTED; operator proceed instruction 2026-10-18 adopted the recommended defaults; external security review still open). G2 (RB-012 -> RB-013 on an isolated lab VM) remains NOT YET EXECUTED.",
       "tests": "tests/security/test_prevention_gate_surface.py (5 pins); src/pipeline/runtime_state.zig (lab preconditions, single-writer provenance, updated boot pin); src/policy/pep_bindings.zig (verdict spec, closed-gate block path); src/policy/policy_ir.zig (isHostMutating); zig build test rc=0; full pytest 921 passed / 2 skipped / 27 subtests; mutation-red transcript",
       "files_changed": "build.zig, src/pipeline/runtime_state.zig, src/policy/policy_ir.zig, src/policy/pep_bindings.zig, src/pipeline/event_processor.zig, src/control/handler_registry.zig, src/daemon.zig, tests/security/test_prevention_gate_surface.py, docs/SLICE_C_LAB_GATE_DESIGN.md, docs/runbooks/RB-012-wfp-block-lab-proof.md, docs/KERNEL_NIDS_COMPLETION_PLAN.md",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head b3fe986 on 2026-10-18; not re-verified at the current HEAD"
     },
     {
       "id": "SLICE-C-LAB-ART",
@@ -12846,7 +13081,8 @@
       "description": "Post-commit rehearsal for SLICE-C-LAB (37059ec). Complements the E2 source/test pins; does not replace the pending lab E5. No deployment happened in this slice - live still runs the pre-V6 binary. UPDATE 2026-10-19 (EVI CUTOVER-DCB22A5): deployed via the operator cutover - the live binary is the certified default build (no lab literals; gate_source present, value 'closed').",
       "tests": "byte-probe transcripts (artifact-rehearsal.md); live enforcement.status control read; source-level uniqueness greps",
       "files_changed": "EVIDENCE_INDEX.json",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 37059ec on 2026-10-18; not re-verified at the current HEAD"
     },
     {
       "id": "RB012-013-ELEV",
@@ -12864,7 +13100,8 @@
       "description": "Pre-lab validation for the pending G2 session (docs+evidence only; no code change). Same commit ships the RB-012/013 elevation notes.",
       "tests": "live raw-envelope probes (4); source role-table cross-check",
       "files_changed": "docs/runbooks/RB-012-wfp-block-lab-proof.md, docs/runbooks/RB-013-quarantine-lab-proof.md, docs/KERNEL_NIDS_COMPLETION_PLAN.md, EVIDENCE_INDEX.json",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 6488fcd on 2026-10-18; not re-verified at the current HEAD"
     },
     {
       "id": "BRAIN-FASTPATH-FIX",
@@ -12882,7 +13119,8 @@
       "description": "Fix: the three detectors live in aegis_brain_cython.bridge (pure Python; C acceleration is a fast_scan.pyx follow-up) with behaviorally identical mirrors in the windows_brain.py import fallback, and the pre-filter block no longer sits behind `if CYTHON_AVAILABLE` so detection never depends on whether the optional accelerator was compiled (build/runtime parity). Return shapes match the call sites and replicate the retired pyx hotspot semantics: (found, run_len, offset) / [(name, offset)] / (found, byte, run_len, offset).",
       "tests": "tests/brain/test_cython_prefilter.py (new, 7: 6 x E2 unit semantics + 1 x E4-local loopback brain subprocess asserting stdout [CYTHON MATCH]/CYTHON-003 and tmp logs/anomalous.json)",
       "files_changed": "brain/windows_brain.py, brain/aegis_brain_cython/bridge.py, tests/brain/test_cython_prefilter.py, EVIDENCE_INDEX.json, docs/KERNEL_NIDS_COMPLETION_PLAN.md",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head dba2d75 on 2026-10-19; not re-verified at the current HEAD"
     },
     {
       "id": "POLICY-EVAL-FULL",
@@ -12896,7 +13134,8 @@
       "command": "zig test focus (RED: evaluator 0P/6F -> GREEN 26/26; loader compile-RED -> GREEN 37/37; signature pin RED at policy_plane.zig:580 -> GREEN 62/62); real configs/policies.json evidence runner: 6 loaded / 0 rejected / severity==6 -> rule 1 block (37/37); zig build rc=0; full zig suite 2182 passed / 1 skipped / 0 failed (rerun; run 1 hit the known PERF-FLAKE RegistryWatchQueue threshold miss); python -m pytest tests -q 928 passed / 2 skipped / 27 subtests (incl. frozen wire contract)",
       "expected": "configs/policies.json rule 1 `severity gte 6` (block) includes EventSeverity.critical == 6; JSON match/nomatch predicates carry their value_str pattern instead of matching every event; multi-clause OR / multi-predicate AND evaluate in full; `.in` is real membership (list or single value); unknown field/op, cross-domain payloads, malformed id/ttl/value and condition-less entries are rejected with a counted reason - no @intCast crash, no silent .kind/.eq reshaping.",
       "actual": "All pinned and GREEN. The real config loads 6/6 with 0 rejected; a severity==6 event now matches id 1 block_critical_threats (pre-fix the loader lowered gte to gt and the event matched nothing). Evaluator pins: cross-domain ops, empty patterns and absent strings never match. policy_plane compiler test pins signature == 0 (hash != signature). Transcripts: admin-evidence/policy-eval-full-20261019/ (red-01..red-04, green-01..green-04).",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head d8a2064 on 2026-10-19; not re-verified at the current HEAD"
     },
     {
       "id": "V6-FLOW-036",
@@ -12910,7 +13149,8 @@
       "command": "zig build test (full suite) rerun in STALE-DOC-SWEEP gates; in-file pins: src/capture/flow_table.zig 'FlowKey v6 full identity never collides with truncated v4 view', src/capture/nose_pipe_reader.zig 'reader accepts v1 and v2 frame lengths', src/pipeline/event_queue.zig 'pushDecodedFrame carries v2 sidecars; v1 path queues nulls'",
       "expected": "decoded v2 frames carry full 128-bit IPv6 identity through dequeue into the flow key without colliding with the truncated v4 identity view; v1 frames behave byte-identically to before",
       "actual": "pins green; behavior landed at bde1c2c (2026-10-05); entry added retroactively by STALE-DOC-SWEEP (EVI traceability gap)",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head bde1c2c on 2026-10-05; not re-verified at the current HEAD"
     },
     {
       "id": "V6-DETECT-037",
@@ -12924,7 +13164,8 @@
       "command": "zig build test (full suite) rerun in STALE-DOC-SWEEP gates; in-file pin: src/detection/anomaly_detector.zig 'entityKeyBytes prefers sidecar, falls back to padded u32'",
       "expected": "anomaly baselines key by full v6 identity when queue sidecars are present; baseline behavior byte-identical to the u32 identity when absent",
       "actual": "pin green; behavior landed at 3bd965c (2026-10-05); entry added retroactively by STALE-DOC-SWEEP (EVI traceability gap)",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 3bd965c on 2026-10-05; not re-verified at the current HEAD"
     },
     {
       "id": "STALE-DOC-SWEEP",
@@ -12938,7 +13179,8 @@
       "command": "python -m pytest tests/docs/test_stale_doc_sweep.py -q (RED 9 failed -> GREEN 9 passed); full pytest suite; zig build + full zig test battery; python tools/truth.py verify",
       "expected": "no doc claim contradicts source at HEAD: CLI list == parser (33 commands), WFP/PEP status == implemented reality, DEPLOYMENT == build_truth, runtime docs clean of removed axum/:8080, .analysis files banner-marked HISTORICAL, CONTRACT_MAP carries wire v2, release notes reference current paths",
       "actual": "all 9 pins green; docs re-verified item-by-item against source at 67ff30e; EVI v6 traceability gap closed (V6-FLOW-036, V6-DETECT-037 retroactive entries added)",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 67ff30e on 2026-10-19; not re-verified at the current HEAD"
     },
     {
       "id": "DEADCODE-QUARANTINE",
@@ -12952,7 +13194,8 @@
       "command": "TDD RED->GREEN. pytest tests/security/test_forbidden_edges.py (bridge pin RED: fake-success body present -> GREEN after containment); closure pin tests/security/test_zig_test_scope.py (mutation demo: the focused-runner temp file src/zz_deadcode_focus_tmp.zig was caught as unregistered dead code, then removed -> green); focused zig runner (RED compile 'undeclared identifier snapshotIncidentById', then RED assertion 'incidentsShow returned the incidents list', GREEN 354/354); zig build rc=0; zig build test rc=0; python -m pytest tests/ -q --ignore=tests/test_e2e.py -> 933 passed / 2 skipped / 27 subtests; python tools/release_engineering.py --refresh-digests -> 610 artifacts kept, 11 digests updated, 2 scaffold entries dropped, source_commit=ba7d926; inventory.json + reference_map.json regenerated (0 ghost entries)",
       "expected": "Every src/*.zig file is either reachable from the six build roots or registered in QUARANTINED_UNREACHABLE (registered files stay dead; nothing rots silently); the two .scaffold files are gone from tree, manifest and inventory; incidents.show with {\"id\":N} returns exactly incident N looked up in the full incident table or an honest INVALID_INPUT/INCIDENT_NOT_FOUND; aegis_bridge_send/receive_command return -2 and never print a success line; runtime.stop/restart answer NOT_IMPLEMENTED/UNAVAILABLE and the protocol doc says so; all suites green",
       "actual": "All green: closure pin proves 244 reachable / 35 quarantined with both-direction assertions (and caught the planted temp file on first run); scaffolds deleted and the manifest refresh dropped exactly 2 entries (610/610 digests match); incidentsShow rewritten on payloadU64 + tracker.snapshotIncidentById under the table mutex (full 4096-row scan, never the 64-row list view) with 6 new in-file zig tests including the runtime.stop/restart refusal pins; bridge exports -2 with a stderr rejection note (pin scans code lines only, comments may narrate history); control_protocol.md honest-state notes added; inventory total_files 1698 with 0 ghost entries after relocating a stray 2026-10-07 go build temp (nose/aegis-nose.exe~) out of the tree",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head ba7d926 on 2026-10-19; not re-verified at the current HEAD"
     },
     {
       "id": "CONTROL-HEALTH-HONESTY",
@@ -12966,7 +13209,8 @@
       "command": "TDD RED->GREEN. nose: go test ./... (RED: undefined headlessTelemetry + signature mismatch -> GREEN ok 9.810s) + go vet clean; go/aggregator: go test ./... (RED: c.Stats undefined -> GREEN ok 0.937s) incl. TestHealthReportsCollectorStats and TestHealthReportsHonestZeroBeforeAnyIngest + go vet clean; mouth: cargo test --manifest-path mouth/Cargo.toml (RED: unresolved note_log_event / note_response_flushed / last_event_age_ms -> GREEN 13 passed incl. health_counter_tests::counters_move_with_real_work) + cargo build --release rc=0; full pytest 933 passed / 2 skipped / 27 subtests",
       "expected": "A live component's counters move with its real work and a wedged loop is visible: nose in_events increments per consumed sample, last_event_ms is the age of the last sample (0 = honest never before any event); aggregator in_events = lines parsed, errors = parse failures, last_event_ms = age of the last successful ingest (0 before any); mouth in_events = tailed lines, out_events = flushed probe responses, last_event_ms grows when the tail loop stalls; the RUNTIME_CONTRACT \u00a74.1 schema shape is unchanged",
       "actual": "All green: nose headlessTelemetry wired through buildHeadlessState (schema keys unchanged; a beacon's payload carries the prior-beacon out count by design, documented); aggregator Collector gained atomic ingested/parseErrors/lastIngestMs + Stats() and handleHealth computes the age (out_events/dropped stay 0 with an explicit 'pull-only, no drop path' comment); mouth health_pipe gained note_log_event / note_response_flushed + a pure saturating last_event_age_ms (0 = never) wired into server_loop and the tail loop (probes deliberately do NOT refresh the tail timestamp, so a wedged tail stays visible); errors/dropped remain 0 with comments wherever no such path exists",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head ba7d926 on 2026-10-19; not re-verified at the current HEAD"
     },
     {
       "id": "CI-GAPS",
@@ -12980,7 +13224,8 @@
       "command": "TDD RED->GREEN. tests/release/test_ci_gates.py: 5 new pins RED (brain-tests / cython-build-test / mouth-build-test / dashboard-build-test / drivers-wdk-build absent; cython-scan note claim 'built inside python-tests' stale; a coverage project not resolving to any workflow job) -> GREEN 9 passed; python tools/ci_coverage.py exit 0 (every required project has a job; sole optional gap e2e->); simulated toJSON(needs) gating proofs via ci_coverage.check_results (all-success=0, brain-failed=1, brain-absent=1, cython-cancelled=1, shield-failed=0); job commands run locally: py3.11 venv (Astral/CPython3.11.16, the CI Python) pytest brain/ -q -> 88 passed fallback config, setup.py build_ext --inplace rc=0 (cp311), test_fast_scan.py 27 passed, tests/brain/test_cython_prefilter.py 7 passed accelerated; py3.14 accelerated AND fallback both 88/7 (pyd temporarily hidden, restored); cargo test + build --release mouth 13 passed rc=0; cargo test aegis_dashboard 8 passed + release build rc=0; full pytest 939 passed / 2 skipped / 27 subtests; zig build rc=0; release_engineering --refresh-digests 610/610 (source_commit=a38f414)",
       "expected": "Every deep scan section 9 CI gap is gated or carries a written decision: brain/test_*.py runs as a required job; the shipped accelerator builds + its unit suite + the Case-2 pre-filter pin run in the accelerated configuration as a required job; mouth/dashboard build+test as SUPPORT (reported, non-gating); the WDK drivers build exists as a manual workflow_dispatch job; shield's real job is named in the matrix (non-gating by its fail-safe advisory contract); no green-wash e2e job; every required project's job reaches ci-matrix needs so check_results can fail the pipeline",
       "actual": "All green: 6 pins in tests/release/test_ci_gates.py (text-scrape, zero pyyaml dependency - the dev venv lacks it) prove job contents and gate wiring; ci.yml gained brain-tests + cython-build-test (required, added to ci-matrix needs) and mouth-build-test + dashboard-build-test + drivers-wdk-build (SUPPORT; drivers gated to workflow_dispatch); ci_coverage.json: cython-scan required:true with an honest note, shield wired to shield-build (required:false - runtime load is fail-safe, not fail-closed), new entries brain/mouth/aegis-dashboard/drivers/e2e; gating semantics proven against simulated needs payloads; every new job command executed locally green on the CI Python (3.11) and the dev Python (3.14); the local cython build regenerated the tracked generated brain/aegis_brain_cython/fast_scan.c (restored; in CI the job is ephemeral and runs no digest gate, and python-tests - which does - never builds this module)",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head a38f414 on 2026-10-19; not re-verified at the current HEAD"
     },
     {
       "id": "CI-AGGREGATOR-HTTP",
@@ -12994,7 +13239,8 @@
       "command": "go test ./... -v -> 8 new handler tests GREEN on first run (pins of existing behavior; the RED-first defect drive for this surface was /api/health in DEADCODE-QUARANTINE) + go vet ./... clean; full pytest 939 passed / 2 skipped / 27 subtests",
       "expected": "The documented endpoint set behaves as its consumers rely on: GET / links the API surface; /api/alerts serves every added alert as a JSON array; /api/alerts/critical passes only level=critical; /api/alerts/{hash} answers 200 with the exact alert, 404 on an unknown hash, 400 on an empty hash; /api/stats reports total_alerts / total_sessions / timestamp; /api/sessions serves correlated timelines and /api/sessions/{id} rejects non-numeric ids (400) and returns text/plain timelines; /api/purge is POST-only (405), rejects malformed JSON (400) and returns {purged:N}",
       "actual": "All green with httptest only (no listener, no disk state): 8 tests on a shared newHandlerTestServer; the by-hash test recomputes the dedup hash via computeHash so the round trip is exact; the purge test keeps fresh alerts (purged=0) proving the cutoff semantics; no handler behavior changed - the tests freeze the current contract",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head a38f414 on 2026-10-19; not re-verified at the current HEAD"
     },
     {
       "id": "RELEASE-TOOLING",
@@ -13008,7 +13254,8 @@
       "command": "TDD RED->GREEN. tests/release/test_release_tooling.py (new, 11 tests): RED 10 failed / 1 passed (parse guard) -> GREEN 11 passed; functional proof: verify_release.ps1 against a synthetic bundle in tmp_path -> VERIFICATION PASSED, tampered artifact -> SHA256 mismatch fail, missing required file -> fail, bundle tree hash-unchanged = read-only proven; verify_release.ps1 against the real tracked 20261017 bundle -> PASS 9/9 artifacts (explicit -BundleRoot and default latest-bundle discovery); Parser::ParseFile clean on all 4 scripts; focused suites 89 passed (tests/release + tests/docs/test_stale_doc_sweep.py + tests/runtime/test_operator_scripts_portable.py); full pytest CI scope 950 passed / 2 skipped / 27 subtests; zig build rc=0; release_engineering --refresh-digests 610/610 -> --verify OK (source_commit=e1ff552)",
       "expected": "Operators can verify a packaged bundle without touching it: verify_release.ps1 discovers the latest release\\aegis-nids-windows-* (or an explicit -BundleRoot) and fails closed unless every manifest artifact matches its recorded SHA256 + length, the canonical required files exist, and canonical_rules is shipped; nothing is extracted, created, or deleted. scripts/release_package.ps1 cannot silently produce the dead 2.x layout: it exits 1 and points at package_release.ps1 / verify_release.ps1. install_aegis.ps1 reaches NSIS-path parity: elevation enforced via #Requires; every artifact hash-verified before any mutation; Authenticode status Valid=ok, NotSigned/NotTrusted=warn (until the EV-cert/HLK signing gate), anything else = fail closed; AegisNids registered only when absent (auto-start + restart/5000/15000/60000 recovery, same contract as tools/installer.py) and started; -Uninstall removes the service + runtime/drivers/scripts while preserving operator configs, and an externally-managed AegisWfp survives (sc qc binPath check). package_release.ps1 stages build\\x64\\wfp\\aegis_wfp.sys (canonical WDK output per DEPLOY-120) instead of the pre-EVT-231 in-tree copy and ships verify_release.ps1 inside the bundle. tools/release_candidate.py carries no core/-era paths and cites the live signing authority. docs/DEPLOYMENT.md matches the real bundle content",
       "actual": "All green. verify_release.ps1 rewritten (no Set-Location; no Expand-Archive / Compress-Archive / New-Item / Remove-Item - structurally read-only, pinned by absence). release_package.ps1 replaced by a 20-line tombstone (exit 1; legacy body survives only in git history and the frozen release/T20-final/46b93dc/scripts copy). install_aegis.ps1 rewritten: #Requires -RunAsAdministrator; BundleRoot now optional with an explicit install-mode check so -Rollback/-Uninstall run standalone; Authenticode loop over manifest .exe/.dll (switch Valid/NotSigned/NotTrusted/default-throw); AegisNids created behind an sc query guard and started with a LASTEXITCODE warning; -Uninstall deletes AegisNids + only an AegisWfp whose qc binPath lives under $InstallRoot, removes runtime/drivers/scripts + manifest.json/README.txt and prints 'Configs preserved: $InstallRoot\\configs'. The v6 manifest.artifacts guard and the pre-mutation hash loop are retained. package_release.ps1: driver Source -> build\\x64\\wfp\\aegis_wfp.sys (drivers\\wfp_callout\\aegis_wfp.sys is the pre-EVT-231 artifact the installer pins forbid shipping); bundle scripts/ now also carries verify_release.ps1; README.txt documents verify/uninstall. release_candidate.py: the REPO/core/*.zig copy loop and the empty core/ dir are gone; signatures.json cites src/policy/policy_signing.zig (the live daemon/handler_registry authority); docstring no longer cites the deprecated packager. docs/DEPLOYMENT.md corrected - the bundle never contained aegis-nose.exe (the doc claimed it did); nose/minifilter documented as NSIS-path content. Digest drift from the five edited digested artifacts refreshed 610/610. The tracked 20261017 bundle stays a frozen snapshot (its old install_aegis.ps1 copy untouched). No enforcement change (blocks delta 0); agent non-elevated throughout - the installer was not executed (structural + parse + synthetic-bundle proofs only); NSIS-template Authenticode runtime check deferred to the G4 signing gate (recorded as remaining risk)",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head e1ff552 on 2026-10-19; not re-verified at the current HEAD"
     },
     {
       "id": "LEFTOVER-SWEEP",
@@ -13022,7 +13269,8 @@
       "command": "TDD RED->GREEN per workstream. RED: tests/docs/test_stale_doc_sweep.py +2 pins -> 2 failed / 9 passed; tests/brain/test_seam_disposition.py -> 1 failed / 2 passed (markers missing); zig focused runner (temp, deleted before commit) -> compile error: verifyVectorTable undeclared; ts_policy typecheck -> 4 errors on the honest field names. GREEN: stale-doc pins 11 passed; seam pin 3 passed; tests/brain 53 passed; test_gate_e 9 passed; ts typecheck rc=0 + test:all 76 passed; zig focused 89/89; nose go build/test/vet rc=0; zig build rc=0; zig build test 2190/2192 with 1 registered PERF-FLAKE (RegistryWatchQueue 4807.3 vs floor 5000 under build load; warm reruns rc=0; perf path untouched); full pytest CI scope final 955 passed / 2 skipped / 27 subtests rc=0; two earlier full runs hit the registered full-suite-load flake test_forensic_pagination large-response (standalone 0.08s green; same flake documented in the web002 closeout) and the pre-refresh run showed exactly the 5 expected digest-drift failures in tests/release (25/25 after refresh); release_engineering --refresh-digests 608/608 -> --verify OK (source_commit=7171e1f; dropped the 2 nose entries)",
       "expected": "Every remaining deep-scan back-log leftover stops misstating reality, with zero runtime behavior change: (1) aegisctl policy enable/disable/reload keep returning UNAVAILABLE (exit 4) from the top guard and the unreachable local implementations are gone - no hidden disabled_rules.json write path exists and no query targets the nonexistent policy.reload control command; docs/USER_OPERATIONS_GUIDE.md shows only list/show/verify/validate plus the operator-state disabled file -> rules reload workflow; (2) ts_policy CompileResult exposes dropped_rule_ids/winning_rule_ids (rule IDs, as stored) with docs owning the structurally-empty drop branch (rule_id is part of the sort key; duplicate IDs rejected); (3) contract-freeze vectors are a validatable checklist - the dead .input field is gone and verifyVectorTable enforces unique ids/names, all four vector types covered, non-empty fields; executable payload vectors remain with the per-language suites; (4) src/contract/runtime_spine.zig header states spec/proof-only status and the doc pin keeps src/main.zig + src/daemon.zig free of it; (5) nose/ipc_reader.go + its test (0 non-test references, Bridge-era DEFCON file reader) are deleted; (6) the ten brain seam modules carry 'SEAM-STATUS: not wired to the production entrypoint' and tests/brain/test_seam_disposition.py pins closure(brain/windows_brain.py) == module set minus registry",
       "actual": "All green. aegisctl: removed the unreachable enable/disable/reload blocks plus the now-dead _state_file/_save_state/_query_control_safe helpers (grep-verified zero references); behavior unchanged (enable/reload still exit 4 with the same JSON; policy list/show unaffected; test_gate_e 9 passed). USER_OPERATIONS_GUIDE.md policy section rewritten to the capability-matrix truth (no advertised fail-closed commands; disabled_rules.json + rules reload documented; exit code 4 stated). ts_policy: renamed the two CompileResult fields in compiler.ts + tests; typecheck + 76/76 tests green. contract_freeze.zig: TestVector loses the write-only input field (8 initializers removed; zero readers repo-wide), the F04 comment maps to the executable suites, verifyVectorTable() added (duplicate-id/duplicate-name/uncovered-type tests added) with verifyTestVectors() delegating; documentation_proof count 5->6. runtime_spine.zig header rewritten to the pinned status. nose: git rm 2 files; go build/test/vet green. brain: 10 SEAM-STATUS markers byte-preserving (content equality modulo the inserted marker verified). New pin tests/brain/test_seam_disposition.py (3 tests). Digest drift from the edited digested artifacts refreshed 608/608 (dropped the 2 nose entries). PHASE_0_TRUTH_REBUILD_REPORT.json refreshed to this HEAD (rebaseline side effect, convention as in 74864cd). No enforcement change (blocks delta 0); agent non-elevated throughout; no push",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 7171e1f on 2026-10-19; not re-verified at the current HEAD"
     },
     {
       "id": "REL-CLOSURE",
@@ -13036,7 +13284,8 @@
       "command": "TDD RED->GREEN: tests/docs/test_stale_doc_sweep.py +4 pins -> RED 4 failed / 11 passed -> GREEN 15 passed; focused zig runner (temp, deleted before commit) 114/114 across release_manifest + installer + replay_integrity + compliance_reporter; zig build rc=0; zig build test first run 2190/2192 passed with 1 failure = registered PERF-FLAKE RegistryWatchQueue (100 enqueues, actual=4895.1 floor=5000.0 under build load; warm rerun rc=0; --summary all 4/4 steps succeeded); cargo check rc=0 (2 pre-existing aegis_pep dead_code warnings); full pytest CI scope 959 passed / 2 skipped / 27 subtests rc=0; release_engineering --refresh-digests: 608 artifacts kept, 6 digests updated (runtime_manifest.json, rust-src/lib.rs, src/core/compliance_reporter.zig, src/forensic/installer.zig, src/forensic/release_manifest.zig, src/forensic/replay_integrity.zig), 0 dropped - the drivers tree is not part of the digest manifest - -> --verify OK (source_commit=557b4ce); inventory regen 1697 files (1698 - 1 stray INF); PHASE_0_TRUTH_REBUILD_REPORT.json refreshed (head 557b4ce, valid)",
       "expected": "Phase 9 (REL-001..004) formally re-scoped against current HEAD: the v5.0 PATCH-44/45 structs are spec references, not production authority - each old evidence entry cites where the modern implementation lives, and the modules state their status in-file with a mechanized pin (src/main.zig + src/daemon.zig stay free of them; wiring = dedicated-slice decision). Zero runtime behavior change elsewhere: rust-src/lib.rs tells the wired truth (policy_signing.zig verifyViaRust -> sidecar envelope v1; key custody still ADR-0005 Q3), the T20-era minifilter INF no longer sits in drivers/wfp_callout (wrong dir + wrong altitude registration shape; installer-pick risk gone), compliance_reporter announces its 13-of-32 placeholder controls and stays test-graph-only, and replay_integrity no longer exposes the undefined-mismatches no-alloc compare()",
       "actual": "All green. Three status markers added: release_manifest.zig + installer.zig 'SPEC-REFERENCE ONLY' (pointing at tools/release_engineering.py + tools/fresh_deploy.py, and tools/installer.py + scripts/verify_release.ps1 + install_aegis.ps1 + RB-004/RB-005 respectively), compliance_reporter.zig 'TEST-GRAPH SCAFFOLD' (13 of 32 controls are checkAlwaysTrue placeholders; do not wire before real checks). New pin test_v_era_spec_modules_carry_status_and_stay_out_of_production covers markers + production-free imports; test_rust_policy_verify_ffi_docs_match_wired_state bans the stale 'Still unwired (no Zig caller)' claim; test_minifilter_inf_exists_only_in_canonical_dir bans the stray INF; test_replay_integrity_has_no_undefined_mismatches_footgun bans the footgun. rust-src/lib.rs comments now state the wiring (verifyViaRust, verifyIrSidecar/verifyIrWithAnchors) with key custody per ADR-0005 Q3. drivers/wfp_callout/aegis_minifilter.inf git-rm'd (zero references outside historical analysis; content was the old Parameters/Altitude-DWORD shape while the canonical drivers/minifilter copy uses the Instances-based altitude registration). ReplayComparison.compare() deleted (zero callers; returned an undefined mismatches list - a deinit() footgun); compareAlloc is the only comparison path. All four entry UPDATEs appended to EVT-017..020. No enforcement change (blocks delta 0); agent non-elevated throughout; no push",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 557b4ce on 2026-10-19; not re-verified at the current HEAD"
     },
     {
       "id": "CUTOVER-DCB22A5",
@@ -13053,7 +13302,8 @@
       "finding": "The cutover is clean and matches the rehearsal byte-for-byte: the additive gate_source arrives live (absent before -> 'closed' after), the daemon-side 10/18-19 slices are live, and the production posture stays detection-only by construction. The 10/18 v6 deploy (an operator action never recorded in a kit) is hereby recorded and re-verified. Remaining operator queue: G2 lab campaign (RB-012 -> RB-013 at dcb22a5), DEPLOY-120 installer host drill, RB-014/015/018/021, RB-016/017, G4 signing, external review, CI push decision.",
       "description": "Records pass for the operator cutover: new EVI entry; UPDATE notes appended to V6-QUEUE-DROP (live flip), SLICE-C-LAB (gate_source live), SLICE-C-LAB-ART (default binary live); 'redeploy pending' postscripts appended to the admin-evidence closeouts; plan section 23; AI_CONTEXT phase line. Evidence kit (gitignored): admin-evidence/operator-queue-20261019/ (before-*/after-*.txt, staged-probe.txt, cutover-result.md). No tracked runtime or source change in this records commit - the deployed artifact was already built from dcb22a5.",
       "files_changed": "EVIDENCE_INDEX.json, AI_CONTEXT.md, docs/KERNEL_NIDS_COMPLETION_PLAN.md",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head dcb22a5 on 2026-10-19; not re-verified at the current HEAD"
     },
     {
       "id": "RB-021-L4-MATCHER",
@@ -13204,7 +13454,9 @@
         "src/policy/pep_bindings.zig"
       ],
       "evidence": "Host transcript admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt; duplicate-canary output admin-evidence/g2-direction-20261022/g2-canary-dup-20261023.txt; VM evidence pep-cache-swap-20261023.json/log, canary-capture-dup.json, metrics-before-dup.json, metrics-after-dup.json, wfp-filters-*.xml, base-restore-20261023.json/log (to be copied back before the VM is reverted); source commit ee1010e.",
-      "status": "UNRECORDED"
+      "status": "OPEN",
+      "next_step": "resolve what its own result names: PARTIAL",
+      "status_basis": "entry.result=PARTIAL at head ee1010e (2026-10-23): the pass is partial or carries an open blocker"
     },
     {
       "id": "G2-RB013-MIRROR-20261021",
@@ -13441,7 +13693,9 @@
       "result": "PASS_WITH_OPEN_BLOCKER",
       "finding": "The slice is wired and compile-tested at E2. Direct Npcap and L7 anomaly modules remain LAB/observe-only until a disjoint-interface Windows host run supplies E5 evidence. Rust PEP remains the sole privileged authority.",
       "evidence_artifact": "admin-evidence/ids-l7-003-20261031/closeout.md",
-      "status": "UNRECORDED"
+      "status": "OPEN",
+      "next_step": "resolve what its own result names: PASS_WITH_OPEN_BLOCKER",
+      "status_basis": "entry.result=PASS_WITH_OPEN_BLOCKER at head 3d4a0fd (2026-10-31): the pass is partial or carries an open blocker"
     },
     {
       "id": "TEST-COMPLIANCE-STREAM-20261031",
@@ -13462,7 +13716,8 @@
       "result": "PASS",
       "finding": "The full canonical Zig test graph is green again. The module remains test-graph-only and no production enforcement path changed.",
       "evidence_artifact": "admin-evidence/compliance-reporter-20261031/closeout.md",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 8c51e23 on 2026-10-31; not re-verified at the current HEAD"
     },
     {
       "id": "KIDS-002-20261101",
@@ -13490,7 +13745,9 @@
       "result": "PASS_WITH_OPEN_FULL_SUITE_AND_HOST_EVIDENCE",
       "finding": "Gate-closed policy assessments are evidence-only; no ABI or event wire schema changed. This E2 result does not prove Windows E5/kernel qualification or release readiness.",
       "evidence_artifact": "admin-evidence/kids-002-20261101/closeout.md",
-      "status": "UNRECORDED"
+      "status": "OPEN",
+      "next_step": "resolve what its own result names: PASS_WITH_OPEN_FULL_SUITE_AND_HOST_EVIDENCE",
+      "status_basis": "entry.result=PASS_WITH_OPEN_FULL_SUITE_AND_HOST_EVIDENCE at head 8cb2afb (2026-11-01): the pass is partial or carries an open blocker"
     },
     {
       "id": "VER-004-WIN-SOCKET-001",
@@ -13513,7 +13770,8 @@
       "result": "PASS_E2",
       "finding": "The access-denied path is recoverable and socket state is reset. Real TCP integration remains opt-in and unrun in the network-restricted sandbox.",
       "evidence_artifact": "admin-evidence/ver-004-20261101/closeout.md",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS_E2 recorded at head e233242 on 2026-11-01; not re-verified at the current HEAD"
     },
     {
       "id": "E5-RECHECK-STALE-IMAGE-20261101",
@@ -13540,7 +13798,9 @@
       "result": "BLOCKED_E5_NO_CURRENT_SOURCE_CANARY",
       "finding": "Host observability may still capture normal LAN traffic while AEGIS_DAEMON_IFACE is pinned to VMnet1. Resolve deployment preflight and verify the runtime image/source before restarting this lab; no E5 result is claimed.",
       "evidence_artifact": "admin-evidence/e5-recheck-20261101/closeout.md",
-      "status": "UNRECORDED"
+      "status": "OPEN",
+      "next_step": "resolve what its own result names: BLOCKED_E5_NO_CURRENT_SOURCE_CANARY",
+      "status_basis": "entry.result=BLOCKED_E5_NO_CURRENT_SOURCE_CANARY at head e233242 (2026-11-01): the pass is partial or carries an open blocker"
     },
     {
       "id": "REL-MANIFEST-001-20261101",
@@ -13564,7 +13824,8 @@
       "result": "PASS_READ_ONLY_PREFLIGHT",
       "finding": "Manifest drift is resolved. Installed service hash mismatch, current-source deployment, and Windows E5 remain OPEN.",
       "evidence_artifact": "admin-evidence/rel-manifest-refresh-20261101/closeout.md",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS_READ_ONLY_PREFLIGHT recorded at head e233242 on 2026-11-01; not re-verified at the current HEAD"
     },
     {
       "id": "XDR-WIRE-001",
@@ -13592,7 +13853,8 @@
       ],
       "result_note": "Advisory-only read-only wiring; full source-to-forensic-receipt integration (IDS-XDR-005) remains OPEN",
       "evidence_artifact": "admin-evidence/xdr-wire-001-20261102/closeout.md",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head None on 2026-11-02; not re-verified at the current HEAD"
     },
     {
       "id": "IDS-XDR-005-WIRING-OPEN",
@@ -13754,9 +14016,10 @@
       "tests": [
         "test_deliver_finding_counts_only_accepted_emissions pins SENT/SENT/FAILED/DISABLED -> 2"
       ],
-      "status": "UNRECORDED",
+      "status": "CLOSED_AT_RECORDED_HEAD",
       "closed_at": "2026-11-08",
-      "evidence": "RB-017-BRAIN-RETURN-PATH-E5-20261108"
+      "evidence": "RB-017-BRAIN-RETURN-PATH-E5-20261108",
+      "status_basis": "entry.result=PASS recorded at head 74d6ac2 on 2026-11-08; not re-verified at the current HEAD"
     },
     {
       "id": "GAP-BRAIN-ADVISORY-EVIDENCE",
@@ -13772,7 +14035,8 @@
       "actual": "Retained and verified: `aegisctl forensic search --field source --value 5` within 0.7 s of the offer returned record_seq 2635027 with source 5 = python_brain (canonical space), rule_id 2587872532 = FNV-1a('CYTHON-003'), payload_len 216, verified true. The four earlier probes returned 0 because they searched source 13, the QUEUE ordinal for detection_brain; forensic_pipeline.zig canonicalSourceOf maps it to python_brain = 5 in the canonical source space.",
       "impact": "No evidence gap. Recorded because the near-miss is instructive: two source-numbering spaces coexist (queue 13, canonical 5), and a wrong ordinal reads exactly like missing evidence.",
       "next_step": "None for RB-017. If this trips again, `forensic search --field source` should accept the name (python_brain) as well as the ordinal.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS recorded at head 787455a on 2026-11-08; not re-verified at the current HEAD"
     },
     {
       "id": "GAP-L4-FLAGS-LIVE-UNPROVEN",
@@ -13790,7 +14054,8 @@
       "next_step": "Two ways to close, neither needs a kernel change: (a) read the nose capture selector from the daemon or the process command line under elevation and re-run the 25-SYN burst against that adapter's subnet, or (b) send the same burst from a peer on the captured segment (or a lab scapy/npcap raw sender) and watch for rule 1745456278. Until one of them runs, the honest status is 'flags lane present at source (E1/E2), live behavior unproven'.",
       "resolved_evidence": "L4-FLAGS-R9006-LIVE-E5-VMNET1-20261108",
       "resolution": "Resolved for the VMnet1-captured path (E5, 2026-11-08): with nose on CE375996/192.168.126.1, nmap SYN 25 ports from 192.168.126.10 produced R9006 signature_match rule 1745456278 in ndjson (1 row) and forensic verify remained ok. The earlier miss was an adapter-selection error (probe hit 192.168.127.200 while nose captured Wi-Fi 5FD31C6E), not a dead flags lane. R9007 and other adapters/paths remain out of scope of this closure.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=RESOLVED recorded at head 787455a on 2026-11-08; not re-verified at the current HEAD"
     },
     {
       "id": "ETW-LIFE-001-E2-20261108",
@@ -13819,7 +14084,8 @@
       "actual": "Lifecycle is serialized by statically initialized SRW locks. Stop disables/drains the callback, stops the ETW controller, explicitly closes the consumer trace on stop failure, waits for confirmed consumer-thread exit, then releases handles/properties. Native stop errors are surfaced to Zig and worker health. Partial-start cleanup retains resources when controller cleanup fails.",
       "impact": "Closes the source-level unchecked 5-second join/free defect at E2. Windows E5 service/Page Heap verification and crash-root-cause attribution remain open; a later service query observed RUNNING after STOPPED, with the restart trigger unresolved.",
       "next_step": "Run repeated installed-service start/stop with ETW providers under Page Heap/debugger, capture SCM/Application/WER evidence for the re-start, and verify no leak/crash before closing issue #30.",
-      "status": "UNRECORDED"
+      "status": "CLOSED_AT_RECORDED_HEAD",
+      "status_basis": "entry.result=PASS_E2 recorded at head adb1b73 on 2026-11-08; not re-verified at the current HEAD"
     },
     {
       "id": "ADR-0012-DUP-RATIO-E5-20261108",
@@ -13842,8 +14108,9 @@
       "description": "Six-worker, 20,000-file Windows churn measurement on the deployed probe build (source dfececb, ancestor of current HEAD). The coarse per-PID key reported 48.177% repeats for create-once (105,765 records / 50,954 duplicates), 49.391% for rewrite (895,546 / 442,323), and 56.992% for recreate (1,722,362 / 981,611). All phases reported zero probe overflow. These are candidate repeat ratios only: source review found one record per successful IRP_MJ_CREATE and fresh KeQuerySystemTime stamping, so same-path/kind/PID rows can be distinct opens. They do not pass the event-identity gate.",
       "actual": "Measurement only; no coalescer was active. Final queue stats include 575,935 same-timestamp minifilter records and 118,566 pipeline drops. The same-timestamp count is a candidate signal, not proof of duplicate delivery. The archived revert result removed AEGIS_FIM_PROOF_ROOT but retained the same installed probe-binary SHA, so it is not binary rollback evidence.",
       "impact": "Documents measured repeat volume but does not establish safely coalescible volume, prove queue drops decrease, or close issue #29.",
-      "next_step": "Resolve and test minifilter event identity; re-measure repeats with a safe key before implementing suppression. Then rerun comparable churn and require lower FIM pipeline drops, unchanged/better ETW, zero ring loss, and truthful readiness.",
-      "status": "UNRECORDED"
+      "next_step": "resolve what its own result names: MEASURED_IDENTITY_UNVERIFIED",
+      "status": "OPEN",
+      "status_basis": "entry.result=MEASURED_IDENTITY_UNVERIFIED at head dfececb (2026-11-08): the pass is partial or carries an open blocker"
     },
     {
       "id": "DEFECT-READY-001",
@@ -13918,7 +14185,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 119,
+    "E2_count": 120,
     "E3_count": 14,
     "E4_count": 3,
     "E5_count": 89,
@@ -13927,5 +14194,5 @@
     "E5_with_artifact_count": 39,
     "known_gaps_count": 277
   },
-  "known_gaps_status_note": "status is OPEN, CLOSED or UNRECORDED. UNRECORDED means the entry was written before the field existed and has not been re-verified; it is not a claim that the gap is closed. PASS and CLOSED_BY_EVT-008 were normalised to UNRECORDED and CLOSED respectively, and E5_VERIFIED_TOTAL_LOSS_OPEN to OPEN, on 2026-11-14."
+  "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
 }

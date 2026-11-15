@@ -18,7 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = ROOT / "EVIDENCE_INDEX.json"
 
-ALLOWED = {"OPEN", "CLOSED", "UNRECORDED"}
+ALLOWED = {"OPEN", "CLOSED", "CLOSED_AT_RECORDED_HEAD", "UNRECORDED"}
 
 
 def _index() -> dict:
@@ -58,3 +58,20 @@ def test_the_index_explains_what_unrecorded_means() -> None:
     note = _index().get("known_gaps_status_note") or ""
     assert "UNRECORDED" in note
     assert "not" in note.lower(), "the note must say an unrecorded gap is not a closed one"
+
+
+def test_a_historical_closure_carries_its_basis() -> None:
+    """`CLOSED_AT_RECORDED_HEAD` is a claim about a past head, so it must say which."""
+    offenders = [
+        gap.get("id")
+        for gap in (_index().get("known_gaps") or [])
+        if gap.get("status") == "CLOSED_AT_RECORDED_HEAD"
+        and not str(gap.get("status_basis") or "").strip()
+    ]
+    assert not offenders, f"historical closures without a basis: {offenders}"
+
+
+def test_the_note_distinguishes_a_historical_closure_from_a_current_one() -> None:
+    note = _index().get("known_gaps_status_note") or ""
+    assert "CLOSED_AT_RECORDED_HEAD" in note
+    assert "re-verif" in note, "the note must say a historical closure is not re-verified"
