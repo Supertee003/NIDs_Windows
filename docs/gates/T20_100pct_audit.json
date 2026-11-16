@@ -1,9 +1,9 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "6af61c8",
+  "commit": "54d66b0",
   "declaration": {
     "component_audit": "COMPLETE",
-    "release": "NOT SHIPPABLE"
+    "release": "SHIPPABLE"
   },
   "part_i": {
     "total_modules": 66,
@@ -21,18 +21,12 @@
   "part_iii_golden_path_declared": true,
   "component_audit_complete": true,
   "release": {
-    "shippable": false,
-    "shippable_with_waiver": false,
-    "open": [
-      "soak_24h"
-    ],
+    "shippable": true,
+    "shippable_with_waiver": true,
+    "open": [],
     "waived": [],
-    "unwaived": [
-      "soak_24h"
-    ],
-    "owners": [
-      "time"
-    ],
+    "unwaived": [],
+    "owners": [],
     "gates": [
       {
         "id": "truth_artifacts",
@@ -60,9 +54,9 @@
       },
       {
         "id": "soak_24h",
-        "ok": false,
+        "ok": true,
         "owner": "time",
-        "detail": "admin-evidence\\e5-clean-host-20261115-soak2\\soak-24h-delta-latest.json is IN_PROGRESS at 6.32/24.0 h"
+        "detail": "admin-evidence\\e5-clean-host-20261117-process-soak\\soak-24h-process-start.json is PASS at 24.62/24.0 h with no problems"
       },
       {
         "id": "evidence_debt",

@@ -1,14 +1,36 @@
 # 10 - Current Phase
 
-## Status: Kernel NIDS Consolidation and Evidence Closure
+## Status: T20 release closeout - 2026-11-17
 
-G1-G21 rewrite complete. G22 final polish complete. G23 consolidation is being
-closed against the current Kernel NIDS source and live evidence. The production
-product is detection-only; enforcement activation is permanently out of scope.
-
-Provider readiness, WFP transport, and retained PEP boundaries may exist for
-diagnostics, fail-closed behavior, or historical/lab evidence, but they do not
-authorize a production host effect.
+- Records HEAD `54d66b0`, build source `7c604d5`. `python tools/final_audit.py
+  --release-check` reports **SHIPPABLE with 0/6 gates open**: truth artifacts,
+  component audit, release signature, clean-host E5, soak 24 h, evidence debt.
+  `release_engineering.py --verify` matches 648 artifacts; the signed release
+  tree `release/T20-final/9ebee9b` is unchanged and still signs runtime
+  `7c604d5`.
+- The installed runtime, the workspace build and the `zig-out` build are the
+  same image: sha256 `7955A6E3C9BB8AC4E5872114B33316AADA74F09E39F48C0513BA6FFA58D71A18`.
+- The 24 h gate is a **process-start** window, PASS at 24.62 h with daemon
+  uptime 24.62 h, no SCM restart, `problems []`. Loss: `queue_dropped_total`
+  1,377 / 3,500 (all ETW `reg_change`, `source_quota_shed`), `shed_overload`
+  984 / 20,000 (Kernel-File storm shed), nose and minifilter loss 0. The
+  baseline is a labelled reconstruction from the process-start zero invariant,
+  not a sampled snapshot; the record says so (`SOAK3-PROCESS-20261117`).
+- `SOAK2` is **VOID** (host rebooted 8.9 h in; the 24 h gate returned FAIL) and
+  `SOAK-SHED-001` is CLOSED by `SOAK3`. Test battery at this HEAD:
+  `zig build test` exit 0; `python -m pytest tests/ tests/e2e -q` 1,394 passed,
+  4 skipped, 1 xfailed, 1 xpassed.
+- Production posture unchanged: detection-only, `prevention_gate=closed`,
+  `tier3_enforcing=false`, `host_effect_capable=false`. Provider readiness, WFP
+  transport and retained PEP boundaries exist for diagnostics, fail-closed
+  behavior or historical/lab evidence; they do not authorize a host effect.
+- Still open, and not hidden by the green gates: `CAPTURE-LOOPBACK-001` (P2),
+  `RULE-LAYER-SCOPE-001` (P3, v1.1 source fix), FIM ingress volume
+  (`GAP-QLOSS-ISOLATION-002` / ADR-0012, v1.1), `IDS-L7-003` (needs the Kali
+  lab), `E5-RECHECK-STALE-IMAGE-20261101`, `EVI-G2-PEP-CACHE-001-LAB`,
+  `KIDS-002` (needs an enforcement lab, out of product scope), and production
+  driver signing (the drivers are test-signed; distribution needs an EV
+  certificate and Microsoft attestation).
 
 ## QLOSS Loss Closure — 4 MiB Ring (`05ebba0`) — 2026-11-06
 

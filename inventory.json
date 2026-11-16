@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-15T17:19:08.756208+00:00",
+  "generated_at": "2026-11-16T19:25:58.297594+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 2053,
+  "total_files": 2055,
   "by_class": {
-    "canonical-docs": 441,
+    "canonical-docs": 443,
     "canonical-build": 227,
     "unclassified": 19,
     "canonical-source": 988,
@@ -510,7 +510,7 @@
       "path": "analysis/current-head/DETECT-L4-001-20261116.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10675
+      "size": 11019
     },
     {
       "path": "analysis/current-head/detection-only-baseline.json",
@@ -648,7 +648,7 @@
       "path": "analysis/current-head/GAP-TRIAGE-20261116.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 11270
+      "size": 11348
     },
     {
       "path": "analysis/current-head/GATE-HONESTY-001-20261110.md",
@@ -966,7 +966,19 @@
       "path": "analysis/current-head/SOAK2-20261115.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2420
+      "size": 2686
+    },
+    {
+      "path": "analysis/current-head/SOAK2-VOID-20261117.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 7797
+    },
+    {
+      "path": "analysis/current-head/SOAK3-PROCESS-20261117.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 10006
     },
     {
       "path": "analysis/current-head/SRC-CLOSURE-001-20261114.md",
@@ -2460,7 +2472,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 58463
+      "size": 60091
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -2748,13 +2760,13 @@
       "path": "docs/gates/T20_100pct_audit.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 57358
+      "size": 57302
     },
     {
       "path": "docs/gates/T20_100pct_audit.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 1650
+      "size": 1640
     },
     {
       "path": "docs/gates/T20_final_regression.json",
@@ -3210,7 +3222,7 @@
       "path": "docs/runbooks/RB-022-wifi-bridged-lab.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7144
+      "size": 10622
     },
     {
       "path": "docs/runbooks/README.md",
@@ -3708,7 +3720,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1355926
+      "size": 1375033
     },
     {
       "path": "FLOW_MAP.json",
@@ -3816,7 +3828,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 317738
+      "size": 318661
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4092,7 +4104,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 260218
+      "size": 260933
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -10764,7 +10776,7 @@
       "path": "tests/integration/test_e6_attack_burst.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 4032
+      "size": 5910
     },
     {
       "path": "tests/integration/test_e6_l4_scan_detection.py",
@@ -11208,7 +11220,7 @@
       "path": "tests/security/test_evidence_index_integrity.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 4991
+      "size": 6309
     },
     {
       "path": "tests/security/test_fim_longpath.py",

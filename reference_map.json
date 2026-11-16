@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-15T17:19:08.760420+00:00",
+  "generated_at": "2026-11-16T19:25:58.301107+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 2053,
+  "total_files": 2055,
   "by_role": {
-    "documentation": 427,
+    "documentation": 429,
     "build-config": 216,
     "other": 19,
     "lockfile": 6,
@@ -957,6 +957,14 @@
       "role": "documentation"
     },
     "analysis/current-head/SOAK2-20261115.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/SOAK2-VOID-20261117.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/SOAK3-PROCESS-20261117.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },

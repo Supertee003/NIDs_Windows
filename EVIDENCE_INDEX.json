@@ -1,7 +1,7 @@
 {
   "head_sha": "7c604d5b0022157020e20e78045cc2c97a337ddd",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-16",
+  "last_updated_at": "2026-11-17",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -7937,7 +7937,9 @@
         "IN_PROGRESS at 0.0 h: this entry records the start, not a clean window. The verdict means nothing until 2026-11-16T16:50.",
         "One host, one build.",
         "The 20,000 shed budget is policy, not measurement."
-      ]
+      ],
+      "superseded_by": "SOAK3-PROCESS-E5-20261117",
+      "window_verdict": "VOID: the host rebooted 8.9 h in and the 24 h gate returned FAIL; see analysis/current-head/SOAK2-VOID-20261117.md"
     },
     {
       "id": "SIGN-FRESH-001-E2-20261115",
@@ -8013,6 +8015,32 @@
         "The 40-port and 10-port bursts ran inside SOAK2-20261115, whose declaration said no live gate activity. Measured cost was 0 drops / 0 shed / 0 quota_shed, and the soak gate's declared criteria still hold, but the letter of the declaration is broken and the deviation is recorded in section 6 of the analysis file. The owner decided on 2026-11-16 to keep the window and disclose the deviation in the closeout.",
         "flows_active fell 4,092 -> 94 across the positive window; it is not a loss counter, queue depth stayed 0, and the cause was not measured.",
         "The control's SYNs are not independently proven to have reached the wire; the positive run is what proves the method reaches the sensor, so the control is a threshold comparison, not a second capture proof."
+      ]
+    },
+    {
+      "id": "SOAK3-PROCESS-E5-20261117",
+      "head_sha": "54d66b0",
+      "timestamp": "2026-11-17",
+      "level": "E5",
+      "flow_id": "OPS-001",
+      "component": "admin-evidence/e5-clean-host-20261117-process-soak, tools/host_soak_check.py",
+      "title": "A 24.62 h process-start window passes with no restart and no network loss",
+      "description": "The replacement for the VOID SOAK2 window. The window is the life of PID 23072, created 2026-11-16T01:45:40.79, running the installed aegis_nids.exe sha256 7955A6E3... (build source 7c604d5): 24.62 h at the 2026-11-17T02:22:44 check, daemon uptime 24.62 h, all four services RUNNING, daemon_state and daemon_health_state RUNNING, scm_restarts [], problems []. Counters are absolute=delta because the baseline is a reconstruction from the process-start zero invariant (sampled:false; derivation in the baseline file and in the record): queue_dropped_total 1,377 of budget 3,500, all capture_etw/reg_change and equal to source_quota_shed; shed_overload 984 of budget 20,000, all Kernel-File storm shed; nose rejected/dropped/pipe errors 0; minifilter ring/pipeline 0; reserved_tail_shed 0; depth_peak 7,169 against a 16,384-slot queue. 36,628,734 rows were pushed in the window, 5,731,513 of them captured packets. The baseline is not a sampled snapshot and the record says so; the gate read the live absolute counters and agreed with the reconstruction.",
+      "evidence_artifact": "analysis/current-head/SOAK3-PROCESS-20261117.md",
+      "artifacts": [
+        "admin-evidence/e5-clean-host-20261117-process-soak/soak-24h-process-start.json",
+        "admin-evidence/e5-clean-host-20261117-process-soak/soak-24h-process-start.baseline.json"
+      ],
+      "commands": [
+        "python tools/host_soak_check.py --start auto --baseline admin-evidence/e5-clean-host-20261117-process-soak/soak-24h-process-start.baseline.json --hours 24 --loss-budget 3500 --shed-budget 20000 --json admin-evidence/e5-clean-host-20261117-process-soak/soak-24h-process-start.json"
+      ],
+      "limitations": [
+        "The baseline is a labelled reconstruction from the process-start zero invariant (sampled:false), not a sampled snapshot. It is only valid while no code path resets a loss counter; the cited lines initialize every counter to 0 and only fetchAdd.",
+        "The window is a process-start window after the 2026-11-16T01:44:53 reboot, not an install-start window.",
+        "Ordinary desktop use is included. No AEGIS gate is recorded inside the window, but the host was not artificially idle and this entry does not claim it was.",
+        "One host, one build. A re-signed or rebuilt runtime needs its own window; this artifact cannot be transplanted.",
+        "The 3,500 loss and 20,000 shed budgets are owner policy, not measurement. 1,377 ETW reg_change rows and 984 kernel-file rows were really discarded; the budgets accept them as bounded policy loss.",
+        "The drivers are test-signed; production signing is release-engineering scope and is not changed by this window."
       ]
     }
   ],
@@ -14488,7 +14516,7 @@
     },
     {
       "id": "SOAK-SHED-001",
-      "status": "OPEN",
+      "status": "CLOSED",
       "severity": "P1",
       "level": "E4",
       "head_sha": "b251bb6",
@@ -14496,7 +14524,10 @@
       "found_by": "tools/host_soak_check.py",
       "title": "The 24 h window fails on shed_overload 15163 vs budget 4000 because live gates ran inside it",
       "detail": "dropped stayed 0 and no loss counter moved, but admission shed 15163 events (0.2% of 7.4M pushed) during operator-generated adversarial load. The window is invalid as a clean-host result; a fresh window must start after the prepared patches land and the daemon is reinstalled, with the shed budget sized for gates or the gates run outside the window.",
-      "next_step": "restart the soak from a new baseline after the patches, and either run live gates before the window or size the shed budget for them"
+      "next_step": "restart the soak from a new baseline after the patches, and either run live gates before the window or size the shed budget for them",
+      "reverified_by": "SOAK3-PROCESS-E5-20261117",
+      "closed_note": "The replacement window started at the process start of the current build after the reboot and ran 24.62 h with no gate inside it: shed_overload 984 against the 20,000 owner budget and queue_dropped_total 1,377 against 3,500, with no service restart and no network or minifilter loss. The budget raise is recorded as policy before the measurement, not as a result of it.",
+      "remaining": "The 984 sheds and 1,377 quota sheds are real host-telemetry drops, not zero; the budgets accept them as bounded policy loss. FIM ingress volume remains the ADR-0012 v1.1 decision."
     },
     {
       "id": "READY-PROMOTION-001",
@@ -14522,7 +14553,7 @@
       "found_by": "admin-evidence/lab-l4-testnet-negative-20261116 control plus an aegis_core.ndjson census",
       "title": "The Aho-Corasick matcher applies KERNEL_PROCESS payload rules to network bytes, so TLS traffic raises R2003",
       "detail": "R2003 (PowerShell Cradle Download, layer KERNEL_PROCESS, pattern IEX|DownloadString|DownloadFile|PS_CRADLE|Net.WebClient) matched 366 wire events: 291 with src_port 443, 324 at the 1024-byte Nose attachment cap, remote IPv6/IPv4 sources, dst_port absent. src/pipeline/event_processor.zig:280 runs the AC matcher over qe.payload for every source except capture_host_net and never consults the rule's layer, so a three-byte token inside an encrypted TLS record becomes a PowerShell-cradle detection. Every row is enforcement_status observed with host_effect_confirmed false (prevention gate closed), so this is alert quality, not host authority. Found while establishing the negative control for DETECT-L4-001: the victim host's own outbound TLS session produced an attributed row that had nothing to do with the stimulus.",
-      "blocked_by": "the fix is a src/ edit (event_processor.zig AC rule selection by layer/source) and any source change reopens SOAK2-20261115",
+      "blocked_by": "the fix is a src/ edit (event_processor.zig AC rule selection by layer/source); the release runtime 7c604d5 is signed, installed and soaked, so a source change needs a new build, signature, install and window (v1.1), not a patch to this release",
       "next_step": "v1.1: scope the AC rule set to rules whose layer matches the event source (network payloads get L7 rules only), or skip payloads that are not decoded application data, and add a pin that a TLS record cannot produce a KERNEL_PROCESS rule id",
       "observed_in": "C:\\Windows\\System32\\logs\\aegis_core.ndjson, 118,634 parsed rows spanning 2026-11-14T10:12:46Z..2026-11-15T17:11:05Z"
     }
@@ -14533,10 +14564,10 @@
     "E2_count": 122,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 93,
+    "E5_count": 94,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 43,
+    "E5_with_artifact_count": 44,
     "known_gaps_count": 280
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
