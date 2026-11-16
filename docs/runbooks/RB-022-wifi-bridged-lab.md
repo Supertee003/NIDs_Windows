@@ -80,6 +80,13 @@ If ping fails, stop: many access points enable client isolation, which blocks
 VM-to-host frames at the AP. That is a network property, not a NIDS fault.
 Move the lab to a switch/AP without isolation, or wait for the RB-021 window.
 
+Check the address Kali received before trusting anything else. `192.168.5.x` is
+VMware NAT, `192.168.126.x`/`192.168.127.x` are the host-only VMnets, and neither
+is the sensor's link. If Bridged (Automatic) picked the wrong NIC - common when a
+wired adapter exists but is disconnected - open Virtual Network Editor -> VMnet0
+-> Bridged to a specific adapter and select the physical Wi-Fi adapter named in
+step 1, then re-check with `ip -4 addr`.
+
 ### 3. Open the measurement window, then fire
 
 Start this first (it samples, waits, then measures):
