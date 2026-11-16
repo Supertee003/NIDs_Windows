@@ -14593,6 +14593,20 @@
       "next_step": "v1.1 or host configuration: inspect the adapter/Npcap settings (raw 802.11 mode, Killer packet prioritisation) or add a bounded, counted dedup keyed by (ip.id, tcp.seq, payload hash) that cannot drop a real retransmission. Do not patch this into the signed T20 runtime.",
       "observed_in": "admin-evidence/wifi-dup-20261117/wifi-dup-45007.tshark.txt and vmnet1-control-arp.tshark.txt (local-only); anomaly windows in admin-evidence/lab-wifi-bridged-l7-20261117 and lab-wifi-bridged-l7-kinds-20261117",
       "record": "analysis/current-head/CAPTURE-DUP-WIFI-001-20261117.md"
+    },
+    {
+      "id": "REL-EOL-DIGEST-001",
+      "status": "OPEN",
+      "severity": "P3",
+      "level": "E1",
+      "found_at": "2026-11-17",
+      "found_by": "tagging v2.0.0 and comparing the signed SHA256SUMS digest with the git blob",
+      "title": "The signed SHA256SUMS digest is checkout-EOL dependent, so a fresh clone cannot re-derive it",
+      "detail": "release/T20-final/9ebee9b/signatures.json signs digest 9F87BF36D28149F5FEF22B997DC6928C8846A69D5468D1BD3D5E91367A6931BC, which is the sha256 of the CRLF file on disk. The git blob for the same path stores LF and hashes to 668C26B10FA24BBC0EFC4910B559A3225A8A21B1B95CF6C0F38F935C1063DFA2; replacing LF with CRLF in the blob reproduces the signed digest exactly, so the content is identical and only line endings differ. The release tree has not changed since commit 1a0e77f added it (git diff 1a0e77f..HEAD over release/T20-final/9ebee9b is empty), and the working tree copy verifies against the signature. Nothing that ships is affected; what is limited is third-party re-derivation of the signed digest from a clean checkout where core.autocrlf is false.",
+      "impact": "A verifier on a LF checkout computes 668C26B1... and may report a signature mismatch even though the shipped file is the signed one. release_engineering.py --verify passes on this host because the working tree is CRLF.",
+      "next_step": "v1.1: make the release verifier hash a normalised form (or publish the digest over the normalised bytes), state CRLF as a hard checkout requirement in KNOWN_LIMITATIONS, and add a test that a fresh checkout reproduces the signed digest. Do not change the signed artifact itself.",
+      "record": "analysis/current-head/PROJECT-CLOSEOUT-20261117.md",
+      "backlog": "docs/BACKLOG-v1.1.md"
     }
   ],
   "evidence_level_summary": {
@@ -14605,7 +14619,7 @@
     "E6_count": 1,
     "E7_count": 2,
     "E5_with_artifact_count": 45,
-    "known_gaps_count": 281
+    "known_gaps_count": 282
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
 }

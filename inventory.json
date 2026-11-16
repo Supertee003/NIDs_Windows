@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-16T19:45:54.865770+00:00",
+  "generated_at": "2026-11-16T19:57:47.335649+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 2057,
+  "total_files": 2059,
   "by_class": {
-    "canonical-docs": 445,
+    "canonical-docs": 447,
     "canonical-build": 227,
     "unclassified": 19,
     "canonical-source": 988,
@@ -829,6 +829,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 6161
+    },
+    {
+      "path": "analysis/current-head/PROJECT-CLOSEOUT-20261117.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 10247
     },
     {
       "path": "analysis/current-head/QLoss-E5-STEADY-WINDOW-20261109.md",
@@ -2484,7 +2490,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 62937
+      "size": 63329
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -2707,6 +2713,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 6946
+    },
+    {
+      "path": "docs/BACKLOG-v1.1.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5585
     },
     {
       "path": "docs/BASELINE_20260906.md",
@@ -3732,7 +3744,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1381082
+      "size": 1382876
     },
     {
       "path": "FLOW_MAP.json",
@@ -3840,7 +3852,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 318982
+      "size": 319308
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4116,7 +4128,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 261184
+      "size": 261442
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",

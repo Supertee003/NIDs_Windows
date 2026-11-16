@@ -1,8 +1,13 @@
 # 10 - Current Phase
 
-## Status: T20 release closeout - 2026-11-17
+## Status: CLOSED — v2.0.0 shipped as a detection-only E5 release (2026-11-17)
 
-- Audit commit `54d66b0`, build source `7c604d5` (records-only commits after it
+- **Project status record:** `analysis/current-head/PROJECT-CLOSEOUT-20261117.md`.
+  **Remaining work:** `docs/BACKLOG-v1.1.md` (9 open gaps + distribution steps).
+  Tag `v2.0.0` (annotated) → `7b484a1`, pushed with branch
+  `codex/o2-etw-context`. `main` was never pushed.
+- Audit commit `d7f9223` at the time of the L7 windows; the closeout audit is
+  regenerated at `7b484a1`, build source `7c604d5` (records-only commits after it
   do not change the build source). `python tools/final_audit.py
   --release-check` reports **SHIPPABLE with 0/6 gates open**: truth artifacts,
   component audit, release signature, clean-host E5, soak 24 h, evidence debt.
