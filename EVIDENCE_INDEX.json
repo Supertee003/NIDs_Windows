@@ -8011,7 +8011,7 @@
       "limitations": [
         "E5 for one rule and one stimulus class: R9002 and R9007 were not exercised.",
         "The source was the victim host itself (TEST-NET destination), not a remote Kali attacker; R9006 keys its window on the source address, and the remote-source case is not exercised here.",
-        "SYN-only probes carry no application payload, so this is no L7 proof; IDS-L7-003 stays open.",
+        "SYN-only probes carry no application payload, so this is no L7 proof. IDS-L7-003 was closed separately at E5 on 2026-11-17 (IDS-L7-003-E5-20261117).",
         "The 40-port and 10-port bursts ran inside SOAK2-20261115, whose declaration said no live gate activity. Measured cost was 0 drops / 0 shed / 0 quota_shed, and the soak gate's declared criteria still hold, but the letter of the declaration is broken and the deviation is recorded in section 6 of the analysis file. The owner decided on 2026-11-16 to keep the window and disclose the deviation in the closeout.",
         "flows_active fell 4,092 -> 94 across the positive window; it is not a loss counter, queue depth stayed 0, and the cause was not measured.",
         "The control's SYNs are not independently proven to have reached the wire; the positive run is what proves the method reaches the sensor, so the control is a threshold comparison, not a second capture proof."
@@ -8042,6 +8042,26 @@
         "The 3,500 loss and 20,000 shed budgets are owner policy, not measurement. 1,377 ETW reg_change rows and 984 kernel-file rows were really discarded; the budgets accept them as bounded policy loss.",
         "The drivers are test-signed; production signing is release-engineering scope and is not changed by this window."
       ]
+    },
+    {
+      "id": "IDS-L7-003-E5-20261117",
+      "head_sha": "d7f9223",
+      "timestamp": "2026-11-17",
+      "title": "Live HTTP protocol anomalies 10004/10001/10003 from a bridged Kali on the shipped Wi-Fi sensor path",
+      "level": "E5",
+      "component": "src/detection/proto_anomaly.zig, src/pipeline/event_processor.zig:341, src/capture/nose_pipe_reader.zig:427, nose/capture.go:captureAttachment",
+      "flow_id": "DATA-001",
+      "description": "Closes the IDS-L7-003 blocker with two live RB-022 windows on the path the release ships. The canonical Go Nose attaches up to 1,024 raw frame bytes as a v3 payload and event_queue.legacySourceFor maps npcap_sensor to capture_npcap, so the anomaly lane runs without a lab pin or a restart. A Kali 2025.2 VM bridged to the LAN (192.168.1.207) sent malformed HTTP to this host (192.168.1.39) python http.server on 8080. Window wifi-bridged-l7-20261117 (150 s) attributed 2 rows to rule 10004 with dropped/shed/quota_shed deltas 0. Window wifi-bridged-l7-kinds-20261117 (120 s) attributed 6 rows (10004 x2, 10001 x2, 10003 x2) with the same zero loss deltas; a well-formed control produced none. Every row is enforcement_status observed, host_effect_confirmed false, policy pass, with a v1 IDS receipt hash and sequence. Measured triggers: no Host header (10004), a 20-byte alphabetic method (10001), and a version that does not start with HTTP/ (10003); the old runbook shapes BOGUS and HTTP/9.9 do not trip their checks. Each request produced two rows because this Killer Wi-Fi/Npcap path delivers every frame twice (single-handle dumpcap: identical ip.id and TCP seq ~7 us apart, one Ethernet interface; a VMnet1 ARP control shows no duplication), recorded as CAPTURE-DUP-WIFI-001. The product emits one event per captured frame and nose duplicate/non-monotonic id counters stay 0. Limits: one host, one VM, one adapter, three rules, IPv4, single-segment requests, no DNS/TLS/SMB/oversize-URI stimulus, no enforcement claim.",
+      "tests": [
+        "python tools/lab_attack_window.py --label wifi-bridged-l7-20261117 --seconds 150 --expect-src 192.168.1.207: PASS (exit 0), per_rule 10004 x2, detections +36, dropped/shed/quota_shed 0",
+        "python tools/lab_attack_window.py --label wifi-bridged-l7-kinds-20261117 --seconds 120 --expect-src 192.168.1.207: PASS (exit 0), per_rule 10004 x2 / 10001 x2 / 10003 x2, detections +34, dropped/shed/quota_shed 0",
+        "single-handle dumpcap on the Wi-Fi device (-p) plus tshark: every frame appears twice with the same ip.id, TCP seq and payload ~7 us apart; VMnet1 control (3 pings) shows 3 ARP frames, no duplication",
+        "aegisctl health probe: nose_frames_read delta 718 equals nose_frames_submitted delta 718, nose_duplicate_event_ids 0, nose_non_monotonic_event_ids 0"
+      ],
+      "result": "PASS",
+      "finding": "A real attacker VM on the production sensor's link raises 10004, 10001 and 10003 as observe-only evidence; the lane is live end to end, and its row counts are doubled only by an adapter-level duplicate-frame behaviour that is measured and tracked separately.",
+      "evidence_artifact": "admin-evidence/lab-wifi-bridged-l7-kinds-20261117/attack-window-20261116T193738Z.json",
+      "record": "analysis/current-head/IDS-L7-003-20261117.md"
     }
   ],
   "known_gaps": [
@@ -13995,10 +14015,13 @@
       "result": "PASS_WITH_OPEN_BLOCKER",
       "finding": "The slice is wired and compile-tested at E2. Direct Npcap and L7 anomaly modules remain LAB/observe-only until a disjoint-interface Windows host run supplies E5 evidence. Rust PEP remains the sole privileged authority.",
       "evidence_artifact": "admin-evidence/ids-l7-003-20261031/closeout.md",
-      "status": "OPEN",
+      "status": "CLOSED",
       "current_observation": "2026-11-16: a live signature-lane payload match was observed on the canonical Wi-Fi path (R2003 firing on TLS bytes, 366 rows, all observed with host_effect_confirmed false). That proves Nose v3 payloads reach the AC matcher without a restart, but it is a cross-layer false positive (RULE-LAYER-SCOPE-001), not a protocol-anomaly hit; the HTTP/DNS/TLS/SMB anomaly rules themselves remain unobserved live.",
       "next_step": "after SOAK2-20261115 closes, run RB-022 with one malformed HTTP request to a listener on the sensor's own IPv4 (192.168.1.39), which the Wi-Fi path carries without a restart; then record the anomaly rule id from the forensic path. Loopback is not captured by this install (CAPTURE-LOOPBACK-001). The rules-document -> matcher join is unit-pinned (L7-JOIN-001-E1-20261114).",
-      "status_basis": "entry.result=PASS_WITH_OPEN_BLOCKER at head 3d4a0fd (2026-10-31): the pass is partial or carries an open blocker"
+      "status_basis": "entry.result=PASS_WITH_OPEN_BLOCKER at head 3d4a0fd (2026-10-31): the pass is partial or carries an open blocker",
+      "reverified_by": "IDS-L7-003-E5-20261117",
+      "closed_note": "Two RB-022 windows on the shipped Wi-Fi path attributed rules 10004, 10001 and 10003 to a bridged Kali (192.168.1.207) with zero loss deltas and observe-only rows. No restart, lab pin or rebuild was needed because the Nose v3 payload satisfies the anomaly lane's capture_npcap source guard.",
+      "remaining": "The DNS, TLS and SMB checks, oversize-URI 10002, IPv6 and multi-segment requests were not exercised live. The two-rows-per-request count is the external Wi-Fi duplicate-frame behaviour (CAPTURE-DUP-WIFI-001), not a detector double count."
     },
     {
       "id": "TEST-COMPLIANCE-STREAM-20261031",
@@ -14556,6 +14579,20 @@
       "blocked_by": "the fix is a src/ edit (event_processor.zig AC rule selection by layer/source); the release runtime 7c604d5 is signed, installed and soaked, so a source change needs a new build, signature, install and window (v1.1), not a patch to this release",
       "next_step": "v1.1: scope the AC rule set to rules whose layer matches the event source (network payloads get L7 rules only), or skip payloads that are not decoded application data, and add a pin that a TLS record cannot produce a KERNEL_PROCESS rule id",
       "observed_in": "C:\\Windows\\System32\\logs\\aegis_core.ndjson, 118,634 parsed rows spanning 2026-11-14T10:12:46Z..2026-11-15T17:11:05Z"
+    },
+    {
+      "id": "CAPTURE-DUP-WIFI-001",
+      "status": "OPEN",
+      "severity": "P3",
+      "level": "E5",
+      "found_at": "2026-11-17",
+      "found_by": "single-handle dumpcap capture taken while closing IDS-L7-003",
+      "title": "The Wi-Fi capture path delivers every frame twice, doubling detections and anomaly rows",
+      "detail": "On the Killer Wi-Fi 6 AX1650i (NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}) Npcap delivers every frame twice to a capture handle: SYN, payload and FIN each appear in a pair with identical ip.id, TCP sequence and bytes, about 7 us apart, in a file with one Ethernet interface block. AEGIS therefore emits two events per wire frame, so protocol_anomaly and signature_match counts and nose_frames_read/submitted are about 2x the wire count. Attribution and verdicts stay correct; this is evidence/throughput inflation on one adapter, not a double enqueue. Excluded as the cause: the product path (nose/capture.go:154-183 emits one event per ReadPacketData; nose_pipe_reader.zig:381-430 pushes one frame per pipe frame; duplicate and non-monotonic id counters are 0), VMware (host-sourced traffic duplicates too), and generic Npcap (a VMnet1 ARP control captured 3 pings as 3 frames).",
+      "impact": "Halve counts on this adapter when reading detections, anomaly rows or frame rates. No capture_npcap drops were observed in the measured windows; the doubled work has not caused loss.",
+      "next_step": "v1.1 or host configuration: inspect the adapter/Npcap settings (raw 802.11 mode, Killer packet prioritisation) or add a bounded, counted dedup keyed by (ip.id, tcp.seq, payload hash) that cannot drop a real retransmission. Do not patch this into the signed T20 runtime.",
+      "observed_in": "admin-evidence/wifi-dup-20261117/wifi-dup-45007.tshark.txt and vmnet1-control-arp.tshark.txt (local-only); anomaly windows in admin-evidence/lab-wifi-bridged-l7-20261117 and lab-wifi-bridged-l7-kinds-20261117",
+      "record": "analysis/current-head/CAPTURE-DUP-WIFI-001-20261117.md"
     }
   ],
   "evidence_level_summary": {
@@ -14564,11 +14601,11 @@
     "E2_count": 122,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 94,
+    "E5_count": 95,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 44,
-    "known_gaps_count": 280
+    "E5_with_artifact_count": 45,
+    "known_gaps_count": 281
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
 }

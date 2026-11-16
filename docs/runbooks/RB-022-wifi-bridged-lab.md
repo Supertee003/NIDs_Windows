@@ -163,12 +163,45 @@ the expected label, not an error** — the control signal is the `10004` row wit
 the attacker's `src_ip`, not a catalog name. If `enforcement_status` ever reads
 `enforced`, stop: the lane is observe-only by construction.
 
-Known kinds an operator can aim at deliberately: `10001` invalid method, `10003`
-invalid version, `10004` missing Host, `10005` oversize DNS label, `10008` TLS
-zero ciphers, `10011` malformed SMB. The request must arrive within the first
-1024 payload bytes (the Nose v3 bound); ordinary requests are far below it. One
-well-formed request produces no row, so send the malformed shape **and** keep a
-well-formed control in the same window.
+Known kinds an operator can aim at deliberately, with the **measured** trigger
+condition from `src/detection/proto_anomaly.zig` (verified live 2026-11-17):
+
+| Rule | Kind | What actually trips it |
+|---|---|---|
+| `10001` | invalid method | method empty, longer than 16 bytes, or containing a non-alphabetic byte — `BOGUS` does **not** trip it (5 alphabetic bytes are accepted as an unknown token) |
+| `10002` | oversize URI | request-target longer than 8,192 bytes |
+| `10003` | invalid version | version does **not** start with `HTTP/` — `HTTP/9.9` does **not** trip it |
+| `10004` | missing Host | request has no `Host` header |
+| `10005` | oversize DNS label | query name longer than 253 bytes |
+| `10006` | illegal DNS char | name contains a byte outside `[A-Za-z0-9._-]` |
+| `10008` | TLS zero ciphers | cipher-suite vector empty or odd-length |
+| `10010` | oversize TLS SNI | SNI longer than 253 bytes |
+| `10011` | malformed SMB | SMB1 negotiate with zero dialects |
+| `10012` | oversize SMB dialect | more than 16 dialects |
+
+Working examples for the three HTTP kinds (each one request per connection):
+
+```bash
+# 10004: no Host header
+printf 'GET / HTTP/1.1\r\n\r\n' | nc -w 3 192.168.1.39 8080
+# 10001: 20-byte alphabetic method
+printf 'AAAAAAAAAAAAAAAAAAAA / HTTP/1.1\r\nHost: 192.168.1.39\r\n\r\n' | nc -w 3 192.168.1.39 8080
+# 10003: version that does not start with HTTP/
+printf 'GET / WRONG/1.0\r\nHost: 192.168.1.39\r\n\r\n' | nc -w 3 192.168.1.39 8080
+```
+
+The request must arrive within the first 1024 payload bytes (the Nose v3
+bound); ordinary requests are far below it. One well-formed request produces
+no row, so send the malformed shape **and** keep a well-formed control in the
+same window.
+
+**Row counts are doubled on the Wi-Fi capture path.** On this host the Killer
+Wi-Fi adapter/Npcap delivers every frame twice, so one malformed request
+produces **two** `protocol_anomaly` rows with distinct `event_id`/`audit_id`
+and the same `src_port`. This is measured capture behaviour, not a detector
+double-count: see `analysis/current-head/CAPTURE-DUP-WIFI-001-20261117.md`.
+Halve the row counts when reporting a rate, and do not "fix" the product for
+it in this release.
 
 ### 4. Read the verdict
 
@@ -230,5 +263,6 @@ append-only by design.
   anomalies under ids `10000 + kind`, which are absent from `Rules.json` and
   therefore print as `UNKNOWN` in the window tool. Do not add them to the
   catalog to make the label nicer: they are observe-only evidence, not policy.
-  Each malformed request produces one row, so a flood of them grows the evidence
-  log at line rate — keep anomaly stimuli short.
+  Each malformed request produces one row per delivered frame — two on the
+  duplicate Wi-Fi capture path (`CAPTURE-DUP-WIFI-001-20261117`) — so a flood
+  of them grows the evidence log at line rate; keep anomaly stimuli short.

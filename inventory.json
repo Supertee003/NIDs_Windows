@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-16T19:25:58.297594+00:00",
+  "generated_at": "2026-11-16T19:45:54.865770+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 2055,
+  "total_files": 2057,
   "by_class": {
-    "canonical-docs": 443,
+    "canonical-docs": 445,
     "canonical-build": 227,
     "unclassified": 19,
     "canonical-source": 988,
@@ -435,6 +435,12 @@
       "size": 6230
     },
     {
+      "path": "analysis/current-head/CAPTURE-DUP-WIFI-001-20261117.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4219
+    },
+    {
       "path": "analysis/current-head/clean-checkout-20261109.txt",
       "class": "canonical-docs",
       "role": "documentation",
@@ -510,7 +516,7 @@
       "path": "analysis/current-head/DETECT-L4-001-20261116.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 11019
+      "size": 11118
     },
     {
       "path": "analysis/current-head/detection-only-baseline.json",
@@ -648,7 +654,7 @@
       "path": "analysis/current-head/GAP-TRIAGE-20261116.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 11348
+      "size": 11868
     },
     {
       "path": "analysis/current-head/GATE-HONESTY-001-20261110.md",
@@ -691,6 +697,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 9710
+    },
+    {
+      "path": "analysis/current-head/IDS-L7-003-20261117.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 9682
     },
     {
       "path": "analysis/current-head/INGRESS-KIND-ATTRIBUTION-001-20261109.md",
@@ -2472,7 +2484,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 60091
+      "size": 62937
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3222,7 +3234,7 @@
       "path": "docs/runbooks/RB-022-wifi-bridged-lab.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10622
+      "size": 12482
     },
     {
       "path": "docs/runbooks/README.md",
@@ -3720,7 +3732,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1375033
+      "size": 1381082
     },
     {
       "path": "FLOW_MAP.json",
@@ -3828,7 +3840,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 318661
+      "size": 318982
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4104,7 +4116,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 260933
+      "size": 261184
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -7620,7 +7632,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23767
+      "size": 23219
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",

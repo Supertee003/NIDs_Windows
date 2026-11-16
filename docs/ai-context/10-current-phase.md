@@ -2,7 +2,8 @@
 
 ## Status: T20 release closeout - 2026-11-17
 
-- Records HEAD `54d66b0`, build source `7c604d5`. `python tools/final_audit.py
+- Audit commit `54d66b0`, build source `7c604d5` (records-only commits after it
+  do not change the build source). `python tools/final_audit.py
   --release-check` reports **SHIPPABLE with 0/6 gates open**: truth artifacts,
   component audit, release signature, clean-host E5, soak 24 h, evidence debt.
   `release_engineering.py --verify` matches 648 artifacts; the signed release
@@ -24,13 +25,56 @@
   `tier3_enforcing=false`, `host_effect_capable=false`. Provider readiness, WFP
   transport and retained PEP boundaries exist for diagnostics, fail-closed
   behavior or historical/lab evidence; they do not authorize a host effect.
+- **`IDS-L7-003` is CLOSED at E5 (2026-11-17).** A bridged Kali VM
+  (`192.168.1.207`) sent malformed HTTP to this host's listener on
+  `192.168.1.39:8080`; the production Wi-Fi Nose path raised live
+  `protocol_anomaly` rows for rules `10004`, `10001` and `10003` — every row
+  `enforcement_status=observed`, `host_effect_confirmed=false`, `policy=pass`,
+  with dropped/shed/quota_shed deltas 0. No lab pin, rebuild or restart was
+  needed: the Nose v3 payload satisfies the `capture_npcap` guard. Record:
+  `analysis/current-head/IDS-L7-003-20261117.md`; index entry
+  `IDS-L7-003-E5-20261117`.
+- **New P3 finding `CAPTURE-DUP-WIFI-001`:** this Wi-Fi adapter/Npcap delivers
+  every frame twice (`dumpcap` single handle: identical `ip.id` and TCP seq
+  ~7 µs apart; a VMnet1 ARP control shows no duplication). Counts on this host
+  are 2× the wire count; the product enqueues one event per captured frame and
+  `nose_duplicate_event_ids=0`. Record:
+  `analysis/current-head/CAPTURE-DUP-WIFI-001-20261117.md`.
+- Copilot's v1.1 work is **preserved, not adopted**: local-only commits
+  `5e62f23` (`supertee003-repository-baseline-alignment`, 29 files) and
+  `16cbbff` (`supertee003-loopback-capture-support`, 13 files, different
+  `test_e6` variant). Both are unvalidated, unpushed, and outside the released
+  runtime `7c604d5`; their `src/` halves are byte-identical. Nothing from them
+  is installed or claimed.
 - Still open, and not hidden by the green gates: `CAPTURE-LOOPBACK-001` (P2),
-  `RULE-LAYER-SCOPE-001` (P3, v1.1 source fix), FIM ingress volume
-  (`GAP-QLOSS-ISOLATION-002` / ADR-0012, v1.1), `IDS-L7-003` (needs the Kali
-  lab), `E5-RECHECK-STALE-IMAGE-20261101`, `EVI-G2-PEP-CACHE-001-LAB`,
+  `RULE-LAYER-SCOPE-001` (P3, v1.1 source fix), `CAPTURE-DUP-WIFI-001` (P3,
+  environmental), FIM ingress volume (`GAP-QLOSS-ISOLATION-002` / ADR-0012,
+  v1.1), `E5-RECHECK-STALE-IMAGE-20261101`, `EVI-G2-PEP-CACHE-001-LAB`,
   `KIDS-002` (needs an enforcement lab, out of product scope), and production
   driver signing (the drivers are test-signed; distribution needs an EV
   certificate and Microsoft attestation).
+
+## IDS-L7-003 E5 — live protocol anomalies on the shipped Wi-Fi path — 2026-11-17
+
+- Two RB-022 windows at records HEAD `d7f9223` / build source `7c604d5`
+  (runtime `7955A6E3...`, installed = `zig-out`, no restart):
+  `wifi-bridged-l7-20261117` (150 s) attributed 2 rows of rule `10004`;
+  `wifi-bridged-l7-kinds-20261117` (120 s) attributed 6 rows — `10004` ×2,
+  `10001` ×2, `10003` ×2 — and a well-formed control produced none. Both
+  verdicts PASS (exit 0), detections +36 / +34, dropped/shed/quota_shed +0.
+- The measured triggers are narrower than the old runbook examples: `BOGUS`
+  (5 alphabetic bytes) does **not** trip `10001`, and `HTTP/9.9` does **not**
+  trip `10003` because it starts with `HTTP/`. RB-022 now shows the shapes that
+  do: a 20-byte alphabetic method and `WRONG/1.0`.
+- Each request produced two rows. A single-handle dumpcap capture proved the
+  Wi-Fi path delivers every frame twice (same `ip.id`/seq, ~7 µs apart), and a
+  VMnet1 control showed no duplication; the product path emits one event per
+  captured frame. Tracked as `CAPTURE-DUP-WIFI-001` (P3). Halve counts on this
+  adapter.
+- Limits: one host, one VM, one adapter; only HTTP `10004`/`10001`/`10003`;
+  IPv4; single-segment requests; no DNS/TLS/SMB/oversize-URI stimulus; no
+  enforcement claim. The slice's other checks remain unit-pinned only.
+
 
 ## QLOSS Loss Closure — 4 MiB Ring (`05ebba0`) — 2026-11-06
 

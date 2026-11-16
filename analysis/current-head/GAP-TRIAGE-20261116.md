@@ -7,6 +7,14 @@ in `RUNTIME_PATHS`, so `SOAK2-20261115` stays valid.
 `2026-11-16T16:50:31`. `dropped_total` 1387 (budget 3500), `shed_overload` 0,
 `depth` 0 — static since the one burst.
 
+> **UPDATE 2026-11-17:** this triage is a 2026-11-16 snapshot. Item #2
+> (`IDS-L7-003`) was closed the next day at E5 with two RB-022 windows on the
+> shipped Wi-Fi path — see `analysis/current-head/IDS-L7-003-20261117.md` and
+> `EVIDENCE_INDEX.json#IDS-L7-003-E5-20261117`. The same windows found
+> `CAPTURE-DUP-WIFI-001` (P3: every frame is delivered twice on this adapter).
+> `SOAK2` in line 5 was later declared VOID; the replacement window is
+> `SOAK3-PROCESS-20261117`. Everything else below stands as written.
+
 ---
 
 ## 1. The release gate is time, and only time
