@@ -3,7 +3,7 @@
 ## Status: CLOSED — v2.0.0 shipped as a detection-only E5 release (2026-11-17)
 
 - **Project status record:** `analysis/current-head/PROJECT-CLOSEOUT-20261117.md`.
-  **Remaining work:** `docs/BACKLOG-v1.1.md` (9 open gaps + distribution steps).
+  **Remaining work:** `docs/BACKLOG-v1.1.md` (8 open gaps + distribution steps).
   Tag `v2.0.0` (annotated) → `7b484a1`, pushed with branch
   `codex/o2-etw-context`. `main` was never pushed.
 - Audit commit `d7f9223` at the time of the L7 windows; the closeout audit is

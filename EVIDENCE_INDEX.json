@@ -8062,6 +8062,30 @@
       "finding": "A real attacker VM on the production sensor's link raises 10004, 10001 and 10003 as observe-only evidence; the lane is live end to end, and its row counts are doubled only by an adapter-level duplicate-frame behaviour that is measured and tracked separately.",
       "evidence_artifact": "admin-evidence/lab-wifi-bridged-l7-kinds-20261117/attack-window-20261116T193738Z.json",
       "record": "analysis/current-head/IDS-L7-003-20261117.md"
+    },
+    {
+      "id": "REL-EOL-DIGEST-001-E2-20261117",
+      "head_sha": "2fa8bd124c6bff9cdb40b6a8f594b87c856a1597",
+      "timestamp": "2026-11-17",
+      "title": "Verify the signed SHA256SUMS digest across checkout EOL modes",
+      "level": "E2",
+      "component": "tools/verify_release_digest.py",
+      "flow_id": "REL-002",
+      "description": "Read-only verifier compares release/T20-final/9ebee9b/SHA256SUMS with the digest signed in signatures.json. It accepts the stored form and the LF->CRLF normalised form, reports which form matched, and fails closed on tampered content or a missing signature. The signed artifact itself is not modified.",
+      "files_verified": [
+        "tools/verify_release_digest.py",
+        "tests/release/test_release_digest_eol.py",
+        "release/T20-final/9ebee9b/SHA256SUMS",
+        "release/T20-final/9ebee9b/signatures.json",
+        "analysis/current-head/PROJECT-CLOSEOUT-20261117.md"
+      ],
+      "tests": [
+        "python tools/verify_release_digest.py: MATCH (as-stored), exit 0",
+        "python -m pytest tests/release/test_release_digest_eol.py: 5 passed (shipped tree, LF checkout as crlf-normalized, tampered line fails, missing signature fails, exit code)"
+      ],
+      "result": "PASS_E2",
+      "finding": "The CRLF/LF difference is the only difference: the LF blob normalises to the signed digest, so a third party can now verify the shipped file from either checkout mode without a false mismatch and without trusting the local working-tree EOL.",
+      "evidence_artifact": "analysis/current-head/PROJECT-CLOSEOUT-20261117.md"
     }
   ],
   "known_gaps": [
@@ -14596,9 +14620,9 @@
     },
     {
       "id": "REL-EOL-DIGEST-001",
-      "status": "OPEN",
+      "status": "CLOSED",
       "severity": "P3",
-      "level": "E1",
+      "level": "E2",
       "found_at": "2026-11-17",
       "found_by": "tagging v2.0.0 and comparing the signed SHA256SUMS digest with the git blob",
       "title": "The signed SHA256SUMS digest is checkout-EOL dependent, so a fresh clone cannot re-derive it",
@@ -14606,13 +14630,18 @@
       "impact": "A verifier on a LF checkout computes 668C26B1... and may report a signature mismatch even though the shipped file is the signed one. release_engineering.py --verify passes on this host because the working tree is CRLF.",
       "next_step": "v1.1: make the release verifier hash a normalised form (or publish the digest over the normalised bytes), state CRLF as a hard checkout requirement in KNOWN_LIMITATIONS, and add a test that a fresh checkout reproduces the signed digest. Do not change the signed artifact itself.",
       "record": "analysis/current-head/PROJECT-CLOSEOUT-20261117.md",
-      "backlog": "docs/BACKLOG-v1.1.md"
+      "backlog": "docs/BACKLOG-v1.1.md",
+      "head_sha": "2fa8bd124c6bff9cdb40b6a8f594b87c856a1597",
+      "timestamp": "2026-11-17",
+      "reverified_by": "REL-EOL-DIGEST-001-E2-20261117",
+      "closed_note": "tools/verify_release_digest.py accepts the stored CRLF digest or the LF->CRLF normalised digest, says which form matched, and fails on tampered content; tests/release/test_release_digest_eol.py pins the shipped tree, an LF checkout, a tampered line, a missing signature and the exit code. The signed SHA256SUMS and signatures.json are unchanged.",
+      "remaining": "None for verification. Publishing the digest over a normalised form or forcing CRLF at checkout would be a v1.1 packaging change, not an open evidence gap."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 23,
-    "E2_count": 122,
+    "E2_count": 123,
     "E3_count": 14,
     "E4_count": 4,
     "E5_count": 95,

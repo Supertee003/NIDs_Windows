@@ -9,7 +9,7 @@ contain. Nothing here is a defect in a detection verdict on the shipped path.
 Do not patch the signed tree to close these items: any `src/` change forces a
 rebuild, a re-sign and a new 24 h soak.
 
-## 1. Open gaps (9)
+## 1. Open gaps (8)
 
 | ID | Sev | Level | What remains | Cost to close |
 |---|---|---|---|---|
@@ -21,7 +21,17 @@ rebuild, a re-sign and a new 24 h soak.
 | `RULE-LAYER-SCOPE-001` | P3 | E1 | AC matcher applies KERNEL_PROCESS payload rules to network bytes, so TLS raises R2003 | scope the AC rule set to the event source's layer, or skip non-decoded payloads; add a pin that a TLS record cannot yield a KERNEL_PROCESS rule id |
 | `GAP-QLOSS-ISOLATION-002` | — | E2 | FIM/ETW ingress volume from the storming source is not reduced | reduce ingress at the producer, then re-measure and run a new 24 h soak |
 | `ADR-0012-DUP-RATIO-E5-20261108` | — | E5 | Measured FIM repeats do not establish safely coalescible volume (`MEASURED_IDENTITY_UNVERIFIED`) | resolve producer identity first; coalescing stays blocked until then |
-| `REL-EOL-DIGEST-001` | P3 | E1 | Signed `SHA256SUMS` digest is the CRLF form (`9F87BF36...`); the git blob is LF (`668C26B1...`), so a clean checkout with `core.autocrlf=false` cannot re-derive the signed digest | make the release verifier hash a normalised form (or document CRLF as a hard requirement) and add a test that a fresh checkout reproduces the digest |
+
+### Closed during the v2.0.0 closeout pass (2026-11-17)
+
+`REL-EOL-DIGEST-001` (P3/E1) is **CLOSED at E2**, not deferred: the signed
+`SHA256SUMS` digest is the CRLF form (`9F87BF36...`) while the git blob is LF
+(`668C26B1...`), so a clean checkout with `core.autocrlf=false` could not
+re-derive it. `tools/verify_release_digest.py` now accepts the stored or the
+LF→CRLF form, prints which form matched, and fails on tampered content; five
+pins in `tests/release/test_release_digest_eol.py` cover the shipped tree, an
+LF checkout, a tampered line, a missing signature and the exit code. The signed
+artifact itself is unchanged. Evidence: `REL-EOL-DIGEST-001-E2-20261117`.
 
 ## 2. v1.1 source items not yet filed as gaps
 
@@ -65,15 +75,17 @@ directory.
 |---|---|---|
 | `supertee003-repository-baseline-alignment` | `5e62f23` | keep as v1.1 archive (unvalidated) |
 | `supertee003-loopback-capture-support` | `16cbbff` | keep as v1.1 archive (unvalidated) |
-| `supertee003-soak-closeout-prep` | `daf9088` | keep pending owner decision |
+| `supertee003-soak-closeout-prep` | `daf9088` | keep pending owner decision — the commit is identical to `origin/main` (2026-09-24), so despite the branch name it holds no post-soak or release content |
 | `copilot-prewarm-vigilant-giggle` (detached) | `2d19381` | disposable |
 
-No branch in this table is pushed, signed, installed, or referenced by the
+`daf9088` is already published as `origin/main`; the other three refs in this
+table are local-only. No branch here is signed, installed, or referenced by the
 release.
 
 ## 6. Suggested order if v1.1 starts
 
-1. `REL-EOL-DIGEST-001` and the stale comment (cheap, no runtime behaviour).
+1. The stale ingress comment (cheap, no runtime behaviour). `REL-EOL-DIGEST-001`
+   is already closed and needs no v1.1 slot.
 2. `RULE-LAYER-SCOPE-001` + `CAPTURE-DUP-WIFI-001` dedup decision (both change
    detection evidence; batch them into one build).
 3. `GAP-QLOSS-ISOLATION-002` / `ADR-0012` (ingress volume; needs a new soak).

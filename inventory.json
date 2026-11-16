@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-16T19:57:47.335649+00:00",
+  "generated_at": "2026-11-16T20:07:51.733847+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 2059,
+  "total_files": 2061,
   "by_class": {
     "canonical-docs": 447,
     "canonical-build": 227,
     "unclassified": 19,
-    "canonical-source": 988,
-    "canonical-test": 302,
+    "canonical-source": 989,
+    "canonical-test": 303,
     "canonical-config": 42,
     "legacy": 34
   },
@@ -264,7 +264,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 57387
+      "size": 57581
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -834,7 +834,7 @@
       "path": "analysis/current-head/PROJECT-CLOSEOUT-20261117.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10247
+      "size": 11450
     },
     {
       "path": "analysis/current-head/QLoss-E5-STEADY-WINDOW-20261109.md",
@@ -2718,7 +2718,7 @@
       "path": "docs/BACKLOG-v1.1.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5585
+      "size": 6150
     },
     {
       "path": "docs/BASELINE_20260906.md",
@@ -3744,7 +3744,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1382876
+      "size": 1385212
     },
     {
       "path": "FLOW_MAP.json",
@@ -3852,7 +3852,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 319308
+      "size": 319607
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4128,7 +4128,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 261442
+      "size": 261672
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -10959,6 +10959,12 @@
       "size": 14199
     },
     {
+      "path": "tests/release/test_release_digest_eol.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 2706
+    },
+    {
       "path": "tests/release/test_release_tooling.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -12253,6 +12259,12 @@
       "class": "canonical-source",
       "role": "source",
       "size": 8482
+    },
+    {
+      "path": "tools/verify_release_digest.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4092
     },
     {
       "path": "tools/wfp_filter_audit.py",

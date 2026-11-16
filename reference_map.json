@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-16T19:57:47.339215+00:00",
+  "generated_at": "2026-11-16T20:07:51.737398+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 2059,
+  "total_files": 2061,
   "by_role": {
     "documentation": 433,
     "build-config": 216,
     "other": 19,
     "lockfile": 6,
     "rust-build": 4,
-    "source": 692,
-    "test-artifact": 302,
+    "source": 693,
+    "test-artifact": 303,
     "config-data": 42,
     "architecture-decision": 12,
     "step-document": 2,
@@ -7620,6 +7620,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/release/test_release_digest_eol.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/release/test_release_tooling.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -8481,6 +8485,10 @@
       "role": "source"
     },
     "tools/upgrade_rollback.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "tools/verify_release_digest.py": {
       "class": "canonical-source",
       "role": "source"
     },

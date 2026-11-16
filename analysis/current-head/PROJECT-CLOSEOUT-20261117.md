@@ -73,8 +73,9 @@ not interrupted.
 
 ## 4. Remaining work, and where it is tracked
 
-The full list with costs is `docs/BACKLOG-v1.1.md`. Summary: **9 open gaps**
-(one of them new, §5), plus distribution steps.
+The full list with costs is `docs/BACKLOG-v1.1.md`. Summary: **8 open gaps**
+(plus distribution steps), after `REL-EOL-DIGEST-001` was closed in this pass
+with a verifier and tests (§5).
 
 | Group | Items | Why not in v2.0.0 |
 |---|---|---|
@@ -94,12 +95,14 @@ link; the P3 items inflate or mislabel evidence on specific paths.
   VMnet1 ARP control showed no duplication. The product emits one event per
   captured frame (`nose_duplicate_event_ids=0`). Counts on this adapter are 2×
   the wire count. Record: `CAPTURE-DUP-WIFI-001-20261117.md`.
-- **`REL-EOL-DIGEST-001` (P3, OPEN, new).** The signed `SHA256SUMS` digest is
-  the digest of the CRLF file on disk (`9F87BF36...`); the git blob stores LF
-  and hashes to `668C26B1...`. Verification from a clean checkout with
-  `core.autocrlf=false` therefore fails even though the content is identical.
-  This does not change what ships; it limits how a third party can re-derive
-  the signed digest. Tracked in the index and in `docs/BACKLOG-v1.1.md`.
+- **`REL-EOL-DIGEST-001` (P3, CLOSED 2026-11-17).** The signed `SHA256SUMS`
+  digest is the digest of the CRLF file on disk (`9F87BF36...`); the git blob
+  stores LF and hashes to `668C26B1...`. New read-only verifier
+  `tools/verify_release_digest.py` accepts the stored or the LF→CRLF form,
+  prints which one matched, and fails on tampered content; five pins in
+  `tests/release/test_release_digest_eol.py` cover both checkout modes, a
+  tampered line, a missing signature and the exit code. The signed artifact is
+  unchanged; a third party now has a labeled way to verify it.
 
 ## 6. Declared limitations (ship notes, not open defects)
 
@@ -117,12 +120,16 @@ link; the P3 items inflate or mislabel evidence on specific paths.
    `shed_overload` 984/20,000 in the 24.62 h window; all ETW ingress. Network
    and minifilter loss zero.
 5. **Signed RC from the working tree.** `KNOWN_LIMITATIONS.md` states binaries
-   must be rebuilt from source for a production cut; the tracked tree is not
-   byte-identical to a fresh `git archive` because of the EOL behaviour in §5.
+   must be rebuilt from source for a production cut. The signed `SHA256SUMS`
+   digest is the CRLF form, so an LF checkout is not byte-identical; verify it
+   with `tools/verify_release_digest.py`, which labels the matched form instead
+   of reporting a false mismatch.
 6. **Audit stamp.** `docs/gates/T20_100pct_audit.*` is generated from `HEAD` at
-   run time; this record's audit was generated at `7b484a1`, the tagged release
-   commit. A later records commit does not invalidate it (ADR-0008 build-source
-   rule), but the stamp is one commit behind this file by construction.
+   run time. The tagged release commit is `7b484a1`; the committed audit was
+   generated at `2fa8bd1`, the records commit that first added this file, so a
+   later records-only commit leaves the stamp one commit behind by construction.
+   That does not invalidate it (ADR-0008 build-source rule): the source commit
+   is `7c604d5` and the source tree is unchanged.
 
 ## 7. Verification actually run (and what did not pass)
 
@@ -133,6 +140,8 @@ link; the P3 items inflate or mislabel evidence on specific paths.
 | `python tools/final_audit.py --release-check` | SHIPPABLE, 0/6 open, exit 0 |
 | `pytest tests/release tests/tools` | **1 failed, 480 passed** — see below |
 | `pytest tests/tools/test_runbooks.py tests/tools/test_lab_attack_window.py tests/release/test_evidence_index_valid.py tests/security/test_evidence_index_integrity.py` | 35 passed |
+| `python tools/verify_release_digest.py` | `MATCH (as-stored)`, exit 0 |
+| `pytest tests/release/test_release_digest_eol.py` | 5 passed (stored form, LF checkout, tampered line, missing signature, exit code) |
 
 The single failure is `tests/release/test_native_build_and_scripts.py::test_bridge_builds_into_dist`:
 `LINK : fatal error LNK1104: cannot open file 'D:\NIDs_Windows\dist\aegis_ipc.dll'`.
@@ -143,13 +152,26 @@ output.
 
 ## 8. Branch and worktree disposition
 
+**Where the release actually lives.** `v2.0.0` exists only on the branch
+`codex/o2-etw-context` and on the annotated tag `v2.0.0` → `7b484a1`. Neither
+`main` contains it:
+
+| Ref | Commit | Date | Contains build source `7c604d5`? |
+|---|---|---|---|
+| `origin/main` | `daf9088` | 2026-09-24 | **no** (944 commits behind the release HEAD) |
+| local `main` | `2d19381` | 2026-10-26 | **no** (445 commits behind) |
+
+`main` has never been pushed by this work and was not touched. Promoting the
+release to `main` is an owner decision, not a records step; until then the tag
+is the authoritative pointer and the branch is the carrier.
+
 Kept, local-only, **not** part of v2.0.0 and not pushed:
 
 | Branch / worktree | Commit | Disposition |
 |---|---|---|
 | `supertee003-repository-baseline-alignment` (`.../supertee003-fluffy-engine`) | `5e62f23` | KEEP as unvalidated v1.1 archive (29 files: layer-scoped AC, FIM coalescing, loopback prep) |
 | `supertee003-loopback-capture-support` (`.../supertee003-silver-adventure`) | `16cbbff` | KEEP as unvalidated v1.1 archive (13 files: `DLT_LOOP` prep, different `test_e6` variant) |
-| `supertee003-soak-closeout-prep` (`.../supertee003-studious-waddle`) | `daf9088` | KEEP pending owner decision; not part of the release |
+| `supertee003-soak-closeout-prep` (`.../supertee003-studious-waddle`) | `daf9088` | KEEP pending owner decision. Its commit is identical to `origin/main` (2026-09-24), so despite the name it is not post-soak work and carries no release content |
 | `copilot-prewarm-vigilant-giggle` (detached at `main` `2d19381`) | — | disposable; can be pruned |
 
 The two Copilot commits are unvalidated and their `src/` halves are
@@ -163,7 +185,7 @@ AEGIS NIDS Windows v2.0.0 is a **shippable detection-only release at E5**:
 signed, hash-pinned, soak-proven for 24.62 h, and live-proven for L4 and for
 three L7 HTTP anomaly rules against a real attacker VM. It is not a
 production-signed kernel product (drivers are test-signed), not an enforcement
-product, and not fleet-qualified. Nine gaps remain open with named causes and
+product, and not fleet-qualified. Eight gaps remain open with named causes and
 costs; none of them blocks a detection verdict on the path this release ships.
 
 Closing the remaining gaps is a v1.1 program, not a continuation of this
