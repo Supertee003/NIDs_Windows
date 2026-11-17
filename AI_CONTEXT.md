@@ -4,9 +4,11 @@
 
 
 
-**HEAD:** `b955f919122fa60480f83cb5b5c1be10b557f0cd` (build source commit — ADR-0008)
+**RECORDS HEAD:** `ef728b3ae74ab9ab4dfc607181972c5bd310db1f` (current records tip)
 
-**BRANCH:** `codex/o2-etw-context`
+**BUILD SOURCE HEAD:** `b955f919122fa60480f83cb5b5c1be10b557f0cd` (last source/build commit — ADR-0008)
+
+**BRANCH:** `fix/stopline-truth-ci-signature-001` (delivery branch under review)
 
 **GENERATED:** 2026-11-03T14:45:00+07:00
 
@@ -977,4 +979,3 @@ golden path. OPTIONAL is operator-only.
 14. Do not use Cython as the system integration bus
 
 15. Do not create language-to-language mesh (use hub-and-spoke)
-
