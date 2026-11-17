@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `10e19fa1aed5107755276b82dc0c6b2a416c89e6` (build source commit — ADR-0008)
+**HEAD:** `b955f919122fa60480f83cb5b5c1be10b557f0cd` (build source commit — ADR-0008)
 
 **BRANCH:** `codex/o2-etw-context`
 

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-17T10:37:51.913056+00:00",
+  "generated_at": "2026-11-17T10:51:12.097106+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 2275,
@@ -972,7 +972,7 @@
       "path": "analysis/current-head/RULE-LAYER-SCOPE-001-20261117.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3608
+      "size": 5757
     },
     {
       "path": "analysis/current-head/SERVICE-EXISTS-001-20261114.md",
@@ -3804,7 +3804,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1407946
+      "size": 1411858
     },
     {
       "path": "FLOW_MAP.json",
@@ -10224,7 +10224,7 @@
       "path": "src/daemon.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 51271
+      "size": 52024
     },
     {
       "path": "src/detection/anomaly_detector.zig",
@@ -10578,7 +10578,7 @@
       "path": "src/pipeline/rule_loader.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 33787
+      "size": 34152
     },
     {
       "path": "src/pipeline/runtime_state.zig",
@@ -13665,5 +13665,5 @@
       "size": 624
     }
   ],
-  "source_commit": "10e19fa"
+  "source_commit": "b955f91"
 }
