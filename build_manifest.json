@@ -198,8 +198,8 @@
   "artifacts": [
     {
       "path": ".github/workflows/ci.yml",
-      "size": 13397,
-      "sha256": "22878fc48bf740d7a04bdbdf079d85c20e24a81a8ef31922b0036b11ada82302",
+      "size": 13720,
+      "sha256": "bc85cd7363567018faac4eac1b536248eef0c9b133c8e0f9a53eac037bba31f7",
       "language": "yaml"
     },
     {
@@ -3690,8 +3690,8 @@
     },
     {
       "path": "tools/final_audit.py",
-      "size": 41546,
-      "sha256": "3c56ca8160635290e2e30ef710eff8edc44d359b365cdb6f2a7479e42314387c",
+      "size": 44912,
+      "sha256": "fbf8c5439aa15a5793cc12a3381c7591b0b8f3ffe9c575542c207a5d196c2168",
       "language": "python/cython"
     },
     {
