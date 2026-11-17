@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-17T09:55:20.920281+00:00",
+  "generated_at": "2026-11-17T10:28:09.873225+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 2069,
+  "total_files": 2070,
   "by_role": {
-    "documentation": 440,
+    "documentation": 441,
     "build-config": 216,
     "other": 19,
     "lockfile": 6,
@@ -953,6 +953,10 @@
       "role": "documentation"
     },
     "analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/RULE-LAYER-SCOPE-001-20261117.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -8601,5 +8605,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "7c604d5"
+  "source_commit": "10e19fa"
 }
