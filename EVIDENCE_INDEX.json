@@ -8227,6 +8227,46 @@
       "result": "PASS_E5",
       "finding": "The FIM lane delivers one row per successful open, so the 47.5% within-batch repeat ratio on this host is distinct opens of the same path by the same PID, not duplicate delivery. Suppressing them would drop distinct observations: the minifilter (path, kind, pid) coalescer is rejected and no suppressing coalescer may deploy. duplicates_same_ts is confirmed unusable as a duplicate signal (0 same-timestamp repeats in the create-once runs versus 703,873 in production).",
       "evidence_artifact": "analysis/current-head/ADR-0012-DECISION-20261117.md"
+    },
+    {
+      "id": "G2-ENFORCEMENT-RETIRED-E5-20261117",
+      "head_sha": "7c604d5b0022157020e20e78045cc2c97a337ddd",
+      "timestamp": "2026-11-17",
+      "title": "G2 lab: the policy reaches the PEP and the PEP refuses host effect by design (E5)",
+      "description": "Single-host lab window (2026-11-17) on the installed runtime: the lab daemon F805F4DC... with the signed v2 lab policy (env VALID, 1 policy trusted) accepted a 104-byte SQLi canary from Kali 192.168.126.10 to 192.168.126.1:443, matched policy 3, and the installed aegis_pep.dll answered decision=escalate reason=8 filter_id=0 (detection-only host effect retirement). A direct FFI probe reproduced reason=8 for block and quarantine, reason=1 without the capability bit, and allow for alert, with the 64-byte request and 24-byte response layouts asserted. No AEGIS provider filter existed before, during, or after the window, and the host was restored hash-identically with detection-only posture.",
+      "level": "E5",
+      "component": "policy evaluation -> PEP FFI -> WFP filter census on the installed runtime",
+      "flow_id": "ENF-001",
+      "patch_id": "G2-RETIRE-CLOSE-20261117",
+      "target_head": "23f59617deb22166d87bc47118190b5932e0a1e8",
+      "expected": "On the single-host lab window (victim = the NIDS host, Kali 192.168.126.10 as the only attacker), a signed lab policy that matches the post-detection identity must reach aegis_pep_enforce, and the outcome must be recorded from the provider rather than assumed; the host must end the window hash-identical to the installed baseline with no AEGIS filter, no signed policy artifacts, the original service environment, and detection-only posture.",
+      "actual": "The lab daemon F805F4DC2C7E978E2D5DA34CED7106BFCFC52E2AD2A609465728B3164550BA92 was installed with a v2 lab policy (sha256 71d935348346D23E62E74AF5421A5D06831E5080C0F6360C568D58C4DA86890F, key_id 42, envelope VALID, 1 policy trusted). The 104-byte SQLi canary on 192.168.126.1:443 matched policy 3 and produced AUDIT policy=3 pep_req=1 decision=escalate result=logged_only src=c0a87e0a:39740 dst=c0a87e01:443 proto=6 plus action=escalate event=signature_match, with confirmed_quarantines 0 -> 0. A direct FFI probe of the installed aegis_pep.dll (PepRequest 64 B, PepResponse 24 B, ctx offset 40) returned decision=escalate reason=8 filter_id=0 for quarantine and block with capability bit 0x01, reason=1 without the capability bit, and allow for alert. reason=8 is the source's detection-only conversion (issue #25 / RETIRE-HOST-EFFECT-001). No AEGIS provider filter existed before, during, or after the window (WFP_PROVIDER_FILTERS=0 in preflight and restore censuses). Restore reported HASH_MATCH/DRIVER_MATCH/POLICIES_MATCH=True, SIG_PRESENT=False, TRUST_PRESENT=False, SERVICE_ENV_RESTORED=AEGIS_LOSS_BUDGET=3500, FIREWALL_RULE_LEFT=0, GATE=closed, TIER3_ENFORCING=False, HOST_EFFECT_CAPABLE=False, ENFORCEMENT_MODE=detection-only.",
+      "not_run": "Direction verify, duplicate-filter canary, receipt-aware unblock, and reachability canary did NOT run: the provider mints no filter_id on current source, so the objects those steps operate on never existed. No host effect, no receipt, and no confirmed quarantine is claimed.",
+      "files_verified": [
+        "rust-src/lib.rs",
+        "src/policy/pep_bindings.zig",
+        "src/pipeline/event_processor.zig",
+        "src/daemon.zig",
+        "AUTHORITY_MAP.json",
+        "analysis/current-head/G2-ENFORCEMENT-RETIRED-20261117.md",
+        "analysis/current-head/CLOSURE-PLAN-5GAPS-20261117.md",
+        "admin-evidence/g2-single-host-20261117/window-20261117/pep-abi-probe.txt",
+        "admin-evidence/g2-single-host-20261117/window-20261117/c1b.json",
+        "admin-evidence/g2-single-host-20261117/window-20261117/listener.log",
+        "admin-evidence/g2-single-host-20261117/window-20261117/diag-c1b.txt",
+        "admin-evidence/g2-single-host-20261117/window-20261117/post-restore.json",
+        "admin-evidence/g2-single-host-20261117/preflight-20261117T083535Z/restore-20261117T084650Z/restore.json"
+      ],
+      "tests": [
+        "g3_preflight.ps1 elevated: WFP_PROVIDER_FILTERS=0, PORT_443_LISTENERS=0, SERVICE_ENV=AEGIS_LOSS_BUDGET=3500, LAB_RULE_COUNT=0",
+        "g3_install_lab.ps1 elevated: GATE=open, POLICY_VALID=True, TIER3_ENFORCING=True, HOST_EFFECT_CAPABLE=True",
+        "g3_canary_payload.py from Kali: CANARY=ACCEPT, listener DATA bytes=104, AUDIT policy=3 decision=escalate",
+        "g3_pep_abi_probe.py: reason=8 filter_id=0 for block/quarantine, reason=1 without capability, alert allow",
+        "g3_restore.ps1 elevated: HASH_MATCH=True, SIG_PRESENT=False, TRUST_PRESENT=False, FIREWALL_RULE_LEFT=0, WFP_PROVIDER_FILTERS=0, GATE=closed"
+      ],
+      "result": "PASS_E5_SCOPE_RETIREMENT_CONFIRMED",
+      "finding": "The G2 duplicate-quarantine question cannot be answered on current source because the product retired host effect: the policy engine and the PEP request path work, and the PEP answers reason=8 with filter_id=0 by design. The gap is superseded by RETIRE-HOST-EFFECT-001 / issue #25 rather than passed, and the earlier closure plan item that treated it as live enforcement work contradicted the authority map.",
+      "evidence_artifact": "analysis/current-head/G2-ENFORCEMENT-RETIRED-20261117.md"
     }
   ],
   "known_gaps": [
@@ -13930,7 +13970,7 @@
       "command": "Lab VM 192.168.126.20; swap PEP to 735D772D...; direction verify; duplicate canary; g2_capture_canary.py --label dup; g2_unblock_verify.py 78056; restore-base-20261023.ps1",
       "expected": "PEP_CACHE_SWAP_OK; VERIFY_OK=true; duplicate canary produces a second confirmed quarantine/receipt or a documented block; UNBLOCK_OK/ABSENT; BASE_RESTORE_OK; detection-only; proof count 0",
       "actual": "PEP swap PASS (old 8E11ED18..., installed 735D772D..., proof filter count 1 -> 1, listener PID 10672, policy VALID, tier3_enforcing true). Direction verify PASS (filter 78056, direction 1, remote 3232267777, postcondition MATCH). Duplicate canary BLOCKED_OR_TIMEOUT (3.008 s); the listener log has only the first-canary ACCEPT; capture PROOF_FILTER_COUNT=1, DUP_FILTER_SAME=true, DUP_SINGLE_FILTER_OK=true, DUP_ESCALATE_OK=true, PEP_ESCALATE_REASON4_COUNT=0, CAPTURE_FAILED on the missing log line; metrics-after-dup confirmed_quarantines=0, confirmed_blocks=0. The duplicate connection was blocked by the existing filter 78056 before the PEP/daemon processed a second quarantine; the duplicate PEP block path and receipt/counter increment are NOT proven. Unblock PASS (ROLLED_BACK, ABSENT, verify_after null, proof count 0). Base restore PASS (E19C/617F/EF9B/AD23/B722, detection-only, gate closed, host_effect_capable false, tier3_enforcing false, proof count 0); listener/firewall/lab policy/trust removed; base services running; driver signature valid; G2ElevRun/G2LabNormal removed.",
-      "result": "PARTIAL",
+      "result": "SUPERSEDED_BY_SCOPE_RETIREMENT",
       "files_verified": [
         "admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt",
         "admin-evidence/g2-direction-20261022/PATCH-PEP-CACHE.md",
@@ -13941,9 +13981,13 @@
         "src/policy/pep_bindings.zig"
       ],
       "evidence": "Host transcript admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt; duplicate-canary output admin-evidence/g2-direction-20261022/g2-canary-dup-20261023.txt; VM evidence pep-cache-swap-20261023.json/log, canary-capture-dup.json, metrics-before-dup.json, metrics-after-dup.json, wfp-filters-*.xml, base-restore-20261023.json/log (to be copied back before the VM is reverted); source commit ee1010e.",
-      "status": "OPEN",
+      "status": "CLOSED",
       "next_step": "lab-only, and now runnable on this host because the NIDS host is the victim: approved maintenance window, lab build with -Dlab-prevention-gate=true, first canary from Kali 192.168.126.10 to a host listener, direction verify, second canary must be blocked by the same AEGIS filter with counters unchanged and no escalate reason=4 (documented block), receipt-aware unblock, then hash-verified rollback to the installed binaries. No second host",
-      "status_basis": "entry.result=PARTIAL at head ee1010e (2026-10-23): the pass is partial or carries an open blocker"
+      "status_basis": "closed 2026-11-17 at E5 by G2-ENFORCEMENT-RETIRED-E5-20261117: on the single-host lab window the signed v2 policy matched the canary (policy=3) and the installed PEP answered decision=escalate reason=8 filter_id=0, so no AEGIS filter can exist to verify, duplicate, or unblock",
+      "reverified_by": "G2-ENFORCEMENT-RETIRED-E5-20261117",
+      "closed_note": "This gap asked for a PEP cache swap, a proof filter, direction verify, a duplicate canary, a receipt-aware unblock, and a base restore. On current source the provider retires host effect by product decision (issue #25 / RETIRE-HOST-EFFECT-001): BLOCK and QUARANTINE are converted to ESCALATE reason=8 with filter_id=0 before any adapter call. The window proved the live chain up to the provider boundary (signed policy trusted, policy 3 matched the 192.168.126.10:443 canary, PEP request issued) and proved the refusal directly through the installed DLL. The steps that need a filter id did NOT run and are not claimed. The host was restored hash-identically to the installed baseline. Keeping this OPEN would assert live enforcement work that contradicts AUTHORITY_MAP.json.",
+      "remaining": "None for this gap. Enforcement-path behaviour on current source is defined by RETIRE-HOST-EFFECT-001; any future enforcement product would be a new scope with its own authority decision, not a reopening of this gap.",
+      "not_run": "direction verify, duplicate-filter canary, receipt-aware unblock, reachability canary (no filter id was ever minted)"
     },
     {
       "id": "G2-RB013-MIRROR-20261021",
@@ -14799,10 +14843,10 @@
     "E2_count": 124,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 99,
+    "E5_count": 100,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 49,
+    "E5_with_artifact_count": 50,
     "known_gaps_count": 282
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."

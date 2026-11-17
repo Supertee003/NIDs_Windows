@@ -48,13 +48,21 @@ in-place install/uninstall, gate-closed restore
 
 ---
 
-## 1. ภาพรวม: 5 gap + 4 distribution (rev.2)
+## 1. ภาพรวม: 5 gap + 4 distribution (rev.3)
 
-> สถานะล่าสุด: `ADR-0012` **ปิดแล้ว** (E5, 2026-11-17) — เหลือ 4 gap
+> สถานะล่าสุด (rev.3, 2026-11-17): `ADR-0012` **ปิดแล้ว** (E5) และ
+> `EVI-G2-PEP-CACHE-001-LAB` **ปิดแบบ superseded by scope retirement** (E5) —
+> เหลือ 3 gap ที่ยังทำงานได้
+>
+> **rev.3 แก้ rev.2 เฉพาะแถวที่ 1** — rev.2 ถือว่า G2 เป็นงาน enforcement ที่ยัง
+> เปิดอยู่ ซึ่งขัดกับ `AUTHORITY_MAP.json` / `RETIRE-HOST-EFFECT-001` (issue #25)
+> ที่ retire host effect ไปแล้ว เหตุผลเต็มอยู่ใน §10 และ
+> `analysis/current-head/G2-ENFORCEMENT-RETIRED-20261117.md`
 
 | # | Item | ระดับปัจจุบัน | สิ่งที่ขาดจริง | วิธีปิดบนเครื่องนี้ | แก้ source? | เวลา |
 |---|---|---|---|---|---|---|
-| 1 | `EVI-G2-PEP-CACHE-001-LAB` | E5 (lab) | duplicate canary ไม่ได้พิสูจน์ว่า "block เกิดจาก filter ของ AEGIS ตัวเดียวกัน" | lab build + canary จาก Kali + filter query + documented block + hash rollback | ไม่ | 3–5 ชม. (window) |
+| 1 | `EVI-G2-PEP-CACHE-001-LAB` | E5 | ~~duplicate canary~~ → **ไม่มี filter ให้พิสูจน์ได้อีกแล้ว** (PEP คืน `reason=8`, `filter_id=0`) | **ปิดแล้ว 2026-11-17** — policy match ถึง PEP จริง + ABI probe ยืนยันการ retire + hash restore | ไม่ | **ปิดแล้ว** |
+
 | 2 | `RULE-LAYER-SCOPE-001` | E1 | AC ตัวเดียวใช้ rule ข้าม layer กับ network bytes | แยก AC ตาม layer + pins + build + soak | **ใช่** | 1–2 วัน + soak |
 | 3 | `CAPTURE-DUP-WIFI-001` | E5 | frame ซ้ำบน Wi-Fi/Npcap นี้ | ทดลอง config Npcap ก่อน → ถ้าไม่หาย ใช้ counted dedup ใน Nose | อย่างหลังใช่ | 1 ชม. หรือ 2–3 วัน + soak |
 | 4 | `GAP-QLOSS-ISOLATION-002` | E2 | ingress FIM/ETW จาก storm ไม่ลด | ETW delete filter + consumer throughput (หรือ accepted envelope) | **ใช่** | 2–4 วัน + soak |
@@ -118,7 +126,11 @@ in-place install/uninstall, gate-closed restore
 
 ---
 
-## 3. `EVI-G2-PEP-CACHE-001-LAB` — lab บนเครื่องนี้ (E5, lab-only)
+## 3. `EVI-G2-PEP-CACHE-001-LAB` — **SUPERSEDED 2026-11-17** (อ่าน §10 ก่อน)
+
+> rev.3: ขั้นตอนใน §3.1–§3.7 ถูกเก็บไว้เป็นประวัติ แต่ **ใช้ไม่ได้กับ source ปัจจุบัน**
+> เพราะ PEP ตอบ `reason=8` (`detection-only: host effect retired by product scope`)
+> และไม่สร้าง filter id ให้ตั้งแต่ต้น ผลจริงของ window 2026-11-17 อยู่ใน §11
 
 ### 3.1 สิ่งที่ขาดจริง และเกณฑ์ที่ Gap นี้ยอมรับอยู่แล้ว
 
@@ -427,3 +439,34 @@ Phase 3  (distribution, ภายนอก)
 - `release/T20-final/9ebee9b`, tag `v2.0.0`, `SHA256SUMS` ต้องไม่ถูกแก้
 - lab binary / lab driver ต้องไม่ถูกทิ้งไว้บนเครื่องหลังจบ window (hash rollback ต้องผ่าน)
 - ถ้าปิดไม่ได้เพราะข้อจำกัดภายนอก ให้บันทึกเป็น blocked พร้อมเหตุผล ไม่ใช่ปิดแบบไม่มีหลักฐาน
+
+---
+
+## 11. rev.3 amendment — G2 ถูกปิดเพราะ scope retire (2026-11-17)
+
+**ผลจริงของ window (ไม่ใช่ผลตามแผน §3):**
+
+1. lab daemon `F805F4DC...` + v2 signed lab policy (`71d93534...`, key_id 42,
+   envelope VALID) ทำงาน: `GATE=open`, `POLICY_VALID=True`, `TIER3_ENFORCING=True`
+2. canary payload (SQLi) จาก Kali `192.168.126.10` → host `192.168.126.1:443`
+   **match policy 3 จริง** (audit `policy=3`, `rule=2107512682`)
+3. แต่ `decision=escalate` — direct FFI probe ของ `aegis_pep.dll` ที่ติดตั้งให้
+   `reason=8`, `filter_id=0` ทั้ง block และ quarantine (reason 8 =
+   detection-only, host effect retired by product scope, issue #25)
+4. จึงไม่มี filter id: ขั้น direction verify / duplicate filter / unblock /
+   reachability canary **รันไม่ได้และไม่ได้รัน**
+5. restore ผ่านครบ: daemon `7955A6E3...`, PEP `362B069A...`, driver `06CC8E23...`,
+   policies `B7224FA0...`, sig/trust absent, env `AEGIS_LOSS_BUDGET=3500`,
+   firewall 0, `WFP_PROVIDER_FILTERS=0`, gate closed, detection-only
+
+**สถานะ:** `EVI-G2-PEP-CACHE-001-LAB-20261023` = CLOSED (superseded) ที่ E5,
+evidence `G2-ENFORCEMENT-RETIRED-E5-20261117`,
+รายละเอียด `analysis/current-head/G2-ENFORCEMENT-RETIRED-20261117.md`
+
+**ผลต่อแผน:** Phase 1 ไม่มีงาน EVI-G2 เหลือ; เหลือ D3+D4 (in-place
+uninstall/reinstall) ใน window ถัดไป — และ Phase 2 (v1.1 source batch) ไม่ต้องมี
+งาน enforcement ใด ๆ เพราะไม่อยู่ใน product scope
+
+**Stop-the-line ที่พบและแก้แล้ว:** rev.2 นับ G2 เป็น gap ที่ยังเปิด ซึ่งเป็น
+เอกสารขัดกับ `AUTHORITY_MAP.json` (issue #25 ปิดแล้ว) — แก้ที่เอกสารเท่านั้น
+ไม่แตะ source/driver/PEP/release

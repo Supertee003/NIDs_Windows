@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-17T08:21:19.585272+00:00",
+  "generated_at": "2026-11-17T08:52:12.767381+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 2067,
+  "total_files": 2068,
   "by_role": {
-    "documentation": 438,
+    "documentation": 439,
     "build-config": 216,
     "other": 19,
     "lockfile": 6,
@@ -761,6 +761,10 @@
       "role": "build-config"
     },
     "analysis/current-head/FULL-BOUNDARY-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/G2-ENFORCEMENT-RETIRED-20261117.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },

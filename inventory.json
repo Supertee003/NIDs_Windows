@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-17T08:21:19.582229+00:00",
+  "generated_at": "2026-11-17T08:52:12.763881+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 2067,
+  "total_files": 2068,
   "by_class": {
-    "canonical-docs": 453,
+    "canonical-docs": 454,
     "canonical-build": 227,
     "unclassified": 19,
     "canonical-source": 989,
@@ -264,7 +264,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 57581
+      "size": 58159
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -474,7 +474,7 @@
       "path": "analysis/current-head/CLOSURE-PLAN-5GAPS-20261117.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 33928
+      "size": 37180
     },
     {
       "path": "analysis/current-head/CONFIG-VALIDATE-001-20261114.md",
@@ -673,6 +673,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 6330
+    },
+    {
+      "path": "analysis/current-head/G2-ENFORCEMENT-RETIRED-20261117.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 13224
     },
     {
       "path": "analysis/current-head/GAP-STATUS-001-20261114.md",
@@ -3780,7 +3786,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1399244
+      "size": 1391204
     },
     {
       "path": "FLOW_MAP.json",
@@ -3888,7 +3894,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 320722
+      "size": 321066
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4164,7 +4170,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 262548
+      "size": 262823
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -7680,7 +7686,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23219
+      "size": 23767
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
