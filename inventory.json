@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-17T10:37:31.478676+00:00",
+  "generated_at": "2026-11-17T10:37:51.913056+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 2275,
@@ -3804,7 +3804,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1405467
+      "size": 1407946
     },
     {
       "path": "FLOW_MAP.json",
