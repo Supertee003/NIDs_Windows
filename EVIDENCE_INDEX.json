@@ -8334,6 +8334,33 @@
         "A layer automaton that fails to build falls back to the network automaton (old over-matching), logged, rather than matching nothing.",
         "A source change restarts the soak clock, so the 24 h window has to start after the rebuilt binary is installed."
       ]
+    },
+    {
+      "id": "RULE-LAYER-SCOPE-001-E5-20261117",
+      "head_sha": "a101c4f",
+      "timestamp": "2026-11-17",
+      "level": "E5",
+      "flow_id": "DET-001",
+      "component": "C:\\Program Files\\AEGIS NIDS\runtime\u0007egis_nids.exe (layered build), AegisNids service",
+      "title": "The layered build runs on the host: installed equals build, 23 rules load, readiness ready, detection counters move",
+      "description": "The layered automata build was installed over the service binary (previous kept as aegis_nids.exe.prev2) and the installed sha256 2ffc565b9dc235e6ddb4e7ad377107b142baee1045b95ffdb55d20f6a8ebb51c equals zig-out/bin/aegis_nids.exe. On the new process: status reports State RUNNING and State machine RUNNING; readiness reports ready true with rules_loaded 23 and policies_loaded 6, overage_gate true, state_machine_disagrees false; host_preflight PASS with failed []; queue shows pushed 10,859 with dropped 0 and shed_overload 0 across npcap/etw/fim sources; metrics moved from detections 15 to 23 and anomalies 112 to 155 while HTTP requests carrying <script>alert(1)</script> and IEX (New-Object Net.WebClient) were sent over the Wi-Fi interface. So the layered loader runs in the live process and loads the whole catalog without losing rules, and the pipeline still detects. What it does NOT show: which rule id was attributed to those two requests \u2014 the forensic list returns summary rows with rule_id 0 and no payload, so attribution by source and rule has to be read with a payload-bearing query or from a VMnet1 capture with Kali.",
+      "evidence_artifact": "analysis/current-head/RULE-LAYER-SCOPE-001-20261117.md",
+      "artifacts": [
+        "admin-evidence/e5-clean-host-20261117-soak3/preflight-20261117-postlayers.json",
+        "admin-evidence/e5-clean-host-20261117-soak3/soak-24h.baseline.json"
+      ],
+      "commands": [
+        "sha256sum 'C:/Program Files/AEGIS NIDS/runtime/aegis_nids.exe' zig-out/bin/aegis_nids.exe",
+        "python tools/aegisctl.py status",
+        "python tools/aegisctl.py readiness",
+        "python tools/aegisctl.py queue",
+        "python tools/host_preflight.py"
+      ],
+      "limitations": [
+        "The rule attribution for the two payloads was not observed: forensics list returns summary rows without payload or rule id, so RULE-LAYER-SCOPE-001 stays OPEN.",
+        "Loopback is not captured on this install, so a local listener cannot substitute for the Kali/VMnet1 path.",
+        "The soak window was restarted by this install; the fresh window starts from this build."
+      ]
     }
   ],
   "known_gaps": [
@@ -14919,10 +14946,10 @@
     "E2_count": 125,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 101,
+    "E5_count": 102,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 51,
+    "E5_with_artifact_count": 52,
     "known_gaps_count": 282
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
