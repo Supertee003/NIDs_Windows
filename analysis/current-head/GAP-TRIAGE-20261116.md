@@ -77,6 +77,17 @@ because "OPEN" without a price is how a backlog becomes permanent.
 | 8 | `CAPTURE-LOOPBACK-001` | P2/E4 | decide: scope statement or a loopback-pinned daemon | tests-only (scope) or restart (pin) | none |
 | 9 | `SOAK-SHED-001` | P1/E4 | the window passing | **time** | blocking (it *is* the gate) |
 
+> **2026-11-17 status update (rev.2, single-host model):** rows 2, 3, 4, 5 and
+> 6 have since closed at E5 or moved. `ADR-0012-DUP-RATIO-E5-20261108` is
+> **CLOSED**: the create-once measurement (`ADR-0012-SINGLE-HOST-E5-20261117`)
+> showed the FIM lane does not duplicate delivery, so the minifilter coalescer
+> is rejected. `KIDS-002-20261101`, `E5-RECHECK-STALE-IMAGE-20261101`,
+> `CAPTURE-LOOPBACK-001` and `SOAK-SHED-001` are also closed. Four gaps remain:
+> `EVI-G2-PEP-CACHE-001-LAB` (on-host lab window), `RULE-LAYER-SCOPE-001`,
+> `CAPTURE-DUP-WIFI-001`, `GAP-QLOSS-ISOLATION-002`. The row prices below are
+> the 2026-11-16 triage; the current route is
+> `analysis/current-head/CLOSURE-PLAN-5GAPS-20261117.md` (rev.2).
+
 ### 2.1 Two of them are cheaper now than their records say
 
 **#7 `DETECT-L4-001`.** The record says the scan result is "intermittent" and

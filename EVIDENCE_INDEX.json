@@ -8200,6 +8200,33 @@
       "result": "PASS_E2",
       "finding": "The installer gap was tooling, not code: makensis is present and the current tree packages. The remaining installer decision is the version label and production signing.",
       "evidence_artifact": "analysis/current-head/DIST-SCANNERS-20261117.md"
+    },
+    {
+      "id": "ADR-0012-SINGLE-HOST-E5-20261117",
+      "head_sha": "7c604d5b0022157020e20e78045cc2c97a337ddd",
+      "timestamp": "2026-11-17",
+      "title": "Create-once measurement proves the FIM lane does not duplicate delivery (E5)",
+      "level": "E5",
+      "component": "fim_probe.minifilter counters via tools/aegisctl.py queue --json",
+      "flow_id": "QLOSS-HEALTH-001",
+      "description": "Two create-once runs on the installed daemon (aegis_nids.exe 7955A6E3C9BB8AC4E5872114B33316AADA74F09E39F48C0513BA6FFA58D71A18, PID 23072) created unique paths with exactly one open each and subtracted a 30 s idle ambient rate. Pilot: 1,000 files, 0.304 s churn, 1,015 minifilter records, 6 duplicates_per_pid against 0.7 ambient (5.3 excess, ratio 0.0053). Scale: 20,000 files, 5.822 s churn, 20,042 records, 12 duplicates_per_pid against 11.8 ambient (0.2 excess, ratio 0.00001). Both runs had minifilter.dropped=0, pipeline_dropped=0, dropped_total=0 and shed_overload=0. If the delivery layer duplicated creates, a unique single-open path would produce a second row; none did.",
+      "files_verified": [
+        "src/pipeline/fim_dedup.zig",
+        "src/capture/minifilter_reader.zig",
+        "src/pipeline/telemetry_threads.zig",
+        "tools/aegisctl.py",
+        "analysis/current-head/ADR-0012-DECISION-20261117.md",
+        "docs/adr/0012-fim-ingress-volume.md",
+        "admin-evidence/adr0012-single-host-20261117/pilot_create_once.py"
+      ],
+      "tests": [
+        "pilot 1,000 unique files, one open each: 1,015 records / 6 per-PID repeats / 5.3 excess",
+        "scale 20,000 unique files, one open each: 20,042 records / 12 per-PID repeats / 0.2 excess",
+        "same runs: minifilter.dropped=0, pipeline_dropped=0, dropped_total=0, shed_overload=0"
+      ],
+      "result": "PASS_E5",
+      "finding": "The FIM lane delivers one row per successful open, so the 47.5% within-batch repeat ratio on this host is distinct opens of the same path by the same PID, not duplicate delivery. Suppressing them would drop distinct observations: the minifilter (path, kind, pid) coalescer is rejected and no suppressing coalescer may deploy. duplicates_same_ts is confirmed unusable as a duplicate signal (0 same-timestamp repeats in the create-once runs versus 703,873 in production).",
+      "evidence_artifact": "analysis/current-head/ADR-0012-DECISION-20261117.md"
     }
   ],
   "known_gaps": [
@@ -14568,7 +14595,7 @@
       "flow_id": "QLOSS-HEALTH-001",
       "head_sha": "dfececbd708ee5a49f017038568c807aee9b8d72",
       "timestamp": "2026-11-08",
-      "result": "MEASURED_IDENTITY_UNVERIFIED",
+      "result": "NO_DUPLICATE_DELIVERY",
       "files_verified": [
         "src/pipeline/fim_dedup.zig",
         "src/pipeline/telemetry_threads.zig",
@@ -14581,9 +14608,12 @@
       "description": "Six-worker, 20,000-file Windows churn measurement on the deployed probe build (source dfececb, ancestor of current HEAD). The coarse per-PID key reported 48.177% repeats for create-once (105,765 records / 50,954 duplicates), 49.391% for rewrite (895,546 / 442,323), and 56.992% for recreate (1,722,362 / 981,611). All phases reported zero probe overflow. These are candidate repeat ratios only: source review found one record per successful IRP_MJ_CREATE and fresh KeQuerySystemTime stamping, so same-path/kind/PID rows can be distinct opens. They do not pass the event-identity gate.",
       "actual": "Measurement only; no coalescer was active. Final queue stats include 575,935 same-timestamp minifilter records and 118,566 pipeline drops. The same-timestamp count is a candidate signal, not proof of duplicate delivery. The archived revert result removed AEGIS_FIM_PROOF_ROOT but retained the same installed probe-binary SHA, so it is not binary rollback evidence.",
       "impact": "Documents measured repeat volume but does not establish safely coalescible volume, prove queue drops decrease, or close issue #29.",
-      "next_step": "resolve what its own result names (MEASURED_IDENTITY_UNVERIFIED) with the create-once unique-path measurement on this host (CLOSURE-PLAN rev.2 section 6.2); if duplicates_per_pid does not grow with single-open unique files, reject suppressing coalescing and record the decision",
-      "status": "OPEN",
-      "status_basis": "entry.result=MEASURED_IDENTITY_UNVERIFIED at head dfececb (2026-11-08): the pass is partial or carries an open blocker"
+      "next_step": "none for this gap; follow-up volume work is tracked in GAP-QLOSS-ISOLATION-002 (ETW NameDelete lane + consumer throughput)",
+      "status": "CLOSED",
+      "status_basis": "closed 2026-11-17 at E5 by ADR-0012-SINGLE-HOST-E5-20261117: 20,000 single-open unique files produced 20,042 records and 12 per-PID repeats against 11.8 ambient, so the lane does not duplicate delivery and the coalescer is rejected",
+      "reverified_by": "ADR-0012-SINGLE-HOST-E5-20261117",
+      "closed_note": "The create-once measurement resolved MEASURED_IDENTITY_UNVERIFIED in the direction that forbids coalescing: the delivery layer emits one row per successful open, so within-batch same-path repeats are distinct opens. The proposed minifilter (path, kind, pid) coalescer is rejected and no suppressing coalescer may deploy. No restart, no source change, no re-sign; the installed image and the signed tree are unchanged.",
+      "remaining": "None for this gap. The ingress-volume lever moves to GAP-QLOSS-ISOLATION-002 and targets the ETW Kernel-File NameDelete lane (18,151,604 rows), not the 2.4M minifilter lane. The native poll (path, kind) idea remains unproven and unused."
     },
     {
       "id": "DEFECT-READY-001",
@@ -14769,10 +14799,10 @@
     "E2_count": 124,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 98,
+    "E5_count": 99,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 48,
+    "E5_with_artifact_count": 49,
     "known_gaps_count": 282
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."

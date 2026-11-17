@@ -74,20 +74,28 @@ not interrupted.
 | `CAPTURE-LOOPBACK-001` | CLOSED, E5 | shipped nose captured `\Device\NPF_Loopback`; idle 66 → active 2,378 packets/15 s |
 | `E5-RECHECK-STALE-IMAGE-20261101` | CLOSED, E5 | RB-022 window on installed `7955A6E3`, 15 rows attributed to Kali, zero loss deltas |
 | `KIDS-002-20261101` | CLOSED, E5 | 11 live `policy=block` rows stayed `observed` / `host_effect_confirmed=false` |
+| `ADR-0012-DUP-RATIO-E5-20261108` | CLOSED, E5 | 20,000 single-open unique files → 20,042 records / 12 per-PID repeats vs 11.8 ambient; FIM lane does not duplicate delivery, minifilter coalescer rejected |
 
 ## 4. Remaining work, and where it is tracked
 
-The full list with costs is `docs/BACKLOG-v1.1.md`. Summary: **5 open gaps**
-(plus distribution steps). Three more (`CAPTURE-LOOPBACK-001`,
-`E5-RECHECK-STALE-IMAGE-20261101`, `KIDS-002-20261101`) closed in the
-2026-11-17 pass at E5 without touching the signed tree (§3, §7). The concrete
-closure route for every remaining item, with acceptance criteria and owner
-inputs, is `analysis/current-head/CLOSURE-PLAN-5GAPS-20261117.md`.
+The full list with costs is `docs/BACKLOG-v1.1.md`. Summary: **4 open gaps**
+(plus distribution steps). Four more (`CAPTURE-LOOPBACK-001`,
+`E5-RECHECK-STALE-IMAGE-20261101`, `KIDS-002-20261101`,
+`ADR-0012-DUP-RATIO-E5-20261108`) closed in the 2026-11-17 pass at E5 without
+touching the signed tree (§3, §5). The concrete closure route for every
+remaining item, with acceptance criteria and owner inputs, is
+`analysis/current-head/CLOSURE-PLAN-5GAPS-20261117.md`.
+
+`ADR-0012` closed against coalescing: the create-once measurement
+(`ADR-0012-SINGLE-HOST-E5-20261117`) showed the FIM lane emits one row per
+successful open, so the within-batch repeats are distinct opens. The minifilter
+coalescer is rejected, and the volume lever moved to the ETW `NameDelete` lane
+inside `GAP-QLOSS-ISOLATION-002`.
 
 | Group | Items | Why not in v2.0.0 |
 |---|---|---|
 | Lab window or different adapter | `EVI-G2-PEP-CACHE-001-LAB` (lab-only), `CAPTURE-DUP-WIFI-001` (P3, one adapter) | the lab needs an approved on-host enforcement window (victim = this host, Kali attacker) and a hash-verified rollback; this Wi-Fi/Npcap path exposes no duplication control |
-| v1.1 source change | `RULE-LAYER-SCOPE-001` (P3), `CAPTURE-DUP-WIFI-001` dedup option, `GAP-QLOSS-ISOLATION-002` / `ADR-0012-DUP-RATIO-E5` | a `src/` change forces rebuild + re-sign + a new 24 h soak; the signed tree must not drift |
+| v1.1 source change | `RULE-LAYER-SCOPE-001` (P3), `CAPTURE-DUP-WIFI-001` dedup option, `GAP-QLOSS-ISOLATION-002` | a `src/` change forces rebuild + re-sign + a new 24 h soak; the signed tree must not drift |
 | Distribution | EV certificate + Microsoft attestation/HLK for the drivers, 6.0.0 installer version decision + install coverage, production rebuild | requires key custody, a version bump and a new evidence cycle, not source work |
 
 None of them is a defect that invalidates a v2.0.0 detection verdict. The P3
@@ -133,6 +141,17 @@ approved maintenance window on this host, not a second machine.
   `enforced`. Focused pytest 7 passed, Zig `KIDS-002` fail-closed unit 1/1, and
   the full-suite note at `9ebee9b` remains 1371 passed / 4 skipped / 2 xfailed /
   0 failed with source unchanged since `7c604d5`. Record: `KIDS-002-20261117.md`.
+- **`ADR-0012-DUP-RATIO-E5-20261108` (CLOSED 2026-11-17 at E5, against
+  coalescing).** Create-once measurement on the installed image: 1,000 files
+  (0.304 s) produced 1,015 records and 6 per-PID repeats against 0.7 ambient;
+  20,000 files (5.822 s) produced 20,042 records and 12 repeats against 11.8
+  ambient. Excess was 0.2 rows, ratio ~0.00001. The FIM lane therefore emits one
+  row per successful open; the 47.5% within-batch repeat ratio is distinct
+  opens, so the proposed minifilter `(path, kind, pid)` coalescer is rejected.
+  `duplicates_same_ts` is confirmed unusable (0 in these runs versus 703,873 in
+  production). The ingress-volume lever stays open in
+  `GAP-QLOSS-ISOLATION-002`, aimed at the ETW `NameDelete` lane. No restart, no
+  source change. Record: `ADR-0012-DECISION-20261117.md`.
 - **`DIST-SCANNERS` (2026-11-17, E1/E2, not a gap closure).** `bandit` 1.9.4
   reported 401 findings (5 HIGH, 27 MEDIUM, 369 LOW; exit 1) — all five HIGH are
   `B605` on the constant `os.system('cls'/'clear')`, and the MEDIUM set is
@@ -231,7 +250,7 @@ AEGIS NIDS Windows v2.0.0 is a **shippable detection-only release at E5**:
 signed, hash-pinned, soak-proven for 24.62 h, and live-proven for L4 and for
 three L7 HTTP anomaly rules against a real attacker VM. It is not a
 production-signed kernel product (drivers are test-signed), not an enforcement
-product, and not fleet-qualified. Five gaps remain open with named causes and
+product, and not fleet-qualified. Four gaps remain open with named causes and
 costs; none of them blocks a detection verdict on the path this release ships.
 
 The 2026-11-17 closure pass removed three of the eight: loopback capture, the

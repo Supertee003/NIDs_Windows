@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-17T08:07:28.200913+00:00",
+  "generated_at": "2026-11-17T08:21:19.582229+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 2066,
+  "total_files": 2067,
   "by_class": {
-    "canonical-docs": 452,
+    "canonical-docs": 453,
     "canonical-build": 227,
     "unclassified": 19,
     "canonical-source": 989,
@@ -399,6 +399,12 @@
       "size": 4555
     },
     {
+      "path": "analysis/current-head/ADR-0012-DECISION-20261117.md",
+      "class": "canonical-docs",
+      "role": "architecture-decision",
+      "size": 4614
+    },
+    {
       "path": "analysis/current-head/BOOT-MODEL-002-20261114.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -468,7 +474,7 @@
       "path": "analysis/current-head/CLOSURE-PLAN-5GAPS-20261117.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 33026
+      "size": 33928
     },
     {
       "path": "analysis/current-head/CONFIG-VALIDATE-001-20261114.md",
@@ -678,7 +684,7 @@
       "path": "analysis/current-head/GAP-TRIAGE-20261116.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 12601
+      "size": 13329
     },
     {
       "path": "analysis/current-head/GATE-HONESTY-001-20261110.md",
@@ -864,7 +870,7 @@
       "path": "analysis/current-head/PROJECT-CLOSEOUT-20261117.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 16251
+      "size": 17612
     },
     {
       "path": "analysis/current-head/QLoss-E5-STEADY-WINDOW-20261109.md",
@@ -2358,7 +2364,7 @@
       "path": "docs/adr/0012-fim-ingress-volume.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10090
+      "size": 11571
     },
     {
       "path": "docs/adr/0013-runtime-latency-clock.md",
@@ -2520,7 +2526,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 64687
+      "size": 64778
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -2748,7 +2754,7 @@
       "path": "docs/BACKLOG-v1.1.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7892
+      "size": 8504
     },
     {
       "path": "docs/BASELINE_20260906.md",
@@ -3774,7 +3780,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1396102
+      "size": 1399244
     },
     {
       "path": "FLOW_MAP.json",

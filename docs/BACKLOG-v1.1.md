@@ -19,15 +19,14 @@ victim** and the Kali VM is the only attacker. There is no Win11 victim VM and
 no second host; lab work that needs enforcement runs in an approved
 maintenance window on this host with a hash-verified rollback.
 
-## 1. Open gaps (5)
+## 1. Open gaps (4)
 
 | ID | Sev | Level | What remains | Cost to close |
 |---|---|---|---|---|
 | `EVI-G2-PEP-CACHE-001-LAB` | — | E5 | PEP cache swap, direction verify, duplicate canary, unblock, base restore | lab window on this host: lab build + canary from Kali + documented block + hash-verified rollback (no second host) |
 | `CAPTURE-DUP-WIFI-001` | P3 | E5 | This Wi-Fi adapter/Npcap delivers every frame twice | try another adapter/host config (raw 802.11, Killer prioritisation); or a bounded, counted dedup keyed by `(ip.id, tcp.seq, payload hash)` that cannot drop a real retransmission |
 | `RULE-LAYER-SCOPE-001` | P3 | E1 | AC matcher applies KERNEL_PROCESS payload rules to network bytes, so TLS raises R2003 | scope the AC rule set to the event source's layer, or skip non-decoded payloads; add a pin that a TLS record cannot yield a KERNEL_PROCESS rule id |
-| `GAP-QLOSS-ISOLATION-002` | — | E2 | FIM/ETW ingress volume from the storming source is not reduced | reduce ingress at the producer, then re-measure and run a new 24 h soak |
-| `ADR-0012-DUP-RATIO-E5-20261108` | — | E5 | Measured FIM repeats do not establish safely coalescible volume (`MEASURED_IDENTITY_UNVERIFIED`) | resolve producer identity first; coalescing stays blocked until then |
+| `GAP-QLOSS-ISOLATION-002` | — | E2 | FIM/ETW ingress volume from the storming source is not reduced | reduce ingress at the producer (ETW `NameDelete` lane is 18.15M rows), then re-measure and run a new 24 h soak |
 
 ### Closed during the 2026-11-17 closure pass
 
@@ -57,6 +56,17 @@ attributed rows across `R0056`/`R9059`/`R0088`/`R9064`/`10004`/`10001`/`R9002`/
 `host_effect_confirmed=false`, and 4 protocol anomalies as observe-only; no row
 read `enforced`. Focused tests 7/7 and the Zig fail-closed unit 1/1 passed.
 Evidence: `KIDS-002-E5-20261117`.
+
+`ADR-0012-DUP-RATIO-E5-20261108` is **CLOSED at E5, against coalescing**. A
+create-once measurement on the installed image created 20,000 unique paths with
+exactly one open each: 20,042 minifilter records and 12 same-path/same-PID
+repeats, against 11.8 expected from a 30 s idle baseline (a 1,000-file pilot
+agreed). If the delivery layer duplicated creates, a single-open unique path
+would have produced a second row; none did. The 47.5% within-batch repeat ratio
+is therefore distinct opens, so the proposed minifilter `(path, kind, pid)`
+coalescer is rejected and no suppressing coalescer may deploy. No restart, no
+source change, no re-sign. Evidence: `ADR-0012-SINGLE-HOST-E5-20261117`; record:
+`ADR-0012-DECISION-20261117.md`.
 
 ## 2. v1.1 source items not yet filed as gaps
 
@@ -123,6 +133,7 @@ release.
    already closed and need no v1.1 slot.
 2. `RULE-LAYER-SCOPE-001` + `CAPTURE-DUP-WIFI-001` dedup decision (both change
    detection evidence; batch them into one build).
-3. `GAP-QLOSS-ISOLATION-002` / `ADR-0012` (ingress volume; needs a new soak).
+3. `GAP-QLOSS-ISOLATION-002` (ingress volume; the ETW `NameDelete` lane, needs a
+   new soak). `ADR-0012` is closed and needs no slot.
 4. Distribution: the 6.0.0 version decision and an in-place reinstall test, then
    EV certificate + Microsoft attestation/HLK.

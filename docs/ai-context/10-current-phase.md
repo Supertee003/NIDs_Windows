@@ -3,7 +3,7 @@
 ## Status: CLOSED — v2.0.0 shipped as a detection-only E5 release (2026-11-17)
 
 - **Project status record:** `analysis/current-head/PROJECT-CLOSEOUT-20261117.md`.
-  **Remaining work:** `docs/BACKLOG-v1.1.md` (5 open gaps + distribution steps).
+  **Remaining work:** `docs/BACKLOG-v1.1.md` (4 open gaps + distribution steps).
   Tag `v2.0.0` (annotated) → `7b484a1`, pushed with branch
   `codex/o2-etw-context`. `main` was never pushed.
 - Audit commit `d7f9223` at the time of the L7 windows; the closeout audit is
@@ -62,8 +62,9 @@
   `CAPTURE-LOOPBACK-001-20261117.md`, `E5-RECHECK-STALE-IMAGE-20261117.md`,
   `KIDS-002-20261117.md`.
 - Still open, and not hidden by the green gates: `RULE-LAYER-SCOPE-001` (P3, v1.1
-  source fix), `CAPTURE-DUP-WIFI-001` (P3, environmental), FIM ingress volume
-  (`GAP-QLOSS-ISOLATION-002` / ADR-0012, v1.1),
+  source fix), `CAPTURE-DUP-WIFI-001` (P3, environmental), FIM/ETW ingress
+  volume (`GAP-QLOSS-ISOLATION-002`, v1.1; the ETW `NameDelete` lane is the
+  volume leader and `ADR-0012` is closed against FIM coalescing),
   `EVI-G2-PEP-CACHE-001-LAB` (lab-only: needs an approved on-host maintenance
   window because the NIDS host is now the victim, plus a hash-verified rollback;
   no second host), and production driver signing (the drivers are test-signed;

@@ -50,13 +50,15 @@ in-place install/uninstall, gate-closed restore
 
 ## 1. ภาพรวม: 5 gap + 4 distribution (rev.2)
 
+> สถานะล่าสุด: `ADR-0012` **ปิดแล้ว** (E5, 2026-11-17) — เหลือ 4 gap
+
 | # | Item | ระดับปัจจุบัน | สิ่งที่ขาดจริง | วิธีปิดบนเครื่องนี้ | แก้ source? | เวลา |
 |---|---|---|---|---|---|---|
 | 1 | `EVI-G2-PEP-CACHE-001-LAB` | E5 (lab) | duplicate canary ไม่ได้พิสูจน์ว่า "block เกิดจาก filter ของ AEGIS ตัวเดียวกัน" | lab build + canary จาก Kali + filter query + documented block + hash rollback | ไม่ | 3–5 ชม. (window) |
 | 2 | `RULE-LAYER-SCOPE-001` | E1 | AC ตัวเดียวใช้ rule ข้าม layer กับ network bytes | แยก AC ตาม layer + pins + build + soak | **ใช่** | 1–2 วัน + soak |
 | 3 | `CAPTURE-DUP-WIFI-001` | E5 | frame ซ้ำบน Wi-Fi/Npcap นี้ | ทดลอง config Npcap ก่อน → ถ้าไม่หาย ใช้ counted dedup ใน Nose | อย่างหลังใช่ | 1 ชม. หรือ 2–3 วัน + soak |
 | 4 | `GAP-QLOSS-ISOLATION-002` | E2 | ingress FIM/ETW จาก storm ไม่ลด | ETW delete filter + consumer throughput (หรือ accepted envelope) | **ใช่** | 2–4 วัน + soak |
-| 5 | `ADR-0012-DUP-RATIO-E5` | E5 | ยังไม่พิสูจน์ว่า repeat = distinct open | create-once unique-path measurement บนเครื่องนี้ | ไม่ | 2–4 ชม. |
+| 5 | `ADR-0012-DUP-RATIO-E5` | E5 | ยังไม่พิสูจน์ว่า repeat = distinct open | create-once unique-path measurement บนเครื่องนี้ | ไม่ | **ปิดแล้ว 2026-11-17** |
 | D1 | Driver signing (EV + attestation/HLK) | — | ไม่มี EV cert/Partner Center และไม่มี target แยก | ภายนอกเครื่องนี้ | ไม่ | สัปดาห์ |
 | D2 | Installer 6.0.0 label | — | product version `5.0.0` ใน source | รวมใน v1.1 build เดียว | **ใช่** | รวม v1.1 |
 | D3 | Production rebuild | — | ยังไม่ rebuild จาก source เพื่อ cut | CI/clean checkout + hash compare บนเครื่องนี้ | ไม่ | 1–2 วัน |
@@ -308,7 +310,17 @@ dropped/shed delta ที่อธิบายไม่ได้
 → ลด minifilter ไม่ช่วย ETW quota; (2) `duplicates_same_ts` **ไม่ใช่หลักฐาน duplicate
 delivery** เพราะ `KeQuerySystemTime` granularity ~15.6 ms
 
-### 6.2 Phase 1 — ปิด `ADR-0012` ด้วยการวัดบนเครื่องนี้ (ไม่แก้ source, ไม่ restart)
+### 6.2 Phase 1 — ปิด `ADR-0012` ด้วยการวัดบนเครื่องนี้ (ปิดแล้ว 2026-11-17)
+
+**ผลลัพธ์จริง:** create-once 1,000 ไฟล์ (churn 0.304 s) → 1,015 records / 6
+per-PID repeats เทียบ ambient 0.7; create-once 20,000 ไฟล์ (churn 5.822 s) →
+20,042 records / 12 repeats เทียบ ambient 11.8 (excess 0.2, ratio ~0.00001)
+→ **ไม่มีการส่งซ้ำที่ delivery layer**; repeat 47.5% ในงานจริง = distinct opens
+→ **minifilter coalescer ถูก reject** และปิด gap ที่ E5
+(evidence `ADR-0012-SINGLE-HOST-E5-20261117`, record
+`ADR-0012-DECISION-20261117.md`) — ไม่ต้อง restart, ไม่แตะ source/release
+
+ขั้นตอนที่ใช้ (เก็บไว้ทำซ้ำได้):
 
 1. สร้าง `D:\tmp\aegis-storm-<ts>\` + ledger (path, pid, op, timestamp)
 2. อ่าน `fim_probe` baseline (idle 60 s)
@@ -375,7 +387,7 @@ delivery** เพราะ `KeQuerySystemTime` granularity ~15.6 ms
 
 ```
 Phase 0  (ไม่แตะ release, ไม่ต้อง window)
-  ├─ ADR-0012 create-once measurement บนเครื่องนี้      → decision
+  ├─ ADR-0012 create-once measurement บนเครื่องนี้      → DONE (ปิดแล้ว)
   └─ CAPTURE-DUP config experiment (Dot11Support=0)     → ปิดได้หรือได้ตัวเลข
 
 Phase 1  (ต้องอนุมัติ maintenance window)

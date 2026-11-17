@@ -1,8 +1,8 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-17T08:07:28.204319+00:00",
+  "generated_at": "2026-11-17T08:21:19.585272+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 2066,
+  "total_files": 2067,
   "by_role": {
     "documentation": 438,
     "build-config": 216,
@@ -10,9 +10,9 @@
     "lockfile": 6,
     "rust-build": 4,
     "source": 693,
+    "architecture-decision": 13,
     "test-artifact": 303,
     "config-data": 42,
-    "architecture-decision": 12,
     "step-document": 2,
     "go-source": 8,
     "makefile": 1,
@@ -579,6 +579,10 @@
     "analysis/current-head/ACTION-SPACES-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
+    },
+    "analysis/current-head/ADR-0012-DECISION-20261117.md": {
+      "class": "canonical-docs",
+      "role": "architecture-decision"
     },
     "analysis/current-head/BOOT-MODEL-002-20261114.md": {
       "class": "canonical-docs",

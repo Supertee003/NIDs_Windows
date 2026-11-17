@@ -1,12 +1,17 @@
 # ADR-0012 — FIM ingress volume: reduce it at the sensor, never silently
 
-**Status:** Proposed — candidate duplicate volume was measured at E5 on the
-Windows host on 2026-11-08, but the producer-identity gate **NOT PASSED** (see
-*Measurement result*). No suppressing coalescer may deploy until distinct opens
-are proven retained; implementation and post-change loss-reduction proof remain
-open
+**Status:** **Rejected for the minifilter source (2026-11-17).** The create-once
+measurement at E5 (`ADR-0012-SINGLE-HOST-E5-20261117`) showed the FIM lane
+delivers each open once: 20,000 single-open files produced 20,042 records and 12
+same-path/same-PID repeats, indistinguishable from the 11.8 expected from
+ambient activity. The 47.5% production repeat ratio is therefore distinct opens,
+not duplicate delivery, so suppressing them would drop distinct observations.
+No suppressing coalescer may deploy. The native poll `(path, kind)` idea stays
+unproven and unused
 **Date:** 2026-11-07
-**Measurement:** 2026-11-08, evidence `ADR-0012-DUP-RATIO-E5-20261108`
+**Measurement:** 2026-11-08, evidence `ADR-0012-DUP-RATIO-E5-20261108`;
+identity resolved 2026-11-17, evidence `ADR-0012-SINGLE-HOST-E5-20261117`,
+record `analysis/current-head/ADR-0012-DECISION-20261117.md`
 **Supersedes:** —
 **Superseded by:** —
 **Owner:** AEGIS Core Team
@@ -142,6 +147,20 @@ identity preserves distinct callbacks and the corrected duplicate ratio is
 measured. See
 `analysis/current-head/issue-29-minifilter-event-identity-stop-line-20261108.md`.
 
+**Identity resolved at E5 on 2026-11-17 — gate FAILED for the minifilter
+coalescer.** `ADR-0012-SINGLE-HOST-E5-20261117` created 20,000 unique paths with
+exactly one open each on this host and compared the probe deltas against a
+30 s idle baseline: 20,042 minifilter records, 12 same-path/same-PID repeats,
+against 11.8 expected from ambient activity (0.2 excess, ratio ~0.00001). A
+1,000-file pilot agreed (1,015 records, 6 repeats, 5.3 excess). If the delivery
+layer duplicated creates, a single-open unique path would have produced a
+second row; it did not. The production repeat ratio is therefore distinct opens
+of the same path, and suppressing them would drop distinct observations. The
+minifilter coalescer is **rejected**, the gap is closed at E5, and
+`GAP-QLOSS-ISOLATION-002` remains open with the ETW Kernel-File `NameDelete`
+lane (18,151,604 rows) as the volume lever. Record:
+`analysis/current-head/ADR-0012-DECISION-20261117.md`.
+
 After implementation, repeat the same host churn and require
 `fim_coalesced_total > 0`, FIM pipeline drops strictly below the comparable
 baseline, ETW unchanged or better, kernel ring drops at 0, and no readiness-gate
@@ -168,9 +187,11 @@ lever; do not claim issue #29 closed.
 
 ## Open items
 
-1. Resolve the minifilter event-identity stop-line; prove distinct opens are
-   retained before implementing any suppressing coalescer. Native polling can
-   be considered separately under its own producer contract.
+1. ~~Resolve the minifilter event-identity stop-line; prove distinct opens are
+   retained before implementing any suppressing coalescer.~~ **Closed 2026-11-17
+   at E5: the lane does not duplicate; distinct opens are retained by keeping
+   every row, and the coalescer is rejected.** Native polling can be considered
+   separately under its own producer contract.
 2. Re-run the corrected E5 duplicate-ratio probe, then comparable E5 churn to
    measure actual FIM queue-drop reduction, ring loss,
    ETW impact, and readiness without relaxing gates.
