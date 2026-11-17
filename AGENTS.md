@@ -1,7 +1,8 @@
 # AGENTS.md — AEGIS NIDS Windows
 ## Version 2.0 — Current-HEAD Vertical Slice Workflow
 
-**HEAD:** `2102a5edacc4b5eaca93c00207d6703a7134d0c3` (build source commit; see ADR-0008)
+**RECORDS HEAD:** `ef728b3ae74ab9ab4dfc607181972c5bd310db1f` (current records tip)
+**BUILD SOURCE HEAD:** `b955f919122fa60480f83cb5b5c1be10b557f0cd` (last source/build commit; see ADR-0008)
 **Applies to:** All human + AI agents contributing to AEGIS NIDS Windows
 
 ---

@@ -4,9 +4,11 @@
 
 
 
-**HEAD:** `7c604d5b0022157020e20e78045cc2c97a337ddd` (build source commit — ADR-0008)
+**RECORDS HEAD:** `ef728b3ae74ab9ab4dfc607181972c5bd310db1f` (current records tip)
 
-**BRANCH:** `codex/o2-etw-context`
+**BUILD SOURCE HEAD:** `b955f919122fa60480f83cb5b5c1be10b557f0cd` (last source/build commit — ADR-0008)
+
+**BRANCH:** `fix/stopline-truth-ci-signature-001` (delivery branch under review)
 
 **GENERATED:** 2026-11-03T14:45:00+07:00
 
@@ -27,6 +29,7 @@
 - Python Brain inspection is optional. UDP offers are fire-and-forget; opt-in findings return only as advisory sensor events. The Phase-B BrainAdvisor dispatcher is test-harness-only. XDR is advisory recording-only at current HEAD: XDR-WIRE-001 feeds the selected fabric from detection-identity events, and XDR-RECEIPT-002 persists frozen multi-source assessments as IDS Evidence Receipts after forensic hash read-back with replay. The receipt value is discarded; no scoring, policy, PEP, DEFCON, ActionDispatcher, or host-effect consumer exists. Windows E5 for the detection-only path is recorded in `analysis/current-head/PROJECT-CLOSEOUT-20261117.md` (v2.0.0).
 - Current evidence establishes Windows E5 for the shipped detection-only release `v2.0.0` (build source `7c604d5`); it does not establish kernel qualification, production driver signing, or E7. Treat older deployment/evidence narratives below as historical unless their source commit and current-head proof are explicitly verified.
 - G2 enforcement lab is retired, not pending (2026-11-17): on a single-host window the signed lab policy matched the 443 canary (`policy=3`) and the installed PEP answered `decision=escalate reason=8 filter_id=0` for block/quarantine (direct FFI probe, `PepRequest` 64 B). `EVI-G2-PEP-CACHE-001-LAB-20261023` is CLOSED as superseded by RETIRE-HOST-EFFECT-001 / issue #25, and the host was restored hash-identically. The direction-verify, duplicate-filter, and unblock steps did not run and are not claimed. Evidence: `analysis/current-head/G2-ENFORCEMENT-RETIRED-20261117.md`.
+- Wi-Fi frame duplication is closed as not reproducible (2026-11-17): the older counter keyed on address/id/seq fields and therefore counted TCP Dup ACKs. A raw-byte probe (equal length + equal sha256 within 2 ms) reproduces 5/14 duplicated host_tx frames in the 02:39 capture and finds 0 in 29,060 frames taken later the same day, including 1,126 fps with the Go Nose handle attached (nose: 26,300 captured / 26,300 canonical / 0 dropped). `CAPTURE-DUP-WIFI-001` is CLOSED; the 02:39 root cause is not claimed. Reopen if the byte-level probe reports a nonzero pair count. Evidence: `analysis/current-head/CAPTURE-DUP-WIFI-20261117.md`.
 
 **ARCHITECTURE:** Hub-and-Spoke with Plane Separation
 
@@ -976,4 +979,3 @@ golden path. OPTIONAL is operator-only.
 14. Do not use Cython as the system integration bus
 
 15. Do not create language-to-language mesh (use hub-and-spoke)
-

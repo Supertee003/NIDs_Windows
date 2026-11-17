@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "7c604d5",
+  "source_commit": "b955f91",
   "build_date": "2026-10-23T00:00:00.000000+00:00",
   "build_host": "windows",
   "platform": {
@@ -198,8 +198,8 @@
   "artifacts": [
     {
       "path": ".github/workflows/ci.yml",
-      "size": 13397,
-      "sha256": "22878fc48bf740d7a04bdbdf079d85c20e24a81a8ef31922b0036b11ada82302",
+      "size": 13742,
+      "sha256": "3c21cdec8803543b617b8acea39ee690c8ad550a8d7136e12d883174168a3972",
       "language": "yaml"
     },
     {
@@ -1021,7 +1021,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "f9c1c516533d34a668e3d80344951f4d52659d95864da08469d3b7ff2ecee036",
+      "sha256": "b0663d5617eda052761c10f51c0a573d72c9d69823261927382f2dce7e96c3c8",
       "language": "json"
     },
     {
@@ -2166,8 +2166,8 @@
     },
     {
       "path": "src/daemon.zig",
-      "size": 51271,
-      "sha256": "501c53a1a3d1541b07c41b022911aac4b47adb899d50862dcfd6eda1d00213ee",
+      "size": 52024,
+      "sha256": "2c56d511cc8f29ab9446f87e4c6aba9961f81993ef0ad0b62b9a2eaa47f0e6a8",
       "language": "zig"
     },
     {
@@ -2478,8 +2478,8 @@
     },
     {
       "path": "src/pipeline/event_processor.zig",
-      "size": 55545,
-      "sha256": "e97ad584d12dfcffa90a6c8b68d9d6d5ca87fdaad4ac075d4bcee89816dd2272",
+      "size": 57884,
+      "sha256": "f6237ed0d813b7d018632a18e94c5d0a506cf627c159f8b5dab46944da5ad04d",
       "language": "zig"
     },
     {
@@ -2502,14 +2502,14 @@
     },
     {
       "path": "src/pipeline/rule_loader.zig",
-      "size": 27560,
-      "sha256": "8be1d18ee64caa5b9a49e87a5130039735aca9e574b2ee3cd8244a2ee70d0686",
+      "size": 34152,
+      "sha256": "d82f84276d304249e790c9f9866f6884b577e550611165711c46334ff064d67f",
       "language": "zig"
     },
     {
       "path": "src/pipeline/runtime_state.zig",
-      "size": 23126,
-      "sha256": "872f58f0e050343f1e853963033a949824f410673782851b8ac81f260202d21f",
+      "size": 24086,
+      "sha256": "1a5837a1ad0417b26b40de2cf29ef3b00224660e5d2a34f968c6e259a28c832a",
       "language": "zig"
     },
     {
@@ -3690,8 +3690,8 @@
     },
     {
       "path": "tools/final_audit.py",
-      "size": 41546,
-      "sha256": "3c56ca8160635290e2e30ef710eff8edc44d359b365cdb6f2a7479e42314387c",
+      "size": 44912,
+      "sha256": "fbf8c5439aa15a5793cc12a3381c7591b0b8f3ffe9c575542c207a5d196c2168",
       "language": "python/cython"
     },
     {

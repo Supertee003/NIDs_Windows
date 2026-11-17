@@ -201,6 +201,23 @@ pub fn classifyRule(
     return .{ .verdict = .load, .reason = .malformed, .id = id, .pattern = pat_val.string };
 }
 
+/// RULE-LAYER-SCOPE-001: which automaton a rule belongs to.
+///
+/// A missing or unrecognised `layer` keeps the historical behaviour (network), so
+/// an operator's older Rules.json cannot silently lose rules; the layers that
+/// matter for scope are the KERNEL_* ones, which used to sit in the network
+/// automaton and fire on packet bytes.
+pub fn ruleLayer(rule_val: std.json.Value) state.RuleLayer {
+    if (rule_val != .object) return .network;
+    const layer_val = rule_val.object.get("layer") orelse return .network;
+    if (layer_val != .string) return .network;
+    const s = layer_val.string;
+    if (std.mem.eql(u8, s, "KERNEL_FILE")) return .kernel_file;
+    if (std.mem.eql(u8, s, "KERNEL_PROCESS")) return .kernel_process;
+    if (std.mem.eql(u8, s, "L2_PIPE")) return .l2_pipe;
+    return .network;
+}
+
 /// JSON-escape one string into a writer (rule IDs are operator-controlled;
 /// a quote in an ID must not break the control response).
 pub fn writeJsonString(writer: anytype, s: []const u8) void {
@@ -238,6 +255,15 @@ pub fn reloadRules() ReloadReport {
     var report = ReloadReport{};
     var l4_rules: [l4.MAX_RULES]l4.Rule = l4.empty_rules;
     var l4_count: usize = 0;
+    // RULE-LAYER-SCOPE-001: patterns are collected per layer while the JSON is
+    // still alive and built into their own automata inside the same block; the
+    // pointers are swapped in afterwards with the network one.
+    const MAX_LAYER_RULES = 1024;
+    const Pending = struct { id: u32, pat: []const u8 };
+    var pending: [3][MAX_LAYER_RULES]Pending = undefined;
+    var pending_n = [_]usize{ 0, 0, 0 };
+    var layer_counts = [_]u32{ 0, 0, 0, 0 };
+    var layer_acs = [_]?*sig.AhoCorasick{ null, null, null };
     var disabled_map = loadDisabledMap();
     defer disabled_map.deinit();
     blk: {
@@ -319,12 +345,29 @@ pub fn reloadRules() ReloadReport {
                 continue;
             }
             const rule_id = hashRuleId(c.id.?);
-            heap_ac.addPattern(rule_id, c.pattern.?) catch |err| {
-                diag.warn("reload: failed to add pattern for {s}: {}", .{ c.id.?, err });
-                report.recordSkip(.add_failed, c.id);
-                continue;
-            };
+            const layer = ruleLayer(rule_val);
+            // The network automaton holds ONLY network rules. Adding every
+            // non-L4 rule here as well (the first cut of this patch did) left the
+            // kernel patterns reachable for wire bytes, and the live check caught
+            // R2003 still firing on a UDP payload.
+            if (layer == .network) {
+                heap_ac.addPattern(rule_id, c.pattern.?) catch |err| {
+                    diag.warn("reload: failed to add pattern for {s}: {}", .{ c.id.?, err });
+                    report.recordSkip(.add_failed, c.id);
+                    continue;
+                };
+            }
             report.loaded += 1;
+            layer_counts[@intFromEnum(layer)] += 1;
+            if (layer != .network) {
+                const li = @intFromEnum(layer) - 1;
+                if (pending_n[li] < MAX_LAYER_RULES) {
+                    pending[li][pending_n[li]] = .{ .id = rule_id, .pat = c.pattern.? };
+                    pending_n[li] += 1;
+                } else {
+                    diag.warn("reload: layer rule table full, {s} not in its layer automaton", .{c.id.?});
+                }
+            }
         }
 
         heap_ac.build() catch |err| {
@@ -333,6 +376,42 @@ pub fn reloadRules() ReloadReport {
             std.heap.page_allocator.destroy(heap_ac);
             break :blk;
         };
+
+        // Build one automaton per non-network layer. A layer whose build fails is
+        // left null, which the pipeline reads as "no layered rules" and falls back
+        // to the network automaton for that layer rather than matching nothing.
+        for (&layer_acs, 0..) |*slot, li| {
+            if (pending_n[li] == 0) continue;
+            const extra = std.heap.page_allocator.create(sig.AhoCorasick) catch |err| {
+                diag.warn("reload: cannot allocate layer automaton {}: {}", .{ li, err });
+                continue;
+            };
+            extra.* = sig.AhoCorasick.init(std.heap.page_allocator, 100_000) catch |err| {
+                diag.warn("reload: cannot init layer automaton {}: {}", .{ li, err });
+                std.heap.page_allocator.destroy(extra);
+                continue;
+            };
+            var add_failed = false;
+            for (pending[li][0..pending_n[li]]) |pr| {
+                extra.addPattern(pr.id, pr.pat) catch |err| {
+                    diag.warn("reload: layer {} addPattern failed: {}", .{ li, err });
+                    add_failed = true;
+                    break;
+                };
+            }
+            if (add_failed) {
+                extra.deinit();
+                std.heap.page_allocator.destroy(extra);
+                continue;
+            }
+            extra.build() catch |err| {
+                diag.warn("reload: layer {} build failed: {}", .{ li, err });
+                extra.deinit();
+                std.heap.page_allocator.destroy(extra);
+                continue;
+            };
+            slot.* = extra;
+        }
     }
 
     if (report.loaded > 0) {
@@ -340,6 +419,8 @@ pub fn reloadRules() ReloadReport {
         state.g_ac_mutex.lock();
         const old_ac_ptr = state.g_active_ac;
         state.g_active_ac = heap_ac;
+        state.g_layer_ac = .{ heap_ac, layer_acs[0], layer_acs[1], layer_acs[2] };
+        state.g_layer_rule_count = layer_counts;
         state.g_l4_rules = l4_rules;
         state.g_l4_rule_count = l4_count;
         state.g_l4_rate_mutex.lock();
@@ -613,4 +694,54 @@ test "BE-DRIFT-098: writeJsonString escapes operator-controlled IDs" {
     var fbs = std.io.fixedBufferStream(&buf);
     writeJsonString(fbs.writer(), "R01\"02\\");
     try std.testing.expectEqualStrings("\"R01\\\"02\\\\\"", fbs.getWritten());
+}
+
+test "RULE-LAYER-SCOPE: a rule's layer decides its automaton" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const doc =
+        \\{"nids_rules": [
+        \\ {"rule_id": "R9059", "layer": "L7", "match_pattern": "<script>"},
+        \\ {"rule_id": "R1002", "layer": "KERNEL_FILE", "match_pattern": ".locked"},
+        \\ {"rule_id": "R2003", "layer": "KERNEL_PROCESS", "match_pattern": "IEX"},
+        \\ {"rule_id": "R3001", "layer": "L2_PIPE", "match_pattern": "MSSE-"},
+        \\ {"rule_id": "R0056", "match_pattern": "' OR 1=1"}
+        \\]}
+    ;
+    var parsed = try std.json.parseFromSlice(std.json.Value, arena.allocator(), doc, .{});
+    const rules = parsed.value.object.get("nids_rules").?.array.items;
+    try std.testing.expectEqual(state.RuleLayer.network, ruleLayer(rules[0]));
+    try std.testing.expectEqual(state.RuleLayer.kernel_file, ruleLayer(rules[1]));
+    try std.testing.expectEqual(state.RuleLayer.kernel_process, ruleLayer(rules[2]));
+    try std.testing.expectEqual(state.RuleLayer.l2_pipe, ruleLayer(rules[3]));
+    // No `layer` field keeps the historical network behaviour rather than
+    // silently dropping the rule.
+    try std.testing.expectEqual(state.RuleLayer.network, ruleLayer(rules[4]));
+}
+
+test "RULE-LAYER-SCOPE: kernel patterns do not fire on network bytes" {
+    // The defect: one automaton held every layer, so a TLS or HTTP payload that
+    // happened to contain `IEX` was tagged with the KERNEL_PROCESS rule id. Two
+    // automata built exactly as the loader builds them must not cross.
+    const alloc = std.testing.allocator;
+    var network = try sig.AhoCorasick.init(alloc, 10_000);
+    defer network.deinit();
+    var kernel_process = try sig.AhoCorasick.init(alloc, 10_000);
+    defer kernel_process.deinit();
+
+    try network.addPattern(hashRuleId("R9059"), "<script>");
+    try kernel_process.addPattern(hashRuleId("R2003"), "IEX");
+    try network.build();
+    try kernel_process.build();
+
+    const wire_bytes = "POST /upload HTTP/1.1\r\nHost: t\r\n\r\n{\"cmd\":\"IEX (New-Object Net.WebClient)\"}";
+    try std.testing.expect(network.matchFirst(wire_bytes) == null);
+    const kp_hit = kernel_process.matchFirst(wire_bytes);
+    try std.testing.expect(kp_hit != null);
+    try std.testing.expectEqual(hashRuleId("R2003"), kp_hit.?.rule_id);
+
+    // And the network layer still catches its own rule.
+    const hit = network.matchFirst("GET /?q=<script>alert(1)</script>");
+    try std.testing.expect(hit != null);
+    try std.testing.expectEqual(hashRuleId("R9059"), hit.?.rule_id);
 }

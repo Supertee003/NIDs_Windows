@@ -193,6 +193,20 @@ fn recordXdrAdvisoryReceipt(
 ///   3. Anomaly detection
 ///   4. Threat tracking
 ///   5. Forensic recording
+/// RULE-LAYER-SCOPE-001: which rule layer an event source belongs to.
+///
+/// Returning null means "this source has no payload rules", not "use all of
+/// them": an unknown producer must not inherit the network catalog by accident.
+fn ruleLayerIndexForSource(source: event.EventSource) ?usize {
+    return switch (source) {
+        .capture_npcap, .capture_wfp => @intFromEnum(state.RuleLayer.network),
+        .capture_fim, .capture_registry => @intFromEnum(state.RuleLayer.kernel_file),
+        .capture_etw => @intFromEnum(state.RuleLayer.kernel_process),
+        .capture_pipe_monitor => @intFromEnum(state.RuleLayer.l2_pipe),
+        else => null,
+    };
+}
+
 fn processEvent(
     qe: *const queue.QueuedEvent,
     _: *sig.AhoCorasick, // using g_active_ac global instead
@@ -266,7 +280,14 @@ fn processEvent(
     var l4_rules: [l4.MAX_RULES]l4.Rule = l4.empty_rules;
     var l4_count: usize = 0;
     state.g_ac_mutex.lock();
-    active_ac = state.g_active_ac;
+    // RULE-LAYER-SCOPE-001: match payload bytes against the automaton that owns
+    // the rule layer this event belongs to, not against every rule at once. The
+    // network automaton is the fallback when the reload path has not installed a
+    // layered set yet (and for the single-automaton tests).
+    const layer_idx = ruleLayerIndexForSource(ev.source);
+    if (layer_idx) |li| {
+        active_ac = state.g_layer_ac[li] orelse state.g_active_ac;
+    }
     l4_count = @min(state.g_l4_rule_count, l4.MAX_RULES);
     if (l4_count > 0) {
         @memcpy(l4_rules[0..l4_count], state.g_l4_rules[0..l4_count]);
@@ -275,9 +296,13 @@ fn processEvent(
 
     // The host_net payload is a short observation string, not packet bytes:
     // running the AC matcher over it would fabricate detections from text
-    // that never crossed the wire. Other host producers (ETW/FIM/registry)
-    // keep their existing behavior.
-    if (qe.payload_len > 0 and ev.source != .capture_host_net) {
+    // that never crossed the wire. A source with no rule layer is in the same
+    // position, and is counted rather than quietly matched against another
+    // layer's rules.
+    if (qe.payload_len > 0 and ev.source != .capture_host_net and layer_idx == null and active_ac == null) {
+        _ = state.g_ac_skipped_unknown_source.fetchAdd(1, .monotonic);
+    }
+    if (qe.payload_len > 0 and ev.source != .capture_host_net and active_ac != null) {
         if (active_ac) |the_ac| {
             const payload_slice = qe.payload[0..qe.payload_len];
             // GAP-015: matchFirst, not match. The pipeline consumes only
@@ -1167,4 +1192,17 @@ pub fn pipelineLoop(
         state.g_pipeline_detections.load(.acquire),
         state.g_pipeline_policies_matched.load(.acquire),
     });
+}
+
+test "RULE-LAYER-SCOPE: each event source maps to its own rule layer" {
+    try std.testing.expectEqual(@as(?usize, 0), ruleLayerIndexForSource(.capture_npcap));
+    try std.testing.expectEqual(@as(?usize, 0), ruleLayerIndexForSource(.capture_wfp));
+    try std.testing.expectEqual(@as(?usize, 1), ruleLayerIndexForSource(.capture_fim));
+    try std.testing.expectEqual(@as(?usize, 1), ruleLayerIndexForSource(.capture_registry));
+    try std.testing.expectEqual(@as(?usize, 2), ruleLayerIndexForSource(.capture_etw));
+    try std.testing.expectEqual(@as(?usize, 3), ruleLayerIndexForSource(.capture_pipe_monitor));
+    // Sources that carry no wire payload must not inherit the network catalog.
+    try std.testing.expectEqual(@as(?usize, null), ruleLayerIndexForSource(.capture_host_net));
+    try std.testing.expectEqual(@as(?usize, null), ruleLayerIndexForSource(.detection_brain));
+    try std.testing.expectEqual(@as(?usize, null), ruleLayerIndexForSource(.system));
 }
