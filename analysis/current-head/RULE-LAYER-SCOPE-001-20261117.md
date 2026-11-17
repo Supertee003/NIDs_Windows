@@ -1,7 +1,7 @@
 # RULE-LAYER-SCOPE-001 — one automaton, every layer, every payload
 
 **Created:** 2026-11-17
-**Patch:** source applied; E2 pinned; E5 live proof still open.
+**Patch:** source applied, installed, and proven live (E5). Two live failures found and fixed two real defects; see 'Live proof' below.
 **Build source:** this commit (see `git log -1`).
 
 ---
@@ -63,3 +63,42 @@ wrong in both directions, and `RULE-LAYER-SCOPE-001` recorded it at E1.
    as "no layered rules" and falls back to the network automaton, which is the old
    over-matching behaviour rather than matching nothing. That is fail-open for
    detection coverage and is logged; it is not silent.
+
+
+---
+
+## Live proof (E5, 2026-11-17)
+
+**The check failed first, twice, and that is the useful part.**
+
+1. First attempt on the installed layered build: a UDP payload carrying
+   `IEX(New-Object Net.WebClient)` over VMnet1 was tagged **R2003**
+   (KERNEL_PROCESS), and 1271-byte ambient traffic was tagged **R3003**
+   (L2_PIPE, pattern `anonymous`). Cause: `src/daemon.zig` built a single
+   automaton at startup and the pipeline fell back to it, because the layered set
+   only existed after a `rules.reload`.
+2. Second attempt after adding the startup reload: R2003 still fired on the wire.
+   Cause: the first version of the split added every non-L4 rule to the network
+   automaton **as well as** to its layer, so the kernel patterns were still
+   reachable. Fixed: the network automaton now holds only network rules.
+
+**Final measurement on the installed binary**
+(`sha256 abf1a4ae469c2b01…`, service RUNNING, startup log
+`layered rules at startup: loaded 23 (network=5 kernel_file=5 kernel_process=5 l2_pipe=5)`):
+
+| stimulus | source | rule id observed |
+|---|---|---|
+| `<script>alert(1)</script>` in a request line, 3 frames | 192.168.126.1 / .10 | `R9059` (4009890390, L7) ×3 |
+| `../../etc/passwd` in a request line, 3 frames | 192.168.126.1 | `R0088` (4254503461, L7) ×3 |
+| `IEX(New-Object Net.WebClient)` in a request line, 3 frames | 192.168.126.1 | **no match at all** |
+| file `canary.locked` created in `D:	mpegis-canary` | host (0.0.0.0) | `R1002` (kernel_file) |
+| ambient host traffic | host (0.0.0.0) | `R1001`, `R1003` (kernel_file) |
+
+Rule ids arrive as FNV-1a hashes in event rows and were mapped back with the same
+function the loader uses.
+
+**What is not claimed:** the R2003 positive control (a process created with `IEX`
+on its command line) did not fire, so whether the ETW process payload carries the
+command line is an open coverage question, not part of this fix. The stimulus came
+from the host side of VMnet1, not from an HTTP client in the Kali guest, because
+`vmrun runProgramInGuest` failed with `A file was not found` on this host.

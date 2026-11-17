@@ -397,6 +397,19 @@ pub fn runDaemon() !void {
         state.g_rules_loaded.store(rules_loaded, .monotonic);
         state.g_active_ac = &ac; // PATCH-14: expose AC for reload mechanism
         diag.info("loaded {} rules from {s}", .{ rules_loaded, rules_path });
+        // RULE-LAYER-SCOPE-001: the startup load above builds ONE automaton, and
+        // the pipeline falls back to it when the layered set is absent -- which is
+        // exactly how kernel rules kept firing on network bytes on this host after
+        // the split landed. Run the layered reload here too so startup and reload
+        // leave the process in the same state.
+        const layered = rule_loader.reloadRules();
+        diag.info("layered rules at startup: loaded {} (network={} kernel_file={} kernel_process={} l2_pipe={})", .{
+            layered.loaded,
+            state.g_layer_rule_count[0],
+            state.g_layer_rule_count[1],
+            state.g_layer_rule_count[2],
+            state.g_layer_rule_count[3],
+        });
         // BE-DRIFT-098: name skipped rules at startup (not just counts)
         // so a patternless/disabled rule is visible before attack tests.
         var si: usize = 0;

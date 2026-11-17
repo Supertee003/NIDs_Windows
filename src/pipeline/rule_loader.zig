@@ -345,13 +345,19 @@ pub fn reloadRules() ReloadReport {
                 continue;
             }
             const rule_id = hashRuleId(c.id.?);
-            heap_ac.addPattern(rule_id, c.pattern.?) catch |err| {
-                diag.warn("reload: failed to add pattern for {s}: {}", .{ c.id.?, err });
-                report.recordSkip(.add_failed, c.id);
-                continue;
-            };
-            report.loaded += 1;
             const layer = ruleLayer(rule_val);
+            // The network automaton holds ONLY network rules. Adding every
+            // non-L4 rule here as well (the first cut of this patch did) left the
+            // kernel patterns reachable for wire bytes, and the live check caught
+            // R2003 still firing on a UDP payload.
+            if (layer == .network) {
+                heap_ac.addPattern(rule_id, c.pattern.?) catch |err| {
+                    diag.warn("reload: failed to add pattern for {s}: {}", .{ c.id.?, err });
+                    report.recordSkip(.add_failed, c.id);
+                    continue;
+                };
+            }
+            report.loaded += 1;
             layer_counts[@intFromEnum(layer)] += 1;
             if (layer != .network) {
                 const li = @intFromEnum(layer) - 1;

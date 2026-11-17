@@ -8384,6 +8384,35 @@
         "A reboot would clear it but was not performed.",
         "Not proven to affect the shipped product: the installed runtime does not read dist/."
       ]
+    },
+    {
+      "id": "RULE-LAYER-SCOPE-001-E5-20261117b",
+      "head_sha": "7cb04a6",
+      "timestamp": "2026-11-17",
+      "level": "E5",
+      "flow_id": "DET-001",
+      "component": "C:/Program Files/AEGIS NIDS/runtime/aegis_nids.exe, VMnet1 192.168.126.1 -> 192.168.126.10",
+      "title": "Wire payloads carry only L7 rule ids and kernel rules only fire on host sources, on the installed build",
+      "description": [
+        "The layered split was first installed and the check FAILED on the live host: a UDP payload carrying IEX(New-Object Net.WebClient) sent over VMnet1 was tagged R2003 (KERNEL_PROCESS) and ambient 1271-byte traffic was tagged R3003 (L2_PIPE, pattern 'anonymous'), because the startup path built a single automaton and the pipeline fell back to it, and because the first version of the split added every non-L4 rule to the network automaton as well as to its layer. Both were fixed: daemon startup now runs the layered reload (log line 'layered rules at startup: loaded 23 (network=5 kernel_file=5 kernel_process=5 l2_pipe=5)'), and the network automaton holds only network rules. The installed binary sha256 abf1a4ae469c2b017bf387ecca880e248d4fcae6a31e5b4ed5596f5ef08f938a equals zig-out/bin/aegis_nids.exe. Measured on the running service: three UDP frames carrying '<script>alert(1)</script>' produced exactly R9059 (hash 4009890390, L7) and three carrying '../../etc/passwd' produced exactly R0088 (hash 4254503461, L7), each also seen from the VM side (192.168.126.10), while the same frames were NOT tagged with R1001/R1002/R1003/R2001-R2005/R3001-R3003. The IEX payload produced no signature match at all, which is the point of the fix. Positive host controls still fire on their own layer: a file named canary.locked produced R1002, and ordinary host traffic produced R1001 (C:\\Windows\\System32) and R1003 (Startup) from source 0.0.0.0."
+      ],
+      "evidence_artifact": "analysis/current-head/RULE-LAYER-SCOPE-001-20261117.md",
+      "artifacts": [
+        "analysis/current-head/RULE-LAYER-SCOPE-001-20261117.md",
+        "configs/Rules.json",
+        "src/pipeline/rule_loader.zig"
+      ],
+      "commands": [
+        "python tools/aegisctl.py events tail --count 20 --src-ip 192.168.126.1 --json",
+        "python tools/aegisctl.py events tail --count 40 --json",
+        "sha256sum 'C:/Program Files/AEGIS NIDS/runtime/aegis_nids.exe' zig-out/bin/aegis_nids.exe"
+      ],
+      "limitations": [
+        "Rule ids in event rows are FNV-1a hashes; they were mapped to rule ids with the same function the loader uses, not read from a name field.",
+        "The R2003 positive control (a process created with IEX on its command line) did NOT fire; whether the ETW process payload carries the command line is a separate coverage question and is not claimed here.",
+        "The stimulus was host-originated UDP over VMnet1, not an HTTP request from the Kali guest: the guest could not be driven for exec (vmrun runProgramInGuest returns 'A file was not found'), so the wire bytes came from the host side of the same captured interface.",
+        "Two failed live attempts are part of the record: the check was able to fail, and did."
+      ]
     }
   ],
   "known_gaps": [
@@ -14909,7 +14938,7 @@
     },
     {
       "id": "RULE-LAYER-SCOPE-001",
-      "status": "OPEN",
+      "status": "CLOSED",
       "severity": "P3",
       "level": "E1",
       "found_at": "2026-11-16",
@@ -14920,7 +14949,10 @@
       "next_step": "install the rebuilt binary, then E5: HTTP listener on VMnet1:8080 + payloads from Kali (<script>, ' OR 1=1, ../../etc/passwd, IEX) must yield R9059/R0056/R0088 from capture_npcap and no KERNEL_* id; positive host controls (PowerShell cradle with IEX -> R2003, .locked file -> R1002, MSSE- pipe -> R3001); attribution checked with aegisctl forensics",
       "observed_in": "C:\\Windows\\System32\\logs\\aegis_core.ndjson, 118,634 parsed rows spanning 2026-11-14T10:12:46Z..2026-11-15T17:11:05Z",
       "source_fixed_head": "d77db70",
-      "source_fixed_note": "Layered automata landed in source with E2 pins (RULE-LAYER-SCOPE-001-E2-20261117); the gap stays OPEN until the E5 attribution check and the post-install soak."
+      "source_fixed_note": "Layered automata landed in source with E2 pins (RULE-LAYER-SCOPE-001-E2-20261117); the gap stays OPEN until the E5 attribution check and the post-install soak.",
+      "reverified_by": "RULE-LAYER-SCOPE-001-E5-20261117b",
+      "closed_note": "Layered automata are in the installed build and the live attribution is correct: wire payloads carry only L7 ids (R9059, R0088) and never a kernel id, while R1001/R1002/R1003 still fire on host sources. The first live attempt failed with R2003 and R3003 on wire traffic, which found two real defects in the patch (startup never ran the layered reload; the network automaton still held every non-L4 rule). Both are fixed in the installed binary abf1a4ae.",
+      "remaining": "The R2003 positive control through an ETW process-create event did not fire; that is ETW payload coverage, tracked separately, and this gap does not claim it."
     },
     {
       "id": "CAPTURE-DUP-WIFI-001",
@@ -14981,10 +15013,10 @@
     "E2_count": 125,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 103,
+    "E5_count": 104,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 53,
+    "E5_with_artifact_count": 54,
     "known_gaps_count": 283
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
