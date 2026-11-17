@@ -70,22 +70,27 @@ not interrupted.
 | `DETECT-L4-001` L4 detection | CLOSED, E5 | 40-port SYN burst tagged R9006; 10-port control clean |
 | `IDS-L7-003` L7 anomaly lane | CLOSED, E5 | live `protocol_anomaly` `10004`/`10001`/`10003` from bridged Kali `192.168.1.207` |
 | `SOAK2` | VOID, replaced | host rebooted 8.9 h in; `SOAK3` is the process-start window |
+| `REL-EOL-DIGEST-001` | CLOSED, E2 | CRLF/LF digest verifier + 5 pins; signed artifact unchanged |
+| `CAPTURE-LOOPBACK-001` | CLOSED, E5 | shipped nose captured `\Device\NPF_Loopback`; idle 66 → active 2,378 packets/15 s |
+| `E5-RECHECK-STALE-IMAGE-20261101` | CLOSED, E5 | RB-022 window on installed `7955A6E3`, 15 rows attributed to Kali, zero loss deltas |
+| `KIDS-002-20261101` | CLOSED, E5 | 11 live `policy=block` rows stayed `observed` / `host_effect_confirmed=false` |
 
 ## 4. Remaining work, and where it is tracked
 
-The full list with costs is `docs/BACKLOG-v1.1.md`. Summary: **8 open gaps**
-(plus distribution steps), after `REL-EOL-DIGEST-001` was closed in this pass
-with a verifier and tests (§5).
+The full list with costs is `docs/BACKLOG-v1.1.md`. Summary: **5 open gaps**
+(plus distribution steps). Three more (`CAPTURE-LOOPBACK-001`,
+`E5-RECHECK-STALE-IMAGE-20261101`, `KIDS-002-20261101`) closed in the
+2026-11-17 pass at E5 without touching the signed tree (§3, §7).
 
 | Group | Items | Why not in v2.0.0 |
 |---|---|---|
-| Needs different hardware or a lab peer | `CAPTURE-LOOPBACK-001` (P2), `E5-RECHECK-STALE-IMAGE-20261101`, `EVI-G2-PEP-CACHE-001-LAB`, `KIDS-002`, `CAPTURE-DUP-WIFI-001` (P3) | no Npcap loopback adapter, no second host, no enforcement rights, one adapter |
+| Needs a second host or different hardware | `EVI-G2-PEP-CACHE-001-LAB` (lab-only), `CAPTURE-DUP-WIFI-001` (P3, one adapter) | no second host, no enforcement rights; this Wi-Fi/Npcap path exposes no duplication control |
 | v1.1 source change | `RULE-LAYER-SCOPE-001` (P3), `CAPTURE-DUP-WIFI-001` dedup option, `GAP-QLOSS-ISOLATION-002` / `ADR-0012-DUP-RATIO-E5` | a `src/` change forces rebuild + re-sign + a new 24 h soak; the signed tree must not drift |
-| Distribution | EV certificate + Microsoft attestation/HLK for the drivers, a 6.0.0 installer, `bandit`/`pip-audit` locally | requires key custody, NSIS tooling and CI, not source work |
+| Distribution | EV certificate + Microsoft attestation/HLK for the drivers, 6.0.0 installer version decision + fresh-install test, production rebuild | requires key custody, a version bump and a new evidence cycle, not source work |
 
-None of them is a defect that invalidates a v2.0.0 detection verdict. The P2
-item (`CAPTURE-LOOPBACK-001`) limits self-testing, not detection on a real
-link; the P3 items inflate or mislabel evidence on specific paths.
+None of them is a defect that invalidates a v2.0.0 detection verdict. The P3
+items inflate or mislabel evidence on specific paths; the lab item needs a
+second host that this environment does not have.
 
 ## 5. Findings recorded during the L7 work
 
@@ -103,6 +108,37 @@ link; the P3 items inflate or mislabel evidence on specific paths.
   `tests/release/test_release_digest_eol.py` cover both checkout modes, a
   tampered line, a missing signature and the exit code. The signed artifact is
   unchanged; a third party now has a labeled way to verify it.
+- **`CAPTURE-LOOPBACK-001` (P2, CLOSED 2026-11-17 at E5).** `dumpcap -D` lists
+  `\Device\NPF_Loopback` on this host. The shipped nose probe read that exact
+  device twice: `packets=66` idle and `packets=2378` with 200 local HTTP
+  requests on `127.0.0.1:18080`. The gap was the sensor binding (production is
+  Wi-Fi for Nose and VMnet1 for the daemon), not a missing Npcap feature.
+  Loopback self-tests must pin `-iface "\Device\NPF_Loopback"`. No restart, no
+  source change. Record: `CAPTURE-LOOPBACK-001-20261117.md`.
+- **`E5-RECHECK-STALE-IMAGE-20261101` (CLOSED 2026-11-17 at E5).** One RB-022
+  window on the installed image: Kali 2025.2 bridged at `192.168.1.44`, sensor
+  on the Killer Wi-Fi AX1650i at `192.168.1.39`, service untouched. Preflight
+  gained +823 frames/5 s; the window gained 9,017 frames and 15 rows attributed
+  to the attacker across `R0056`, `R9059`, `R0088`, `R9064`, `10004`, `10001`,
+  `R9002` and `R9006`, with `dropped_total`, `shed_overload` and
+  `source_quota_shed` all at delta 0; verdict PASS, exit 0. Two rows per
+  stimulus are the known `CAPTURE-DUP-WIFI-001` doubling. Record:
+  `E5-RECHECK-STALE-IMAGE-20261117.md`.
+- **`KIDS-002-20261101` (CLOSED 2026-11-17 at E5).** The same window produced
+  11 `signature_match` rows for the attacker with `policy=block`, every one
+  recorded as `enforcement_status=observed` and `host_effect_confirmed=false`,
+  plus 4 `protocol_anomaly` rows at `policy=pass`/observe-only; no row read
+  `enforced`. Focused pytest 7 passed, Zig `KIDS-002` fail-closed unit 1/1, and
+  the full-suite note at `9ebee9b` remains 1371 passed / 4 skipped / 2 xfailed /
+  0 failed with source unchanged since `7c604d5`. Record: `KIDS-002-20261117.md`.
+- **`DIST-SCANNERS` (2026-11-17, E1/E2, not a gap closure).** `bandit` 1.9.4
+  reported 401 findings (5 HIGH, 27 MEDIUM, 369 LOW; exit 1) — all five HIGH are
+  `B605` on the constant `os.system('cls'/'clear')`, and the MEDIUM set is
+  triaged by category, not suppressed. `pip-audit` 2.10.1 reported 37
+  dependencies and 0 known vulnerabilities. `tools/installer.py --generate`
+  plus the installed NSIS `makensis` built `aegis-installer-5.0.0-current.exe`
+  (6,130,207 bytes) from this tree into a temp path; nothing tracked was
+  overwritten and nothing was installed. Record: `DIST-SCANNERS-20261117.md`.
 
 ## 6. Declared limitations (ship notes, not open defects)
 
@@ -142,6 +178,14 @@ link; the P3 items inflate or mislabel evidence on specific paths.
 | `pytest tests/tools/test_runbooks.py tests/tools/test_lab_attack_window.py tests/release/test_evidence_index_valid.py tests/security/test_evidence_index_integrity.py` | 35 passed |
 | `python tools/verify_release_digest.py` | `MATCH (as-stored)`, exit 0 |
 | `pytest tests/release/test_release_digest_eol.py` | 5 passed (stored form, LF checkout, tampered line, missing signature, exit code) |
+| `nose\aegis-nose.exe -capture-probe -iface "\Device\NPF_Loopback"` | PASS — idle `packets=66`, active `packets=2378` |
+| `python tools/lab_attack_window.py --label e5-recheck-20261117 --seconds 120 --expect-src 192.168.1.44` | PASS, exit 0 — 15 attributed rows, zero loss deltas |
+| `pytest tests/security/test_assessment_only_pipeline.py tests/security/test_prevention_gate_surface.py` | 7 passed |
+| `zig test src/policy/pep_bindings.zig --test-filter KIDS-002` | 1/1 passed |
+| `python -m bandit -r brain tools scripts` | 401 findings, 5 HIGH (all constant clear-screen), exit 1 — recorded, not suppressed |
+| `python -m pip_audit -r requirements.txt` | 37 dependencies, 0 known vulnerabilities, exit 0 |
+| `makensis` on a generated NSI from this tree | PASS — `aegis-installer-5.0.0-current.exe`, 6,130,207 bytes |
+| `pytest tests/release/test_evidence_index_valid.py tests/release/test_known_gap_status.py tests/security/test_evidence_index_integrity.py tests/release/test_historical_closures.py` | 22 passed |
 
 The single failure is `tests/release/test_native_build_and_scripts.py::test_bridge_builds_into_dist`:
 `LINK : fatal error LNK1104: cannot open file 'D:\NIDs_Windows\dist\aegis_ipc.dll'`.
@@ -185,8 +229,16 @@ AEGIS NIDS Windows v2.0.0 is a **shippable detection-only release at E5**:
 signed, hash-pinned, soak-proven for 24.62 h, and live-proven for L4 and for
 three L7 HTTP anomaly rules against a real attacker VM. It is not a
 production-signed kernel product (drivers are test-signed), not an enforcement
-product, and not fleet-qualified. Eight gaps remain open with named causes and
+product, and not fleet-qualified. Five gaps remain open with named causes and
 costs; none of them blocks a detection verdict on the path this release ships.
+
+The 2026-11-17 closure pass removed three of the eight: loopback capture, the
+stale-image canary recheck, and the KIDS-002 host half, all at E5 on the
+installed image and none of them requiring a restart, a rebuild or a re-sign.
+Scanner coverage and an installer build were added locally without touching the
+release tree. What is left needs a second host, a different adapter, a `src/`
+change with a fresh 24 h soak, or signing key custody — none of which this
+environment can supply, and none of which may be faked.
 
 Closing the remaining gaps is a v1.1 program, not a continuation of this
 release. Do not patch the signed tree to close them.

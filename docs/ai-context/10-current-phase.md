@@ -3,7 +3,7 @@
 ## Status: CLOSED — v2.0.0 shipped as a detection-only E5 release (2026-11-17)
 
 - **Project status record:** `analysis/current-head/PROJECT-CLOSEOUT-20261117.md`.
-  **Remaining work:** `docs/BACKLOG-v1.1.md` (8 open gaps + distribution steps).
+  **Remaining work:** `docs/BACKLOG-v1.1.md` (5 open gaps + distribution steps).
   Tag `v2.0.0` (annotated) → `7b484a1`, pushed with branch
   `codex/o2-etw-context`. `main` was never pushed.
 - Audit commit `d7f9223` at the time of the L7 windows; the closeout audit is
@@ -51,13 +51,22 @@
   `test_e6` variant). Both are unvalidated, unpushed, and outside the released
   runtime `7c604d5`; their `src/` halves are byte-identical. Nothing from them
   is installed or claimed.
-- Still open, and not hidden by the green gates: `CAPTURE-LOOPBACK-001` (P2),
-  `RULE-LAYER-SCOPE-001` (P3, v1.1 source fix), `CAPTURE-DUP-WIFI-001` (P3,
-  environmental), FIM ingress volume (`GAP-QLOSS-ISOLATION-002` / ADR-0012,
-  v1.1), `E5-RECHECK-STALE-IMAGE-20261101`, `EVI-G2-PEP-CACHE-001-LAB`,
-  `KIDS-002` (needs an enforcement lab, out of product scope), and production
-  driver signing (the drivers are test-signed; distribution needs an EV
-  certificate and Microsoft attestation).
+- Closed on 2026-11-17 at E5 without touching the signed tree:
+  `CAPTURE-LOOPBACK-001` (shipped nose captured `\Device\NPF_Loopback`: idle 66 →
+  active 2,378 packets/15 s; the gap was the binding),
+  `E5-RECHECK-STALE-IMAGE-20261101` (RB-022 window on installed `7955A6E3`:
+  +823 frames/5 s preflight, 15 rows attributed to Kali, zero loss deltas) and
+  `KIDS-002-20261101` (11 live `policy=block` rows all
+  `enforcement_status=observed` / `host_effect_confirmed=false`; focused pytest
+  7 passed, Zig fail-closed unit 1/1). Records:
+  `CAPTURE-LOOPBACK-001-20261117.md`, `E5-RECHECK-STALE-IMAGE-20261117.md`,
+  `KIDS-002-20261117.md`.
+- Still open, and not hidden by the green gates: `RULE-LAYER-SCOPE-001` (P3, v1.1
+  source fix), `CAPTURE-DUP-WIFI-001` (P3, environmental), FIM ingress volume
+  (`GAP-QLOSS-ISOLATION-002` / ADR-0012, v1.1),
+  `EVI-G2-PEP-CACHE-001-LAB` (needs a second host and enforcement rights, out of
+  product scope), and production driver signing (the drivers are test-signed;
+  distribution needs an EV certificate and Microsoft attestation).
 
 ## IDS-L7-003 E5 — live protocol anomalies on the shipped Wi-Fi path — 2026-11-17
 
@@ -425,6 +434,16 @@
 - Evidence is E2 source/build only. Windows E5, XDR receipt/replay
   integration, and release E7 remain open. See
   `admin-evidence/kids-002-20261101/closeout.md`.
+- **Update 2026-11-17 — the host-evidence half is closed at E5.** A supervised
+  RB-022 window on the installed image (`7955A6E3...`) recorded 11
+  `signature_match` rows for the attacker with `policy=block`, every one
+  `enforcement_status=observed` and `host_effect_confirmed=false`, plus 4
+  observe-only protocol anomalies; no row read `enforced`. Focused pytest
+  7 passed, the Zig `KIDS-002` fail-closed unit 1/1 passed, and the full-suite
+  note at `9ebee9b` is 1371 passed / 4 skipped / 2 xfailed / 0 failed with
+  source unchanged since `7c604d5`. Record:
+  `analysis/current-head/KIDS-002-20261117.md`. XDR receipt/replay integration
+  and release E7 remain out of scope for this gap.
 
 ## QLOSS-HEALTH-001 Update — 2026-11-01
 

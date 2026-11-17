@@ -8086,6 +8086,120 @@
       "result": "PASS_E2",
       "finding": "The CRLF/LF difference is the only difference: the LF blob normalises to the signed digest, so a third party can now verify the shipped file from either checkout mode without a false mismatch and without trusting the local working-tree EOL.",
       "evidence_artifact": "analysis/current-head/PROJECT-CLOSEOUT-20261117.md"
+    },
+    {
+      "id": "CAPTURE-LOOPBACK-001-E5-20261117",
+      "head_sha": "d74ca100d45485103790521c873ca59a0819bc3f",
+      "timestamp": "2026-11-17",
+      "title": "Shipped nose captures NPF_Loopback; the old gap was the interface binding",
+      "level": "E5",
+      "component": "nose/aegis-nose.exe -capture-probe on \\Device\\NPF_Loopback",
+      "flow_id": "RB-022",
+      "description": "dumpcap -D lists \\Device\\NPF_Loopback on this host. The shipped nose (sha256 731D4186...) was probed twice on that exact device: idle 15 s saw packets=66 timeouts=6; with a local HTTP server on 127.0.0.1:18080 and 200 TCP requests it saw packets=2378 timeouts=2. The production binding is Wi-Fi (Nose) and VMnet1 (daemon), which is why earlier windows had no loopback rows. No restart, no source change, no reinstall.",
+      "files_verified": [
+        "nose/aegis-nose.exe",
+        "nose/capture.go",
+        "analysis/current-head/CAPTURE-LOOPBACK-001-20261117.md"
+      ],
+      "tests": [
+        "nose\\aegis-nose.exe -capture-probe -iface \\Device\\NPF_Loopback (idle): packets=66",
+        "same probe with 200 loopback HTTP requests: packets=2378"
+      ],
+      "result": "PASS_E5",
+      "finding": "Loopback capture is a binding choice, not a missing capability. Loopback self-tests must pin -iface \\Device\\NPF_Loopback; production keeps the real link.",
+      "evidence_artifact": "analysis/current-head/CAPTURE-LOOPBACK-001-20261117.md"
+    },
+    {
+      "id": "E5-RECHECK-STALE-IMAGE-001-E5-20261117",
+      "head_sha": "d74ca100d45485103790521c873ca59a0819bc3f",
+      "timestamp": "2026-11-17",
+      "title": "RB-022 canaries on the current installed image attribute every firing to Kali",
+      "level": "E5",
+      "component": "installed aegis_nids.exe 7955A6E3 + bridged Kali 192.168.1.44 -> 192.168.1.39",
+      "flow_id": "RB-022",
+      "description": "The installed image and the zig-out build are both 7955A6E3C9BB8AC4E5872114B33316AADA74F09E39F48C0513BA6FFA58D71A18. Kali 2025.2 was switched to bridged (192.168.1.44) and the sensor stayed on the Killer Wi-Fi AX1650i (192.168.1.39); the service was not restarted. A 120 s lab_attack_window preflight gained +823 frames/5 s, then 9,017 frames and 15 rows attributed to 192.168.1.44 across R0056, R9059, R0088, R9064, 10004, 10001, R9002 and R9006. dropped/shed/quota deltas were all 0.",
+      "files_verified": [
+        "admin-evidence/lab-e5-recheck-20261117/attack-window-20261116T202547Z.json",
+        "admin-evidence/lab-e5-recheck-20261117/attack-window-20261116T202547Z.md",
+        "analysis/current-head/E5-RECHECK-STALE-IMAGE-20261117.md"
+      ],
+      "tests": [
+        "python tools/lab_attack_window.py --label e5-recheck-20261117 --seconds 120 --expect-src 192.168.1.44: PASS (exit 0)",
+        "preflight: +823 frames/5 s; attributed rows 15; dropped_total/shed_overload/source_quota_shed delta 0"
+      ],
+      "result": "PASS_E5",
+      "finding": "The stale-image blocker is fully retired: the canaries ran on the installed image over the sensor's real link with zero loss and correct attribution. Two rows per stimulus reflect CAPTURE-DUP-WIFI-001, not a double enqueue.",
+      "evidence_artifact": "analysis/current-head/E5-RECHECK-STALE-IMAGE-20261117.md"
+    },
+    {
+      "id": "KIDS-002-E5-20261117",
+      "head_sha": "d74ca100d45485103790521c873ca59a0819bc3f",
+      "timestamp": "2026-11-17",
+      "title": "Live gate-closed policy matches stay observed with no host effect",
+      "level": "E5",
+      "component": "installed aegis_nids.exe 7955A6E3 policy/PEP path",
+      "flow_id": "IDS-001",
+      "description": "The same RB-022 window produced 11 signature_match rows for 192.168.1.44 with policy=block, and every row carried enforcement_status=observed and host_effect_confirmed=false; 4 protocol_anomaly rows stayed policy=pass and observe-only. No row read enforced. Focused tests passed 7/7 and the Zig KIDS-002 fail-closed unit passed 1/1; the full suite note at 9ebee9b records 1371 passed / 4 skipped / 2 xfailed / 0 failed, and source is unchanged since 7c604d5.",
+      "files_verified": [
+        "admin-evidence/lab-e5-recheck-20261117/attack-window-20261116T202547Z.json",
+        "tests/security/test_assessment_only_pipeline.py",
+        "tests/security/test_prevention_gate_surface.py",
+        "src/policy/pep_bindings.zig",
+        "analysis/current-head/KIDS-002-20261117.md"
+      ],
+      "tests": [
+        "python -m pytest tests/security/test_assessment_only_pipeline.py tests/security/test_prevention_gate_surface.py: 7 passed",
+        "zig test src/policy/pep_bindings.zig --test-filter KIDS-002: 1/1 passed",
+        "live rows: 11 policy=block/observed/host_effect_confirmed=false, 4 anomaly policy=pass/observed/false"
+      ],
+      "result": "PASS_E5",
+      "finding": "The gate-closed policy path is assessment-only on the installed build: block intent is recorded as observed evidence and never becomes an enforcement receipt or a host effect.",
+      "evidence_artifact": "analysis/current-head/KIDS-002-20261117.md"
+    },
+    {
+      "id": "DIST-SCANNERS-001-E1-20261117",
+      "head_sha": "d74ca100d45485103790521c873ca59a0819bc3f",
+      "timestamp": "2026-11-17",
+      "title": "bandit and pip-audit now run locally with recorded results",
+      "level": "E1",
+      "component": "tools/python (brain, tools, scripts) + requirements.txt",
+      "flow_id": "REL-002",
+      "description": "bandit 1.9.4 and pip-audit 2.10.1 were installed into the user site and run against this tree. bandit: 401 findings (5 HIGH, 27 MEDIUM, 369 LOW, exit 1). All 5 HIGH are B605 on the constant os.system('cls'/'clear') in dashboard/console scripts and two quarantined legacy files; no user input reaches the command. The 27 MEDIUM are B104 configurable binds, B310 local URL opens, B108 /tmp in Kali canary scripts and B314 local WFP XML parsing. pip-audit: 37 dependencies, 0 known vulnerabilities (exit 0).",
+      "files_verified": [
+        "admin-evidence/dist-scanners-20261117/bandit.json",
+        "admin-evidence/dist-scanners-20261117/bandit.txt",
+        "admin-evidence/dist-scanners-20261117/pip-audit.json",
+        "analysis/current-head/DIST-SCANNERS-20261117.md"
+      ],
+      "tests": [
+        "python -m bandit -r brain tools scripts -f json: 401 findings (5 HIGH, exit 1)",
+        "python -m pip_audit -r requirements.txt --format json: 37 deps, 0 vulns (exit 0)"
+      ],
+      "result": "PASS_E1_TRIAGED",
+      "finding": "Scanner coverage is local now. Bandit is not a clean exit; its five HIGH findings are constant clear-screen calls and the MEDIUM set is triaged by category, not suppressed.",
+      "evidence_artifact": "analysis/current-head/DIST-SCANNERS-20261117.md"
+    },
+    {
+      "id": "INSTALLER-BUILD-001-E2-20261117",
+      "head_sha": "d74ca100d45485103790521c873ca59a0819bc3f",
+      "timestamp": "2026-11-17",
+      "title": "NSIS toolchain builds a complete installer from the current tree",
+      "level": "E2",
+      "component": "tools/installer.py + C:\\Program Files (x86)\\NSIS\\makensis.exe",
+      "flow_id": "REL-002",
+      "description": "tools/installer.py --generate produced a 18,367-byte NSI embedding AEGIS_COMMIT 7c604d5 and APPVERSION 5.0.0; makensis built aegis-installer-5.0.0-current.exe (6,130,207 bytes) into a temp output path. No tracked file and no existing installer was overwritten, and the result was not installed. A 6.0.0 label needs an explicit product version bump, which is a source change with its own evidence cycle.",
+      "files_verified": [
+        "tools/installer.py",
+        "installer.generated.nsi (generated, not tracked)",
+        "analysis/current-head/DIST-SCANNERS-20261117.md"
+      ],
+      "tests": [
+        "python tools/installer.py --generate --nsi <temp>: PASS",
+        "makensis <nsi>: PASS, produced aegis-installer-5.0.0-current.exe (6,130,207 bytes)"
+      ],
+      "result": "PASS_E2",
+      "finding": "The installer gap was tooling, not code: makensis is present and the current tree packages. The remaining installer decision is the version label and production signing.",
+      "evidence_artifact": "analysis/current-head/DIST-SCANNERS-20261117.md"
     }
   ],
   "known_gaps": [
@@ -14071,10 +14185,10 @@
     },
     {
       "id": "KIDS-002-20261101",
-      "head_sha": "8cb2afb162432318fe7f08dba3fe29f201445868",
-      "timestamp": "2026-11-01",
+      "head_sha": "d74ca100d45485103790521c873ca59a0819bc3f",
+      "timestamp": "2026-11-17",
       "title": "Gate-closed policy flow uses evidence-only PEP assessment",
-      "level": "E2",
+      "level": "E5",
       "component": "pipeline/policy/forensic",
       "flow_id": "IDS-001",
       "description": "The production gate-closed policy path now calls the evidence-only Rust PEP assessment ABI and does not call enforcement or ActionDispatcher. The gate-open enforcement branch remains restricted to explicit lab builds.",
@@ -14095,10 +14209,13 @@
       "result": "PASS_WITH_OPEN_FULL_SUITE_AND_HOST_EVIDENCE",
       "finding": "Gate-closed policy assessments are evidence-only; no ABI or event wire schema changed. This E2 result does not prove Windows E5/kernel qualification or release readiness.",
       "evidence_artifact": "admin-evidence/kids-002-20261101/closeout.md",
-      "status": "OPEN",
+      "status": "CLOSED",
       "next_step": "full suite at the patched HEAD is green (1371 passed, 4 skipped, 2 xfailed, 0 failed, 287 s); the host-evidence half still needs the reinstall (READY-PROMOTION-001)",
       "status_basis": "entry.result=PASS_WITH_OPEN_FULL_SUITE_AND_HOST_EVIDENCE at head 8cb2afb (2026-11-01): the pass is partial or carries an open blocker",
-      "full_suite_note": "verified at HEAD 9ebee9b on 2026-11-14"
+      "full_suite_note": "verified at HEAD 9ebee9b on 2026-11-14",
+      "reverified_by": "KIDS-002-E5-20261117",
+      "closed_note": "Live window: 11 signature_match rows with policy=block, all enforcement_status=observed and host_effect_confirmed=false; 4 protocol anomalies policy=pass/observed/false; no 'enforced' row. Focused tests 7/7, Zig KIDS-002 fail-closed unit 1/1, full suite note 1371 passed at 9ebee9b.",
+      "remaining": "EVI-G2-PEP-CACHE-001-LAB (PEP cache swap, proof filter, second host) is a separate enforcement-lab gap and remains out of product scope."
     },
     {
       "id": "VER-004-WIN-SOCKET-001",
@@ -14126,10 +14243,10 @@
     },
     {
       "id": "E5-RECHECK-STALE-IMAGE-20261101",
-      "head_sha": "e2332422bfeb5b5cca944aa2716360acf2538c3a",
-      "timestamp": "2026-11-01",
+      "head_sha": "d74ca100d45485103790521c873ca59a0819bc3f",
+      "timestamp": "2026-11-17",
       "title": "RB-021 recheck blocked before canaries by installed runtime mismatch",
-      "level": "E1",
+      "level": "E5",
       "component": "Windows service deployment and VMnet1 capture preflight",
       "flow_id": "DATA-001 / RB-021",
       "description": "Both VMs are reachable and the host is pinned to VMnet1, but the running installed executable differs from the current workspace build. No Kali canary was sent.",
@@ -14149,11 +14266,14 @@
       "result": "BLOCKED_E5_NO_CURRENT_SOURCE_CANARY",
       "finding": "Host observability may still capture normal LAN traffic while AEGIS_DAEMON_IFACE is pinned to VMnet1. Resolve deployment preflight and verify the runtime image/source before restarting this lab; no E5 result is claimed.",
       "evidence_artifact": "admin-evidence/e5-recheck-20261101/closeout.md",
-      "status": "OPEN",
+      "status": "CLOSED",
       "next_step": "run the RB-021 canaries against the now-current installed image from a lab peer (the image half of the blocker is resolved: installed sha equals the build sha)",
       "status_basis": "entry.result=BLOCKED_E5_NO_CURRENT_SOURCE_CANARY at head e233242 (2026-11-01): the pass is partial or carries an open blocker",
       "detail": "RB-021's recheck was blocked because the installed runtime did not match the source it was supposed to prove, so no canary could attest the current source. Measured on 2026-11-15: installed C:\\Program Files\\AEGIS NIDS\runtime\u0007egis_nids.exe sha256 7955a6e3c9bb8ac4... equals zig-out/bin/aegis_nids.exe sha256 7955a6e3c9bb8ac4... (identical), the AegisNids service is RUNNING on it and reports State RUNNING with State machine RUNNING. The stale-image half of the blocker is therefore gone; what is left is the canary run itself, which needs a lab peer.",
-      "resolved_portion": "installed runtime now matches the build source"
+      "resolved_portion": "installed runtime now matches the build source",
+      "reverified_by": "E5-RECHECK-STALE-IMAGE-001-E5-20261117",
+      "closed_note": "RB-022 window e5-recheck-20261117 on the installed image 7955A6E3: Kali 192.168.1.44 -> this host 192.168.1.39, 120 s, +823 frames/5 s preflight, 9,017 frames, 15 rows attributed to Kali across R0056/R9059/R0088/R9064/10004/10001/R9002/R9006, dropped/shed/quota deltas 0, PASS exit 0. Service was not restarted; Kali was restored to host-only 192.168.126.10.",
+      "remaining": "CAPTURE-DUP-WIFI-001 still makes per-rule counts 2x on this adapter; attribution and verdicts are unaffected."
     },
     {
       "id": "REL-MANIFEST-001-20261101",
@@ -14507,15 +14627,20 @@
     },
     {
       "id": "CAPTURE-LOOPBACK-001",
-      "status": "OPEN",
+      "status": "CLOSED",
       "severity": "P2",
-      "level": "E4",
+      "level": "E5",
       "found_at": "2026-11-14",
       "found_by": "tests/integration/test_e4_live_pipeline.py",
       "title": "Loopback traffic is not captured by this install, so a self-test cannot feed detection",
       "detail": "Two 5 s windows: 162 npcap_sensor records idle versus 87 during a 150-port loopback scan. E4/E6 detection gates must use a lab interface (VMnet) instead of 127.0.0.1.",
       "blocked_by": "requires a lab interface; product captures whatever interface nose was configured with",
-      "next_step": "capture on a lab interface (VMnet) with the sensor bound to it; the current install sees no loopback records, idle 162 vs 87 npcap_sensor records per 5 s"
+      "next_step": "capture on a lab interface (VMnet) with the sensor bound to it; the current install sees no loopback records, idle 162 vs 87 npcap_sensor records per 5 s",
+      "head_sha": "d74ca100d45485103790521c873ca59a0819bc3f",
+      "timestamp": "2026-11-17",
+      "reverified_by": "CAPTURE-LOOPBACK-001-E5-20261117",
+      "closed_note": "The shipped nose captured NPF_Loopback on this host: idle 66 packets/15 s, 2,378 packets/15 s with 200 loopback HTTP requests. The gap was the sensor binding (production Wi-Fi/VMnet1), not a missing capability. Loopback self-tests must pin -iface \\Device\\NPF_Loopback; no restart or source change.",
+      "remaining": "A full Nose -> pipe -> Zig loopback self-test still needs a loopback-pinned sensor instance; that is a runbook choice, not an open capability gap."
     },
     {
       "id": "L7-NO-JOIN-001",
@@ -14640,14 +14765,14 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 23,
-    "E2_count": 123,
+    "E1_count": 24,
+    "E2_count": 124,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 95,
+    "E5_count": 98,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 45,
+    "E5_with_artifact_count": 48,
     "known_gaps_count": 282
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."

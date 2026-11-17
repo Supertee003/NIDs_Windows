@@ -14,6 +14,16 @@ in `RUNTIME_PATHS`, so `SOAK2-20261115` stays valid.
 > `CAPTURE-DUP-WIFI-001` (P3: every frame is delivered twice on this adapter).
 > `SOAK2` in line 5 was later declared VOID; the replacement window is
 > `SOAK3-PROCESS-20261117`. Everything else below stands as written.
+>
+> **UPDATE 2026-11-17 (closure pass):** three items in the table below are now
+> **closed at E5**, none by patching the signed tree: `CAPTURE-LOOPBACK-001`
+> (the shipped nose captures `\Device\NPF_Loopback`; the gap was the binding —
+> `CAPTURE-LOOPBACK-001-20261117.md`), `E5-RECHECK-STALE-IMAGE-20261101` (one
+> RB-022 window on the installed image, 15 rows attributed to Kali, zero loss —
+> `E5-RECHECK-STALE-IMAGE-20261117.md`) and `KIDS-002-20261101` (11 live
+> `policy=block` rows stayed `observed`/`host_effect_confirmed=false` —
+> `KIDS-002-20261117.md`). The table rows are left as the 2026-11-16 snapshot;
+> `docs/BACKLOG-v1.1.md` is the current count (5 open).
 
 ---
 
