@@ -5,9 +5,9 @@ on:
     # `codex/**` is the delivery branch: without it the only branch that ever
     # carries shippable work never ran CI, so "green CI" was a claim about
     # main, not about the commit being released.
-    branches: [main, develop, release/*, "codex/**"]
+    branches: [main, develop, release/*, "codex/**", "fix/**"]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, "codex/**"]
   workflow_dispatch:
 
 env:
