@@ -8361,6 +8361,29 @@
         "Loopback is not captured on this install, so a local listener cannot substitute for the Kali/VMnet1 path.",
         "The soak window was restarted by this install; the fresh window starts from this build."
       ]
+    },
+    {
+      "id": "DIST-DLL-LOCK-001-E5-20261117",
+      "head_sha": "f32b387",
+      "timestamp": "2026-11-17",
+      "level": "E5",
+      "flow_id": "BUILD-001",
+      "component": "dist/aegis_ipc.dll, tests/release/test_native_build_and_scripts.py",
+      "title": "dist/aegis_ipc.dll is locked on this host, so the bridge-build release test cannot relink it",
+      "description": "test_bridge_builds_into_dist fails reproducibly with LINK : fatal error LNK1104: cannot open file 'D:/NIDs_Windows/dist/aegis_ipc.dll'. Opening that file for write fails with Permission denied while its attributes are only Archive, so a process maps it rather than the file being read-only. Stopping the AegisNids service and re-running the test does not clear it, so the holder is not the daemon this session reinstalled. Every other test in tests/release passes (579 passed, this one failed), the test is unmodified, and the same binaries are produced by a clean zig build under zig-out, so this is host state rather than a product regression.",
+      "evidence_artifact": "analysis/current-head/FINAL-CLOSEOUT-STATUS-20261117.md",
+      "artifacts": [
+        "dist/aegis_ipc.dll",
+        "tests/release/test_native_build_and_scripts.py"
+      ],
+      "commands": [
+        "python -m pytest -q tests/release/test_native_build_and_scripts.py::test_bridge_builds_into_dist"
+      ],
+      "limitations": [
+        "The holding process was not identified: process paths for the SYSTEM-owned aegis processes are hidden without elevation, and no handle tool is installed.",
+        "A reboot would clear it but was not performed.",
+        "Not proven to affect the shipped product: the installed runtime does not read dist/."
+      ]
     }
   ],
   "known_gaps": [
@@ -14938,6 +14961,18 @@
       "reverified_by": "REL-EOL-DIGEST-001-E2-20261117",
       "closed_note": "tools/verify_release_digest.py accepts the stored CRLF digest or the LF->CRLF normalised digest, says which form matched, and fails on tampered content; tests/release/test_release_digest_eol.py pins the shipped tree, an LF checkout, a tampered line, a missing signature and the exit code. The signed SHA256SUMS and signatures.json are unchanged.",
       "remaining": "None for verification. Publishing the digest over a normalised form or forcing CRLF at checkout would be a v1.1 packaging change, not an open evidence gap."
+    },
+    {
+      "id": "DIST-DLL-LOCK-001",
+      "status": "OPEN",
+      "severity": "P3",
+      "level": "E5",
+      "head_sha": "f32b387",
+      "timestamp": "2026-11-17",
+      "found_by": "tests/release/test_native_build_and_scripts.py",
+      "title": "dist/aegis_ipc.dll is locked on this host so the bridge-build test cannot relink",
+      "detail": "LNK1104 on dist/aegis_ipc.dll; a write-open is Permission denied with a normal ACL, so a process maps it. Stopping AegisNids does not clear it. 579 other release/security tests pass.",
+      "next_step": "identify the mapping process with an elevated handle query (or clear it with a reboot) and rerun the single test; the product does not read dist/, so the release itself is unaffected"
     }
   ],
   "evidence_level_summary": {
@@ -14946,11 +14981,11 @@
     "E2_count": 125,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 102,
+    "E5_count": 103,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 52,
-    "known_gaps_count": 282
+    "E5_with_artifact_count": 53,
+    "known_gaps_count": 283
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
 }
