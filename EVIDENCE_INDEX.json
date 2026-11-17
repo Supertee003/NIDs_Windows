@@ -8393,9 +8393,7 @@
       "flow_id": "DET-001",
       "component": "C:/Program Files/AEGIS NIDS/runtime/aegis_nids.exe, VMnet1 192.168.126.1 -> 192.168.126.10",
       "title": "Wire payloads carry only L7 rule ids and kernel rules only fire on host sources, on the installed build",
-      "description": [
-        "The layered split was first installed and the check FAILED on the live host: a UDP payload carrying IEX(New-Object Net.WebClient) sent over VMnet1 was tagged R2003 (KERNEL_PROCESS) and ambient 1271-byte traffic was tagged R3003 (L2_PIPE, pattern 'anonymous'), because the startup path built a single automaton and the pipeline fell back to it, and because the first version of the split added every non-L4 rule to the network automaton as well as to its layer. Both were fixed: daemon startup now runs the layered reload (log line 'layered rules at startup: loaded 23 (network=5 kernel_file=5 kernel_process=5 l2_pipe=5)'), and the network automaton holds only network rules. The installed binary sha256 abf1a4ae469c2b017bf387ecca880e248d4fcae6a31e5b4ed5596f5ef08f938a equals zig-out/bin/aegis_nids.exe. Measured on the running service: three UDP frames carrying '<script>alert(1)</script>' produced exactly R9059 (hash 4009890390, L7) and three carrying '../../etc/passwd' produced exactly R0088 (hash 4254503461, L7), each also seen from the VM side (192.168.126.10), while the same frames were NOT tagged with R1001/R1002/R1003/R2001-R2005/R3001-R3003. The IEX payload produced no signature match at all, which is the point of the fix. Positive host controls still fire on their own layer: a file named canary.locked produced R1002, and ordinary host traffic produced R1001 (C:\\Windows\\System32) and R1003 (Startup) from source 0.0.0.0."
-      ],
+      "description": "The layered split was first installed and the check FAILED on the live host: a UDP payload carrying IEX(New-Object Net.WebClient) sent over VMnet1 was tagged R2003 (KERNEL_PROCESS) and ambient 1271-byte traffic was tagged R3003 (L2_PIPE, pattern 'anonymous'), because the startup path built a single automaton and the pipeline fell back to it, and because the first version of the split added every non-L4 rule to the network automaton as well as to its layer. Both were fixed: daemon startup now runs the layered reload (log line 'layered rules at startup: loaded 23 (network=5 kernel_file=5 kernel_process=5 l2_pipe=5)'), and the network automaton holds only network rules. The installed binary sha256 abf1a4ae469c2b017bf387ecca880e248d4fcae6a31e5b4ed5596f5ef08f938a equals zig-out/bin/aegis_nids.exe. Measured on the running service: three UDP frames carrying '<script>alert(1)</script>' produced exactly R9059 (hash 4009890390, L7) and three carrying '../../etc/passwd' produced exactly R0088 (hash 4254503461, L7), each also seen from the VM side (192.168.126.10), while the same frames were NOT tagged with R1001/R1002/R1003/R2001-R2005/R3001-R3003. The IEX payload produced no signature match at all, which is the point of the fix. Positive host controls still fire on their own layer: a file named canary.locked produced R1002, and ordinary host traffic produced R1001 (C:\\Windows\\System32) and R1003 (Startup) from source 0.0.0.0.",
       "evidence_artifact": "analysis/current-head/RULE-LAYER-SCOPE-001-20261117.md",
       "artifacts": [
         "analysis/current-head/RULE-LAYER-SCOPE-001-20261117.md",
@@ -14996,7 +14994,7 @@
     },
     {
       "id": "DIST-DLL-LOCK-001",
-      "status": "OPEN",
+      "status": "CLOSED",
       "severity": "P3",
       "level": "E5",
       "head_sha": "f32b387",
@@ -15004,7 +15002,10 @@
       "found_by": "tests/release/test_native_build_and_scripts.py",
       "title": "dist/aegis_ipc.dll is locked on this host so the bridge-build test cannot relink",
       "detail": "LNK1104 on dist/aegis_ipc.dll; a write-open is Permission denied with a normal ACL, so a process maps it. Stopping AegisNids does not clear it. 579 other release/security tests pass.",
-      "next_step": "identify the mapping process with an elevated handle query (or clear it with a reboot) and rerun the single test; the product does not read dist/, so the release itself is unaffected"
+      "next_step": "identify the mapping process with an elevated handle query (or clear it with a reboot) and rerun the single test; the product does not read dist/, so the release itself is unaffected",
+      "reverified_by": "DIST-DLL-LOCK-001-E5-20261117",
+      "closed_note": "The artifact was held by a stray elevated pythonw (PID 3168) left by an earlier automation run. Stopping it released the file and test_bridge_builds_into_dist passes; the suite that had carried this as a red is green (tests/release/test_native_build_and_scripts.py 10/10).",
+      "remaining": "none"
     }
   ],
   "evidence_level_summary": {
