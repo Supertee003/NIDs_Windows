@@ -48,23 +48,28 @@ in-place install/uninstall, gate-closed restore
 
 ---
 
-## 1. ภาพรวม: 5 gap + 4 distribution (rev.3)
+## 1. ภาพรวม: 5 gap + 4 distribution (rev.4)
 
-> สถานะล่าสุด (rev.3, 2026-11-17): `ADR-0012` **ปิดแล้ว** (E5) และ
-> `EVI-G2-PEP-CACHE-001-LAB` **ปิดแบบ superseded by scope retirement** (E5) —
-> เหลือ 3 gap ที่ยังทำงานได้
+> สถานะล่าสุด (rev.4, 2026-11-17): `ADR-0012` **ปิดแล้ว** (E5),
+> `EVI-G2-PEP-CACHE-001-LAB` **ปิดแบบ superseded by scope retirement** (E5) และ
+> `CAPTURE-DUP-WIFI-001` **ปิดแบบ not reproducible / no product defect** (E5) —
+> เหลือ **2 gap** ที่ต้องแก้ source: `RULE-LAYER-SCOPE-001`, `GAP-QLOSS-ISOLATION-002`
 >
 > **rev.3 แก้ rev.2 เฉพาะแถวที่ 1** — rev.2 ถือว่า G2 เป็นงาน enforcement ที่ยัง
 > เปิดอยู่ ซึ่งขัดกับ `AUTHORITY_MAP.json` / `RETIRE-HOST-EFFECT-001` (issue #25)
-> ที่ retire host effect ไปแล้ว เหตุผลเต็มอยู่ใน §10 และ
+> ที่ retire host effect ไปแล้ว เหตุผลเต็มอยู่ใน §11 และ
 > `analysis/current-head/G2-ENFORCEMENT-RETIRED-20261117.md`
+>
+> **rev.4 แก้แถวที่ 3** — ตัววัด duplicate เดิมนับ TCP Dup ACK ปนเข้ามา; วัดใหม่ที่
+> ระดับ raw bytes แล้วไม่พบ frame ซ้ำใน 29,060 frame ของวันนี้
+> (`analysis/current-head/CAPTURE-DUP-WIFI-20261117.md`) จึงไม่ต้องแก้ source
+> ฝั่ง Nose และไม่มีงาน soak เพิ่มจากข้อนี้
 
 | # | Item | ระดับปัจจุบัน | สิ่งที่ขาดจริง | วิธีปิดบนเครื่องนี้ | แก้ source? | เวลา |
 |---|---|---|---|---|---|---|
 | 1 | `EVI-G2-PEP-CACHE-001-LAB` | E5 | ~~duplicate canary~~ → **ไม่มี filter ให้พิสูจน์ได้อีกแล้ว** (PEP คืน `reason=8`, `filter_id=0`) | **ปิดแล้ว 2026-11-17** — policy match ถึง PEP จริง + ABI probe ยืนยันการ retire + hash restore | ไม่ | **ปิดแล้ว** |
-
 | 2 | `RULE-LAYER-SCOPE-001` | E1 | AC ตัวเดียวใช้ rule ข้าม layer กับ network bytes | แยก AC ตาม layer + pins + build + soak | **ใช่** | 1–2 วัน + soak |
-| 3 | `CAPTURE-DUP-WIFI-001` | E5 | frame ซ้ำบน Wi-Fi/Npcap นี้ | ทดลอง config Npcap ก่อน → ถ้าไม่หาย ใช้ counted dedup ใน Nose | อย่างหลังใช่ | 1 ชม. หรือ 2–3 วัน + soak |
+| 3 | `CAPTURE-DUP-WIFI-001` | E5 | ~~frame ซ้ำบน Wi-Fi~~ → **ตัววัดเดิมนับ TCP Dup ACK**; วัดที่ระดับ bytes แล้ว 0/29,060 frame | **ปิดแล้ว 2026-11-17** — byte-level probe + Dot11 A/B + nose 1:1:0 | ไม่ | **ปิดแล้ว** |
 | 4 | `GAP-QLOSS-ISOLATION-002` | E2 | ingress FIM/ETW จาก storm ไม่ลด | ETW delete filter + consumer throughput (หรือ accepted envelope) | **ใช่** | 2–4 วัน + soak |
 | 5 | `ADR-0012-DUP-RATIO-E5` | E5 | ยังไม่พิสูจน์ว่า repeat = distinct open | create-once unique-path measurement บนเครื่องนี้ | ไม่ | **ปิดแล้ว 2026-11-17** |
 | D1 | Driver signing (EV + attestation/HLK) | — | ไม่มี EV cert/Partner Center และไม่มี target แยก | ภายนอกเครื่องนี้ | ไม่ | สัปดาห์ |
@@ -400,16 +405,15 @@ per-PID repeats เทียบ ambient 0.7; create-once 20,000 ไฟล์ (ch
 ```
 Phase 0  (ไม่แตะ release, ไม่ต้อง window)
   ├─ ADR-0012 create-once measurement บนเครื่องนี้      → DONE (ปิดแล้ว)
-  └─ CAPTURE-DUP config experiment (Dot11Support=0)     → ปิดได้หรือได้ตัวเลข
+  └─ CAPTURE-DUP byte-level re-measure + Dot11 A/B      → DONE (ปิดแล้ว, rev.4)
 
 Phase 1  (ต้องอนุมัติ maintenance window)
-  ├─ EVI-G2: lab build + canary จาก Kali + documented block + rollback
+  ├─ EVI-G2: retired by product scope                 → DONE (ปิดแบบ superseded)
   └─ D3+D4: in-place reinstall + reboot + smoke
 
 Phase 2  (v1.1 source batch, build เดียว + soak 24 h)
   ├─ RULE-LAYER-SCOPE-001
   ├─ QLOSS ETW delete filter + consumer throughput
-  ├─ CAPTURE-DUP Nose dedup (ถ้า config ไม่หาย)
   └─ D2 version bump 6.0.0
        → build → tests → soak 24 h → re-sign → release ใหม่
 

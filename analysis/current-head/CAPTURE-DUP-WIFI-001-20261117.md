@@ -1,7 +1,8 @@
 # CAPTURE-DUP-WIFI-001 — the Wi-Fi capture path delivers every frame twice
 
 **Created:** 2026-11-17T03:15+07:00
-**Status:** OPEN — environmental capture behaviour, not a product defect
+**Status:** **CLOSED (2026-11-17)** — not reproducible with a byte-level metric; see §Update at the end
+**Original status:** OPEN — environmental capture behaviour, not a product defect
 **Severity:** P3 (evidence/throughput inflation on one adapter)
 **Measured at:** records HEAD `d7f9223`, build source `7c604d5`, runtime
 `7955A6E3C9BB8AC4E5872114B33316AADA74F09E39F48C0513BA6FFA58D71A18`
@@ -89,3 +90,30 @@ Local-only (`admin-evidence/` is git-ignored):
 
 Tracked summary: this record; context in
 `analysis/current-head/IDS-L7-003-20261117.md` §5.
+
+---
+
+## Update 2026-11-17 (closure)
+
+The finding above stands for the capture taken at 02:39, but the *counter* used to
+generalise it could not distinguish a capture-path duplicate from a protocol-level
+repeat: it matched frames on (src, dst, ip.id, tcp.seq|udp.length, len), and a TCP
+Dup ACK repeats Seq/Ack with Len=0 and no payload. 	shark labels those pairs
+[TCP Dup ACK] and they carry no IPv4 addresses, so they are not the same frame.
+
+Re-measured with raw frame bytes (equal capture length AND equal sha256 within
+2 ms):
+
+- wifi-dup-45007.pcapng (02:39) → 5 identical-byte pairs in 14 frames,
+  3.1-12.6 us apart, all host_tx (reproduces this record)
+- 19 captures taken 09:34-09:52 UTC → 0 identical-byte pairs in 29,060 frames,
+  including Dot11Support 0 vs 1, a narrow port filter shaped like the 02:39 run,
+  and 1,126 fps with the Go Nose handle attached
+- nose reported packets=26300 canonical=26300 dropped=0 (one event per frame)
+
+The WLAN event log shows the association that produced this capture ended at
+03:35:05 (11004) and the current one started at 14:31:01 (11010/11005), which is
+where the behaviour is confined. **Root cause of the 02:39 event is not claimed.**
+Reopen only if the byte-level probe reports a nonzero identical-byte pair count.
+
+Full record: nalysis/current-head/CAPTURE-DUP-WIFI-20261117.md
