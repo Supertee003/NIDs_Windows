@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-17T07:51:33.088526+00:00",
+  "generated_at": "2026-11-17T07:59:04.835679+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 2065,
+  "total_files": 2066,
   "by_class": {
-    "canonical-docs": 451,
+    "canonical-docs": 452,
     "canonical-build": 227,
     "unclassified": 19,
     "canonical-source": 989,
@@ -465,6 +465,12 @@
       "size": 4419
     },
     {
+      "path": "analysis/current-head/CLOSURE-PLAN-5GAPS-20261117.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 28126
+    },
+    {
       "path": "analysis/current-head/CONFIG-VALIDATE-001-20261114.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -858,7 +864,7 @@
       "path": "analysis/current-head/PROJECT-CLOSEOUT-20261117.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 16025
+      "size": 16180
     },
     {
       "path": "analysis/current-head/QLoss-E5-STEADY-WINDOW-20261109.md",
@@ -2742,7 +2748,7 @@
       "path": "docs/BACKLOG-v1.1.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7041
+      "size": 7278
     },
     {
       "path": "docs/BASELINE_20260906.md",
@@ -4134,7 +4140,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9742
+      "size": 9693
     },
     {
       "path": "pytest.ini",

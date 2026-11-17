@@ -9,6 +9,11 @@ contain. Nothing here is a defect in a detection verdict on the shipped path.
 Do not patch the signed tree to close these items: any `src/` change forces a
 rebuild, a re-sign and a new 24 h soak.
 
+**How each open item can actually be closed:** see
+`analysis/current-head/CLOSURE-PLAN-5GAPS-20261117.md` (method, acceptance
+criteria, cost, and what must come from the owner for each of the five gaps
+and the four distribution steps).
+
 ## 1. Open gaps (5)
 
 | ID | Sev | Level | What remains | Cost to close |

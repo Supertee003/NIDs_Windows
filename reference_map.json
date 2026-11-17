@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-17T07:51:33.091615+00:00",
+  "generated_at": "2026-11-17T07:59:04.838764+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 2065,
+  "total_files": 2066,
   "by_role": {
-    "documentation": 437,
+    "documentation": 438,
     "build-config": 216,
     "other": 19,
     "lockfile": 6,
@@ -621,6 +621,10 @@
       "role": "documentation"
     },
     "analysis/current-head/CLI-STATE-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/CLOSURE-PLAN-5GAPS-20261117.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },

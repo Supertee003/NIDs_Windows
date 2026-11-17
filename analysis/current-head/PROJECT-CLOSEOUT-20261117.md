@@ -80,7 +80,9 @@ not interrupted.
 The full list with costs is `docs/BACKLOG-v1.1.md`. Summary: **5 open gaps**
 (plus distribution steps). Three more (`CAPTURE-LOOPBACK-001`,
 `E5-RECHECK-STALE-IMAGE-20261101`, `KIDS-002-20261101`) closed in the
-2026-11-17 pass at E5 without touching the signed tree (§3, §7).
+2026-11-17 pass at E5 without touching the signed tree (§3, §7). The concrete
+closure route for every remaining item, with acceptance criteria and owner
+inputs, is `analysis/current-head/CLOSURE-PLAN-5GAPS-20261117.md`.
 
 | Group | Items | Why not in v2.0.0 |
 |---|---|---|
