@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-17T07:46:45.761795+00:00",
+  "generated_at": "2026-11-17T07:51:33.088526+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 2065,
@@ -672,7 +672,7 @@
       "path": "analysis/current-head/GAP-TRIAGE-20261116.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 11868
+      "size": 12549
     },
     {
       "path": "analysis/current-head/GATE-HONESTY-001-20261110.md",
@@ -858,7 +858,7 @@
       "path": "analysis/current-head/PROJECT-CLOSEOUT-20261117.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 16016
+      "size": 16025
     },
     {
       "path": "analysis/current-head/QLoss-E5-STEADY-WINDOW-20261109.md",
@@ -2514,7 +2514,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 63911
+      "size": 64608
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3876,7 +3876,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 319900
+      "size": 320555
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4152,7 +4152,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 261897
+      "size": 262416
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",

@@ -174,7 +174,7 @@ second host that this environment does not have.
 | `python tools/truth.py verify` | `TRUTH_VALID` |
 | `python tools/release_engineering.py --verify` | OK, 648 artifacts, source `7c604d5` |
 | `python tools/final_audit.py --release-check` | SHIPPABLE, 0/6 open, exit 0 |
-| `pytest tests/release tests/tools` | **1 failed, 480 passed** — see below |
+| `pytest tests/release tests/tools` | **1 failed, 485 passed** in 110 s — see below |
 | `pytest tests/tools/test_runbooks.py tests/tools/test_lab_attack_window.py tests/release/test_evidence_index_valid.py tests/security/test_evidence_index_integrity.py` | 35 passed |
 | `python tools/verify_release_digest.py` | `MATCH (as-stored)`, exit 0 |
 | `pytest tests/release/test_release_digest_eol.py` | 5 passed (stored form, LF checkout, tampered line, missing signature, exit code) |
