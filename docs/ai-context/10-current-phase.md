@@ -64,8 +64,9 @@
 - Still open, and not hidden by the green gates: `RULE-LAYER-SCOPE-001` (P3, v1.1
   source fix), `CAPTURE-DUP-WIFI-001` (P3, environmental), FIM ingress volume
   (`GAP-QLOSS-ISOLATION-002` / ADR-0012, v1.1),
-  `EVI-G2-PEP-CACHE-001-LAB` (needs a second host and enforcement rights, out of
-  product scope), and production driver signing (the drivers are test-signed;
+  `EVI-G2-PEP-CACHE-001-LAB` (lab-only: needs an approved on-host maintenance
+  window because the NIDS host is now the victim, plus a hash-verified rollback;
+  no second host), and production driver signing (the drivers are test-signed;
   distribution needs an EV certificate and Microsoft attestation).
 
 ## IDS-L7-003 E5 — live protocol anomalies on the shipped Wi-Fi path — 2026-11-17

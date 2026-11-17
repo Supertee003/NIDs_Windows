@@ -86,13 +86,13 @@ inputs, is `analysis/current-head/CLOSURE-PLAN-5GAPS-20261117.md`.
 
 | Group | Items | Why not in v2.0.0 |
 |---|---|---|
-| Needs a second host or different hardware | `EVI-G2-PEP-CACHE-001-LAB` (lab-only), `CAPTURE-DUP-WIFI-001` (P3, one adapter) | no second host, no enforcement rights; this Wi-Fi/Npcap path exposes no duplication control |
+| Lab window or different adapter | `EVI-G2-PEP-CACHE-001-LAB` (lab-only), `CAPTURE-DUP-WIFI-001` (P3, one adapter) | the lab needs an approved on-host enforcement window (victim = this host, Kali attacker) and a hash-verified rollback; this Wi-Fi/Npcap path exposes no duplication control |
 | v1.1 source change | `RULE-LAYER-SCOPE-001` (P3), `CAPTURE-DUP-WIFI-001` dedup option, `GAP-QLOSS-ISOLATION-002` / `ADR-0012-DUP-RATIO-E5` | a `src/` change forces rebuild + re-sign + a new 24 h soak; the signed tree must not drift |
-| Distribution | EV certificate + Microsoft attestation/HLK for the drivers, 6.0.0 installer version decision + fresh-install test, production rebuild | requires key custody, a version bump and a new evidence cycle, not source work |
+| Distribution | EV certificate + Microsoft attestation/HLK for the drivers, 6.0.0 installer version decision + install coverage, production rebuild | requires key custody, a version bump and a new evidence cycle, not source work |
 
 None of them is a defect that invalidates a v2.0.0 detection verdict. The P3
-items inflate or mislabel evidence on specific paths; the lab item needs a
-second host that this environment does not have.
+items inflate or mislabel evidence on specific paths; the lab item needs an
+approved maintenance window on this host, not a second machine.
 
 ## 5. Findings recorded during the L7 work
 
@@ -238,9 +238,9 @@ The 2026-11-17 closure pass removed three of the eight: loopback capture, the
 stale-image canary recheck, and the KIDS-002 host half, all at E5 on the
 installed image and none of them requiring a restart, a rebuild or a re-sign.
 Scanner coverage and an installer build were added locally without touching the
-release tree. What is left needs a second host, a different adapter, a `src/`
-change with a fresh 24 h soak, or signing key custody — none of which this
-environment can supply, and none of which may be faked.
+release tree. What is left needs an approved on-host lab window, a different
+adapter or Npcap setting, a `src/` change with a fresh 24 h soak, or signing key
+custody — none of which may be faked.
 
 Closing the remaining gaps is a v1.1 program, not a continuation of this
 release. Do not patch the signed tree to close them.

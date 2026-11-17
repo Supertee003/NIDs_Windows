@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-17T07:59:04.835679+00:00",
+  "generated_at": "2026-11-17T08:07:28.200913+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 2066,
@@ -468,7 +468,7 @@
       "path": "analysis/current-head/CLOSURE-PLAN-5GAPS-20261117.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 28126
+      "size": 33026
     },
     {
       "path": "analysis/current-head/CONFIG-VALIDATE-001-20261114.md",
@@ -678,7 +678,7 @@
       "path": "analysis/current-head/GAP-TRIAGE-20261116.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 12549
+      "size": 12601
     },
     {
       "path": "analysis/current-head/GATE-HONESTY-001-20261110.md",
@@ -786,7 +786,7 @@
       "path": "analysis/current-head/KIDS-002-20261117.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2758
+      "size": 2947
     },
     {
       "path": "analysis/current-head/KIND-ATTR-001-20261110.md",
@@ -864,7 +864,7 @@
       "path": "analysis/current-head/PROJECT-CLOSEOUT-20261117.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 16180
+      "size": 16251
     },
     {
       "path": "analysis/current-head/QLoss-E5-STEADY-WINDOW-20261109.md",
@@ -2520,7 +2520,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 64608
+      "size": 64687
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -2748,7 +2748,7 @@
       "path": "docs/BACKLOG-v1.1.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7278
+      "size": 7892
     },
     {
       "path": "docs/BASELINE_20260906.md",
@@ -3774,7 +3774,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1395302
+      "size": 1396102
     },
     {
       "path": "FLOW_MAP.json",
@@ -3882,7 +3882,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 320555
+      "size": 320722
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4158,7 +4158,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 262416
+      "size": 262548
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",

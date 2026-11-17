@@ -10,15 +10,20 @@ Do not patch the signed tree to close these items: any `src/` change forces a
 rebuild, a re-sign and a new 24 h soak.
 
 **How each open item can actually be closed:** see
-`analysis/current-head/CLOSURE-PLAN-5GAPS-20261117.md` (method, acceptance
-criteria, cost, and what must come from the owner for each of the five gaps
-and the four distribution steps).
+`analysis/current-head/CLOSURE-PLAN-5GAPS-20261117.md` (rev.2; method,
+acceptance criteria, cost, and what must come from the owner for each of the
+five gaps and the four distribution steps).
+
+The closure plan is written for the current test model: **the NIDS host is the
+victim** and the Kali VM is the only attacker. There is no Win11 victim VM and
+no second host; lab work that needs enforcement runs in an approved
+maintenance window on this host with a hash-verified rollback.
 
 ## 1. Open gaps (5)
 
 | ID | Sev | Level | What remains | Cost to close |
 |---|---|---|---|---|
-| `EVI-G2-PEP-CACHE-001-LAB` | — | E5 | PEP cache swap, direction verify, duplicate canary, unblock, base restore | second host, PEP DLL swap, enforcement rights — out of product scope |
+| `EVI-G2-PEP-CACHE-001-LAB` | — | E5 | PEP cache swap, direction verify, duplicate canary, unblock, base restore | lab window on this host: lab build + canary from Kali + documented block + hash-verified rollback (no second host) |
 | `CAPTURE-DUP-WIFI-001` | P3 | E5 | This Wi-Fi adapter/Npcap delivers every frame twice | try another adapter/host config (raw 802.11, Killer prioritisation); or a bounded, counted dedup keyed by `(ip.id, tcp.seq, payload hash)` that cannot drop a real retransmission |
 | `RULE-LAYER-SCOPE-001` | P3 | E1 | AC matcher applies KERNEL_PROCESS payload rules to network bytes, so TLS raises R2003 | scope the AC rule set to the event source's layer, or skip non-decoded payloads; add a pin that a TLS record cannot yield a KERNEL_PROCESS rule id |
 | `GAP-QLOSS-ISOLATION-002` | — | E2 | FIM/ETW ingress volume from the storming source is not reduced | reduce ingress at the producer, then re-measure and run a new 24 h soak |
@@ -76,7 +81,11 @@ Evidence: `KIDS-002-E5-20261117`.
    (6,130,207 bytes) from the current tree; the generated script embeds
    `AEGIS_COMMIT 7c604d5`. The remaining item is the **version label** — a
    `6.0.0` installer needs an explicit product version bump, which is a source
-   change with its own evidence cycle — plus a fresh-install boot-model test.
+   change with its own evidence cycle — plus install/uninstall/boot coverage.
+   Under the single-host model that coverage is an **in-place reinstall on this
+   host** (backup → hash compare → uninstall → install → reboot → smoke), which
+   is E5 but is not a clean-machine boot model; that limitation must be
+   recorded, not hidden.
 3. **Scanner coverage.** DONE locally on 2026-11-17: `bandit` 1.9.4 reported
    401 findings (5 HIGH, all constant `os.system('cls'/'clear')`; 27 MEDIUM
    triaged; 369 LOW) and `pip-audit` 2.10.1 reported 0 known vulnerabilities
@@ -115,5 +124,5 @@ release.
 2. `RULE-LAYER-SCOPE-001` + `CAPTURE-DUP-WIFI-001` dedup decision (both change
    detection evidence; batch them into one build).
 3. `GAP-QLOSS-ISOLATION-002` / `ADR-0012` (ingress volume; needs a new soak).
-4. Distribution: the 6.0.0 version decision and a fresh-install test, then
+4. Distribution: the 6.0.0 version decision and an in-place reinstall test, then
    EV certificate + Microsoft attestation/HLK.

@@ -13915,7 +13915,7 @@
       ],
       "evidence": "Host transcript admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt; duplicate-canary output admin-evidence/g2-direction-20261022/g2-canary-dup-20261023.txt; VM evidence pep-cache-swap-20261023.json/log, canary-capture-dup.json, metrics-before-dup.json, metrics-after-dup.json, wfp-filters-*.xml, base-restore-20261023.json/log (to be copied back before the VM is reverted); source commit ee1010e.",
       "status": "OPEN",
-      "next_step": "lab-only: PEP cache swap, direction verify, duplicate canary, unblock and base restore need a second host and enforcement rights this session does not have; nothing in the current session can move it",
+      "next_step": "lab-only, and now runnable on this host because the NIDS host is the victim: approved maintenance window, lab build with -Dlab-prevention-gate=true, first canary from Kali 192.168.126.10 to a host listener, direction verify, second canary must be blocked by the same AEGIS filter with counters unchanged and no escalate reason=4 (documented block), receipt-aware unblock, then hash-verified rollback to the installed binaries. No second host",
       "status_basis": "entry.result=PARTIAL at head ee1010e (2026-10-23): the pass is partial or carries an open blocker"
     },
     {
@@ -14465,7 +14465,7 @@
       "status": "OPEN",
       "closed_at": "2026-11-08",
       "evidence": "QLOSS-ISOLATION-002-E5-20261108: both host sources reach their full 7,168 share on the deployed daemon with reserved_tail_shed 0 and all 206,999 refusals attributed to source_quota_shed.",
-      "next_step": "reduce FIM/ETW ingress volume from the storming source; not required for detection-only delivery",
+      "next_step": "reduce FIM/ETW ingress volume from the storming source, starting with the ETW Kernel-File NameDelete lane (18.15M rows, the real volume lever) rather than the 2.4M minifilter lane; not required for detection-only delivery",
       "current_observation": "2026-11-14 soak: queue dropped 0, shed_overload 0, loss_budget 3500 over 2.5 h; no loss observed under current load"
     },
     {
@@ -14581,7 +14581,7 @@
       "description": "Six-worker, 20,000-file Windows churn measurement on the deployed probe build (source dfececb, ancestor of current HEAD). The coarse per-PID key reported 48.177% repeats for create-once (105,765 records / 50,954 duplicates), 49.391% for rewrite (895,546 / 442,323), and 56.992% for recreate (1,722,362 / 981,611). All phases reported zero probe overflow. These are candidate repeat ratios only: source review found one record per successful IRP_MJ_CREATE and fresh KeQuerySystemTime stamping, so same-path/kind/PID rows can be distinct opens. They do not pass the event-identity gate.",
       "actual": "Measurement only; no coalescer was active. Final queue stats include 575,935 same-timestamp minifilter records and 118,566 pipeline drops. The same-timestamp count is a candidate signal, not proof of duplicate delivery. The archived revert result removed AEGIS_FIM_PROOF_ROOT but retained the same installed probe-binary SHA, so it is not binary rollback evidence.",
       "impact": "Documents measured repeat volume but does not establish safely coalescible volume, prove queue drops decrease, or close issue #29.",
-      "next_step": "resolve what its own result names: MEASURED_IDENTITY_UNVERIFIED",
+      "next_step": "resolve what its own result names (MEASURED_IDENTITY_UNVERIFIED) with the create-once unique-path measurement on this host (CLOSURE-PLAN rev.2 section 6.2); if duplicates_per_pid does not grow with single-open unique files, reject suppressing coalescing and record the decision",
       "status": "OPEN",
       "status_basis": "entry.result=MEASURED_IDENTITY_UNVERIFIED at head dfececb (2026-11-08): the pass is partial or carries an open blocker"
     },
@@ -14726,7 +14726,7 @@
       "title": "The Aho-Corasick matcher applies KERNEL_PROCESS payload rules to network bytes, so TLS traffic raises R2003",
       "detail": "R2003 (PowerShell Cradle Download, layer KERNEL_PROCESS, pattern IEX|DownloadString|DownloadFile|PS_CRADLE|Net.WebClient) matched 366 wire events: 291 with src_port 443, 324 at the 1024-byte Nose attachment cap, remote IPv6/IPv4 sources, dst_port absent. src/pipeline/event_processor.zig:280 runs the AC matcher over qe.payload for every source except capture_host_net and never consults the rule's layer, so a three-byte token inside an encrypted TLS record becomes a PowerShell-cradle detection. Every row is enforcement_status observed with host_effect_confirmed false (prevention gate closed), so this is alert quality, not host authority. Found while establishing the negative control for DETECT-L4-001: the victim host's own outbound TLS session produced an attributed row that had nothing to do with the stimulus.",
       "blocked_by": "the fix is a src/ edit (event_processor.zig AC rule selection by layer/source); the release runtime 7c604d5 is signed, installed and soaked, so a source change needs a new build, signature, install and window (v1.1), not a patch to this release",
-      "next_step": "v1.1: scope the AC rule set to rules whose layer matches the event source (network payloads get L7 rules only), or skip payloads that are not decoded application data, and add a pin that a TLS record cannot produce a KERNEL_PROCESS rule id",
+      "next_step": "v1.1: scope the AC rule set to rules whose layer matches the event source (network payloads get L7 rules only) and add a pin that a TLS record cannot produce a KERNEL_PROCESS rule id; prove at E5 in one RB-022 window on this host with Kali L7 payloads against a host listener plus local positive controls",
       "observed_in": "C:\\Windows\\System32\\logs\\aegis_core.ndjson, 118,634 parsed rows spanning 2026-11-14T10:12:46Z..2026-11-15T17:11:05Z"
     },
     {
@@ -14739,7 +14739,7 @@
       "title": "The Wi-Fi capture path delivers every frame twice, doubling detections and anomaly rows",
       "detail": "On the Killer Wi-Fi 6 AX1650i (NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}) Npcap delivers every frame twice to a capture handle: SYN, payload and FIN each appear in a pair with identical ip.id, TCP sequence and bytes, about 7 us apart, in a file with one Ethernet interface block. AEGIS therefore emits two events per wire frame, so protocol_anomaly and signature_match counts and nose_frames_read/submitted are about 2x the wire count. Attribution and verdicts stay correct; this is evidence/throughput inflation on one adapter, not a double enqueue. Excluded as the cause: the product path (nose/capture.go:154-183 emits one event per ReadPacketData; nose_pipe_reader.zig:381-430 pushes one frame per pipe frame; duplicate and non-monotonic id counters are 0), VMware (host-sourced traffic duplicates too), and generic Npcap (a VMnet1 ARP control captured 3 pings as 3 frames).",
       "impact": "Halve counts on this adapter when reading detections, anomaly rows or frame rates. No capture_npcap drops were observed in the measured windows; the doubled work has not caused loss.",
-      "next_step": "v1.1 or host configuration: inspect the adapter/Npcap settings (raw 802.11 mode, Killer packet prioritisation) or add a bounded, counted dedup keyed by (ip.id, tcp.seq, payload hash) that cannot drop a real retransmission. Do not patch this into the signed T20 runtime.",
+      "next_step": "host configuration first (no source change): test Dot11Support=0 or an Npcap reinstall without raw 802.11 and re-measure duplication; if it persists, add a bounded, counted dedup keyed by (ip.id, tcp.seq, payload hash) that cannot drop a real retransmission. The lab path uses Kali on VMnet1, which does not duplicate; the Wi-Fi doubling only affects the production nose path. Do not patch this into the signed T20 runtime.",
       "observed_in": "admin-evidence/wifi-dup-20261117/wifi-dup-45007.tshark.txt and vmnet1-control-arp.tshark.txt (local-only); anomaly windows in admin-evidence/lab-wifi-bridged-l7-20261117 and lab-wifi-bridged-l7-kinds-20261117",
       "record": "analysis/current-head/CAPTURE-DUP-WIFI-001-20261117.md"
     },

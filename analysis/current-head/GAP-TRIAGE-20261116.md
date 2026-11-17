@@ -67,7 +67,7 @@ because "OPEN" without a price is how a backlog becomes permanent.
 
 | # | Gap | Level | What remains | Price | Release impact |
 |---|---|---|---|---|---|
-| 1 | `EVI-G2-PEP-CACHE-001-LAB-20261023` | E5 | PEP cache swap, direction verify, duplicate canary, unblock, base restore | enforcement lab: second host + PEP DLL swap + proof filter | none — enforcement is out of product scope |
+| 1 | `EVI-G2-PEP-CACHE-001-LAB-20261023` | E5 | PEP cache swap, direction verify, duplicate canary, unblock, base restore | enforcement lab: on-host maintenance window (victim = NIDS host) + PEP DLL swap + proof filter + hash rollback | none — enforcement is out of product scope |
 | 2 | `IDS-L7-003-20261031` | E2→E5 | one live L7 protocol anomaly (HTTP/DNS/TLS/SMB) | **one RB-022 window**, no restart | none |
 | 3 | `KIDS-002-20261101` | E2 | loopback tests separated; supervised host evidence; RB-017; XDR; E7 | test rewrite + full suite (heavy) | none |
 | 4 | `E5-RECHECK-STALE-IMAGE-20261101` | E1 | current-source Kali canary on the installed image | RB-022 window (no restart) or RB-021 (restart) | none |
