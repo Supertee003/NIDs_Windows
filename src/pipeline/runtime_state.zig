@@ -362,6 +362,21 @@ test "lastEventAgeMs: §4.1 age semantics, clamped (EVT-222)" {
 pub var g_active_ac: ?*sig.AhoCorasick = null;
 pub var g_ac_mutex: std.Thread.Mutex = .{};
 
+/// RULE-LAYER-SCOPE-001: one automaton per rule layer.
+///
+/// Before this, every non-L4 rule went into one automaton and every payload was
+/// matched against all of it, so TLS or HTTP bytes containing `IEX` were tagged
+/// with a KERNEL_PROCESS rule id. The layers are separate now and the pipeline
+/// picks one by the event's own source. `g_active_ac` stays as the network
+/// automaton for readers that predate the split (and for the single-AC tests).
+pub const RuleLayer = enum(u8) { network = 0, kernel_file = 1, kernel_process = 2, l2_pipe = 3 };
+pub const RULE_LAYER_COUNT: usize = 4;
+pub var g_layer_ac: [RULE_LAYER_COUNT]?*sig.AhoCorasick = .{ null, null, null, null };
+pub var g_layer_rule_count: [RULE_LAYER_COUNT]u32 = .{ 0, 0, 0, 0 };
+/// Payload bytes that arrived from a source with no matching layer. Counted,
+/// never silently matched against some other layer's rules.
+pub var g_ac_skipped_unknown_source = std.atomic.Value(u64).init(0);
+
 // L4 predicate rules (layer=="L4") loaded from the same Rules.json as the
 // AC. The reload path swaps this table and g_active_ac under g_ac_mutex so
 // the pipeline never observes a half-updated rule set. Fixed size: the
