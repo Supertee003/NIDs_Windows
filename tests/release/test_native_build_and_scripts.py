@@ -26,6 +26,7 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -56,6 +57,25 @@ def _cmake_vs(build_dir: Path, source: Path) -> subprocess.CompletedProcess:
 needs_msvc = pytest.mark.skipif(CMAKE is None, reason="cmake not installed")
 
 
+def _build_retrying_lnk1104(build_dir: Path) -> subprocess.CompletedProcess:
+    """Build, and retry only while the linker reports the output as held.
+
+    `dist/aegis_ipc.dll` is written by every bridge link and read by whatever
+    else touched it a moment earlier; in a full-suite run the relink can meet a
+    transient handle and fail with LNK1104 even though the file is writable and
+    unheld at rest (measured: create/delete in dist/ succeed, the DLL renames,
+    and the same test passes when run alone). Wait for the handle to clear and
+    link again, a bounded number of times, so a real link error still fails.
+    """
+    for attempt in range(3):
+        built = _run([CMAKE, "--build", str(build_dir), "--config", "Release"])
+        if built.returncode == 0 or "LNK1104" not in (built.stdout + built.stderr):
+            return built
+        if attempt < 2:
+            time.sleep(5)
+    return built
+
+
 @needs_msvc
 def test_root_native_adapters_build(tmp_path: Path) -> None:
     build = tmp_path / "build"
@@ -83,7 +103,7 @@ def test_bridge_builds_into_dist(tmp_path: Path) -> None:
         pytest.skip("no Visual Studio instance available for the VS generator")
     assert configured.returncode == 0, (configured.stdout + configured.stderr)[-3000:]
 
-    built = _run([CMAKE, "--build", str(build), "--config", "Release"])
+    built = _build_retrying_lnk1104(build)
     assert built.returncode == 0, (built.stdout + built.stderr)[-3000:]
     # dist/ is gitignored; the build writes there by design.
     dll = ROOT / "dist" / "aegis_ipc.dll"
