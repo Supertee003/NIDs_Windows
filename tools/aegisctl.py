@@ -1200,7 +1200,12 @@ def cmd_forensic(args) -> int:
                       file=sys.stderr)
                 return 2
         elif field == "payload_prefix":
+            # Raw record bytes from byte 0: on capture rows that is the L2
+            # header, so a readable string will not match. Use payload_contains
+            # for text.
             payload = {"payload_prefix": value}
+        elif field == "payload_contains":
+            payload = {"payload_contains": value}
         else:
             print(json.dumps({"available": False, "command": "forensics.search", "reason": "control_protocol_supports_source_or_payload_prefix_filters_only", "field": field}, sort_keys=True), file=sys.stderr)
             return 2
@@ -2512,7 +2517,7 @@ def main() -> int:
     forensic_sub = forensic.add_subparsers(dest="forensic_command")
     fshow = forensic_sub.add_parser("show"); fshow.add_argument("--id", required=True, type=int)
     fsearch = forensic_sub.add_parser("search", help="Filter ring records (source ordinal, rule id, or payload-bytes prefix)");
-    fsearch.add_argument("--field", required=True, help="source = numeric origin ordinal (9 npcap, 10 host); rule = catalog id (R9059) or integer, hashed client-side; payload_prefix = raw record-bytes prefix, not text search");
+    fsearch.add_argument("--field", required=True, help="source = numeric origin ordinal (9 npcap, 10 host); rule = catalog id (R9059) or integer, hashed client-side; payload_prefix = raw record-bytes prefix from byte 0 (L2 header on capture rows, not text); payload_contains = byte sequence anywhere in the payload, which is what text search needs");
     fsearch.add_argument("--value", required=True, help="Ordinal for source; id for rule; byte prefix for payload_prefix")
     forensic_sub.add_parser("verify", help="Verify forensic hash chain")
     fexport = forensic_sub.add_parser("export"); fexport.add_argument("--output", required=True)

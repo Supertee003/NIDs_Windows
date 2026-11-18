@@ -1295,6 +1295,22 @@ const handlers = struct {
             break :blk "";
         } else "";
 
+        // FORENSIC-CONTAINS-001: `payload_prefix` compares raw record bytes
+        // from byte 0, and on capture rows those bytes are the L2 header -- so a
+        // readable string can never be a prefix, and the filter looked broken
+        // (0 matched) rather than precise. `payload_contains` searches the same
+        // payload span for a byte sequence anywhere, which is what an operator
+        // actually asks for ("which record carries this text?").
+        const requested_contains: []const u8 = if (payload == .object) blk: {
+            if (payload.object.get("payload_contains")) |value| {
+                break :blk switch (value) {
+                    .string => |s| s,
+                    else => "",
+                };
+            }
+            break :blk "";
+        } else "";
+
         const requested_limit: u64 = @min(
             @max(payloadU64(payload, "limit") orelse 100, 1),
             1000,
@@ -1379,6 +1395,9 @@ const handlers = struct {
             if (requested_prefix.len > 0 and
                 (requested_prefix.len > @as(usize, header.payload_len) or
                 !std.mem.eql(u8, record[payload_start .. payload_start + requested_prefix.len], requested_prefix))) continue;
+
+            if (requested_contains.len > 0 and
+                std.mem.indexOf(u8, record[payload_start..payload_end], requested_contains) == null) continue;
 
             matched += 1;
 

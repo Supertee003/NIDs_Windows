@@ -8436,6 +8436,32 @@
         "The stimulus is host-originated UDP on VMnet1, not typed inside the Kali guest. The guest cannot be driven on this host: vmrun runProgramInGuest/runScriptInGuest return 'A file was not found', fileExistsInGuest returns 'The file does not exist' for / itself (unchanged after a graceful guest stop/start) while listProcessesInGuest works, no port listens on the guest, and GUI keystroke injection did not reach it. The frames are on the captured wire in both directions, so the layer question is answered; guest provenance stays a documented limitation.",
         "Rule ids in event rows are FNV-1a hashes and were mapped with the same function the loader uses; the row timestamps are host-local."
       ]
+    },
+    {
+      "id": "FORENSIC-CONTAINS-001-E5-20261118",
+      "head_sha": "de176bc",
+      "timestamp": "2026-11-18",
+      "level": "E5",
+      "flow_id": "FOR-001",
+      "component": "C:/Program Files/AEGIS NIDS/runtime/aegis_nids.exe",
+      "title": "The forensic ring is searchable by payload text (payload_contains), proven live with a negative control",
+      "description": "The ring had no way to answer the operator's real question (which record carries this text?). payload_prefix compares stored bytes from byte 0, and on capture rows byte 0 is the L2 header, so a readable string can never match -- an operator typing text got records_matched 0 with no way to tell 'not retained' from 'no match'. This slice adds payload_contains to forensics.list: a substring search over exactly the payload span (payload_start..payload_end, never the header, never past payload_len). Measured on the installed build f57f232089c6c652 (same sha256 as zig-out/bin/aegis_nids.exe, service RUNNING): four UDP frames carrying 'GET /contains-canary?q=<script>alert(1)</script>' from 192.168.126.1 to 192.168.126.10:9999 produced 'forensic search --field payload_contains --value contains-canary' = 8 matched and '--field rule --value R9059' = 8 matched (four frames, both directions), while the negative control '--value zzz-not-present-zzz' = 0. Rule search was NOT broken: the earlier 0 result was ring retention (18.7 M records appended, bounded slots), which this entry corrects rather than repeats.",
+      "evidence_artifact": "tests/forensics/test_forensic_payload_filter.py",
+      "artifacts": [
+        "src/control/handler_registry.zig",
+        "tools/aegisctl.py",
+        "tests/forensics/test_forensic_payload_filter.py"
+      ],
+      "commands": [
+        "zig build test",
+        "zig build",
+        "aegisctl forensic search --field payload_contains --value contains-canary",
+        "aegisctl forensic search --field rule --value R9059"
+      ],
+      "limitations": [
+        "The scan covers the retained ring window only; a 0 can still mean 'aged out' rather than 'never seen', and the response does not yet say which sequence range was scanned.",
+        "The frames came from the host side of VMnet1 (the Kali guest cannot be driven for exec on this host), so the source is host-originated traffic on the captured interface."
+      ]
     }
   ],
   "known_gaps": [
@@ -15034,12 +15060,15 @@
     },
     {
       "id": "FORENSIC-SEARCH-EMPTY-001",
-      "status": "OPEN",
+      "status": "CLOSED",
       "severity": "P2",
-      "title": "aegisctl forensic search reports 0 matches for records that exist (rule and payload_prefix)",
+      "title": "forensic search could not answer by payload text (payload_prefix can never match capture rows)",
       "description": "Measured 2026-11-18 on the installed build: 'aegisctl forensic search --field rule --value R9059' and '--field payload_prefix --value GET /scan' both return records_matched 0, records_returned 0, truncated false, on a ring of 18.7 M records, while 'aegisctl events tail --count 20 --src-ip 192.168.126.1 --json' shows R9059 rows produced minutes earlier from the same stimulus. Candidates: the client-side rule hashing in the search path differs from hashRuleId; the scan window does not cover the records; or payload_prefix is compared against the wrong byte span. It matters because searching the ring is the operator's only way back from a record to its bytes, and the 2026-11-17 note that payload-prefix returns 0 on this build is an unexplained defect rather than a usage quirk (the correct invocation is --field payload_prefix --value ...; --json is not accepted there).",
       "recorded_by": "analysis/current-head/PROJECT-SCAN-20261118.md",
-      "next_step": "Compare the search path's rule hashing with the runtime hashRuleId, confirm which records the scan walks, and pin the result; then re-measure both fields with a stimulus whose rule id is known."
+      "next_step": "Compare the search path's rule hashing with the runtime hashRuleId, confirm which records the scan walks, and pin the result; then re-measure both fields with a stimulus whose rule id is known.",
+      "reverified_by": "FORENSIC-CONTAINS-001-E5-20261118",
+      "closed_note": "payload_contains is implemented in forensics.list and exposed by the CLI; on the installed build the filter matched 8/8 records for a canary string while a nonsense value matched 0, and rule search matched the same 8. The 0 result that opened this gap was ring retention, not a broken rule filter -- recorded here because the original claim was wrong.",
+      "remaining": "A 0 can still mean 'aged out of the retained window'; the response does not yet report the scanned sequence range, so that ambiguity is documented, not removed."
     }
   ],
   "evidence_level_summary": {
@@ -15048,10 +15077,10 @@
     "E2_count": 125,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 105,
+    "E5_count": 106,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 55,
+    "E5_with_artifact_count": 56,
     "known_gaps_count": 284
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
