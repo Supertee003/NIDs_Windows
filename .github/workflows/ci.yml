@@ -52,6 +52,12 @@ jobs:
         run: zig build
       - name: Test
         run: zig build test
+      - name: Upload runtime executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime_exe
+          path: zig-out/bin/aegis_nids.exe
+          if-no-files-found: error
 
   rust-pep-build:
     name: Rust PEP Build
@@ -83,6 +89,12 @@ jobs:
         run: cmake -B build -S .
       - name: Build
         run: cmake --build build --config Release
+      # Keep every uploaded path under build/Release so upload-artifact's
+      # least-common-ancestor is build/Release. The Zig job downloads this
+      # artifact into target/helpers and build.zig requires the .lib files at
+      # the root of that directory (target/helpers/aegis_fim_helper.lib).
+      # Mixing dist/* here would nest them as build/Release/* and dist/* and
+      # break the canonical Zig link (observed on 4f914ad).
       - name: Upload native helper artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -92,6 +104,9 @@ jobs:
             build/Release/aegis_etw_helper.lib
             build/Release/aegis_fim_helper.dll
             build/Release/aegis_fim_helper.lib
+            build/Release/aegis_wfp_user.dll
+            build/Release/aegis_wfp_user.lib
+          if-no-files-found: error
 
   shield-build:
     name: Rust Shield Build & Test (required screening support)
@@ -260,10 +275,17 @@ jobs:
         run: |
           cd nose
           go build ./...
+          go build -o aegis-nose.exe .
       - name: Test nose
         run: |
           cd nose
           go test ./...
+      - name: Upload nose artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nose_exe
+          path: nose/aegis-nose.exe
+          if-no-files-found: error
 
   # SUPPORT: optional operator alert sidecar (REST :9200). It reads NDJSON
   # logs and produces no Canonical Event, so it is NOT part of the runtime path.
@@ -299,20 +321,44 @@ jobs:
       - name: Run TS policy tests
         run: cd ts_policy && npm run test:all
 
-  # CI-GAPS: WDK driver sources (WFP callout + minifilter). Manual-only:
-  # a hosted WDK run has not yet been observed green, and PRs must not carry
-  # an unverified red signal. Trigger from the Actions tab (workflow_dispatch).
-  # Operator build path stays scripts/build_drivers.bat; the verification gate
-  # is the DEPLOY-120 install drill (E5). Not in ci-matrix needs; non-gating.
+  # Canonical WDK compile of both kernel telemetry drivers. windows-2022 is
+  # the only hosted image that still ships the standalone WDK headers + km
+  # libs (GitHub removed them from windows-2025 by design, issue #14263).
+  # Uses the authoritative build_truth scripts and fails closed when either
+  # canonical build\x64 output is missing or empty - no legacy .bat escape.
   drivers-wdk-build:
-    name: Kernel Drivers Build (WDK, manual)
-    runs-on: windows-latest
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    name: Kernel Drivers Build (WDK)
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
-      - name: Build drivers (WDK)
-        shell: cmd
-        run: scripts\build_drivers.bat
+      - name: Build WFP callout driver
+        shell: pwsh
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\wdk_build_production.ps1
+      - name: Build minifilter driver
+        shell: pwsh
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\wdk_build_minifilter.ps1
+      - name: Verify canonical WDK outputs
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $required = @(
+            "build\x64\wfp\aegis_wfp.sys",
+            "build\x64\minifilter\aegis_minifilter.sys"
+          )
+          foreach ($f in $required) {
+            if (-not (Test-Path $f)) { throw "missing canonical driver output: $f" }
+            $item = Get-Item $f
+            if ($item.Length -le 0) { throw "empty canonical driver output: $f" }
+            Write-Host "OK $f ($($item.Length) bytes)"
+          }
+      - name: Upload kernel driver artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel_drivers
+          path: |
+            build/x64/wfp/aegis_wfp.sys
+            build/x64/minifilter/aegis_minifilter.sys
+          if-no-files-found: error
 
   # REQUIRED FINAL GATE. `if: always()` guarantees this job is never skipped
   # when an upstream job fails; the results check below treats
@@ -342,20 +388,78 @@ jobs:
   package-release:
     name: Package Release
     needs: [zig-build-test, rust-pep-build, c-native-build,
-            python-tests, go-nose-build-test]
+            python-tests, go-nose-build-test, drivers-wdk-build]
     runs-on: windows-latest
-    # `success()` is required: without it a job whose `needs` failed would
-    # still run because the `if` expression would override the default gate.
-    if: ${{ startsWith(github.ref, 'refs/tags/v') && success() }}
+    # Build + SBOM verification runs on every push so this check is never
+    # grey. Publishing stays tag-only through the Release step's own guard:
+    # no branch push can create a GitHub Release or publish an installer.
+    # `success()` preserves the default `needs` gate.
+    if: ${{ success() }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+      - name: Build native bridge (dist/aegis_ipc.dll)
+        run: |
+          cd bridge
+          cmake -B build
+          cmake --build build --config Release
+      - name: Stage canonical runtime layout
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          function Need([string]$p) {
+            if (-not (Test-Path $p)) { throw "missing build artifact: $p" }
+          }
+          Need "runtime_exe/aegis_nids.exe"
+          Need "aegis_pep_dll/aegis_pep.dll"
+          Need "nose_exe/aegis-nose.exe"
+          # native_helpers is uploaded with build/Release as the common root,
+          # so download-artifact places each file directly in native_helpers/.
+          Need "native_helpers/aegis_wfp_user.dll"
+          Need "native_helpers/aegis_etw_helper.dll"
+          Need "native_helpers/aegis_fim_helper.dll"
+          Need "dist/aegis_ipc.dll"
+          $wfp = Get-ChildItem -Recurse -File -Filter "aegis_wfp.sys" "kernel_drivers" |
+                 Select-Object -First 1
+          $mf = Get-ChildItem -Recurse -File -Filter "aegis_minifilter.sys" "kernel_drivers" |
+                Select-Object -First 1
+          if (-not $wfp) { throw "missing aegis_wfp.sys artifact" }
+          if (-not $mf) { throw "missing aegis_minifilter.sys artifact" }
+          $dirs = @(
+            "zig-out/bin", "target/release", "build/Release", "nose",
+            "dist", "build/x64/wfp", "build/x64/minifilter"
+          )
+          foreach ($d in $dirs) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
+          Copy-Item "runtime_exe/aegis_nids.exe" "zig-out/bin/" -Force
+          Copy-Item "aegis_pep_dll/aegis_pep.dll" "target/release/" -Force
+          Copy-Item "nose_exe/aegis-nose.exe" "nose/" -Force
+          foreach ($f in @("aegis_wfp_user.dll", "aegis_etw_helper.dll", "aegis_fim_helper.dll")) {
+            Copy-Item "native_helpers/$f" "build/Release/" -Force
+            Copy-Item "native_helpers/$f" "zig-out/bin/" -Force
+          }
+          Copy-Item "dist/aegis_ipc.dll" "zig-out/bin/" -Force
+          Copy-Item $wfp.FullName "build/x64/wfp/" -Force
+          Copy-Item $mf.FullName "build/x64/minifilter/" -Force
+          Write-Host "OK: canonical runtime layout staged"
       - name: Install NSIS
         run: choco install nsis -y
       - name: Build installer
         run: python tools/installer.py --package --output aegis_setup.exe
+      - name: Verify installer output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "aegis_setup.exe")) { throw "installer not produced" }
+          $item = Get-Item "aegis_setup.exe"
+          if ($item.Length -le 0) { throw "empty installer" }
+          Write-Host "OK installer: $($item.Length) bytes"
       - name: Generate SBOM
         run: python tools/release_engineering.py --sbom
-      - name: Release
+      - name: Release (tag only)
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
         uses: softprops/action-gh-release@v2
         with:
           files: |
