@@ -8514,6 +8514,32 @@
         "The aggregate row for a mass delete (one high-count event with top-N prefixes) is not implemented yet; today the reduction is visible only as the name_delete_filtered counter.",
         "Option B (batched forensic append) is not started; the ADR itself gates it on the measurement above."
       ]
+    },
+    {
+      "id": "QLOSS-DELAGG-001-E5-20261118",
+      "head_sha": "0e38068",
+      "timestamp": "2026-11-18",
+      "level": "E5",
+      "flow_id": "FIM-001",
+      "component": "C:/Program Files/AEGIS NIDS/runtime/aegis_nids.exe",
+      "title": "A mass delete still appears as one record: filtered deletes fold into a per-window aggregate",
+      "description": "QLOSS option A, aggregate half: filtered deletes no longer vanish, they fold into ONE record per 10 s window carrying the window count, the top-4 path prefixes (first three segments, capped at 72 bytes) and one sample path -- the shape the ADR asks a mass delete to have. The window closes from the ETW callback AND from the keepalive loop, so a window still emits when the storm stops mid-window; formatting is allocation-free into a 512-byte stack buffer, and the record is counted as delete_aggregate_events in queue.stats. Measured on the installed build e32ba355bf2254ec (same sha256 as zig-out/bin/aegis_nids.exe, service RUNNING): creating and deleting 30 files under D:/tmp/aegis-massdel/bulk1 moved name_delete_filtered 32 -> 90 and delete_aggregate_events 3 -> 4, and 'forensic search --field payload_contains --value delete-aggregate' returned exactly 4 records -- the counter and the ring agree.",
+      "evidence_artifact": "src/pipeline/telemetry_threads.zig",
+      "artifacts": [
+        "src/pipeline/telemetry_threads.zig",
+        "src/control/handler_registry.zig"
+      ],
+      "commands": [
+        "zig build test",
+        "zig build",
+        "aegisctl queue --json",
+        "aegisctl forensic search --field payload_contains --value delete-aggregate"
+      ],
+      "limitations": [
+        "The aggregate covers deletes only; a storm made of other classes still relies on the pre-decode gate and the shed policy.",
+        "ADR acceptance criterion 1 (drops and shed_overload strictly below the QLOSS baseline for the same stimulus) still needs the controlled storm comparison, which is scheduled with the soak.",
+        "Only one window was observed live; the top-N folding was pinned in a unit test (three paths, two prefixes) rather than observed under a real million-row delete storm."
+      ]
     }
   ],
   "known_gaps": [
@@ -14763,7 +14789,7 @@
       "level": "E2",
       "component": "src/pipeline/event_queue.zig admission; FIM/ETW ingress volume",
       "flow_id": "QLOSS-HEALTH-001",
-      "description": "Option A chosen by the owner (A + B in one batch). Delete half landed at E5 (QLOSS-DELFILTER-001-E5-20261118): NameDelete rows whose path matches no kernel-file rule are dropped at the source, matching deletes are exempt from the storm shed, and the reduction is counted in queue.stats as name_delete_filtered (measured 43 filtered / 44 admitted, R1002 still firing). Still open: the mass-delete aggregate row, option B (batched forensic append), the storm measurement against the QLOSS baseline, and the 24 h soak.",
+      "description": "Option A is now implemented end to end and proven live: delete filter (QLOSS-DELFILTER-001-E5-20261118) plus the per-window aggregate record (QLOSS-DELAGG-001-E5-20261118) and both counters in queue.stats. Remaining before this gap can close: option B (batched forensic append) as the owner asked, the storm comparison against the QLOSS baseline, and the 24 h soak on the final build.",
       "files_changed": [
         "src/pipeline/event_queue.zig",
         "docs/adr/0010-host-telemetry-admission.md"
@@ -14783,7 +14809,7 @@
       "status": "OPEN",
       "closed_at": "2026-11-08",
       "evidence": "QLOSS-ISOLATION-002-E5-20261108: both host sources reach their full 7,168 share on the deployed daemon with reserved_tail_shed 0 and all 206,999 refusals attributed to source_quota_shed.",
-      "next_step": "Emit the aggregate row for mass deletes (one event with count, top-N prefixes, sample path), then decide B from the measurement the ADR asks for, then run the storm comparison and the soak.",
+      "next_step": "Implement B (batched forensic append in the hot path), then run the controlled storm comparison the ADR's acceptance criterion 1 requires, then the soak.",
       "current_observation": "2026-11-14 soak: queue dropped 0, shed_overload 0, loss_budget 3500 over 2.5 h; no loss observed under current load"
     },
     {
@@ -15138,10 +15164,10 @@
     "E2_count": 125,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 108,
+    "E5_count": 109,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 58,
+    "E5_with_artifact_count": 59,
     "known_gaps_count": 285
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."

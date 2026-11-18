@@ -36,6 +36,9 @@ pub const EtwClasses = struct {
     /// and this counter keeps that reduction visible instead of looking like
     /// lost throughput.
     name_delete_filtered: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
+    /// One per closed delete-aggregate window: the record that keeps a mass
+    /// delete visible downstream after its rows were filtered.
+    delete_aggregate_events: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
     file_write: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
     /// Writes filtered at the source because their path is not one the rule
     /// set can act on (see shouldAdmitEtwWrite). Counted so the reduction is
@@ -327,14 +330,143 @@ pub fn etwThread(source: *etw.EtwSource) void {
     // WD-BEAT-049: 100ms cadence, well under the 5s watchdog timeout.
     while (!state.g_stop_requested.load(.acquire) and source.running.load(.acquire)) {
         state.g_wd.beatLazy(&state.g_wd_etw_slot, .host_telemetry, "etw");
+        flushDeleteAggregate(std.time.milliTimestamp());
         std.time.sleep(100 * std.time.ns_per_ms);
     }
     diag.info("ETW thread stopped", .{});
 }
 
+
+// ── QLOSS-ETW-DELAGG-001 (ADR-0014 option A, aggregate half) ────────────────
+/// A mass delete must stay visible as ONE record instead of vanishing when its
+/// rows are filtered. Filtered deletes fold into a per-window aggregate carrying
+/// the count, the top-N path prefixes and one sample path -- exactly what the ADR
+/// asks a mass delete to look like downstream.
+pub const DELETE_AGG_WINDOW_MS: i64 = 10_000;
+const DELETE_AGG_TOPN: usize = 4;
+const DELETE_PREFIX_BYTES: usize = 72;
+const DELETE_SAMPLE_BYTES: usize = 160;
+
+const DeleteAggregate = struct {
+    const Prefix = struct {
+        buf: [DELETE_PREFIX_BYTES]u8 = undefined,
+        len: usize = 0,
+        count: u32 = 0,
+    };
+
+    mutex: std.Thread.Mutex = .{},
+    window_start_ms: i64 = 0,
+    count: u64 = 0,
+    prefixes: [DELETE_AGG_TOPN]Prefix = [_]Prefix{.{}} ** DELETE_AGG_TOPN,
+    sample: [DELETE_SAMPLE_BYTES]u8 = undefined,
+    sample_len: usize = 0,
+
+    /// First three path segments: a mass delete is summarised by tree, never by
+    /// every file name. Bounded by DELETE_PREFIX_BYTES so this cannot allocate.
+    fn prefixOf(path: []const u8) []const u8 {
+        var cuts: usize = 0;
+        var i: usize = 0;
+        while (i < path.len and i < DELETE_PREFIX_BYTES) : (i += 1) {
+            if (path[i] == 92 or path[i] == '/') { // 92 = '\' without a char literal
+                // A leading separator is not a segment boundary: without this
+                // a device path summarises to its volume, not its tree.
+                if (i == 0) continue;
+                cuts += 1;
+                if (cuts == 3) return path[0..i];
+            }
+        }
+        return path[0..@min(path.len, DELETE_PREFIX_BYTES)];
+    }
+
+    fn record(self: *DeleteAggregate, path: []const u8, now_ms: i64) void {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        if (self.window_start_ms == 0) self.window_start_ms = now_ms;
+        self.count += 1;
+        if (self.sample_len == 0 and path.len > 0) {
+            const n = @min(path.len, DELETE_SAMPLE_BYTES);
+            @memcpy(self.sample[0..n], path[0..n]);
+            self.sample_len = n;
+        }
+        const key = prefixOf(path);
+        if (key.len == 0) return;
+        for (&self.prefixes) |*slot| {
+            if (slot.len == key.len and std.mem.eql(u8, slot.buf[0..slot.len], key)) {
+                slot.count += 1;
+                return;
+            }
+        }
+        for (&self.prefixes) |*slot| {
+            if (slot.len == 0) {
+                @memcpy(slot.buf[0..key.len], key);
+                slot.len = key.len;
+                slot.count = 1;
+                return;
+            }
+        }
+        // All slots taken and every one differs: the window count still records
+        // the volume and the top-N stays what it is. No allocation, no growth.
+    }
+
+    /// Format and reset the window when it is due. Returns the payload bytes or
+    /// null when the window is not due or is empty.
+    fn formatDue(self: *DeleteAggregate, now_ms: i64, buf: []u8) ?[]const u8 {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        if (self.count == 0) return null;
+        if (now_ms - self.window_start_ms < DELETE_AGG_WINDOW_MS) return null;
+        const folded = self.count;
+        var stream = std.io.fixedBufferStream(buf);
+        const w = stream.writer();
+        w.print("delete-aggregate window_ms={} count={} top=", .{ DELETE_AGG_WINDOW_MS, folded }) catch {
+            self.resetLocked(now_ms);
+            return null;
+        };
+        var first = true;
+        for (self.prefixes) |slot| {
+            if (slot.len == 0) continue;
+            if (!first) w.writeByte(',') catch break;
+            first = false;
+            w.print("{s}:{}", .{ slot.buf[0..slot.len], slot.count }) catch break;
+        }
+        if (self.sample_len > 0) w.print(" sample={s}", .{self.sample[0..self.sample_len]}) catch {};
+        const len = stream.pos;
+        self.resetLocked(now_ms);
+        return buf[0..len];
+    }
+
+    fn resetLocked(self: *DeleteAggregate, now_ms: i64) void {
+        self.count = 0;
+        self.window_start_ms = now_ms;
+        self.sample_len = 0;
+        for (&self.prefixes) |*slot| {
+            slot.len = 0;
+            slot.count = 0;
+        }
+    }
+};
+
+var g_delete_agg = DeleteAggregate{};
+
+/// Close the delete-aggregate window if it is due and push the single record.
+/// Called from the ETW callback and from the keepalive loop, so a window closes
+/// even when the storm stops mid-window.
+fn flushDeleteAggregate(now_ms: i64) void {
+    var buf: [512]u8 = undefined;
+    const payload = g_delete_agg.formatDue(now_ms, &buf) orelse return;
+    var ev = event.IpcEvent.init(.fim_change);
+    ev.source = .capture_etw;
+    ev.timestamp_ns = @intCast(std.time.nanoTimestamp());
+    ev.event_id = diag.metrics.events_emitted.next();
+    ev.setPayload(payload);
+    _ = queue.pushEvent(ev, payload);
+    _ = g_etw_classes.delete_aggregate_events.fetchAdd(1, .monotonic);
+}
+
 /// ETW callback: converts ETW event record to IpcEvent and pushes to pipeline.
 fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []const u8) void {
     _ = ctx;
+    flushDeleteAggregate(std.time.milliTimestamp());
     var ev = event.IpcEvent.init(.etw_process_create);
     ev.source = .capture_etw;
     ev.timestamp_ns = @intCast(rec.timestamp_ns);
@@ -390,6 +522,7 @@ fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []cons
         payloadFileHasCriticalPath(ext_data));
     if (is_name_delete and !critical_delete) {
         _ = g_etw_classes.name_delete_filtered.fetchAdd(1, .monotonic);
+        g_delete_agg.record(rec.filePath(), std.time.milliTimestamp());
         return;
     }
 
@@ -949,4 +1082,26 @@ test "GAP-015 G4.1 exemption passes first sighting, sheds repeats, respects buck
     try std.testing.expectEqual(200.0, shedRefill(150.0, 200.0, 100.0, 1000));
     try std.testing.expectEqual(50.0, shedRefill(50.0, 200.0, 100.0, 0));
     try std.testing.expect(fnv1a64("abc") != fnv1a64("abd"));
+}
+
+test "QLOSS-DELAGG: a mass delete folds into one aggregate record per window" {
+    var agg = DeleteAggregate{};
+    const t0: i64 = 1_000_000;
+    // Forward slashes keep the literals readable; prefixOf() splits on both
+    // separators because ETW hands back device paths with backslashes.
+    agg.record("/Device/HarddiskVolume3/Temp/a.tmp", t0);
+    agg.record("/Device/HarddiskVolume3/Temp/b.tmp", t0 + 1);
+    agg.record("/Device/HarddiskVolume3/Cache/c.tmp", t0 + 2);
+
+    var buf: [512]u8 = undefined;
+    // Not due yet: the window is still open.
+    try std.testing.expectEqual(@as(?[]const u8, null), agg.formatDue(t0 + 5_000, &buf));
+
+    const payload = agg.formatDue(t0 + DELETE_AGG_WINDOW_MS, &buf).?;
+    try std.testing.expect(std.mem.indexOf(u8, payload, "count=3") != null);
+    try std.testing.expect(std.mem.indexOf(u8, payload, "Temp:2") != null);
+    try std.testing.expect(std.mem.indexOf(u8, payload, "sample=") != null);
+
+    // The window reset: nothing to emit until new deletes arrive.
+    try std.testing.expectEqual(@as(?[]const u8, null), agg.formatDue(t0 + 2 * DELETE_AGG_WINDOW_MS, &buf));
 }
