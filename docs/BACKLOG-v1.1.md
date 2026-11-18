@@ -30,6 +30,17 @@ maintenance window on this host with a hash-verified rollback.
 
 ### Closed during the 2026-11-17 closure pass
 
+`PROCESS-CMDLINE-001` (P2) is **CLOSED at E5 as an accepted limitation**
+(2026-11-18): the ETW helper was rebuilt with `WINEVENT_KEYWORD_PROCESS` and the
+service restarted after install, but a marker launch produced a 306-byte process
+row without the marker, and `Get-WinEvent -ListProvider
+Microsoft-Windows-Kernel-Process` shows every `ProcessStart` template (v0..v4)
+carries `ImageName` and no `CommandLine` field. The minifilter lane pushes only
+the image path. `R2003` therefore cannot match a host process row; `R2001`,
+`R2002`, `R2005` still match image names and `R2004` was proven live. A real
+command-line source (NT Kernel Logger or driver enrichment) is a v1.1+ feature.
+Record: `analysis/current-head/PROCESS-CMDLINE-001-20261118.md`.
+
 `RULE-LAYER-SCOPE-001` (P3) is **CLOSED at E5**, re-measured on the running
 installed binary (`ABF1A4AE...`) at 21:26 with a single VMnet1 frame that carried
 both `<script>alert(1)</script>` and `IEX(New-Object Net.WebClient).DownloadString`:

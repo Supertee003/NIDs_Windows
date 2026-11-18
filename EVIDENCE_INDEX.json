@@ -1,5 +1,5 @@
 {
-  "head_sha": "9c9f22fd8cfd16add7f183fcdb3445340e3df468",
+  "head_sha": "b600a2539590628a9923ca59bf68e47c3678bbbd",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-17",
   "generator_version": "3.0",
@@ -20,6 +20,36 @@
     "E7": "Release verification"
   },
   "evidence": [
+    {
+      "id": "PROCESS-CMDLINE-001-E5-20261118",
+      "head_sha": "e04d192d7c64cc255b8a2c386b79d53420dffcf8",
+      "timestamp": "2026-11-18",
+      "title": "Process command line is structurally unavailable from both current lanes; R2003 is an accepted limitation",
+      "level": "E5",
+      "component": "src/windows/etw_native.c, src/capture/minifilter_reader.zig, installed AegisNids runtime",
+      "flow_id": "PROCESS-CMDLINE-001",
+      "description": "The ETW helper was rebuilt with WINEVENT_KEYWORD_PROCESS and installed (helper sha256 c6a910e4..., service started after the DLL write). ETW process_start kept advancing (2412 -> 3944) with zero drops, and a launched marker process produced a 306-byte host_telemetry process row that did not contain the marker; forensic search for the marker returned 0 records while powershell.exe returned the 306-byte ETW row and a 61-byte file_sensor row. Get-WinEvent provider templates for ProcessStart v0..v4 contain ImageName and no CommandLine field, so the keyword cannot reveal it. The minifilter lane pushes the image path only by construction. R2003 therefore cannot match a host process row.",
+      "files_verified": [
+        "src/windows/etw_native.c",
+        "src/capture/minifilter_reader.zig",
+        "analysis/current-head/PROCESS-CMDLINE-001-20261118.md"
+      ],
+      "tests": [
+        "forensic search --field payload_contains --value CMDPROBE9173: 0 records immediately after launch",
+        "forensic search --field payload_contains --value powershell.exe: 2 records in the same window (file_sensor 61 B, host_telemetry 306 B)",
+        "aegisctl queue --json: etw.process_start 2412 -> 3944, dropped_total 0",
+        "Get-WinEvent -ListProvider Microsoft-Windows-Kernel-Process: ProcessStart v0..v4 templates have no CommandLine field",
+        "aegis_core.ndjson: R2003 match count unchanged after launching IEX 'Write-Output aegis-cmdline-probe-20261118'"
+      ],
+      "result": "ACCEPTED_LIMITATION_E5",
+      "finding": "Neither Microsoft-Windows-Kernel-Process/ProcessStart (v0..v4) nor the minifilter process record carries a command line. R2003 is inert on host process rows; the loss is recorded rather than hidden. R2001/R2002/R2005 still match image names and R2004 was proven live earlier.",
+      "evidence_artifact": "analysis/current-head/PROCESS-CMDLINE-001-20261118.md",
+      "limitations": [
+        "The provider template check is host-specific in form but the manifest defines no CommandLine field, so no keyword mask can add it.",
+        "A real command-line source (NT Kernel Logger EVENT_TRACE_FLAG_PROCESS or driver enrichment) is a v1.1+ feature and is not implemented here.",
+        "No detection rule, wire schema, PEP/WFP boundary or daemon binary was changed by this measurement."
+      ]
+    },
     {
       "id": "WFP-READINESS-REFRESH-001-E5-20261109",
       "head_sha": "318a10a95b7922851562aad27f389c2ab9f4fdac",
@@ -15196,12 +15226,12 @@
     },
     {
       "id": "PROCESS-CMDLINE-001",
-      "status": "OPEN",
+      "status": "CLOSED",
       "severity": "P2",
-      "title": "KERNEL_PROCESS rules now run, but the payload carries the image path only (no command line)",
-      "description": "Resolved half (E5, PROC-LAYER-001-E5-20261118): the layer follows the event kind, so process-create rows from the minifilter reach the kernel_process automaton and R2004 fires on a real certutil launch. Remaining: the row payload is a 61-byte image path with no command line (measured: search for a marker argument inside a launched command matched 0 records, while the word powershell matched 4 records of 61 bytes), so R2003 (IEX) can never match, and R2001/R2002/R2005 depend on the image name.",
-      "recorded_by": "analysis/current-head/PROJECT-SCAN-20261118.md",
-      "next_step": "Decide: extend the producing lane to carry the command line (C++ sensor change, grows every process payload) or retarget R2003 to what the lane can see and record the loss of command-line visibility in KNOWN_LIMITATIONS."
+      "title": "Command-line visibility is unavailable from both process lanes; R2003 is an accepted limitation",
+      "description": "Resolved half (E5, PROC-LAYER-001-E5-20261118): the layer follows the event kind, so process-create rows reach the kernel_process automaton and R2004 fires on a real certutil launch. The remaining question was answered at E5 on 2026-11-18: the ETW helper was rebuilt with WINEVENT_KEYWORD_PROCESS and the service restarted after install, process_start advanced with zero drops, and a marker launch produced a 306-byte ETW process row without the marker. Get-WinEvent shows every ProcessStart template (v0..v4) has ImageName and no CommandLine field, so no keyword mask can add it. The minifilter lane pushes only the image path (61 bytes) by construction. R2003 cannot match a host process row; R2001/R2002/R2005 still match image names and R2004 was proven live earlier.",
+      "recorded_by": "analysis/current-head/PROCESS-CMDLINE-001-20261118.md",
+      "next_step": "No v1.1 action. A future v1.2 feature can add a command-line source (NT Kernel Logger with EVENT_TRACE_FLAG_PROCESS, or privileged driver-side enrichment) and then retarget R2003; retargeting to an image name alone was rejected as a false-positive generator."
     }
   ],
   "evidence_level_summary": {

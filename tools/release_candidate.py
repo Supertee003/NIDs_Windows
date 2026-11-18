@@ -192,6 +192,12 @@ def known_limitations() -> str:
   installer.generated.nsi; --package builds aegis-installer-*.exe with
   NSIS makensis, fail-closed when absent). The tracked installer/aegis.nsi
   is a superseded reference kept for history (see its in-file notice).
+- Process command line is not available from either host process lane:
+  Microsoft-Windows-Kernel-Process/ProcessStart (v0..v4) defines no
+  CommandLine field, and the minifilter process record carries only the image
+  path. R2003 (PowerShell download cradle) therefore cannot match a host
+  process row; a real command-line source is a separate feature
+  (PROCESS-CMDLINE-001).
 - Pre-existing unrelated pytest ERROR tests/test_e2e.py::test_result.
 - bandit / pip-audit are not installed locally; python security posture is
   covered by the security-scan CI job + tests/security suites.
