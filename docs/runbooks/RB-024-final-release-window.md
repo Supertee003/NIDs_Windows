@@ -141,9 +141,13 @@ RB-004.)
 ```powershell
 python tools\host_soak_check.py --start auto --hours 24 `
   --loss-budget 3500 --shed-budget 20000 `
-  --baseline-out "$W\soak-24h.baseline.json" `
+  --baseline auto --baseline-out "$W\soak-24h.baseline.json" `
   --json "$W\soak-24h-delta-$(Get-Date -Format yyyyMMdd-HHmm).json"
 ```
+
+`--baseline auto` is required: it snapshots the counters into
+`soak-24h.baseline.json`; `--baseline-out` alone only names where to write it.
+The same baseline file is passed back on every later check.
 
 Re-check about once an hour with the same baseline (it is what makes counters
 deltas rather than lifetime totals), and a final time after 24 h:
