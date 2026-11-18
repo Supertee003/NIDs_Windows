@@ -1,7 +1,7 @@
 {
   "head_sha": "f4cde3c503fd8b696183751a608b999768caa769",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-18",
+  "last_updated_at": "2026-11-19",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -9130,6 +9130,29 @@
       "limitations": [
         "Records/tool only; soak_24h remains OPEN."
       ]
+    },
+    {
+      "id": "CI-GREY-GATES-CLOSEOUT-20261119",
+      "head_sha": "3470da9",
+      "timestamp": "2026-11-19",
+      "level": "E1",
+      "flow_id": "REL-001",
+      "component": "release CI grey-gate closeout (WDK + Package Release)",
+      "title": "Both previously-grey CI checks now run for real on every push; publishing stays tag-only",
+      "description": "WDK job moved to windows-2022 (the only hosted image with standalone WDK headers/km libs) and now calls the authoritative build_truth scripts with fail-closed verification of canonical build/x64 driver outputs, replacing the legacy .bat that exited 0 on compile failure. Package Release now builds installer + SBOM on every push after sharing build artifacts across jobs, with an explicit non-empty installer check; softprops/action-gh-release remains guarded by refs/tags/v so no branch push publishes. No source/build/signed-candidate change; build source f4cde3c.",
+      "evidence_artifact": "analysis/current-head/CI-GREY-GATES-CLOSEOUT-20261119.md",
+      "artifacts": [
+        "analysis/current-head/CI-GREY-GATES-CLOSEOUT-20261119.md",
+        ".github/workflows/ci.yml"
+      ],
+      "commands": [
+        "python tools/ci_coverage.py",
+        "python tools/truth.py verify",
+        "python tools/release_engineering.py --refresh-digests"
+      ],
+      "limitations": [
+        "Records/CI only; soak_24h remains OPEN and v1.1 remains untagged."
+      ]
     }
   ],
   "known_gaps": [
@@ -15795,7 +15818,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 29,
+    "E1_count": 30,
     "E2_count": 131,
     "E3_count": 14,
     "E4_count": 4,
