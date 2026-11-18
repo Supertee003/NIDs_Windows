@@ -2209,10 +2209,11 @@ const handlers = struct {
         // consumers (Python int, Rust as_u64) take full width; JS Number
         // stays precise to 2^53, unreachable in practice.
         return std.fmt.allocPrint(a,
-            \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"confirmed_blocks":{},"confirmed_quarantines":{},"errors":{},"siem":{{"enabled":{},"forwarded":{},"failed":{},"spooled":{},"batches":{},"retries":{}}},"policy_ir":{{"loaded":{},"rules":{},"hash":"{s}","verified":{}}}}}
+            \\{{"uptime_sec":{},"rules_loaded":{},"rule_layer_unavailable_events":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"confirmed_blocks":{},"confirmed_quarantines":{},"errors":{},"siem":{{"enabled":{},"forwarded":{},"failed":{},"spooled":{},"batches":{},"retries":{}}},"policy_ir":{{"loaded":{},"rules":{},"hash":"{s}","verified":{}}}}}
         , .{
             uptime_sec,
             state_mod.g_rules_loaded.load(.acquire),
+            state_mod.g_ac_skipped_unavailable_layer.load(.acquire),
             state_mod.g_nose_frames_submitted.load(.acquire),
             state_mod.g_pipeline_events_processed.load(.acquire),
             state_mod.g_forensic_records_written.load(.acquire),
@@ -2449,6 +2450,18 @@ test "metricsSnapshot exposes SIEM durability counters" {
     // operator-visible without relying on a stderr diagnostic stream.
     try std.testing.expect(std.mem.indexOf(u8, out, "\"confirmed_blocks\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"confirmed_quarantines\"") != null);
+}
+
+test "RULE-LAYER-FAILCLOSED: metrics expose unavailable-layer payload count" {
+    const state_mod = @import("../pipeline/runtime_state.zig");
+    const previous = state_mod.g_ac_skipped_unavailable_layer.load(.acquire);
+    defer state_mod.g_ac_skipped_unavailable_layer.store(previous, .release);
+    state_mod.g_ac_skipped_unavailable_layer.store(37, .release);
+
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 45, .caller_role = .read, .caller_pid = 0 };
+    const out = handlers.metricsSnapshot(std.testing.allocator, .{ .null = {} }, &ctx) orelse return error.TestUnexpectedResult;
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"rule_layer_unavailable_events\":37") != null);
 }
 
 test "queueStats emits parseable JSON with shed and etw keys (GAP-015)" {

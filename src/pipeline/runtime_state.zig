@@ -379,9 +379,16 @@ pub const RuleLayer = enum(u8) { network = 0, kernel_file = 1, kernel_process = 
 pub const RULE_LAYER_COUNT: usize = 4;
 pub var g_layer_ac: [RULE_LAYER_COUNT]?*sig.AhoCorasick = .{ null, null, null, null };
 pub var g_layer_rule_count: [RULE_LAYER_COUNT]u32 = .{ 0, 0, 0, 0 };
+/// True after the first atomic layered-ruleset swap; guarded by g_ac_mutex.
+/// Before that point, legacy single-AC callers may still use g_active_ac.
+pub var g_layered_rules_active: bool = false;
 /// Payload bytes that arrived from a source with no matching layer. Counted,
 /// never silently matched against some other layer's rules.
 pub var g_ac_skipped_unknown_source = std.atomic.Value(u64).init(0);
+/// Payload-bearing events skipped because their configured layer AC failed to
+/// build after layered mode became active. Counted, never silently matched
+/// against another layer's automaton.
+pub var g_ac_skipped_unavailable_layer = std.atomic.Value(u64).init(0);
 
 // L4 predicate rules (layer=="L4") loaded from the same Rules.json as the
 // AC. The reload path swaps this table and g_active_ac under g_ac_mutex so

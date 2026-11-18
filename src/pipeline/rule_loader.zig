@@ -421,6 +421,10 @@ pub fn reloadRules() ReloadReport {
         state.g_active_ac = heap_ac;
         state.g_layer_ac = .{ heap_ac, layer_acs[0], layer_acs[1], layer_acs[2] };
         state.g_layer_rule_count = layer_counts;
+        // RULE-LAYER-FAILCLOSED-001: from this atomic swap onward, a missing
+        // layer AC is a degraded condition, never a reason to borrow another
+        // layer's catalog. Written under g_ac_mutex with the pointers above.
+        state.g_layered_rules_active = true;
         state.g_l4_rules = l4_rules;
         state.g_l4_rule_count = l4_count;
         state.g_l4_rate_mutex.lock();

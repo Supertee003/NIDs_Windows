@@ -217,6 +217,37 @@ fn ruleLayerIndexForSource(source: event.EventSource, kind: event.EventKind) ?us
     };
 }
 
+/// RULE-LAYER-FAILCLOSED-001: selection result for one event. `unavailable`
+/// is true only for a configured layer whose automaton failed to build after
+/// layered mode was activated -- not for an unowned source or an empty layer.
+const RuleAutomatonSelection = struct {
+    automaton: ?*sig.AhoCorasick,
+    unavailable: bool,
+};
+
+/// Resolve the layer-local automaton under g_ac_mutex. Once a layered ruleset
+/// has been installed, a missing AC for a configured layer must never fall
+/// back to g_active_ac: that would run another layer's signatures on these
+/// bytes. The legacy fallback is valid only before the first layered swap.
+fn resolveRuleAutomaton(
+    source: event.EventSource,
+    kind: event.EventKind,
+    layered_active: bool,
+    legacy: ?*sig.AhoCorasick,
+    layer_acs: [state.RULE_LAYER_COUNT]?*sig.AhoCorasick,
+    layer_rule_counts: [state.RULE_LAYER_COUNT]u32,
+    has_payload: bool,
+    unavailable_counter: *std.atomic.Value(u64),
+) RuleAutomatonSelection {
+    const li = ruleLayerIndexForSource(source, kind) orelse return .{ .automaton = null, .unavailable = false };
+    if (!layered_active) return .{ .automaton = legacy, .unavailable = false };
+    if (layer_acs[li]) |ac| return .{ .automaton = ac, .unavailable = false };
+
+    const unavailable = layer_rule_counts[li] > 0;
+    if (unavailable and has_payload) _ = unavailable_counter.fetchAdd(1, .monotonic);
+    return .{ .automaton = null, .unavailable = unavailable };
+}
+
 fn processEvent(
     qe: *const queue.QueuedEvent,
     _: *sig.AhoCorasick, // using g_active_ac global instead
@@ -291,13 +322,22 @@ fn processEvent(
     var l4_count: usize = 0;
     state.g_ac_mutex.lock();
     // RULE-LAYER-SCOPE-001: match payload bytes against the automaton that owns
-    // the rule layer this event belongs to, not against every rule at once. The
-    // network automaton is the fallback when the reload path has not installed a
-    // layered set yet (and for the single-automaton tests).
+    // the rule layer this event belongs to, not against every rule at once.
+    // RULE-LAYER-FAILCLOSED-001: after the first layered swap, a configured but
+    // unavailable layer yields no automaton; the legacy single-AC fallback is
+    // valid only before that swap (and for the single-automaton tests).
     const layer_idx = ruleLayerIndexForSource(ev.source, ev.kind);
-    if (layer_idx) |li| {
-        active_ac = state.g_layer_ac[li] orelse state.g_active_ac;
-    }
+    const selection = resolveRuleAutomaton(
+        ev.source,
+        ev.kind,
+        state.g_layered_rules_active,
+        state.g_active_ac,
+        state.g_layer_ac,
+        state.g_layer_rule_count,
+        qe.payload_len > 0,
+        &state.g_ac_skipped_unavailable_layer,
+    );
+    active_ac = selection.automaton;
     l4_count = @min(state.g_l4_rule_count, l4.MAX_RULES);
     if (l4_count > 0) {
         @memcpy(l4_rules[0..l4_count], state.g_l4_rules[0..l4_count]);
@@ -1204,6 +1244,51 @@ pub fn pipelineLoop(
         state.g_pipeline_detections.load(.acquire),
         state.g_pipeline_policies_matched.load(.acquire),
     });
+}
+
+test "RULE-LAYER-FAILCLOSED: unavailable host layer never inherits network rules" {
+    var network = try sig.AhoCorasick.init(std.testing.allocator, 10_000);
+    defer network.deinit();
+    try network.addPattern(9005, "<script>");
+    try network.build();
+
+    // Only the network automaton built; file rules are configured but their
+    // automaton is unavailable; process and pipe layers are intentionally empty.
+    const layers = [_]?*sig.AhoCorasick{ &network, null, null, null };
+    const counts = [_]u32{ 1, 1, 0, 0 };
+    var unavailable = std.atomic.Value(u64).init(0);
+
+    const fim = resolveRuleAutomaton(.capture_fim, .fim_change, true, &network, layers, counts, true, &unavailable);
+    try std.testing.expect(fim.unavailable);
+    try std.testing.expect(fim.automaton == null);
+    try std.testing.expectEqual(@as(u64, 1), unavailable.load(.acquire));
+
+    const wire = resolveRuleAutomaton(.capture_npcap, .packet_captured, true, &network, layers, counts, true, &unavailable);
+    try std.testing.expect(!wire.unavailable);
+    try std.testing.expect(wire.automaton != null);
+    try std.testing.expect(wire.automaton.?.matchFirst("GET /<script> HTTP/1.1") != null);
+
+    // PROC-LAYER-001: kind wins for process rows. Layer 2 is empty here, so
+    // this is a clean no-match, not an unavailable-layer debt.
+    const proc_kind = resolveRuleAutomaton(.capture_fim, .etw_process_create, true, &network, layers, counts, true, &unavailable);
+    try std.testing.expect(!proc_kind.unavailable);
+    try std.testing.expect(proc_kind.automaton == null);
+
+    const empty_layer = resolveRuleAutomaton(.capture_etw, .packet_captured, true, &network, layers, counts, true, &unavailable);
+    try std.testing.expect(!empty_layer.unavailable);
+    try std.testing.expect(empty_layer.automaton == null);
+
+    const no_payload = resolveRuleAutomaton(.capture_fim, .fim_change, true, &network, layers, counts, false, &unavailable);
+    try std.testing.expect(no_payload.unavailable);
+    try std.testing.expectEqual(@as(u64, 1), unavailable.load(.acquire));
+
+    const legacy = resolveRuleAutomaton(.capture_fim, .fim_change, false, &network, layers, counts, true, &unavailable);
+    try std.testing.expect(!legacy.unavailable);
+    try std.testing.expect(legacy.automaton == &network);
+
+    const unowned = resolveRuleAutomaton(.capture_host_net, .packet_captured, true, &network, layers, counts, true, &unavailable);
+    try std.testing.expect(!unowned.unavailable);
+    try std.testing.expect(unowned.automaton == null);
 }
 
 test "RULE-LAYER-SCOPE: each event source maps to its own rule layer" {
