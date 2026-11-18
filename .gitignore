@@ -129,3 +129,9 @@ aegis_setup.exe
 # SIGN-RELEASE-001: private signing keys never enter the repository
 .keys/
 *.ed25519
+
+# BUILD-BACKUP-001: `go build -o nose\aegis-nose.exe` renames a running image
+# to this backup when the SYSTEM-owned nose already maps it. It is a build
+# artifact (same bytes, held open), never source; the next elevated restart
+# replaces the process and drops it.
+nose/aegis-nose.exe~
