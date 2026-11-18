@@ -452,7 +452,16 @@ def evaluate_clean_host(artifacts: list[dict]) -> dict:
     if not artifacts:
         return {"ok": False, "detail": "no post-install preflight artifact exists"}
     passing = [a for a in artifacts if str(a.get("verdict")).upper() == "PASS"]
-    for art in passing:
+
+    def date_key(art: dict) -> tuple[str, str]:
+        # Evidence paths carry a YYYYMMDD stamp in the directory or filename.
+        # Directory names are not chronological across lab campaigns, so sort
+        # by the stamp first and report the newest PASS, not the first one.
+        path = str(art.get("path") or "")
+        match = re.search(r"(20\d{6})", path)
+        return (match.group(1) if match else "", path)
+
+    for art in sorted(passing, key=date_key, reverse=True):
         loader = str(art.get("loader") or "")
         if INSTALL_DIR.lower() in loader.lower():
             return {

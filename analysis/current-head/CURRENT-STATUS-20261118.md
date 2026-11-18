@@ -2,13 +2,14 @@
 
 ## Identity
 
-- **Records HEAD at this edit:** `c3cc44f` (records-only tip; final pointer
-  commits follow it and do not move the build source)
+- **Records HEAD at this edit:** `7d91e30` (records-only tip; it does not move
+  the build source)
 - **Build source HEAD:** `4169839bff11937060ed4471b3a74717f11a50c3`
 - **Delivery branch:** `codex/v1.1-release` (local `codex/o2-etw-context`)
 - **Installed runtime:** `C:\Program Files\AEGIS NIDS\runtime\aegis_nids.exe`
-  sha256 `A02FC7FBDCC9B6932E735099F2D056D6B420BDB2AE074B0843E40251907E3497`,
-  identical to `zig-out\bin\aegis_nids.exe`.
+  sha256 `4CDC1999D202359FCBD3B8EB32CE9BB460A49EA3C2AA108A45C92CC522ADB676`,
+  identical to `zig-out\bin\aegis_nids.exe` (installed by the first RB-024
+  attempt; the corrected bundle carries the same runtime bytes).
 - **Baseline branch:** `main` / `daf9088` (old baseline; not the release carrier)
 
 These SHAs are intentionally different. A records-only commit does not change
@@ -25,17 +26,19 @@ python tools/release_engineering.py --verify -> OK, 674/674 digests
 python tools/final_audit.py --release-check
   PASS  truth_artifacts
   PASS  component_audit      modules 66/66, prod failures 0, part_ii 5/5
-  PASS  release_signature    bece8f1 signs SHA256SUMS; owner anchor recorded
+  PASS  release_signature    7d91e30 signs SHA256SUMS; owner anchor recorded
   PASS  clean_host_e5        2026-11-14 preflight, loader under C:\Program Files\AEGIS NIDS
   OPEN  soak_24h             no 24 h artifact covers source 4169839
   PASS  evidence_debt        0 unnamed product files
   release: NOT SHIPPABLE (5/6)
 ```
 
-`clean_host_e5` is reported PASS by the evaluator because it accepts any PASS
-preflight artifact, but the newest PASS still predates this build. Treat it as
-**provisional until RB-024 installs `bece8f1` and runs `host_preflight`**. The
-release signature is no longer provisional: the owner approved
+`clean_host_e5` is PASS on the current build: RB-024 installed `7d91e30` and
+`host_preflight` wrote `admin-evidence/e5-clean-host-20261118-final/preflight-20261118.json`
+(PASS, 0 failed checks). The evaluator was corrected to report the newest PASS
+preflight by its `YYYYMMDD` stamp instead of the first path in alphabetical
+order; the gate's rule (loader under `C:\Program Files\AEGIS NIDS`) is unchanged.
+The release signature is no longer provisional: the owner approved
 `txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o=` in
 `docs/gates/RELEASE_TRUST_ANCHOR.md`, the same key that signed `ad7948c`.
 
@@ -53,6 +56,12 @@ release signature is no longer provisional: the owner approved
 4. CI triggers now include `fix/**` pushes and `codex/**` pull requests.
 5. Restored the records/source HEAD distinction in `AGENTS.md` and
    `AI_CONTEXT.md` with the current SHAs.
+6. Corrected the unsigned driver images in the release bundle (`7d91e30` replaces
+   the rejected `bece8f1`) and recorded the corrective patch in
+   `analysis/current-head/RC-7D91E30-20261118.md`.
+7. Made `evaluate_clean_host` report the newest PASS preflight by its
+   `YYYYMMDD` stamp, so the release board cites the RB-024 artifact instead of
+   the 2026-11-14 one. The gate condition itself did not change.
 
 ## Wi-Fi duplicate — corrected framing
 
@@ -69,9 +78,10 @@ VMnet1 control had 0 pairs, and the product path is 1 event per frame
 (`nose: packets=26300 canonical=26300 dropped=0`). Root cause is not claimed.
 
 Disposition: keep the item as an **open environmental risk**, not a product
-dedup change and not a closed limitation. Re-measure with `g3_dup_bytes.py` on
-the current build in the same elevated window as the install, and close only on
-a measured zero.
+dedup change and not a closed limitation. RB-024 re-measured it on the installed
+`7d91e30` build: the 5-tuple ratio reported 66 pairs in 1,084 frames, but the
+byte-level probe on that same pcap reported 0 identical-byte pairs. Per RB-024
+the item stays open and the pcap is retained; no new product defect is claimed.
 
 `CAPTURE-SELECT-001` (next section) removes the one *product-side* way to arm a
 second reader on an adapter the canonical reader already owns. The measured
@@ -107,21 +117,27 @@ plus a deliberate restart.
 ## Release candidate and bundle — closed
 
 `release/T20-final/ad7948c` predated the shipped runtime, so it could not close
-`release_signature`. A new candidate was assembled from records HEAD `bece8f1`
-(build source `4169839`) and signed with the same ed25519 key as before:
+`release_signature`. A candidate was assembled from records HEAD `bece8f1`
+(build source `4169839`), but the first elevated RB-024 attempt proved its two
+kernel telemetry drivers were unsigned (`WIN32_EXIT_CODE 577`). Those images
+were re-signed with the already-trusted test certificates, and the corrected
+candidate `7d91e30` was assembled and signed with the owner-approved key:
 
 ```
-release/T20-final/bece8f1        258 files on disk, 251 checksum entries
-SHA256SUMS                       B008EA1CFA24A1A504E80DC950274790C1BF2B7FDAEE49B3D7BE36E8DA17C754
+release/T20-final/7d91e30        258 files on disk, 251 checksum entries
+SHA256SUMS                       43377D8775F6581F9AD64F9247D6A7F82E776E5845861B260F079351E60D4FE9
 signatures.json                  ed25519, public key txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o=
-dist/aegis_setup_6.0.0_trial.exe 6233653 B, sha256 BC61B102933C30D8DD404363D088F4DEA503D825E44C8F57FFA4D1B082769C14
+dist/aegis_setup_6.0.0_trial.exe 6236213 B, sha256 296780A963A3DD31F311EFE6C1FA3CFE46DEBC51ACF8633FEA23D3871111D34E
 ```
 
 All 251 per-file digests recompute from the bytes on disk (0 mismatches, 0
-missing). The installer packages `zig-out\bin\aegis_nids.exe` from `4169839`, so
-the bundle and the signed tree carry the same runtime.
+missing). The installer packages `zig-out\bin\aegis_nids.exe` from `4169839`,
+sha256 `4CDC1999D202359FCBD3B8EB32CE9BB460A49EA3C2AA108A45C92CC522ADB676`, so
+the bundle and the signed tree carry the same runtime. `bece8f1` is retained as
+the rejected tree; the correction and its evidence are in
+`analysis/current-head/RC-7D91E30-20261118.md`.
 
-Two defects were found by checking the artifact instead of trusting `RC PASS`:
+Three defects were found by checking the artifact instead of trusting `RC PASS`:
 
 - **SIGNED-TREE-001** — `* text eol=lf` rewrote the signed `SHA256SUMS` bytes on
   commit (`C1502245...` signed vs `0A86680F...` committed for `ad7948c`), so a
@@ -133,14 +149,20 @@ Two defects were found by checking the artifact instead of trusting `RC PASS`:
   bytes unreproducible and shipping local test names. `release_candidate.py`
   now ignores tool/test caches and a pin covers it; that tree was deleted and
   rebuilt.
+- **DRIVER-TESTSIGN-001** — the first elevated RB-024 install left `AegisWfp`
+  and `AegisMinifilter` STOPPED with exit 577 because `bece8f1` packaged the
+  current WDK outputs before they were test-signed. Both images were re-signed
+  with the certificates already trusted on this host, the installer and
+  candidate were rebuilt, and `7d91e30` now carries `Valid` driver signatures.
+  No source, policy or authority changed; build source stays `4169839`.
 
 Gate board:
 
 ```
 PASS  truth_artifacts     TRUTH_VALID at source 4169839
 PASS  component_audit     66/66 modules, 0 production failures, part_ii 5/5
-PASS  release_signature   bece8f1 signs SHA256SUMS; commit contains runtime 4169839
-PASS  clean_host_e5       2026-11-14 preflight, loader under C:\Program Files\AEGIS NIDS
+PASS  release_signature   7d91e30 signs SHA256SUMS; commit contains runtime 4169839
+PASS  clean_host_e5       2026-11-18 preflight, loader under C:\Program Files\AEGIS NIDS
 OPEN  soak_24h            no 24 h artifact covers source 4169839
 PASS  evidence_debt       0 unnamed product files
 ```
@@ -157,6 +179,7 @@ with an `ABANDONED.md`; the gate now reports the honest newest artifact
 | 44314438349 | `7920b01` | FAIL: only `Python Control Plane Tests` (an ignored `dist/aegis_ipc.dll` was listed as an evidence artifact) and the aggregate matrix job that depends on it |
 | 44323795191 | `6b1b664` | SUCCESS: all required jobs green; `Zig Build & Test` and `Cross-language CI Matrix` included |
 | 44325060322 | `1ab2109` | SUCCESS: all required jobs green, `Zig Build & Test` 4m11s, aggregate matrix green |
+| 44328263809 | `7d91e30` | SUCCESS: all required jobs green on the final pushed tip, including `Zig Build & Test` and `Cross-language CI Matrix` |
 
 The first failure was a portability defect in `EVIDENCE_INDEX.json`, not a
 product regression: the pointer was removed, all remaining pointers were checked
@@ -175,16 +198,30 @@ away.
 Only one known gap remains open: `GAP-QLOSS-ISOLATION-002`, whose remaining gate
 is the owner-run 24 h soak.
 
+## RB-024 steps 1-6 — complete
+
+One elevated window on 2026-11-18 completed the whole pre-soak procedure on the
+corrected `7d91e30` bundle. Result artifact:
+`admin-evidence/e5-clean-host-20261118-final/RB-024-result.json`.
+
+- Candidate signature and board verified; only `soak_24h` OPEN.
+- Both driver images `Valid` before and after install; all four services
+  `RUNNING`; installed runtime sha256 `4CDC1999...`.
+- `host_preflight` PASS, 0 failed checks, 5.4 min daemon uptime.
+- Capture selection `CAPTURE_SELECT_OK`, two disjoint devices, ingress +432.
+- Wi-Fi re-measure: 66/1084 ratio pairs but **0/1084 byte-identical pairs**. Per
+  RB-024 the sighting stays open and the pcap is retained; no capture-path
+  defect is claimed.
+- Upgrade/rollback drill PASS, snapshot `20261118153506`, `AegisNids` RUNNING.
+- `soak_started = false`.
+
 ## Remaining work (soak excluded, owner runs it last)
 
-1. Run `docs/runbooks/RB-024-final-release-window.md` in one elevated window:
-   install `aegis_setup_6.0.0_trial.exe`, run `host_preflight`, confirm both
-   capture topologies, re-measure the Wi-Fi byte-level duplicate with
-   `g3_dup_bytes.py`, and drill upgrade/rollback.
-2. Start the 24 h soak only after step 1, with nothing else touching the host.
-   Score it with `--loss-budget 3500 --shed-budget 20000` against the installed
-   build from `bece8f1`.
-3. When the soak is PASS, rerun `final_audit.py --release-check` for 6/6, record
+1. Start the 24 h soak with nothing else touching the host. Score it with
+   `--loss-budget 3500 --shed-budget 20000` against the installed build from
+   `7d91e30`, then follow steps 7-8 of
+   `docs/runbooks/RB-024-final-release-window.md`.
+2. When the soak is PASS, rerun `final_audit.py --release-check` for 6/6, record
    the artifact paths in `EVIDENCE_INDEX.json`, then merge `codex/v1.1-release`
    into `main` and tag `v1.1`. Do not merge or tag before then.
 

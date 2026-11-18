@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "c3cc44f",
+  "commit": "7d91e30",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE"
@@ -50,13 +50,13 @@
         "id": "release_signature",
         "ok": true,
         "owner": "owner",
-        "detail": "release\\T20-final\\bece8f1\\signatures.json cryptographically signs SHA256SUMS (B008EA1CFA24A1A5...) with a ed25519 key; commit bece8f1 contains runtime 4169839"
+        "detail": "release\\T20-final\\7d91e30\\signatures.json cryptographically signs SHA256SUMS (43377D8775F6581F...) with a ed25519 key; commit 7d91e30 contains runtime 4169839"
       },
       {
         "id": "clean_host_e5",
         "ok": true,
         "owner": "owner",
-        "detail": "admin-evidence\\e5-clean-host-20261114-222014\\preflight-20261114-222014.json PASS with the loader under C:\\Program Files\\AEGIS NIDS"
+        "detail": "admin-evidence\\e5-clean-host-20261118-final\\preflight-20261118.json PASS with the loader under C:\\Program Files\\AEGIS NIDS"
       },
       {
         "id": "soak_24h",
