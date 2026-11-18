@@ -232,3 +232,20 @@ corrected `7d91e30` bundle. Result artifact:
 - A true clean-machine boot model (this host has the toolchain, Npcap and a
   test certificate installed).
 - Production host-effect/WFP enforcement (detection-only by design).
+
+## AI handoff disposition (recorded 2026-11-19, soak window active)
+
+These local-only `.manus/worktrees/*` artifacts are inventoried so no handoff is
+silently lost. None is on the delivery branch and none changes build source
+`4169839`.
+
+| Worktree / artifact | Disposition |
+|---|---|
+| `gqdpidnmund6c83v5uk40n` (`closeout/rule-layer-failclosed-001`, `3aafce0` + `e8112be`) | **PENDING OWNER DECISION — NOT MERGED.** Real Zig change: after a layered ruleset is installed, a configured-but-unavailable layer AC never borrows another layer's automaton, and `rule_layer_unavailable_events` is exported. Current `RULE-LAYER-SCOPE-001` is already CLOSED at E5 in `EVIDENCE_INDEX.json` (`...-E5-20261117c`). Merging now would move the build source, invalidate the release signature and the running 24 h soak, and force rebuild + re-sign + a fresh soak. Do not touch during the soak; decide post-v1.1. |
+| `bvgnivewxkgl19ends2e4n` (untracked `RELEASE-SIG-CRYPTO-BYPASS-20261118.md`, `TRUTH-AND-EVIDENCE-RECONCILIATION-20261118.md`) | **SUPERSEDED.** Written against source `b955f91` / records `ef728b3`. Their OPEN P0 claims (#33 crypto bypass, #32 source/evidence reconciliation) are resolved at release tip by the Ed25519 trust-anchor gate and the records-only truth fixes; both issues are closed on GitHub. Banners added in place; do not port as current claims. |
+| `bsvfvv3ocng18lqju64moj` (detached `f01bc04`, dirty board files + comment-only `event_processor.zig` + untracked `release/T20-final/09ced4f/`) | **HISTORICAL / TOOL SIDE-EFFECT.** The T20 commit-stamp rewrites are produced by running `final_audit.py`; the Zig edit is a comment only. Nothing needed for v1.1. |
+| `crtxl0uoqqyft7d3oxbl4y` (`fix/stopline-truth-ci-signature-001`, `317693b`) | **INCORPORATED / SUPERSEDED.** Signature-verification work is in the delivery branch, which also carries the newer newest-PASS preflight selection. |
+| `.manus/mcp-results`, `.cloud-attachments`, `.work`, root `AEGIS_*HANDOFF*` reports | **HISTORICAL / IGNORED SCRATCH.** Transient tool payloads, old lab scratch and 2026-09/10 handoffs; no current release claim. |
+
+Invariant: this section is records-only. It does not move the build source,
+change the signed candidate, or alter the running soak window.
