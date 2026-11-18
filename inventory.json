@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-18T08:56:56.884398+00:00",
+  "generated_at": "2026-11-18T09:08:27.688620+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 2482,
+  "total_files": 2483,
   "by_class": {
     "canonical-docs": 468,
     "canonical-build": 261,
     "unclassified": 21,
     "canonical-source": 1307,
-    "canonical-test": 341,
+    "canonical-test": 342,
     "canonical-config": 50,
     "legacy": 34
   },
@@ -3822,7 +3822,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1417372
+      "size": 1420356
     },
     {
       "path": "FLOW_MAP.json",
@@ -11310,7 +11310,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 163171
+      "size": 164133
     },
     {
       "path": "src/control/protocol.zig",
@@ -13287,6 +13287,12 @@
       "size": 13928
     },
     {
+      "path": "tests/forensics/test_forensic_payload_filter.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 2250
+    },
+    {
       "path": "tests/forensics/test_forensic_source_space.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -14394,7 +14400,7 @@
       "path": "tools/aegisctl.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 116601
+      "size": 116996
     },
     {
       "path": "tools/audit_kernel_runtime.py",
@@ -14907,5 +14913,5 @@
       "size": 624
     }
   ],
-  "source_commit": "b955f91"
+  "source_commit": "efe6b6f"
 }

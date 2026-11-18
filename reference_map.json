@@ -1,8 +1,8 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-18T08:56:56.887982+00:00",
+  "generated_at": "2026-11-18T09:08:27.692224+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 2482,
+  "total_files": 2483,
   "by_role": {
     "documentation": 453,
     "build-config": 250,
@@ -11,7 +11,7 @@
     "rust-build": 4,
     "source": 1011,
     "architecture-decision": 13,
-    "test-artifact": 341,
+    "test-artifact": 342,
     "config-data": 50,
     "step-document": 2,
     "go-source": 8,
@@ -9172,6 +9172,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/forensics/test_forensic_payload_filter.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/forensics/test_forensic_source_space.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -10253,5 +10257,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "b955f91"
+  "source_commit": "efe6b6f"
 }
