@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "197747e",
+  "commit": "b597e71",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE"
@@ -38,7 +38,7 @@
         "id": "truth_artifacts",
         "ok": true,
         "owner": "none",
-        "detail": "TRUTH_VALID — artifacts carry build source 4169839 (ancestor of HEAD; source history and worktree clean)"
+        "detail": "TRUTH_VALID — artifacts carry build source f4cde3c (ancestor of HEAD; source history and worktree clean)"
       },
       {
         "id": "component_audit",
@@ -50,19 +50,19 @@
         "id": "release_signature",
         "ok": true,
         "owner": "owner",
-        "detail": "release\\T20-final\\7d91e30\\signatures.json cryptographically signs SHA256SUMS (43377D8775F6581F...) with a ed25519 key; commit 7d91e30 contains runtime 4169839"
+        "detail": "release\\T20-final\\b597e71\\signatures.json cryptographically signs SHA256SUMS (02562BC958AE4516...) with a ed25519 key; commit b597e71 contains runtime f4cde3c"
       },
       {
         "id": "clean_host_e5",
         "ok": true,
         "owner": "owner",
-        "detail": "admin-evidence\\e5-clean-host-20261118-final\\preflight-20261118.json PASS with the loader under C:\\Program Files\\AEGIS NIDS"
+        "detail": "admin-evidence\\e5-clean-host-20261119-final\\preflight-20261119.json PASS with the loader under C:\\Program Files\\AEGIS NIDS"
       },
       {
         "id": "soak_24h",
         "ok": false,
         "owner": "time",
-        "detail": "admin-evidence\\e5-clean-host-20261115-soak2\\soak-24h-delta-latest.json is FAIL at 48.43/24.0 h, problems ['daemon uptime 0.49h is shorter than the soak 48.43h (process restarted mid-soak)']; an older PASS (admin-evidence\\e5-clean-host-20261117-process-soak\\soak-24h-process-start.json at 24.62 h) predates the current source commit and does not close this gate"
+        "detail": "admin-evidence\\e5-clean-host-20261119-final\\soak-24h-delta-20261119-0144.json is IN_PROGRESS at 0.0/24.0 h; an older PASS (admin-evidence\\e5-clean-host-20261117-process-soak\\soak-24h-process-start.json at 24.62 h) predates the current source commit and does not close this gate"
       },
       {
         "id": "evidence_debt",

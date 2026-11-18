@@ -17,12 +17,13 @@ Commands are PowerShell, from `D:\NIDs_Windows`, in an **elevated** session.
 
 ## Objective
 
-Install the corrected signed `7d91e30` candidate (`bece8f1` was rejected: its
-kernel telemetry drivers were unsigned) over the existing service, prove the
-installed runtime answers a preflight, confirm both capture topologies still
-resolve, re-measure the Wi-Fi duplicate sighting on this build, exercise
-upgrade/rollback, and run 24 h of wall clock with no loss — then close the
-release board.
+Install the current signed `b597e71` candidate for build source `f4cde3c`
+(`bece8f1` was rejected for unsigned kernel telemetry drivers; `7d91e30` was
+superseded when the fail-closed rule-layer slice moved the build source) over
+the existing service, prove the installed runtime answers a preflight, confirm
+both capture topologies still resolve, re-measure the Wi-Fi duplicate sighting
+on this build, exercise upgrade/rollback, and run 24 h of wall clock with no
+loss — then close the release board.
 
 What this window does **not** prove: driver signing/HLK, a true clean-machine
 boot model, or WFP enforcement. Drivers stay test-signed; prevention stays
@@ -33,34 +34,36 @@ closed by design.
 ### 1. Verify the artifact before touching the host
 
 ```powershell
-python tools\sign_release.py --verify --dir release\T20-final\7d91e30
-Get-AuthenticodeSignature release\T20-final\7d91e30\drivers\*.sys |
+python tools\sign_release.py --verify --dir release\T20-final\b597e71
+Get-AuthenticodeSignature release\T20-final\b597e71\drivers\*.sys |
     Select-Object Path, Status, @{n='Signer';e={$_.SignerCertificate.Thumbprint}}
 $env:AEGIS_RELEASE_TRUSTED_PUBLIC_KEY = 'txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o='
 python tools\final_audit.py --release-check
 ```
 
-Expect `PASS: signatures.json signs SHA256SUMS (43377D87...)` and a board where
-`soak_24h` is the only `OPEN` gate. Both driver images must report `Status =
-Valid` (WFP `00E92849867308596564D134BB981EF726798E97`, minifilter
+Expect `PASS: signatures.json signs SHA256SUMS (02562BC958AE4516...)` and a board
+where `soak_24h` is the only `OPEN` gate. Both driver images must report
+`Status = Valid` (WFP `00E92849867308596564D134BB981EF726798E97`, minifilter
 `60B05537FEB7A40D6F6624FF5C005C09DC245A63`). If any other gate is open, or a
 driver is unsigned, stop — do not install a candidate whose chain does not
-verify. `bece8f1` is rejected and must not be used; see
-`analysis/current-head/RC-7D91E30-20261118.md`.
+verify. `bece8f1` is rejected and `7d91e30` is superseded; see
+`analysis/current-head/RC-7D91E30-20261118.md` and
+`analysis/current-head/RULE-LAYER-FAILCLOSED-001-20261119.md`.
 
 ### 2. Install the bundle
 
 ```powershell
-$W = "admin-evidence\e5-clean-host-20261118-final"
+$W = "admin-evidence\e5-clean-host-20261119-final"
 New-Item -ItemType Directory -Force $W | Out-Null
 Start-Process -FilePath "dist\aegis_setup_6.0.0_trial.exe" -ArgumentList "/S" -Wait
 Get-Service AegisNids, AegisAggregator, AegisWfp, AegisMinifilter |
     Select-Object Name, Status, StartType
 ```
 
-All four must be `RUNNING`. The installer at this step is
+All four must be `RUNNING`. The installer at this step is the rebuilt
 `dist\aegis_setup_6.0.0_trial.exe`, sha256
-`296780A963A3DD31F311EFE6C1FA3CFE46DEBC51ACF8633FEA23D3871111D34E`. If
+`360B9C0666959AFB2064D1CD815565073A61051ACBBF1F4887C9C0A9D05ECDB9`, carrying
+runtime `0CB573EC6CF3B77BE5CBB477BA7803F4C63361F325AB22A561343092A4C0DF1F`. If
 `AegisWfp` or `AegisMinifilter` is `STOPPED` with `WIN32_EXIT_CODE 577`, the
 installed image is unsigned — check `Get-AuthenticodeSignature
 C:\Windows\System32\drivers\aegis_*.sys` and stop; do not start the service by
@@ -76,7 +79,7 @@ Product version stays `5.0.0` (`aegisctl version`) while the bundle line is
 Wait until the daemon uptime is at least 5 minutes, then:
 
 ```powershell
-python tools\host_preflight.py --min-uptime-min 5 --json "$W\preflight-20261118.json"
+python tools\host_preflight.py --min-uptime-min 5 --json "$W\preflight-20261119.json"
 ```
 
 PASS here means `clean_host_e5` finally describes *this* build instead of the
@@ -104,7 +107,7 @@ measured zero from this build:
 ```powershell
 python admin-evidence\g2-single-host-20261117\lab-kit-v3\g3_dup_ratio.py `
   --device "\Device\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}" `
-  --seconds 60 --traffic 20 --out "D:\NIDs_Windows\admin-evidence\capture-dup-20261118"
+  --seconds 60 --traffic 20 --out "D:\NIDs_Windows\admin-evidence\capture-dup-20261119"
 ```
 
 Read the JSON it writes. `pairs == 0` closes the item for this build; any pair
@@ -170,7 +173,23 @@ $env:AEGIS_RELEASE_TRUSTED_PUBLIC_KEY = 'txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5k
 python tools\final_audit.py --release-check
 ```
 
-## Result — 2026-11-18 (steps 1-6)
+## Result — 2026-11-19 (steps 1-6, current build source)
+
+`admin-evidence/e5-clean-host-20261119-final/RB-024-result.json` records the
+clean rerun against `release/T20-final/b597e71` on build source `f4cde3c`:
+installer `360B9C06…` exit 0, installed runtime `0CB573EC…`, 2/2 driver images
+`Valid`, 4/4 services RUNNING, preflight PASS with 0 failed checks, both capture
+pins resolving to disjoint devices with ingress advancing, 18,774/20,191 ratio
+pairs but byte-level 0/20,191 identical pairs, and rollback drill PASS with
+`AegisNids` RUNNING. The Wi-Fi item stays open under the runbook's literal rule.
+
+The 24 h window started `2026-11-19T01:44:10` with `--baseline auto`; first
+delta `soak-24h-delta-20261119-0144.json` is `IN_PROGRESS` at 0/24 h with all
+loss/shed counters 0. The earlier `2026-11-19T00:20:11` window is
+**VOIDED BY SUPERSEDED BUILD** and is retained only for provenance.
+Details: `analysis/current-head/RB-024-F4CDE3C-20261119.md`.
+
+## Result — 2026-11-18 (steps 1-6, historical)
 
 `admin-evidence/e5-clean-host-20261118-final/RB-024-result.json` records a clean
 run against `release/T20-final/7d91e30`: installer exit 0, 2/2 driver images

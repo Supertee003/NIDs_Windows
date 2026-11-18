@@ -8954,6 +8954,42 @@
         "No deterministic fault injection forces a production AC build failure; the selection seam and counter are unit-pinned.",
         "The 24 h soak opened on the pre-change build is VOIDED by this source change and must restart after RB-024."
       ]
+    },
+    {
+      "id": "RB-024-STEPS1-6-F4CDE3C-E5-20261119",
+      "head_sha": "f4cde3c",
+      "timestamp": "2026-11-19",
+      "level": "E5",
+      "flow_id": "REL-001",
+      "component": "installer, kernel telemetry driver load, host preflight, capture selection, upgrade/rollback",
+      "title": "RB-024 steps 1-6 revalidated on the fail-closed build before the final soak",
+      "description": "Rebuilt installer 360B9C06 installed runtime 0CB573EC from signed candidate b597e71 on build source f4cde3c. Driver images 2/2 Valid; 4/4 services RUNNING; host_preflight PASS with 0 failed checks; capture topology proved two disjoint devices with ingress advancing; byte-level duplicate probe 0/20191; upgrade/rollback PASS with AegisNids RUNNING. The earlier 2026-11-19T00:20:11 soak is VOIDED BY SUPERSEDED BUILD; a new 24 h window started 2026-11-19T01:44:10 and remains the only open release gate.",
+      "evidence_artifact": "analysis/current-head/RB-024-F4CDE3C-20261119.md",
+      "artifacts": [
+        "analysis/current-head/RB-024-F4CDE3C-20261119.md",
+        "admin-evidence/e5-clean-host-20261119-final/RB-024-result.json",
+        "admin-evidence/e5-clean-host-20261119-final/preflight-20261119.json",
+        "admin-evidence/e5-clean-host-20261119-final/soak-24h-delta-20261119-0144.json",
+        "admin-evidence/e5-clean-host-20261118-final/voided-soak-20261119.json"
+      ],
+      "commands": [
+        "python tools\\sign_release.py --verify --dir release\\T20-final\\b597e71",
+        "python tools\\final_audit.py --release-check",
+        "dist\\aegis_setup_6.0.0_trial.exe /S",
+        "python tools\\host_preflight.py --min-uptime-min 5 --json admin-evidence\\e5-clean-host-20261119-final\\preflight-20261119.json",
+        "python tools\\capture_select.py --show",
+        "python tools\\capture_select.py --verify --seconds 10",
+        "python admin-evidence\\g2-single-host-20261117\\lab-kit-v3\\g3_dup_ratio.py --seconds 60 --traffic 20",
+        "python admin-evidence\\g2-single-host-20261117\\lab-kit-v3\\g3_dup_bytes.py --pcap <captured pcap>",
+        "python tools\\upgrade_rollback.py snapshot",
+        "python tools\\upgrade_rollback.py rollback --snapshot 20261118184352",
+        "python tools\\host_soak_check.py --start auto --hours 24 --loss-budget 3500 --shed-budget 20000 --baseline auto"
+      ],
+      "limitations": [
+        "RB-024 steps 1-6 only; the 24 h soak is still IN_PROGRESS and does not close soak_24h.",
+        "No EV/HLK driver signing, clean-machine boot model, or WFP enforcement is proven.",
+        "The Wi-Fi ratio probe stayed non-zero; the byte-level probe found 0 identical pairs, so the item stays open per the runbook."
+      ]
     }
   ],
   "known_gaps": [
@@ -15623,10 +15659,10 @@
     "E2_count": 131,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 116,
+    "E5_count": 117,
     "E6_count": 1,
     "E7_count": 3,
-    "E5_with_artifact_count": 66,
+    "E5_with_artifact_count": 67,
     "known_gaps_count": 287
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."

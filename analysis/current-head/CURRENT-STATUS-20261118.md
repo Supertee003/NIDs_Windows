@@ -2,14 +2,14 @@
 
 ## Identity
 
-- **Records HEAD at this edit:** `7d91e30` (records-only tip; it does not move
-  the build source)
-- **Build source HEAD:** `4169839bff11937060ed4471b3a74717f11a50c3`
+- **Signed candidate:** `b597e71` (records tip when signed; later records-only
+  commits do not move the build source)
+- **Build source HEAD:** `f4cde3c503fd8b696183751a608b999768caa769`
 - **Delivery branch:** `codex/v1.1-release` (local `codex/o2-etw-context`)
 - **Installed runtime:** `C:\Program Files\AEGIS NIDS\runtime\aegis_nids.exe`
-  sha256 `4CDC1999D202359FCBD3B8EB32CE9BB460A49EA3C2AA108A45C92CC522ADB676`,
-  identical to `zig-out\bin\aegis_nids.exe` (installed by the first RB-024
-  attempt; the corrected bundle carries the same runtime bytes).
+  sha256 `0CB573EC6CF3B77BE5CBB477BA7803F4C63361F325AB22A561343092A4C0DF1F`,
+  installed by the 2026-11-19 RB-024 revalidation; identical to
+  `zig-out\bin\aegis_nids.exe` and `release/T20-final/b597e71/bin/aegis_nids.exe`.
 - **Baseline branch:** `main` / `daf9088` (old baseline; not the release carrier)
 
 These SHAs are intentionally different. A records-only commit does not change
@@ -21,26 +21,28 @@ and `installer/` do not move the source commit.
 ## Gates measured at this pass
 
 ```
-python tools/truth.py verify              -> TRUTH_VALID (source 4169839)
+python tools/truth.py verify              -> TRUTH_VALID (source f4cde3c)
 python tools/release_engineering.py --verify -> OK, 674/674 digests
 python tools/final_audit.py --release-check
   PASS  truth_artifacts
   PASS  component_audit      modules 66/66, prod failures 0, part_ii 5/5
-  PASS  release_signature    7d91e30 signs SHA256SUMS; owner anchor recorded
-  PASS  clean_host_e5        2026-11-14 preflight, loader under C:\Program Files\AEGIS NIDS
-  OPEN  soak_24h             no 24 h artifact covers source 4169839
+  PASS  release_signature    b597e71 signs SHA256SUMS; owner anchor recorded
+  PASS  clean_host_e5        2026-11-19 preflight, loader under C:\Program Files\AEGIS NIDS
+  OPEN  soak_24h             24 h window started 2026-11-19T01:44:10 on f4cde3c
   PASS  evidence_debt        0 unnamed product files
   release: NOT SHIPPABLE (5/6)
 ```
 
-`clean_host_e5` is PASS on the current build: RB-024 installed `7d91e30` and
-`host_preflight` wrote `admin-evidence/e5-clean-host-20261118-final/preflight-20261118.json`
-(PASS, 0 failed checks). The evaluator was corrected to report the newest PASS
-preflight by its `YYYYMMDD` stamp instead of the first path in alphabetical
-order; the gate's rule (loader under `C:\Program Files\AEGIS NIDS`) is unchanged.
-The release signature is no longer provisional: the owner approved
+`clean_host_e5` is PASS on the current build: RB-024 revalidation installed the
+rebuilt `b597e71` bundle and `host_preflight` wrote
+`admin-evidence/e5-clean-host-20261119-final/preflight-20261119.json`
+(PASS, 0 failed checks). The evaluator reports the newest PASS preflight by its
+`YYYYMMDD` stamp; the gate's rule (loader under `C:\Program Files\AEGIS NIDS`) is
+unchanged. The release signature is no longer provisional: the owner approved
 `txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o=` in
-`docs/gates/RELEASE_TRUST_ANCHOR.md`, the same key that signed `ad7948c`.
+`docs/gates/RELEASE_TRUST_ANCHOR.md`, and that key signed `b597e71` after the
+fail-closed source change. RB-024 steps 1–6 are recorded in
+`analysis/current-head/RB-024-F4CDE3C-20261119.md`.
 
 ## What this pass changed
 
@@ -215,21 +217,26 @@ corrected `7d91e30` bundle. Result artifact:
 - Upgrade/rollback drill PASS, snapshot `20261118153506`, `AegisNids` RUNNING.
 - `soak_started = false`.
 
-## Remaining work (soak excluded, owner runs it last)
+## Remaining work (soak is the only release gate)
 
 **Soak void notice (2026-11-19):** the window opened at `2026-11-19T00:20:11`
 on the pre-change installed image is **VOIDED BY SUPERSEDED BUILD** because the
 fail-closed source slice moved the build source to `f4cde3c`. It never reached
-PASS and is not a failed soak. Do not score it; rerun RB-024 and start one fresh
-24 h window against `f4cde3c`.
+PASS and is not a failed soak. It is retained only for provenance.
 
-1. Start the 24 h soak with nothing else touching the host. Score it with
-   `--loss-budget 3500 --shed-budget 20000` against the installed build from
-   `f4cde3c`, then follow steps 7-8 of
+**Active final window:** started `2026-11-19T01:44:10` on the rebuilt
+`b597e71` image; baseline `admin-evidence/e5-clean-host-20261119-final/soak-24h.baseline.json`;
+first delta `soak-24h-delta-20261119-0144.json` (`IN_PROGRESS`, 0/24 h, all loss
+and shed counters 0, 4/4 services RUNNING). Due `2026-11-20T01:44:10`.
+
+1. Do not install, restart, switch capture topology, or run adversarial load
+   during the window. Recheck with the same baseline and finish after 24 h with
+   `--loss-budget 3500 --shed-budget 20000`, then follow steps 7–8 of
    `docs/runbooks/RB-024-final-release-window.md`.
 2. When the soak is PASS, rerun `final_audit.py --release-check` for 6/6, record
-   the artifact paths in `EVIDENCE_INDEX.json`, then merge `codex/v1.1-release`
-   into `main` and tag `v1.1`. Do not merge or tag before then.
+   the final artifact paths in `EVIDENCE_INDEX.json`, resolve PR #36 by taking
+   the release tree, merge `codex/v1.1-release` into `main`, tag `v1.1`, and
+   delete the release branch. Do not merge or tag before then.
 
 ## Out of scope on this host (record as limitations, never as passes)
 
@@ -242,8 +249,8 @@ PASS and is not a failed soak. Do not score it; rerun RB-024 and start one fresh
 ## AI handoff disposition (recorded 2026-11-19, soak window active)
 
 These local-only `.manus/worktrees/*` artifacts are inventoried so no handoff is
-silently lost. None is on the delivery branch and none changes build source
-`4169839`.
+silently lost. None is on the delivery branch and none changes the current
+build source `f4cde3c`.
 
 | Worktree / artifact | Disposition |
 |---|---|
