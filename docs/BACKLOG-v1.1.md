@@ -26,7 +26,7 @@ maintenance window on this host with a hash-verified rollback.
 | `EVI-G2-PEP-CACHE-001-LAB` | — | E5 | PEP cache swap, direction verify, duplicate canary, unblock, base restore | lab window on this host: lab build + canary from Kali + documented block + hash-verified rollback (no second host) |
 | `CAPTURE-DUP-WIFI-001` | P3 | E5 | This Wi-Fi adapter/Npcap delivers every frame twice | try another adapter/host config (raw 802.11, Killer prioritisation); or a bounded, counted dedup keyed by `(ip.id, tcp.seq, payload hash)` that cannot drop a real retransmission |
 | ~~`RULE-LAYER-SCOPE-001`~~ | P3 | **CLOSED E5** | — (see below) | — |
-| `GAP-QLOSS-ISOLATION-002` | — | E2 | FIM/ETW ingress volume from the storming source is not reduced | pick one option in `docs/adr/0014-q-loss-ingress-isolation.md` (A filter / B batched append / C accepted envelope; recommendation A+B), then re-measure and run the single v1.1 24 h soak |
+| `GAP-QLOSS-ISOLATION-002` | — | E5 | Option A (ETW delete filter + aggregate) holds under a 20k delete storm: 8,801 filtered, 0 queue/ring loss, `R1002` canary passes. Remaining: the FIM half of the same storm (needs `AEGIS_FIM_PROOF_ROOT` and a restart) and the 24 h soak. Option B was measured and rejected. | elevated maintenance window + the single v1.1 24 h soak |
 
 ### Closed during the 2026-11-17 closure pass
 

@@ -51,6 +51,34 @@
       ]
     },
     {
+      "id": "QLOSS-DELFILTER-002-E5-20261118",
+      "head_sha": "f751592",
+      "timestamp": "2026-11-18",
+      "title": "ETW delete filter under a 20k-file storm: no queue/ring loss, aggregate emitted, R1002 canary passes",
+      "level": "E5",
+      "component": "src/pipeline/telemetry_threads.zig delete filter + aggregate; installed daemon e32ba355",
+      "flow_id": "QLOSS-HEALTH-001",
+      "description": "A 20,000-file *.tmp churn (6 workers, created 1.9 s / deleted 0.9 s) under D:\\tmp\\aegis-storm-20261118 was sampled every 2 s on the running detection-only daemon. etw.file_name_delete +8,803, etw.name_delete_filtered +8,801, delete_aggregate_events +2; one 222-byte host_telemetry aggregate record contained 'delete-aggregate'. dropped_total, shed_overload, source_quota_shed, reserved_tail_shed, minifilter.dropped and minifilter_pipeline_dropped all stayed 0; depth_peak 1,358 -> 1,805 including ambient traffic. A del.locked canary produced 2 R1002 records before the storm and a fresh post.locked canary produced 2 new R1002 records after it.",
+      "files_verified": [
+        "src/pipeline/telemetry_threads.zig",
+        "analysis/current-head/QLOSS-DELFILTER-STORM-20261118.md"
+      ],
+      "tests": [
+        "aegisctl queue --json before/after: file_name_delete 24,361 -> 33,164; name_delete_filtered 23,930 -> 32,731; delete_aggregate_events 186 -> 188",
+        "forensic search payload_contains delete-aggregate: 1 record (host_telemetry, 222 B)",
+        "forensic search rule R1002 after post-storm canary: 2 records (seq 1,047,868 / 1,047,869, file_sensor, 66 B)",
+        "dropped_total / shed_overload / source_quota_shed / reserved_tail_shed / minifilter drops: all 0 across the window"
+      ],
+      "result": "PASS_ETW_HALF_LOSS_ZERO",
+      "finding": "The ETW delete filter holds under a 20k delete burst with zero recorded loss, the mass delete remains visible as one aggregate and R1002 still fires. The FIM half of the QLOSS baseline and the 24 h soak are not covered; the gap stays OPEN.",
+      "evidence_artifact": "analysis/current-head/QLOSS-DELFILTER-STORM-20261118.md",
+      "limitations": [
+        "ETW observed 8,803 of 20,000 deletes at ~22k deletes/s; provider-side misses have no product counter and are not claimed as filtered.",
+        "FIM did not see the D:\\tmp churn (no AEGIS_FIM_PROOF_ROOT in this session), so this is not the same stimulus as QLOSS-CRITICAL-001.",
+        "No 24 h soak; acceptance criterion 4 is still open."
+      ]
+    },
+    {
       "id": "WFP-READINESS-REFRESH-001-E5-20261109",
       "head_sha": "318a10a95b7922851562aad27f389c2ab9f4fdac",
       "timestamp": "2026-11-09",
@@ -14865,7 +14893,7 @@
       "level": "E2",
       "component": "src/pipeline/event_queue.zig admission; FIM/ETW ingress volume",
       "flow_id": "QLOSS-HEALTH-001",
-      "description": "Option A is implemented end to end and proven live (delete filter + per-window aggregate, both counted in queue.stats). Option B was measured instead of implemented: the hash chain is per-record and serial and covers the whole 4 KiB slot, so batching can amortise only ~50 ns of the 4,200 ns mandatory pass (QLOSS-B-MEASURE-001-E2-20261118). The ~14x gain needs the hashed span narrowed to header+payload, which is an integrity-contract change requiring its own ADR, a coverage-version byte and matching verifier changes. Remaining for closure: the storm comparison against the QLOSS baseline and the 24 h soak.",
+      "description": "Option A is implemented end to end and proven live (delete filter + per-window aggregate, both counted in queue.stats). Option B was measured instead of implemented: the hash chain is per-record and serial and covers the whole 4 KiB slot, so batching can amortise only ~50 ns of the 4,200 ns mandatory pass (QLOSS-B-MEASURE-001-E2-20261118). The ~14x gain needs the hashed span narrowed to header+payload, which is an integrity-contract change requiring its own ADR, a coverage-version byte and matching verifier changes. ETW-lane storm measured on 2026-11-18 (QLOSS-DELFILTER-002-E5-20261118): 20,000 noise deletes produced 8,801 filtered rows, 2 aggregate events and 0 queue/ring loss, while a fresh .locked canary still produced R1002; ETW delivered 8,803 of the 20,000 deletes and that provider-side gap is not counted by the product. Remaining for closure: the FIM half of the same storm (needs AEGIS_FIM_PROOF_ROOT and a restart) and the 24 h soak.",
       "files_changed": [
         "src/pipeline/event_queue.zig",
         "docs/adr/0010-host-telemetry-admission.md"
@@ -14885,8 +14913,8 @@
       "status": "OPEN",
       "closed_at": "2026-11-08",
       "evidence": "QLOSS-ISOLATION-002-E5-20261108: both host sources reach their full 7,168 share on the deployed daemon with reserved_tail_shed 0 and all 206,999 refusals attributed to source_quota_shed.",
-      "next_step": "Owner decision on B': either accept the hashed-span change under its own ADR (about 14x less per-record crypto cost, format change) or close QLOSS with A alone; either way the storm comparison and the soak come next.",
-      "current_observation": "2026-11-14 soak: queue dropped 0, shed_overload 0, loss_budget 3500 over 2.5 h; no loss observed under current load"
+      "next_step": "Option B was measured and rejected (QLOSS-B-MEASURE-001-E2-20261118), so the remaining route is A alone: run the same 20k storm with the FIM proof root in an elevated window and compare total drops/shed_overload to QLOSS-CRITICAL-001, then run the 24 h soak with --loss-budget 3500 --shed-budget 20000.",
+      "current_observation": "2026-11-18: ETW delete storm (20k files) -> 8,801 filtered, 2 aggregate rows, 0 queue/ring loss, R1002 canary PASS before and after. 2026-11-14 soak: queue dropped 0, shed_overload 0, loss_budget 3500 over 2.5 h; no loss observed under current load"
     },
     {
       "id": "GAP-BRAIN-OUT-EVENTS",
