@@ -18,13 +18,13 @@
       "path": ".analysis/baseline-go-test.txt",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 1778
+      "size": 868
     },
     {
       "path": ".analysis/baseline-python-test.txt",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4152
+      "size": 2027
     },
     {
       "path": ".analysis/baseline-zig-test.txt",
@@ -72,7 +72,7 @@
       "path": ".analysis/python-runtime-failure-detail.txt",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10454
+      "size": 5145
     },
     {
       "path": ".analysis/runtime.md",
@@ -1536,7 +1536,7 @@
       "path": "analysis/milestone-3-critical.diff",
       "class": "unclassified",
       "role": "other",
-      "size": 434342
+      "size": 211770
     },
     {
       "path": "analysis/MILESTONE_3_FINDINGS.md",
