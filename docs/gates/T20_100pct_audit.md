@@ -5,8 +5,8 @@
 > release; the two are reported separately and never merged.
 
 - Component audit: **COMPLETE**
-- Release: **NOT SHIPPABLE** — open gates: truth_artifacts, release_signature, soak_24h
-- Commit: `ae1e772`
+- Release: **NOT SHIPPABLE** — open gates: soak_24h
+- Commit: `f5cc38e`
 - Part I modules: 66/66 pass
 - Part I production failures: 0
 - Part II holds: 5/5
@@ -16,11 +16,11 @@
 
 | Gate | State | Owner | Evidence |
 |---|---|---|---|
-| `truth_artifacts` | OPEN | none | TRUTH_INVALID — stale/mis-stamped artifacts: <source-worktree> |
+| `truth_artifacts` | PASS | none | TRUTH_VALID — artifacts carry build source 4169839 (ancestor of HEAD; source history and worktree clean) |
 | `component_audit` | PASS | none | modules 66/66, prod failures 0, part_ii 5/5, golden path declared=True |
-| `release_signature` | OPEN | owner | release\T20-final\ad7948c\signatures.json was built from ad7948c, which does not contain the current runtime commit 4169839bff11937060ed4471b3a74717f11a50c3; the signed tree predates the shipped runtime |
+| `release_signature` | PASS | owner | release\T20-final\f5cc38e\signatures.json cryptographically signs SHA256SUMS (358FD0A37A865B60...) with a ed25519 key; commit f5cc38e contains runtime 4169839 |
 | `clean_host_e5` | PASS | owner | admin-evidence\e5-clean-host-20261114-222014\preflight-20261114-222014.json PASS with the loader under C:\Program Files\AEGIS NIDS |
-| `soak_24h` | OPEN | time | admin-evidence\e5-clean-host-20261117-soak3\soak-24h-delta-latest.json is IN_PROGRESS at 1.28/24.0 h; an older PASS (admin-evidence\e5-clean-host-20261117-process-soak\soak-24h-process-start.json at 24.62 h) predates the current source commit and does not close this gate |
+| `soak_24h` | OPEN | time | admin-evidence\e5-clean-host-20261115-soak2\soak-24h-delta-latest.json is FAIL at 48.43/24.0 h, problems ['daemon uptime 0.49h is shorter than the soak 48.43h (process restarted mid-soak)']; an older PASS (admin-evidence\e5-clean-host-20261117-process-soak\soak-24h-process-start.json at 24.62 h) predates the current source commit and does not close this gate |
 | `evidence_debt` | PASS | none | unnamed product files 0 <= baseline 0 |
 
 ## Part II - specialized holds

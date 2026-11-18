@@ -102,20 +102,53 @@ ingress advancing (+54 frames), verdict `CAPTURE_SELECT_OK`. Both topologies
 therefore run on this host today; switching is a validated one-command change
 plus a deliberate restart.
 
+## Release candidate and bundle — closed
+
+`release/T20-final/ad7948c` predated the shipped runtime, so it could not close
+`release_signature`. A new candidate was assembled from records HEAD `f5cc38e`
+(build source `4169839`) and signed with the same ed25519 key as before:
+
+```
+release/T20-final/f5cc38e        302 files on disk, 255 checksum entries
+SHA256SUMS                       358FD0A37A865B609C7E53DBE3A2C6F18683372ADF592E38FD97399CD9C17E00
+signatures.json                  ed25519, public key txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o=
+dist/aegis_setup_6.0.0_trial.exe 6233653 B, sha256 BC61B102933C30D8DD404363D088F4DEA503D825E44C8F57FFA4D1B082769C14
+```
+
+The installer packages `zig-out\bin\aegis_nids.exe` from `4169839`, so the
+bundle and the signed tree carry the same runtime. Gate board:
+
+```
+PASS  truth_artifacts     TRUTH_VALID at source 4169839
+PASS  component_audit     66/66 modules, 0 production failures, part_ii 5/5
+PASS  release_signature   f5cc38e signs SHA256SUMS; commit contains runtime 4169839
+PASS  clean_host_e5       2026-11-14 preflight, loader under C:\Program Files\AEGIS NIDS
+OPEN  soak_24h            no 24 h artifact covers source 4169839
+PASS  evidence_debt       0 unnamed product files
+```
+
+The abandoned `e5-clean-host-20261117-soak3` window (1.28 h, runtime that no
+longer exists) had its two `soak-*.json` files renamed to `abandoned-soak-*.json`
+with an `ABANDONED.md`; the gate now reports the honest newest artifact
+(`soak2`, 48.43 h, FAIL for a mid-soak restart) instead of a half-open window.
+
 ## Remaining work (soak excluded, owner runs it last)
 
-1. Port/commit the items above; refresh digests and rebuild truth maps.
-2. Full matrix: `zig build`, `zig build test`, `cargo build/test`, `cmake`,
-   `go build`, pytest sweep.
-3. Push the delivery branch and get CI green on this source.
-4. Rebuild the RC from `aa42fca` (or its successor), sign, verify.
-5. Owner approves the release trust anchor public key.
-6. Build the `6.0.0` installer from the final source.
-7. In-place install + `host_preflight` + upgrade/rollback drill; re-run the
-   Wi-Fi byte-level probe in the same window.
-8. Re-run `clean_host_e5` against the installed current build.
-9. Merge to `main` and tag `v1.1` only after the board is complete.
-10. Soak 24 h alone, then close the board.
+1. Push the delivery branch; CI must exit 0 on the pushed commit. The full-suite
+   Zig runner is nondeterministic (`GAP-SUITE-FLAKE-001`): one run exited 0,
+   three died at `xdr.xdr_engine.test.XdrEngine prune` with no XDR change, and
+   the XDR suite passes 11/11 in isolation. A green run on a different commit is
+   not evidence for this one.
+2. Elevated window: install `aegis_setup_6.0.0_trial.exe`, run `host_preflight`,
+   the upgrade/rollback drill, and re-measure the Wi-Fi byte-level duplicate with
+   `g3_dup_bytes.py` on this build.
+3. Re-run `clean_host_e5` against the installed current build; the passing
+   artifact today is from 2026-11-14.
+4. Owner confirms the trust anchor public key
+   `txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o=` is the release key. It is the
+   key that already signed `ad7948c`; no new key material was created.
+5. Merge to `main` and tag `v1.1` only after the board is complete.
+6. Soak 24 h alone, then close the board.
 
 ## Out of scope on this host (record as limitations, never as passes)
 
