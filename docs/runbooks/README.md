@@ -32,6 +32,7 @@ as historical/lab references only and are not production procedures.
 | [RB-021](RB-021-hostonly-lab-proof.md) | Lab Proof | Host-only Kali→victim kernel detection proof | lab_attack_range | OPERATOR ACTION |
 | [RB-022](RB-022-wifi-bridged-lab.md) | Lab Proof | Wi-Fi LAN proof (bridged Kali → this host, no restart) | detection_chain | OPERATOR ACTION |
 | [RB-023](RB-023-capture-segment-selection.md) | Reference | Capture segment selection (which device the sensor reads) | capture_selection | procedure |
+| [RB-024](RB-024-final-release-window.md) | Deployment | Final release window: install → prove → 24 h soak | release_closeout | OPERATOR ACTION |
 
 ## Runbook Types
 
