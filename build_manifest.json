@@ -1021,7 +1021,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "beb85009f92103cba0ef1356dc316b3d0d95ab9c4131ab50dd95180e098c3b93",
+      "sha256": "c82f6f6841c7f26b0587b9408b647f0b8cca33a9da7fe1e8cf424cee058bbe7e",
       "language": "json"
     },
     {
@@ -2016,8 +2016,8 @@
     },
     {
       "path": "src/control/handler_registry.zig",
-      "size": 163171,
-      "sha256": "be03fd950936b08a53ede7cead5aabe3939f58d50abfe6b69d168d75d1257dfb",
+      "size": 164133,
+      "sha256": "5bd973c5e19e96e766e5083cbe643a0772a05e60f11005687e6198dd9534817c",
       "language": "zig"
     },
     {
@@ -3576,8 +3576,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 116601,
-      "sha256": "57442eb222fec2fb3b1fe46895029bd3cfe2e5d61501b93c0fd17c2d57720701",
+      "size": 116996,
+      "sha256": "37afa0ad90c9176b80947e7183833a064b50953e393b16dda3768bf64ce92e08",
       "language": "python/cython"
     },
     {
