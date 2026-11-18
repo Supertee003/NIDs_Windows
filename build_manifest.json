@@ -210,8 +210,8 @@
     },
     {
       "path": ".gitignore",
-      "size": 2589,
-      "sha256": "3ecbce5c7ab74732ae2a5602b21615035a4ef04d3138f310bd731f65c6eeaa2a",
+      "size": 2877,
+      "sha256": "e95e5b0c57ed561e45731281f143e885f7f13b995c85bfb0076a299ed3cf0b3e",
       "language": "data"
     },
     {
@@ -1033,7 +1033,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "d737a1fbe690013caaf711ea7dff892f96bafe779b12d02abbf4660c3b1b0828",
+      "sha256": "8305376c27372bcd277cb0d2661a096975f4f407b3018b7d9d8ad0e021b948e8",
       "language": "json"
     },
     {
