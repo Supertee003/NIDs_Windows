@@ -100,7 +100,7 @@ source change, no re-sign. Evidence: `ADR-0012-SINGLE-HOST-E5-20261117`; record:
 1. **Driver signing.** EV certificate + Microsoft attestation/HLK. Today the
    drivers are test-signed and load only on a test-signing host.
 2. **Installer.** The NSIS toolchain is present (`C:\Program Files (x86)\NSIS`)
-   and `tools/installer.py` builds `aegis-installer-5.0.0-current.exe`
+   and `tools/installer.py` builds `aegis-installer-6.0.0.exe` (the 6.0.0 bundle line; the product/runtime versions stay 5.0.0 by design, see the operator manual)
    (6,130,207 bytes) from the current tree; the generated script embeds
    `AEGIS_COMMIT 7c604d5`. The remaining item is the **version label** — a
    `6.0.0` installer needs an explicit product version bump, which is a source

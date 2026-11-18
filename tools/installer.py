@@ -122,7 +122,7 @@ def manifest_binaries() -> list[str]:
 
 
 NSIS_TEMPLATE = r"""!define APPNAME "AEGIS NIDS"
-!define APPVERSION "5.0.0"
+!define APPVERSION "6.0.0"
 !define PUBLISHER "AEGIS Security"
 !define AEGIS_COMMIT "@AEGIS_COMMIT@"
 
@@ -139,11 +139,11 @@ Var ExistingRoot
 Var ExistingValid
 
 VIAddVersionKey "PrivateBuild" "${APPNAME} ${APPVERSION} @AEGIS_COMMIT@"
-VIProductVersion "5.0.0.0"
+VIProductVersion "6.0.0.0"
 VIAddVersionKey "ProductName" "AEGIS NIDS"
 VIAddVersionKey "CompanyName" "AEGIS"
 VIAddVersionKey "LegalCopyright" "Copyright (c) 2026 AEGIS"
-VIAddVersionKey "FileVersion" "5.0.0.0"
+VIAddVersionKey "FileVersion" "6.0.0.0"
 VIAddVersionKey "FileDescription" "AEGIS Network Intrusion Detection System"
 
 !insertmacro MUI_PAGE_WELCOME
@@ -355,7 +355,7 @@ Section "Install"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "UninstallString" '"$INSTDIR\uninstall.exe"'
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "InstallLocation" "$INSTDIR"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "Publisher" "AEGIS"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "DisplayVersion" "5.0.0.0"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "DisplayVersion" "6.0.0.0"
 
   WriteUninstaller "$INSTDIR\uninstall.exe"
 SectionEnd
@@ -592,13 +592,13 @@ def main() -> int:
         generate_nsi(out)
         print(f"Generated {out.name}")
         print(f"Build with: makensis {out.name}")
-        print("Output: aegis-installer-5.0.0.exe")
+        print("Output: aegis-installer-6.0.0.exe")
         return 0
 
     generate_nsi(ROOT / "installer.generated.nsi")
     print("Generated installer.generated.nsi")
     print("Build with: makensis installer.generated.nsi")
-    print("Output: aegis-installer-5.0.0.exe")
+    print("Output: aegis-installer-6.0.0.exe")
     return 0
 
 

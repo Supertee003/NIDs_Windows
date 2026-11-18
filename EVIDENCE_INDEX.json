@@ -8563,6 +8563,29 @@
         "This is a measurement of the primitives, not of a storm: it says what B can save, not what the ceiling becomes.",
         "The benchmark file was a throwaway and has been deleted; the numbers live in the ADR."
       ]
+    },
+    {
+      "id": "D2-BUNDLE-VERSION-001-20261118",
+      "head_sha": "fd58ba9",
+      "timestamp": "2026-11-18",
+      "level": "E2",
+      "flow_id": "DIST-001",
+      "component": "installer/aegis.nsi, tools/installer.py",
+      "title": "The installer now carries the 6.0.0 bundle line the manual documents, product versions untouched",
+      "description": "D2: the installer is the release bundle, and the operator manual already says the bundle line is 6.0.0 while the product/runtime versions stay 5.0.0 by design -- but the installer still called itself 5.0.0, so the one artifact an operator sees disagreed with the documented line. installer/aegis.nsi (Name, VIProductVersion, FileVersion, DisplayVersion) and tools/installer.py (APPVERSION, VIProductVersion, FileVersion, DisplayVersion, output name) now say 6.0.0 / 6.0.0.0. Product surfaces are deliberately untouched: aegisctl version, runtime_manifest.json and configs/runtime.json still report 5.0.0, and tests/security/test_version_truth.py still passes unchanged.",
+      "evidence_artifact": "tests/release/test_installer_template.py",
+      "artifacts": [
+        "installer/aegis.nsi",
+        "tools/installer.py",
+        "docs/BACKLOG-v1.1.md"
+      ],
+      "commands": [
+        "python -m pytest -q tests/release/test_installer_template.py tests/release/test_t17_perf_ci_installer.py tests/security/test_version_truth.py"
+      ],
+      "limitations": [
+        "E2 only: makensis was not exercised here, so no installer was built with the new label on this host; the pins and the template are what changed.",
+        "The product/runtime version is deliberately still 5.0.0; if the owner wants the product line bumped too, that is a separate change with its own version-truth updates."
+      ]
     }
   ],
   "known_gaps": [
@@ -15184,7 +15207,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 24,
-    "E2_count": 126,
+    "E2_count": 127,
     "E3_count": 14,
     "E4_count": 4,
     "E5_count": 109,

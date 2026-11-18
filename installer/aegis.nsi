@@ -27,18 +27,18 @@
   !define OUTPUT "aegis_setup.exe"
 !endif
 
-Name "AEGIS NIDS 5.0.0"
+Name "AEGIS NIDS 6.0.0"
 OutFile "${OUTPUT}"
 InstallDir "$PROGRAMFILES64\AEGIS NIDS"
 Unicode True
 RequestExecutionLevel admin
 ShowInstDetails show
 
-VIProductVersion "5.0.0.0"
+VIProductVersion "6.0.0.0"
 VIAddVersionKey "ProductName" "AEGIS NIDS"
 VIAddVersionKey "CompanyName" "AEGIS"
 VIAddVersionKey "LegalCopyright" "Copyright (c) 2026 AEGIS"
-VIAddVersionKey "FileVersion" "5.0.0.0"
+VIAddVersionKey "FileVersion" "6.0.0.0"
 VIAddVersionKey "FileDescription" "AEGIS Network Intrusion Detection System"
 
 !insertmacro MUI_PAGE_WELCOME
@@ -96,7 +96,7 @@ Section "AEGIS Runtime + Service (Required)" SecCore
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "UninstallString" '"$INSTDIR\uninstall.exe"'
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "InstallLocation" "$INSTDIR"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "Publisher" "AEGIS"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "DisplayVersion" "5.0.0.0"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "DisplayVersion" "6.0.0.0"
 
   WriteUninstaller "$INSTDIR\uninstall.exe"
 SectionEnd
