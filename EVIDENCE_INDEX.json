@@ -9062,6 +9062,28 @@
       "limitations": [
         "Records-only hygiene; it does not change product behavior or close soak_24h."
       ]
+    },
+    {
+      "id": "CI-CODEX-002-PHASE-T-20261119",
+      "head_sha": "af834ec",
+      "timestamp": "2026-11-19",
+      "level": "E1",
+      "flow_id": "REL-001",
+      "component": "host-regression Phase T runtime contract gate",
+      "title": "Phase T runner aligned with ci.yml: host_live excluded, graph deps installed",
+      "description": "Run 44381024125 failed five test_aegisctl.py cases on the Linux logic runner: four host_live tests need a Windows control daemon and the graph test needs networkx/pyvis. The workflow now installs the same optional deps as ci.yml and deselects host_live. Local proof: 46 passed, 4 deselected. Records/CI only; no source or build change.",
+      "evidence_artifact": "analysis/current-head/CI-CODEX-002-20261119.md",
+      "artifacts": [
+        "analysis/current-head/CI-CODEX-002-20261119.md",
+        ".github/workflows/host-regression.yml"
+      ],
+      "commands": [
+        "python -m pytest test_aegisctl.py -q --tb=short -m \"not host_live\""
+      ],
+      "limitations": [
+        "CI re-run on the final records tip is still required.",
+        "host_live tests remain real tests on the Windows host; they are not waived."
+      ]
     }
   ],
   "known_gaps": [
@@ -15727,7 +15749,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 26,
+    "E1_count": 27,
     "E2_count": 131,
     "E3_count": 14,
     "E4_count": 4,
