@@ -148,6 +148,26 @@ longer exists) had its two `soak-*.json` files renamed to `abandoned-soak-*.json
 with an `ABANDONED.md`; the gate now reports the honest newest artifact
 (`soak2`, 48.43 h, FAIL for a mid-soak restart) instead of a half-open window.
 
+## CI on the pushed delivery branch
+
+Branch `codex/v1.1-release` at `7920b01` (run 44314438349): 12 of 14 jobs
+green, including `Zig Build & Test` (the full-suite run exited 0 on CI, which
+`GAP-SUITE-FLAKE-001` still keeps open locally) and every build job. Two
+failures:
+
+- `Python Control Plane Tests` — `test_artifact_paths_exist` found
+  `DIST-DLL-LOCK-001-E5-20261117 -> dist/aegis_ipc.dll`: a git-ignored build
+  output was listed as an evidence artifact, so the pointer resolved on this
+  host and nowhere else. The pointer is removed (the dll stays named in the
+  title and component) and every remaining pointer was checked against
+  `git ls-files`; the only untracked ones left are two directories, which a
+  clone does.
+- `Cross-language CI Matrix` — that job aggregates the required-job results and
+  failed because of the Python job above.
+
+Local full suite on the same tree: 1423 passed, 4 skipped, 1 xfailed, 1 xpassed,
+27 subtests passed in 304.82 s.
+
 ## Remaining work (soak excluded, owner runs it last)
 
 1. Push the delivery branch; CI must exit 0 on the pushed commit. The full-suite

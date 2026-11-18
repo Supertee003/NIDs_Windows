@@ -8494,7 +8494,6 @@
       "description": "test_bridge_builds_into_dist fails reproducibly with LINK : fatal error LNK1104: cannot open file 'D:/NIDs_Windows/dist/aegis_ipc.dll'. Opening that file for write fails with Permission denied while its attributes are only Archive, so a process maps it rather than the file being read-only. Stopping the AegisNids service and re-running the test does not clear it, so the holder is not the daemon this session reinstalled. Every other test in tests/release passes (579 passed, this one failed), the test is unmodified, and the same binaries are produced by a clean zig build under zig-out, so this is host state rather than a product regression.",
       "evidence_artifact": "analysis/current-head/FINAL-CLOSEOUT-STATUS-20261117.md",
       "artifacts": [
-        "dist/aegis_ipc.dll",
         "tests/release/test_native_build_and_scripts.py"
       ],
       "commands": [
@@ -8503,7 +8502,8 @@
       "limitations": [
         "The holding process was not identified: process paths for the SYSTEM-owned aegis processes are hidden without elevation, and no handle tool is installed.",
         "A reboot would clear it but was not performed.",
-        "Not proven to affect the shipped product: the installed runtime does not read dist/."
+        "Not proven to affect the shipped product: the installed runtime does not read dist/.",
+        "The dll itself is a build output under dist/, which is git-ignored, so it is named in the title and component rather than listed as an artifact: a clone does not have it and an evidence pointer must resolve everywhere."
       ]
     },
     {
