@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-18T09:29:25.592944+00:00",
+  "generated_at": "2026-11-18T09:43:45.574823+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 2483,
@@ -3822,7 +3822,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1425964
+      "size": 1427999
     },
     {
       "path": "FLOW_MAP.json",
@@ -3930,7 +3930,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 389371
+      "size": 389372
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -11310,7 +11310,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 164234
+      "size": 164341
     },
     {
       "path": "src/control/protocol.zig",
@@ -11832,7 +11832,7 @@
       "path": "src/pipeline/telemetry_threads.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 45927
+      "size": 52507
     },
     {
       "path": "src/platform/win32_pipe.zig",
@@ -14913,5 +14913,5 @@
       "size": 624
     }
   ],
-  "source_commit": "26a34ab"
+  "source_commit": "9c9f22f"
 }
