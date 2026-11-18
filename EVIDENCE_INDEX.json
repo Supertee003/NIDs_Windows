@@ -8815,9 +8815,8 @@
         "scripts/minifilter_sign.ps1",
         "tools/release_candidate.py",
         "tools/installer.py",
-        "release/T20-final/7d91e30/drivers/aegis_wfp.sys",
-        "release/T20-final/7d91e30/drivers/aegis_minifilter.sys",
-        "admin-evidence/e5-clean-host-20261118-final/driver-signing.log"
+        "admin-evidence/e5-clean-host-20261118-final/driver-signing.log",
+        "analysis/current-head/RC-7D91E30-20261118.md"
       ],
       "commands": [
         "sc.exe query AegisWfp; sc.exe query AegisMinifilter",
@@ -8847,8 +8846,9 @@
         "release/T20-final/7d91e30/SHA256SUMS",
         "release/T20-final/7d91e30/signatures.json",
         "release/T20-final/7d91e30/SBOM.json",
-        "dist/aegis_setup_6.0.0_trial.exe",
-        "admin-evidence/e5-clean-host-20261118-final/final-candidate-rebuild.log"
+        "admin-evidence/e5-clean-host-20261118-final/final-candidate-rebuild.log",
+        "analysis/current-head/RC-7D91E30-20261118.md",
+        "analysis/current-head/CURRENT-STATUS-20261118.md"
       ],
       "commands": [
         "python tools/release_candidate.py",
