@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-17T11:07:22.360407+00:00",
+  "generated_at": "2026-11-18T08:56:40.740680+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 2480,
+  "total_files": 2482,
   "by_role": {
-    "documentation": 451,
+    "documentation": 453,
     "build-config": 250,
     "other": 21,
     "lockfile": 6,
@@ -909,6 +909,10 @@
       "role": "documentation"
     },
     "analysis/current-head/PROJECT-CLOSEOUT-20261117.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/PROJECT-SCAN-20261118.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -1913,6 +1917,10 @@
       "role": "documentation"
     },
     "docs/adr/0013-runtime-latency-clock.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/adr/0014-q-loss-ingress-isolation.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
