@@ -19,16 +19,29 @@ victim** and the Kali VM is the only attacker. There is no Win11 victim VM and
 no second host; lab work that needs enforcement runs in an approved
 maintenance window on this host with a hash-verified rollback.
 
-## 1. Open gaps (4)
+## 1. Open gaps (1)
 
 | ID | Sev | Level | What remains | Cost to close |
 |---|---|---|---|---|
 | `EVI-G2-PEP-CACHE-001-LAB` | — | E5 | PEP cache swap, direction verify, duplicate canary, unblock, base restore | lab window on this host: lab build + canary from Kali + documented block + hash-verified rollback (no second host) |
 | `CAPTURE-DUP-WIFI-001` | P3 | E5 | This Wi-Fi adapter/Npcap delivers every frame twice | try another adapter/host config (raw 802.11, Killer prioritisation); or a bounded, counted dedup keyed by `(ip.id, tcp.seq, payload hash)` that cannot drop a real retransmission |
-| `RULE-LAYER-SCOPE-001` | P3 | E1 | AC matcher applies KERNEL_PROCESS payload rules to network bytes, so TLS raises R2003 | scope the AC rule set to the event source's layer, or skip non-decoded payloads; add a pin that a TLS record cannot yield a KERNEL_PROCESS rule id |
-| `GAP-QLOSS-ISOLATION-002` | — | E2 | FIM/ETW ingress volume from the storming source is not reduced | reduce ingress at the producer (ETW `NameDelete` lane is 18.15M rows), then re-measure and run a new 24 h soak |
+| ~~`RULE-LAYER-SCOPE-001`~~ | P3 | **CLOSED E5** | — (see below) | — |
+| `GAP-QLOSS-ISOLATION-002` | — | E2 | FIM/ETW ingress volume from the storming source is not reduced | pick one option in `docs/adr/0014-q-loss-ingress-isolation.md` (A filter / B batched append / C accepted envelope; recommendation A+B), then re-measure and run the single v1.1 24 h soak |
 
 ### Closed during the 2026-11-17 closure pass
+
+`RULE-LAYER-SCOPE-001` (P3) is **CLOSED at E5**, re-measured on the running
+installed binary (`ABF1A4AE...`) at 21:26 with a single VMnet1 frame that carried
+both `<script>alert(1)</script>` and `IEX(New-Object Net.WebClient).DownloadString`:
+six rows (both directions, `src_ip` 192.168.126.1 and .10) carried only `R9059`
+(L7), and no `R2003` or any other kernel id; a payload with `IEX` alone produced no
+signature match at all. Two limitations are recorded in the record:
+`aegisctl forensics list --payload-prefix` returns 0 matches on this build (even for
+`GET /`), so attribution was read from `aegis_core.ndjson`; and the stimulus is
+host-originated on VMnet1 rather than typed inside the Kali guest, because the
+guest cannot be driven here (`vmrun` file/program ops answer "file does not exist"
+for `/` itself, before and after a guest restart, and the guest exposes no port to
+reach it). Evidence: `RULE-LAYER-SCOPE-001-E5-20261117c`.
 
 `REL-EOL-DIGEST-001` (P3/E1) is **CLOSED at E2**, not deferred: the signed
 `SHA256SUMS` digest is the CRLF form (`9F87BF36...`) while the git blob is LF
@@ -108,10 +121,19 @@ source change, no re-sign. Evidence: `ADR-0012-SINGLE-HOST-E5-20261117`; record:
 ## 4. Known environment issue (not a code defect)
 
 `tests/release/test_native_build_and_scripts.py::test_bridge_builds_into_dist`
-fails with `LNK1104: cannot open dist\aegis_ipc.dll` while a running process
-holds the DLL. 485 other tests in `tests/release tests/tools` pass. Re-run
-after stopping the holder, or teach the test to build into an isolated output
-directory.
+used to fail with `LNK1104: cannot open dist\aegis_ipc.dll` while a stray
+elevated `pythonw.exe` (PID 3800, identified with the Restart Manager API; not an
+AEGIS process) held the DLL.
+
+**RESOLVED at E2 on 2026-11-17** by the isolated-output option: the test now
+copies `bridge/` into `tmp_path` and builds there, so its `../dist` does not
+exist yet and must be created by configure -- the clean-checkout property is
+proven more strictly, and a holder on the repository's `dist/` can no longer
+mask or fake the result. `tests/release/test_native_build_and_scripts.py` is
+10/10 passing with PID 3800 still alive, and the test writes nothing into the
+repository. Killing the stray process is no longer required for a green run;
+the DLL in `dist/` is only regenerated once it is gone or on an elevated run of
+the bridge build.
 
 ## 5. Worktree disposition
 

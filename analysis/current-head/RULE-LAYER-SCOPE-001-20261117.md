@@ -102,3 +102,65 @@ on its command line) did not fire, so whether the ETW process payload carries th
 command line is an open coverage question, not part of this fix. The stimulus came
 from the host side of VMnet1, not from an HTTP client in the Kali guest, because
 `vmrun runProgramInGuest` failed with `A file was not found` on this host.
+
+---
+
+## Re-measurement, 2026-11-17 21:26 (records HEAD `ef728b3`, installed `ABF1A4AE`)
+
+Run again from scratch on the still-running installed service, with a payload that
+closes the one gap the first round left open: **was the `IEX` frame processed at
+all, or simply not captured?** Sending both patterns in the *same* frame answers
+it, because a row can only be produced for a frame the pipeline processed.
+
+Method: UDP datagrams from the host to `192.168.126.10:8080` on VMnet1 (three
+rounds, 50 ms apart), read back from `C:\Windows\System32\logs\aegis_core.ndjson`.
+That last detail matters: `aegisctl forensics list --payload-prefix` returns
+`records_matched: 0` on this build even for the prefix `GET /` while the ring holds
+hundreds of `rule_id: 0` npcap rows, so the payload-bearing query the gap originally
+asked for cannot be run here. The ndjson rows carry `src_ip`, `payload_len`,
+`event_id` and the hashed rule id, which is what attribution needs.
+
+| stimulus (UDP over VMnet1) | rows | rule id observed | src_ip |
+|---|---|---|---|
+| `GET /<script>alert(1)</script>` ×3 | 6 (both directions) | `R9059` 4009890390, L7 | `.1` and `.10` |
+| `GET /../../etc/passwd` ×3 | 6 (both directions) | `R0088` 4254503461, L7 | `.1` and `.10` |
+| `IEX(New-Object Net.WebClient)` ×9 | 0 | **no match at all** | — |
+| `GET /<script>…` **and** `X-Note: IEX(New-Object Net.WebClient).DownloadString(...)` in one frame ×3 | 6 (both directions) | `R9059` only | `.1` and `.10` |
+
+Row ids for the last two lines: `event_id` 686–691, six rows, `payload_len` 186
+from `192.168.126.1` and 214 from `192.168.126.10` (the VM-facing direction is
+captured too). Every row is `policy=block`, `enforcement_status=observed`,
+`host_effect_confirmed=false`.
+
+**Result:** the frame that demonstrably carried the kernel-process pattern
+`IEX|DownloadString` produced an L7 id and no `R2003`/`R2001`/`R2002`/`R2004`/`R2005`.
+That is the exact defect `RULE-LAYER-SCOPE-001` recorded at E1, measured on the
+wire, on the shipped binary, twice.
+
+### The Kali guest as stimulus source: closed as a limitation, not a blocker
+
+The gap text asked for payloads "from Kali". On this host the guest cannot be
+driven, and that is a limitation of the lab, not of the product:
+
+| attempt | result |
+|---|---|
+| `vmrun -gu kali -gp kali runProgramInGuest` / `runScriptInGuest` | `A file was not found` |
+| `vmrun fileExistsInGuest` on `/`, `/etc/passwd`, `/bin/sh` | `The file does not exist` for every path, including `/` |
+| same, after a graceful guest stop/start | unchanged |
+| `vmrun listProcessesInGuest` | works (204 processes) — auth and RPC are fine, only file/program ops are broken |
+| `vmrun captureScreen` | works (screenshots in `admin-evidence/rule-layer-e5-20261117/`) |
+| guest port scan 22/80/443/445/3389/5900/8080/… | nothing listening, so no SSH/agent channel exists |
+| GUI keystroke injection via `SendKeys` + a click into the console | no effect in three attempts (screenshots kept) |
+
+The wire bytes are nonetheless on VMnet1 and both directions are captured, so the
+layer-attribution question is answered; what is missing is only the provenance
+"the bytes were typed inside the guest". Anyone with console access to the Kali VM
+can add that by running, on the guest:
+
+```bash
+curl -s -o /dev/null --path-as-is 'http://192.168.126.1:8099/<script>alert(1)</script>'
+curl -s -o /dev/null -X POST --data-binary 'IEX(New-Object Net.WebClient)' http://192.168.126.1:8099/probe
+```
+
+and the expected outcome is already recorded: `R9059` for the first, no rule at all
+for the second, never a kernel id.

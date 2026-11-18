@@ -52,8 +52,9 @@ in-place install/uninstall, gate-closed restore
 
 > สถานะล่าสุด (rev.4, 2026-11-17): `ADR-0012` **ปิดแล้ว** (E5),
 > `EVI-G2-PEP-CACHE-001-LAB` **ปิดแบบ superseded by scope retirement** (E5) และ
-> `CAPTURE-DUP-WIFI-001` **ปิดแบบ not reproducible / no product defect** (E5) —
-> เหลือ **2 gap** ที่ต้องแก้ source: `RULE-LAYER-SCOPE-001`, `GAP-QLOSS-ISOLATION-002`
+> `CAPTURE-DUP-WIFI-001` **ปิดแบบ not reproducible / no product defect** (E5) และ
+> `RULE-LAYER-SCOPE-001` **ปิดที่ E5** (วัดซ้ำ 21:26) — เหลือ **1 gap** ที่ต้อง
+> ตัดสินใจ: `GAP-QLOSS-ISOLATION-002`
 >
 > **rev.3 แก้ rev.2 เฉพาะแถวที่ 1** — rev.2 ถือว่า G2 เป็นงาน enforcement ที่ยัง
 > เปิดอยู่ ซึ่งขัดกับ `AUTHORITY_MAP.json` / `RETIRE-HOST-EFFECT-001` (issue #25)
@@ -68,7 +69,7 @@ in-place install/uninstall, gate-closed restore
 | # | Item | ระดับปัจจุบัน | สิ่งที่ขาดจริง | วิธีปิดบนเครื่องนี้ | แก้ source? | เวลา |
 |---|---|---|---|---|---|---|
 | 1 | `EVI-G2-PEP-CACHE-001-LAB` | E5 | ~~duplicate canary~~ → **ไม่มี filter ให้พิสูจน์ได้อีกแล้ว** (PEP คืน `reason=8`, `filter_id=0`) | **ปิดแล้ว 2026-11-17** — policy match ถึง PEP จริง + ABI probe ยืนยันการ retire + hash restore | ไม่ | **ปิดแล้ว** |
-| 2 | `RULE-LAYER-SCOPE-001` | E1 | AC ตัวเดียวใช้ rule ข้าม layer กับ network bytes | แยก AC ตาม layer + pins + build + soak | **ใช่** | 1–2 วัน + soak |
+| 2 | `RULE-LAYER-SCOPE-001` | **E5 (ปิดแล้ว 2026-11-17 21:26)** | ~~E5 attribution~~ → เฟรมเดียวบน VMnet1 ที่มีทั้ง `<script>` และ `IEX(New-Object Net.WebClient)` ให้ 6 แถวเป็น `R9059` (L7) เท่านั้น ไม่มี `R2003`; payload `IEX` เดี่ยว ๆ ไม่ match เลย | วัดซ้ำบน binary ที่ติดตั้ง (`ABF1A4AE`) ผ่าน `aegis_core.ndjson` เพราะ `forensics --payload-prefix` คืน 0 บน build นี้; provenance จากใน Kali ยังเป็นข้อจำกัดที่บันทึกไว้ (guest ขับไม่ได้) | ไม่ | **ปิดแล้ว** |
 | 3 | `CAPTURE-DUP-WIFI-001` | E5 | ~~frame ซ้ำบน Wi-Fi~~ → **ตัววัดเดิมนับ TCP Dup ACK**; วัดที่ระดับ bytes แล้ว 0/29,060 frame | **ปิดแล้ว 2026-11-17** — byte-level probe + Dot11 A/B + nose 1:1:0 | ไม่ | **ปิดแล้ว** |
 | 4 | `GAP-QLOSS-ISOLATION-002` | E2 | ingress FIM/ETW จาก storm ไม่ลด | ETW delete filter + consumer throughput (หรือ accepted envelope) | **ใช่** | 2–4 วัน + soak |
 | 5 | `ADR-0012-DUP-RATIO-E5` | E5 | ยังไม่พิสูจน์ว่า repeat = distinct open | create-once unique-path measurement บนเครื่องนี้ | ไม่ | **ปิดแล้ว 2026-11-17** |

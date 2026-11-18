@@ -8411,6 +8411,31 @@
         "The stimulus was host-originated UDP over VMnet1, not an HTTP request from the Kali guest: the guest could not be driven for exec (vmrun runProgramInGuest returns 'A file was not found'), so the wire bytes came from the host side of the same captured interface.",
         "Two failed live attempts are part of the record: the check was able to fail, and did."
       ]
+    },
+    {
+      "id": "RULE-LAYER-SCOPE-001-E5-20261117c",
+      "head_sha": "ef728b3",
+      "timestamp": "2026-11-17",
+      "level": "E5",
+      "flow_id": "DET-001",
+      "component": "C:/Program Files/AEGIS NIDS/runtime/aegis_nids.exe (ABF1A4AE), VMnet1 192.168.126.1 -> 192.168.126.10",
+      "title": "One wire frame carrying both an L7 pattern and the kernel-process IEX pattern is attributed to R9059 only, never R2003",
+      "description": "Re-measured the layer attribution on the running installed service at 2026-11-17 21:26 to close the one hole the earlier round left open: whether an IEX frame was processed at all or merely not captured. A single UDP datagram over VMnet1 carrying BOTH 'GET /<script>alert(1)</script> HTTP/1.1' and 'X-Note: IEX(New-Object Net.WebClient).DownloadString(...)' was sent three times; six aegis_core.ndjson rows appeared (event_id 686-691, payload_len 186 from src_ip 192.168.126.1 and 214 from 192.168.126.10, so both wire directions were captured), every one with rule 4009890390 = R9059 (L7), policy=block, enforcement_status=observed, host_effect_confirmed=false, and none with R2003 or any other KERNEL_* id. A payload carrying IEX alone (9 datagrams) produced no signature_match row at all. Controls in the same burst: '<script>alert(1)</script>' alone produced R9059 and '../../etc/passwd' produced R0088 (4254503461, L7), each from both .1 and .10. The defect RULE-LAYER-SCOPE-001 recorded at E1 is therefore absent on the wire, on the shipped binary, measured twice.",
+      "evidence_artifact": "analysis/current-head/RULE-LAYER-SCOPE-001-20261117.md",
+      "artifacts": [
+        "analysis/current-head/RULE-LAYER-SCOPE-001-20261117.md",
+        "configs/Rules.json",
+        "admin-evidence/rule-layer-e5-20261117/e5-poll.log"
+      ],
+      "commands": [
+        "python tools/aegisctl.py forensics list --limit 300 --json",
+        "python admin-evidence/rule-layer-e5-20261117/probe.py --seconds 5400"
+      ],
+      "limitations": [
+        "aegisctl forensics list --payload-prefix returns records_matched 0 on this build even for the prefix 'GET /' while the ring holds rule_id 0 npcap rows, so the payload-bearing query the gap asked for is not available here; attribution was read from C:\\Windows\\System32\\logs\u0007egis_core.ndjson, which carries src_ip, payload_len, event_id and the hashed rule id.",
+        "The stimulus is host-originated UDP on VMnet1, not typed inside the Kali guest. The guest cannot be driven on this host: vmrun runProgramInGuest/runScriptInGuest return 'A file was not found', fileExistsInGuest returns 'The file does not exist' for / itself (unchanged after a graceful guest stop/start) while listProcessesInGuest works, no port listens on the guest, and GUI keystroke injection did not reach it. The frames are on the captured wire in both directions, so the layer question is answered; guest provenance stays a documented limitation.",
+        "Rule ids in event rows are FNV-1a hashes and were mapped with the same function the loader uses; the row timestamps are host-local."
+      ]
     }
   ],
   "known_gaps": [
@@ -14938,7 +14963,7 @@
       "id": "RULE-LAYER-SCOPE-001",
       "status": "CLOSED",
       "severity": "P3",
-      "level": "E1",
+      "level": "E5",
       "found_at": "2026-11-16",
       "found_by": "admin-evidence/lab-l4-testnet-negative-20261116 control plus an aegis_core.ndjson census",
       "title": "The Aho-Corasick matcher applies KERNEL_PROCESS payload rules to network bytes, so TLS traffic raises R2003",
@@ -14948,8 +14973,8 @@
       "observed_in": "C:\\Windows\\System32\\logs\\aegis_core.ndjson, 118,634 parsed rows spanning 2026-11-14T10:12:46Z..2026-11-15T17:11:05Z",
       "source_fixed_head": "d77db70",
       "source_fixed_note": "Layered automata landed in source with E2 pins (RULE-LAYER-SCOPE-001-E2-20261117); the gap stays OPEN until the E5 attribution check and the post-install soak.",
-      "reverified_by": "RULE-LAYER-SCOPE-001-E5-20261117b",
-      "closed_note": "Layered automata are in the installed build and the live attribution is correct: wire payloads carry only L7 ids (R9059, R0088) and never a kernel id, while R1001/R1002/R1003 still fire on host sources. The first live attempt failed with R2003 and R3003 on wire traffic, which found two real defects in the patch (startup never ran the layered reload; the network automaton still held every non-L4 rule). Both are fixed in the installed binary abf1a4ae.",
+      "reverified_by": "RULE-LAYER-SCOPE-001-E5-20261117b, RULE-LAYER-SCOPE-001-E5-20261117c",
+      "closed_note": "Layered automata are in the installed build and the live attribution is correct: wire payloads carry only L7 ids (R9059, R0088) and never a kernel id, while R1001/R1002/R1003 still fire on host sources. The first live attempt failed with R2003 and R3003 on wire traffic, which found two real defects in the patch (startup never ran the layered reload; the network automaton still held every non-L4 rule). Both are fixed in the installed binary abf1a4ae. Re-measured 2026-11-17 21:26 with one frame carrying both the L7 and the kernel-process pattern: only R9059 (L7) fired, never R2003 (RULE-LAYER-SCOPE-001-E5-20261117c).",
       "remaining": "The R2003 positive control through an ETW process-create event did not fire; that is ETW payload coverage, tracked separately, and this gap does not claim it."
     },
     {
@@ -15014,10 +15039,10 @@
     "E2_count": 125,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 104,
+    "E5_count": 105,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 54,
+    "E5_with_artifact_count": 55,
     "known_gaps_count": 283
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."

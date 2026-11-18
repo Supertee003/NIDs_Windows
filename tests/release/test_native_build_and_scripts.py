@@ -26,7 +26,6 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
-import time
 from pathlib import Path
 
 import pytest
@@ -57,23 +56,24 @@ def _cmake_vs(build_dir: Path, source: Path) -> subprocess.CompletedProcess:
 needs_msvc = pytest.mark.skipif(CMAKE is None, reason="cmake not installed")
 
 
-def _build_retrying_lnk1104(build_dir: Path) -> subprocess.CompletedProcess:
-    """Build, and retry only while the linker reports the output as held.
+def _scratch_bridge_source(tmp_path: Path) -> Path:
+    """Copy `bridge/` into a scratch repo root so its `../dist` is scratch too.
 
-    `dist/aegis_ipc.dll` is written by every bridge link and read by whatever
-    else touched it a moment earlier; in a full-suite run the relink can meet a
-    transient handle and fail with LNK1104 even though the file is writable and
-    unheld at rest (measured: create/delete in dist/ succeed, the DLL renames,
-    and the same test passes when run alone). Wait for the handle to clear and
-    link again, a bounded number of times, so a real link error still fails.
+    `bridge/CMakeLists.txt` writes every target to `${CMAKE_SOURCE_DIR}/../dist`,
+    so building the real tree writes into the repository's gitignored `dist/`.
+    Any unrelated process that maps the DLL there (a stray elevated `pythonw.exe`
+    held `dist/aegis_ipc.dll` on 2026-11-17) makes the link fail with LNK1104, and
+    that host state has nothing to do with whether a clean checkout can build.
+    Building the copied tree proves the same property -- `../dist` does not exist
+    yet, configure must create it, and the link must produce `aegis_ipc.dll` --
+    while a holder on the real `dist/` can no longer mask or fake the result.
     """
-    for attempt in range(3):
-        built = _run([CMAKE, "--build", str(build_dir), "--config", "Release"])
-        if built.returncode == 0 or "LNK1104" not in (built.stdout + built.stderr):
-            return built
-        if attempt < 2:
-            time.sleep(5)
-    return built
+    scratch = tmp_path / "repo" / "bridge"
+    shutil.copytree(
+        ROOT / "bridge", scratch,
+        ignore=shutil.ignore_patterns("build*", "*.dll", "*.lib", "*.obj"),
+    )
+    return scratch
 
 
 @needs_msvc
@@ -95,19 +95,21 @@ def test_root_native_adapters_build(tmp_path: Path) -> None:
 
 @needs_msvc
 def test_bridge_builds_into_dist(tmp_path: Path) -> None:
-    build = tmp_path / "bridge"
-    configured = _cmake_vs(build, ROOT / "bridge")
+    source = _scratch_bridge_source(tmp_path)
+    build = tmp_path / "build"
+    configured = _cmake_vs(build, source)
     if configured.returncode != 0 and "could not find any instance" in (
         configured.stdout + configured.stderr
     ).lower():
         pytest.skip("no Visual Studio instance available for the VS generator")
     assert configured.returncode == 0, (configured.stdout + configured.stderr)[-3000:]
 
-    built = _build_retrying_lnk1104(build)
+    built = _run([CMAKE, "--build", str(build), "--config", "Release"])
     assert built.returncode == 0, (built.stdout + built.stderr)[-3000:]
-    # dist/ is gitignored; the build writes there by design.
-    dll = ROOT / "dist" / "aegis_ipc.dll"
+    # The copy's ../dist is the gitignored output directory the real tree uses.
+    dll = source.parent / "dist" / "aegis_ipc.dll"
     assert dll.exists(), "the bridge did not produce dist/aegis_ipc.dll"
+    assert dll.stat().st_size > 4096, f"{dll} is a stub, not a linked DLL"
 
 
 def test_bridge_creates_its_output_directory() -> None:
