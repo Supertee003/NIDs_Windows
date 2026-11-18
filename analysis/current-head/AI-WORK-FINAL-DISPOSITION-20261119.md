@@ -12,7 +12,7 @@ No product source changed; build source remains
 
 | Item | Source | Action |
 |---|---|---|
-| CI host-regression deps + audit path (below) | this tip | `.github/workflows/host-regression.yml` installs `-r requirements.txt` (Flask) + networkx/pyvis; `tools/final_audit.py` checks canonical `build/x64/{wfp,minifilter}/aegis_*.sys` (`REL-AUDIT-WDK-PATH-001`) |
+| CI host-regression deps + audit path (below) | this tip | `.github/workflows/host-regression.yml` installs `-r requirements.txt` (Flask) + networkx/pyvis; `tools/final_audit.py` checks canonical `build/x64/{wfp,minifilter}/aegis_*.sys` (`REL-AUDIT-WDK-PATH-001`); `test_operator_scripts_portable.py` skips its PowerShell parser check on non-Windows runners (Windows CI still runs it) |
 | Manifest drift caused by the CI edits | this tip | `python tools/release_engineering.py --refresh-digests` re-stamps the two tool/workflow digests; `source_commit` stays `f4cde3c` |
 
 ## ALREADY_INCLUDED / HISTORICAL_SUPERSEDED / NO_OP (nothing left to do)

@@ -18,7 +18,10 @@ from __future__ import annotations
 
 import re
 import subprocess
+import sys
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BRIDGE = REPO_ROOT / "scripts" / "build_wfp_user_bridge.ps1"
@@ -34,6 +37,11 @@ def test_bridge_script_derives_repo_from_its_location():
 
 
 def test_bridge_script_parses_without_execution():
+    if sys.platform != "win32":
+        # The PowerShell parser exists only on Windows runners. AEGIS CI's
+        # Windows job still runs this check for real; do not fake a pass here
+        # on the Linux logic-layer host-regression runner.
+        pytest.skip("PowerShell parser check requires a Windows runner")
     ps = (
         "$t=$null; $e=$null; "
         "[System.Management.Automation.Language.Parser]::ParseFile("

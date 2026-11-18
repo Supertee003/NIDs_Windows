@@ -9094,10 +9094,13 @@
       "flow_id": "REL-001",
       "component": "release CI/audit tooling and AI handoff reconciliation",
       "title": "Host-regression deps and canonical WDK audit path align release gates",
-      "description": "Host-regression run 44383386902 failed test_defcon_authority.py at import: no Flask on the Linux runner. Workflow now installs -r requirements.txt networkx pyvis like ci.yml. REL-AUDIT-WDK-PATH-001 applied to tools/final_audit.py: Windows-Verified checks canonical build/x64/{wfp,minifilter} WDK outputs instead of the drivers/ source tree. Both paths are local build artifacts; component_audit still 5/5. Records/tool only.",
+      "description": "Host-regression run 44383386902 failed test_defcon_authority.py at import: no Flask on the Linux runner. Workflow now installs -r requirements.txt networkx pyvis like ci.yml. REL-AUDIT-WDK-PATH-001 applied to tools/final_audit.py: Windows-Verified checks canonical build/x64/{wfp,minifilter} WDK outputs instead of the drivers/ source tree. Both paths are local build artifacts; component_audit still 5/5. Records/tool only. Run 44385111230 then failed test_operator_scripts_portable.py because the Linux runner has no powershell; that parser check is now skipped off-Windows and still runs in Windows CI. tests/runtime local: 315 passed, 1 skipped, 4 deselected.",
       "evidence_artifact": "analysis/current-head/AI-WORK-FINAL-DISPOSITION-20261119.md",
       "artifacts": [
-        "analysis/current-head/AI-WORK-FINAL-DISPOSITION-20261119.md"
+        "analysis/current-head/AI-WORK-FINAL-DISPOSITION-20261119.md",
+        ".github/workflows/host-regression.yml",
+        "tools/final_audit.py",
+        "tests/runtime/test_operator_scripts_portable.py"
       ],
       "commands": [
         "python tools\\final_audit.py --release-check",
