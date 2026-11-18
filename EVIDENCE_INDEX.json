@@ -15384,6 +15384,15 @@
       "description": "Resolved half (E5, PROC-LAYER-001-E5-20261118): the layer follows the event kind, so process-create rows reach the kernel_process automaton and R2004 fires on a real certutil launch. The remaining question was answered at E5 on 2026-11-18: the ETW helper was rebuilt with WINEVENT_KEYWORD_PROCESS and the service restarted after install, process_start advanced with zero drops, and a marker launch produced a 306-byte ETW process row without the marker. Get-WinEvent shows every ProcessStart template (v0..v4) has ImageName and no CommandLine field, so no keyword mask can add it. The minifilter lane pushes only the image path (61 bytes) by construction. R2003 cannot match a host process row; R2001/R2002/R2005 still match image names and R2004 was proven live earlier.",
       "recorded_by": "analysis/current-head/PROCESS-CMDLINE-001-20261118.md",
       "next_step": "No v1.1 action. A future v1.2 feature can add a command-line source (NT Kernel Logger with EVENT_TRACE_FLAG_PROCESS, or privileged driver-side enrichment) and then retarget R2003; retargeting to an image name alone was rejected as a false-positive generator."
+    },
+    {
+      "id": "SUITE-FLAKE-001",
+      "status": "OPEN",
+      "severity": "P2",
+      "title": "Full-suite zig build test is nondeterministic: the test process dies at xdr prune in some runs, and all XDR tests pass alone",
+      "description": "Three consecutive full-suite runs on 2026-11-18 ended with \"while executing test 'xdr.xdr_engine.test.XdrEngine prune', the following test command failed\" (2103/2114 passed, 1 failed, 10 skipped). Between those runs and the next one the only changes were records and tooling: no XDR or test-runner source was touched. A fourth full-suite run exited 0, and `zig test ... --test-filter XdrEngine` passes 11/11 in isolation, as does the adapter suite in isolation. The wording is the build runner reporting that the test *process* died while that test was executing, not an assertion failure, so either the test binary itself is intermittently corrupting memory or a thread leaked by an earlier test faults there. Attribution to XdrEngine is therefore provisional.",
+      "recorded_by": "analysis/current-head/CAPTURE-SELECT-001-20261118.md",
+      "next_step": "Reproduce with the full suite twice, then bisect by per-directory test groups (xdr, windows, capture) to find the leaking thread or the corrupting allocation; if no product code is at fault, join the leaking test thread and re-pin. CI must not be called green on a run that has not exited 0."
     }
   ],
   "evidence_level_summary": {
@@ -15396,7 +15405,7 @@
     "E6_count": 1,
     "E7_count": 2,
     "E5_with_artifact_count": 63,
-    "known_gaps_count": 286
+    "known_gaps_count": 287
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
 }
