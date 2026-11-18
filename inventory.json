@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-18T09:48:43.638744+00:00",
+  "generated_at": "2026-11-18T09:51:26.772380+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 2483,
@@ -2796,7 +2796,7 @@
       "path": "docs/BACKLOG-v1.1.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9908
+      "size": 10000
     },
     {
       "path": "docs/BASELINE_20260906.md",
@@ -3822,7 +3822,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1430092
+      "size": 1431872
     },
     {
       "path": "FLOW_MAP.json",
@@ -4188,7 +4188,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 10041
+      "size": 9693
     },
     {
       "path": "pytest.ini",
