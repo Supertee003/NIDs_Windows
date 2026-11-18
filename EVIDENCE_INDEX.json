@@ -9071,11 +9071,12 @@
       "flow_id": "REL-001",
       "component": "host-regression Phase T runtime contract gate",
       "title": "Phase T runner aligned with ci.yml: host_live excluded, graph deps installed",
-      "description": "Run 44381024125 failed five test_aegisctl.py cases on the Linux logic runner: four host_live tests need a Windows control daemon and the graph test needs networkx/pyvis. The workflow now installs the same optional deps as ci.yml and deselects host_live. Local proof: 46 passed, 4 deselected. Records/CI only; no source or build change.",
+      "description": "Run 44381024125 failed five test_aegisctl.py cases on the Linux logic runner: four host_live tests need a Windows control daemon and the graph test needs networkx/pyvis. The workflow now installs the same optional deps as ci.yml and deselects host_live. Local proof: 46 passed, 4 deselected. Records/CI only; no source or build change. Run 44382186773 then exposed a Linux-only go-vet service-tag failure (golang.org/x/sys/windows/svc); the service variant is now guarded by win32 while the default tag still vets everywhere. Local aggregator test: 6 passed.",
       "evidence_artifact": "analysis/current-head/CI-CODEX-002-20261119.md",
       "artifacts": [
         "analysis/current-head/CI-CODEX-002-20261119.md",
-        ".github/workflows/host-regression.yml"
+        ".github/workflows/host-regression.yml",
+        "tests/runtime/test_aggregator_entrypoints.py"
       ],
       "commands": [
         "python -m pytest test_aegisctl.py -q --tb=short -m \"not host_live\""

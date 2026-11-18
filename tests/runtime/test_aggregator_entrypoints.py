@@ -17,13 +17,15 @@ console binary is present:
       SCM instead of dying mid-startup).
   S4. main.go no longer defines func main nor generateUUID (the split
       is real, not a copy); uuid_util.go owns generateUUID.
-  S5. `go vet ./...` green under both the default and `service` tags.
+  S5. `go vet ./...` green under the default tag everywhere; the `service` tag is
+       vetted on Windows runners, where windows/svc exists.
   S6. console binary `--version` still prints aegis-aggregator (live
       only when the exe is present; skipped otherwise, never failed).
 """
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -92,6 +94,11 @@ def test_go_vet_both_tag_variants():
         pytest.skip("go toolchain unavailable")
         return
     assert default.returncode == 0, default.stderr[-2000:]
+    if sys.platform != "win32":
+        # The service build tag imports golang.org/x/sys/windows/svc, which
+        # cannot compile on this Linux logic runner. AEGIS CI on Windows still
+        # vets this variant; do not fake a pass here.
+        return
     service = subprocess.run(
         ["go", "vet", "-tags", "service", "./..."], capture_output=True,
         text=True, timeout=300, cwd=str(AGG))
