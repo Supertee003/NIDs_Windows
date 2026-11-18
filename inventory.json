@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-18T11:52:03.800666+00:00",
+  "generated_at": "2026-11-18T13:11:55.378218+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 2486,
+  "total_files": 2493,
   "by_class": {
-    "canonical-docs": 471,
+    "canonical-docs": 476,
     "canonical-build": 261,
     "unclassified": 21,
-    "canonical-source": 1307,
-    "canonical-test": 342,
+    "canonical-source": 1308,
+    "canonical-test": 343,
     "canonical-config": 50,
     "legacy": 34
   },
@@ -168,7 +168,7 @@
       "path": ".github/workflows/ci.yml",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 13397
+      "size": 13742
     },
     {
       "path": ".github/workflows/host-regression.yml",
@@ -258,13 +258,13 @@
       "path": "AGENTS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8802
+      "size": 8941
     },
     {
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 58797
+      "size": 58938
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -459,6 +459,12 @@
       "size": 3035
     },
     {
+      "path": "analysis/current-head/CAPTURE-SELECT-001-20261118.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6051
+    },
+    {
       "path": "analysis/current-head/clean-checkout-20261109.txt",
       "class": "canonical-docs",
       "role": "documentation",
@@ -511,6 +517,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 10359
+    },
+    {
+      "path": "analysis/current-head/CURRENT-STATUS-20261118.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6649
     },
     {
       "path": "analysis/current-head/d3-burst-attribution-20261109.json",
@@ -631,6 +643,12 @@
       "class": "canonical-build",
       "role": "build-config",
       "size": 208
+    },
+    {
+      "path": "analysis/current-head/FIM-NATIVE-OVERFLOW-001-20261118.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4410
     },
     {
       "path": "analysis/current-head/FIM-PROBE-IDENTITY-COMMENT-001-20261109.md",
@@ -936,7 +954,7 @@
       "path": "analysis/current-head/QLOSS-FIM-STORM-20261118.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6270
+      "size": 6524
     },
     {
       "path": "analysis/current-head/R1005-HOSTS-E5-20261114.md",
@@ -1135,6 +1153,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 3858
+    },
+    {
+      "path": "analysis/current-head/V1.1-REMAINING-DISPOSITION-20261118.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3850
     },
     {
       "path": "analysis/current-head/VERDICT-AUTH-001-20261110.md",
@@ -2046,7 +2070,7 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 135213
+      "size": 140332
     },
     {
       "path": "build_truth.json",
@@ -2814,7 +2838,7 @@
       "path": "docs/BACKLOG-v1.1.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 11299
+      "size": 11680
     },
     {
       "path": "docs/BASELINE_20260906.md",
@@ -3345,10 +3369,16 @@
       "size": 12482
     },
     {
+      "path": "docs/runbooks/RB-023-capture-segment-selection.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6468
+    },
+    {
       "path": "docs/runbooks/README.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4289
+      "size": 4443
     },
     {
       "path": "docs/runtime/COMPONENT_MATRIX.md",
@@ -3840,7 +3870,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1459871
+      "size": 1466807
     },
     {
       "path": "FLOW_MAP.json",
@@ -3948,7 +3978,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 389539
+      "size": 390990
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4224,7 +4254,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 317103
+      "size": 318245
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -11190,7 +11220,7 @@
       "path": "src/capture/npcap_adapter.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 20559
+      "size": 26598
     },
     {
       "path": "src/capture/npcap_capture.zig",
@@ -11484,7 +11514,7 @@
       "path": "src/daemon.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 52024
+      "size": 52373
     },
     {
       "path": "src/detection/anomaly_detector.zig",
@@ -13506,7 +13536,7 @@
       "path": "tests/release/test_release_board.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 14199
+      "size": 14373
     },
     {
       "path": "tests/release/test_release_digest_eol.py",
@@ -14019,6 +14049,12 @@
       "size": 3660
     },
     {
+      "path": "tests/tools/test_capture_select.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 9618
+    },
+    {
       "path": "tests/tools/test_command_map.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -14130,7 +14166,7 @@
       "path": "tests/tools/test_sign_release.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 5328
+      "size": 6061
     },
     {
       "path": "tests/tools/test_soak_rate.py",
@@ -14433,6 +14469,12 @@
       "size": 7423
     },
     {
+      "path": "tools/capture_select.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 18433
+    },
+    {
       "path": "tools/ci_coverage.py",
       "class": "canonical-source",
       "role": "source",
@@ -14472,7 +14514,7 @@
       "path": "tools/final_audit.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 41546
+      "size": 44912
     },
     {
       "path": "tools/final_regression.py",
@@ -14931,5 +14973,5 @@
       "size": 624
     }
   ],
-  "source_commit": "aa42fca"
+  "source_commit": "4169839"
 }

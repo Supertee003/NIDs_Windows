@@ -1,17 +1,17 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-18T11:52:03.804362+00:00",
+  "generated_at": "2026-11-18T13:11:55.382593+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 2486,
+  "total_files": 2493,
   "by_role": {
-    "documentation": 456,
+    "documentation": 461,
     "build-config": 250,
     "other": 21,
     "lockfile": 6,
     "rust-build": 4,
-    "source": 1011,
+    "source": 1012,
     "architecture-decision": 13,
-    "test-artifact": 342,
+    "test-artifact": 343,
     "config-data": 50,
     "step-document": 2,
     "go-source": 8,
@@ -620,6 +620,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/CAPTURE-SELECT-001-20261118.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/clean-checkout-20261109.txt": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -653,6 +657,10 @@
       "role": "documentation"
     },
     "analysis/current-head/COVERAGE-BOUNDARY-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/CURRENT-STATUS-20261118.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -735,6 +743,10 @@
     "analysis/current-head/evidence-debt-baseline.json": {
       "class": "canonical-build",
       "role": "build-config"
+    },
+    "analysis/current-head/FIM-NATIVE-OVERFLOW-001-20261118.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
     },
     "analysis/current-head/FIM-PROBE-IDENTITY-COMMENT-001-20261109.md": {
       "class": "canonical-docs",
@@ -1069,6 +1081,10 @@
       "role": "documentation"
     },
     "analysis/current-head/TOOLS-IMPORT-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/V1.1-REMAINING-DISPOSITION-20261118.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -2541,6 +2557,10 @@
       "role": "documentation"
     },
     "docs/runbooks/RB-022-wifi-bridged-lab.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/runbooks/RB-023-capture-segment-selection.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -9660,6 +9680,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/tools/test_capture_select.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/tools/test_command_map.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -9933,6 +9957,10 @@
       "role": "source"
     },
     "tools/backup_recovery.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "tools/capture_select.py": {
       "class": "canonical-source",
       "role": "source"
     },
@@ -10269,5 +10297,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "aa42fca"
+  "source_commit": "4169839"
 }
