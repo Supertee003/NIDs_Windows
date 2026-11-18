@@ -64,6 +64,18 @@ static SRWLOCK g_lifecycle_lock = SRWLOCK_INIT;
  * Any other status is inconclusive and fails closed (rc -7) rather than
  * risking another silent-loss session. Returns 1 registered, 0 not
  * registered, -1 inconclusive. */
+/* Microsoft-Windows-Kernel-Process: the pipeline only consumes ProcessStart
+ * (Id 1); Thread/Image/Stop records are dropped by the pre-decode gate. Enable
+ * only WINEVENT_KEYWORD_PROCESS (0x10) so the provider does not emit the rest.
+ * This does NOT add command-line visibility: on this host every ProcessStart
+ * template (v0..v4) carries ImageName and no CommandLine field, so R2003
+ * cannot match a host process row (PROCESS-CMDLINE-001, E5 2026-11-18). */
+static const uint8_t k_kernel_process_guid[16] = {
+    0xD6, 0x2C, 0xFB, 0x22, 0x7B, 0x0E, 0x2B, 0x42,
+    0xA0, 0xC7, 0x2F, 0xAD, 0x1F, 0xD0, 0xE7, 0x16,
+};
+#define AEGIS_WINEVENT_KEYWORD_PROCESS 0x10ULL
+
 static int provider_is_registered(const uint8_t guid_bytes[16]) {
     GUID guid;
     memcpy(&guid, guid_bytes, sizeof(guid));
@@ -268,8 +280,10 @@ static int aegis_etw_start_impl(const char* session_name, const uint8_t (*provid
         params.Version = ENABLE_TRACE_PARAMETERS_VERSION_2;
         params.EnableProperty = EVENT_ENABLE_PROPERTY_SID | EVENT_ENABLE_PROPERTY_TS_ID |
                                   EVENT_ENABLE_PROPERTY_STACK_TRACE;
+        const uint64_t match_any =
+            memcmp(providers[i], k_kernel_process_guid, 16) == 0 ? AEGIS_WINEVENT_KEYWORD_PROCESS : 0ULL;
         status = EnableTraceEx2(g_session.session_handle, &guid, EVENT_CONTROL_CODE_ENABLE_PROVIDER,
-                                TRACE_LEVEL_VERBOSE, 0, 0, 0, &params);
+                                TRACE_LEVEL_VERBOSE, match_any, 0, 0, &params);
         if (status != ERROR_SUCCESS) {
             fprintf(stderr, "[ETW] EnableTraceEx2 failed for provider %zu: %lu\n", i, status);
         } else {
