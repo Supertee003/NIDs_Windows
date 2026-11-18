@@ -72,6 +72,9 @@ typedef struct {
     DWORD bytes_ready;
     BOOL data_ready;
     volatile LONG running;
+    /* Batches the kernel discarded because the 64 KiB buffer overflowed
+     * (ERROR_NOTIFY_ENUM_DIR). Counted, never silent. */
+    volatile LONG64 overflow_batches;
 } aegis_fim_session_t;
 
 static DWORD WINAPI fim_thread(LPVOID arg) {
@@ -125,12 +128,23 @@ static DWORD WINAPI fim_thread(LPVOID arg) {
         }
         if (!GetOverlappedResult(s->dir_handle, &s->overlapped, &bytes_returned, FALSE)) {
             DWORD error = GetLastError();
+            if (error == ERROR_NOTIFY_ENUM_DIR) {
+                /* Buffer overflow: the kernel discarded the whole batch.
+                 * Retry the read; the loss is counted, never silent. */
+                InterlockedIncrement64(&s->overflow_batches);
+                continue;
+            }
             if (InterlockedCompareExchange(&s->running, 1, 1)) {
                 fprintf(stderr, "[FIM] GetOverlappedResult failed: %lu\n", error);
             }
             continue;
         }
-        if (bytes_returned == 0) continue;
+        if (bytes_returned == 0) {
+            /* Overlapped completion with nothing transferred is the same
+             * overflow signal; a zero-byte batch must not read as "no data". */
+            InterlockedIncrement64(&s->overflow_batches);
+            continue;
+        }
         EnterCriticalSection(&s->lock);
         s->bytes_ready = bytes_returned;
         s->data_ready = TRUE;
@@ -220,6 +234,14 @@ int aegis_fim_stop(void* handle) {
     DeleteCriticalSection(&s->lock);
     free(s);
     return 0;
+}
+
+/* Number of notification batches this session has lost to buffer overflow.
+ * Read-only; the Zig consumer publishes the delta in queue.stats. */
+uint64_t aegis_fim_overflow_count(void* handle) {
+    aegis_fim_session_t* s = (aegis_fim_session_t*)handle;
+    if (!s) return 0;
+    return (uint64_t)s->overflow_batches;
 }
 
 int aegis_fim_poll(void* handle, uint8_t* out_buf, size_t out_len) {

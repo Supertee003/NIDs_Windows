@@ -665,6 +665,13 @@ pub fn fimThread(watcher: *fim_mod.FimWatcher) void {
     while (!state.g_stop_requested.load(.acquire)) {
         state.g_wd.beatLazy(&state.g_wd_fim_slot, .host_telemetry, "fim");
         const data = watcher.poll();
+        // A native session loses a whole batch when its directory buffer
+        // overflows. The helper counts it; publish the delta so the loss is
+        // visible in queue.stats instead of reading as an idle watcher.
+        const native_overflow = watcher.takeOverflow();
+        if (native_overflow > 0) {
+            _ = state.g_fim_native_overflow.fetchAdd(native_overflow, .monotonic);
+        }
         if (data.len > 0) {
             var offset: usize = 0;
             // ADR-0012 measurement: one probe per poll batch. The 64 KiB poll

@@ -367,8 +367,10 @@ fn processEvent(
         }
     }
 
-    // IDS-L7-003: direct Npcap is the only ingress with a full Ethernet
-    // payload. Extract the transport payload defensively and run the existing
+    // IDS-L7-003: both the direct Npcap callback and the Go Nose v3
+    // ContextFlags lane carry a full Ethernet payload (the canonical
+    // npcap_sensor source maps to .capture_npcap). Extract the transport
+    // payload defensively and run the existing
     // protocol checks as observe-only evidence. Do not populate
     // matched_rule_id: protocol anomalies must not enter policy, PEP, or
     // ActionDispatcher. Their stable rule ID is carried by the event and IDS

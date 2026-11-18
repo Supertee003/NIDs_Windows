@@ -303,6 +303,12 @@ pub var g_fim_batch_duplicates = std.atomic.Value(u64).init(0);
 /// its drop counter (`minifilter_ring_dropped`) is what proves that claim.
 pub var g_fim_pace_waits = std.atomic.Value(u64).init(0);
 pub var g_fim_batch_overflow = std.atomic.Value(u64).init(0);
+/// Batches the native `ReadDirectoryChangesW` sessions lost to a directory
+/// buffer overflow (ERROR_NOTIFY_ENUM_DIR / zero-byte completion). Distinct
+/// from `g_fim_batch_overflow`, which counts the duplicate probe's own table
+/// filling up. This one is real discarded telemetry and never increments a
+/// drop path silently.
+pub var g_fim_native_overflow = std.atomic.Value(u64).init(0);
 /// The same probe split by ingress path, because the fix (coalesce where the
 /// duplicates actually are) needs to know which sensor produced them: the
 /// minifilter pull (`\AegisMinifilterPort`, file-create records) or the

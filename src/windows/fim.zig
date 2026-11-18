@@ -126,6 +126,7 @@ pub fn qualifyPath(root: []const u8, relative: []const u8, out: *FimEvent) Notif
 extern "aegis_fim_helper" fn aegis_fim_start(path: [*:0]const u8, recursive: u32, filter: u32) ?*anyopaque;
 extern "aegis_fim_helper" fn aegis_fim_stop(handle: *anyopaque) c_int;
 extern "aegis_fim_helper" fn aegis_fim_poll(handle: *anyopaque, out_buf: [*]u8, out_len: usize) c_int;
+extern "aegis_fim_helper" fn aegis_fim_overflow_count(handle: *anyopaque) u64;
 
 pub const FimWatcher = struct {
     handles: [8]?*anyopaque = [_]?*anyopaque{null} ** 8,
@@ -139,6 +140,9 @@ pub const FimWatcher = struct {
     poll_buf: [65536]u8 = undefined,
     running: std.atomic.Value(bool) = std.atomic.Value(bool).init(false),
     active_rule_index: usize = 0,
+    /// Highest overflow total already observed across the live sessions, so a
+    /// caller can publish only the new batches instead of the running sum.
+    overflow_seen: u64 = 0,
 
     pub fn init(allocator: std.mem.Allocator) FimWatcher {
         return .{
@@ -241,6 +245,20 @@ pub const FimWatcher = struct {
             }
         }
         return &[_]u8{};
+    }
+
+    /// Batches the native sessions lost to a directory-buffer overflow since
+    /// the previous call. The helper counts them; this only turns the sum into
+    /// a delta for the pipeline counter. Never silently zero: overflow is a
+    /// loss and is reported as one.
+    pub fn takeOverflow(self: *FimWatcher) u64 {
+        var total: u64 = 0;
+        for (self.handles[0..self.handle_count]) |maybe_handle| {
+            if (maybe_handle) |h| total +%= aegis_fim_overflow_count(h);
+        }
+        const delta = total -% self.overflow_seen;
+        self.overflow_seen = total;
+        return delta;
     }
 
     pub fn activeRoot(self: *const FimWatcher) []const u8 {
