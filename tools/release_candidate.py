@@ -71,6 +71,17 @@ RUNTIME_FILES = [
 ]
 RUNTIME_DIRS = ["brain", "tools/aegisctl"]
 
+# PACKAGING-CACHE-001: a release tree is an artifact, not a workspace. Test and
+# tool caches under brain/ used to be copied in and then signed: the first
+# f5cc38e candidate shipped brain/aegis_brain_cython/.pytest_cache/, whose
+# contents change on every test run and therefore made the signed tree
+# unreproducible. Copy only what a runtime needs.
+COPY_IGNORE = (
+    "__pycache__", "*.pyc", "*.pyo",
+    ".pytest_cache", ".mypy_cache", ".ruff_cache", ".hypothesis",
+    ".DS_Store", "Thumbs.db",
+)
+
 
 def git(*args: str) -> str:
     r = __import__("subprocess").run(["git", *args], capture_output=True,
@@ -126,7 +137,7 @@ def assemble(commit: str) -> Path:
         src = REPO / rel
         if src.is_dir():
             shutil.copytree(src, out / rel, dirs_exist_ok=True,
-                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+                            ignore=shutil.ignore_patterns(*COPY_IGNORE))
     for rel in BINARIES:
         p = REPO / rel
         if p.exists():
