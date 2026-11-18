@@ -96,3 +96,15 @@ the same window, not only the churn.
   87,096 / tail_shed 227,254 in that baseline).
 * If that passes, the only remaining gate is the 24 h soak with
   `--loss-budget 3500 --shed-budget 20000`.
+
+## Update 2026-11-18 — FIM half measured
+
+`QLOSS-FIM-STORM-20261118.md` / `QLOSS-FIMSTORM-003-E5-20261118` ran that
+window: 41,520 FIM rows, 0 drops, 0 quota/tail shed, ring 0, `R1002` canary
+passes. Two corrections to this document. (1) The minifilter lane is not scoped
+to the production roots, so it did see the `D:\tmp` churn in the earlier run as
+well; the statement below that "FIM did not see the `D:\tmp` churn" is true only
+of the native `ReadDirectoryChangesW` watcher. (2) That native watcher turned out
+to discard 97.1% of its notifications on buffer overflow without counting them
+(`GAP-FIM-NATIVE-OVERFLOW-003`). Only the 24 h soak remains for
+`GAP-QLOSS-ISOLATION-002`.

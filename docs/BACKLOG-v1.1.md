@@ -26,7 +26,8 @@ maintenance window on this host with a hash-verified rollback.
 | `EVI-G2-PEP-CACHE-001-LAB` | — | E5 | PEP cache swap, direction verify, duplicate canary, unblock, base restore | lab window on this host: lab build + canary from Kali + documented block + hash-verified rollback (no second host) |
 | `CAPTURE-DUP-WIFI-001` | P3 | E5 | This Wi-Fi adapter/Npcap delivers every frame twice | try another adapter/host config (raw 802.11, Killer prioritisation); or a bounded, counted dedup keyed by `(ip.id, tcp.seq, payload hash)` that cannot drop a real retransmission |
 | ~~`RULE-LAYER-SCOPE-001`~~ | P3 | **CLOSED E5** | — (see below) | — |
-| `GAP-QLOSS-ISOLATION-002` | — | E5 | Option A (ETW delete filter + aggregate) holds under a 20k delete storm: 8,801 filtered, 0 queue/ring loss, `R1002` canary passes. Remaining: the FIM half of the same storm (needs `AEGIS_FIM_PROOF_ROOT` and a restart) and the 24 h soak. Option B was measured and rejected. | elevated maintenance window + the single v1.1 24 h soak |
+| `GAP-QLOSS-ISOLATION-002` | — | E5 | Option A holds on both halves of the 20k stimulus: ETW 8,801/37,108 deletes filtered with an aggregate row, FIM 41,520 rows with 0 drops/0 quota/0 tail, ring 0, `R1002` canary passes. Option B was measured and rejected. Only the 24 h soak remains. | the single v1.1 24 h soak |
+| `GAP-FIM-NATIVE-OVERFLOW-003` | P2 | E5 | The native `ReadDirectoryChangesW` watcher dropped 38,841 of ~40,008 notifications (97.1%) in the FIM storm with no counter; `fim_native.c` treats a zero-byte overflow completion as "no data". The minifilter covered the same operations, so host coverage held, but the fallback lane is untrustworthy under burst. | count the overflow in `queue.stats`, re-run the storm, then decide whether the native lane stays a production fallback (code change forces rebuild + re-sign + soak) |
 
 ### Closed during the 2026-11-17 closure pass
 

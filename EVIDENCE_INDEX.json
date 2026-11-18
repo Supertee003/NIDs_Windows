@@ -1,7 +1,7 @@
 {
   "head_sha": "b600a2539590628a9923ca59bf68e47c3678bbbd",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-17",
+  "last_updated_at": "2026-11-18",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -20,6 +20,37 @@
     "E7": "Release verification"
   },
   "evidence": [
+    {
+      "id": "QLOSS-FIMSTORM-003-E5-20261118",
+      "head_sha": "ca378ba",
+      "timestamp": "2026-11-18",
+      "title": "FIM half of the 20k QLOSS storm: 41,520 rows with zero queue/quota/tail loss, while the native watcher silently truncated 97.1% of its own batch",
+      "level": "E5",
+      "component": "Windows host runtime: AEGIS_FIM_PROOF_ROOT watcher + minifilter reader + pipeline admission; installed daemon e32ba355",
+      "flow_id": "QLOSS-HEALTH-001",
+      "description": "The installed daemon was restarted with AEGIS_FIM_PROOF_ROOT=D:\\tmp\\aegis-fim-storm-20261118 and the same 20,000-file *.tmp stimulus as QLOSS-CRITICAL-001 was replayed in a single elevated window (20,004 files; create 2.39 s / delete 1.92 s), sampled every 1 s, then the service was restored to its production FIM scope. capture_fim pushed 41,520 rows (40,353 minifilter + 1,167 native) with dropped_total, shed_overload, source_quota_shed, reserved_tail_shed, minifilter.dropped and minifilter_pipeline_dropped all 0 and depth_peak 1,945 -> 2,146. etw.name_delete_filtered rose by 37,108 with one aggregate event. Counting the lanes separately: a 100-file control batch yields one native record per file operation (100 create / 100 delete), so the storm should have produced ~40,008 native notifications; it produced 1,167, i.e. 38,841 (97.1%) were discarded with batch_overflow 0 and no counter. The canary fim-canary-20261118.locked still produced 4 R1002 records (rule id 3830763994).",
+      "files_verified": [
+        "src/windows/fim_native.c",
+        "src/windows/fim.zig",
+        "src/pipeline/telemetry_threads.zig",
+        "analysis/current-head/QLOSS-FIM-STORM-20261118.md"
+      ],
+      "tests": [
+        "control batch 100 files: native_poll +100 create / +100 delete, minifilter +159 / +168, batch_overflow 0",
+        "storm 20,004 files: capture_fim +41,520 pushed / 0 dropped; quota_shed 0; tail_shed 0; minifilter ring 0; depth_peak +201",
+        "storm native_poll +1,167 vs ~40,008 expected from the control yield (97.1% missing, no counter)",
+        "forensic search rule R1002 after the canary: 4 records, three file_sensor (3830763994) and one host_telemetry 459 B",
+        "service restored: machine env AEGIS_FIM_PROOF_ROOT absent, AegisNids RUNNING PID 23300, daemon sha e32ba355 unchanged"
+      ],
+      "result": "PASS_FIM_HALF_ZERO_DROPS_WITH_NATIVE_OVERFLOW",
+      "finding": "The FIM half of the QLOSS baseline no longer sheds: 41,520 rows entered the pipeline with zero recorded loss versus 271,887 FIM drops / 87,096 quota / 227,254 tail in QLOSS-CRITICAL-001, so acceptance criterion 1 holds for this stimulus. Separately, the native ReadDirectoryChangesW watcher discarded roughly 97% of its notifications when its 64 KiB buffer overflowed and reported nothing (fim_native.c continues on bytes_returned == 0 without reading ERROR_NOTIFY_ENUM_DIR). The minifilter lane covered the same operations, so host coverage held in this run, but the fallback watcher cannot be trusted at burst rates without a counter.",
+      "evidence_artifact": "analysis/current-head/QLOSS-FIM-STORM-20261118.md",
+      "limitations": [
+        "One storm run; the burst lasted ~4 s versus the 180 s baseline window, so the same file count and shape is reproduced, not the same wall-clock window.",
+        "The 40,008 native expectation is derived from the 100-file control yield on the same daemon, not from a provider statistic.",
+        "No 24 h soak; ADR-0014 criterion 4 remains open for GAP-QLOSS-ISOLATION-002."
+      ]
+    },
     {
       "id": "PROCESS-CMDLINE-001-E5-20261118",
       "head_sha": "e04d192d7c64cc255b8a2c386b79d53420dffcf8",
@@ -14893,7 +14924,7 @@
       "level": "E2",
       "component": "src/pipeline/event_queue.zig admission; FIM/ETW ingress volume",
       "flow_id": "QLOSS-HEALTH-001",
-      "description": "Option A is implemented end to end and proven live (delete filter + per-window aggregate, both counted in queue.stats). Option B was measured instead of implemented: the hash chain is per-record and serial and covers the whole 4 KiB slot, so batching can amortise only ~50 ns of the 4,200 ns mandatory pass (QLOSS-B-MEASURE-001-E2-20261118). The ~14x gain needs the hashed span narrowed to header+payload, which is an integrity-contract change requiring its own ADR, a coverage-version byte and matching verifier changes. ETW-lane storm measured on 2026-11-18 (QLOSS-DELFILTER-002-E5-20261118): 20,000 noise deletes produced 8,801 filtered rows, 2 aggregate events and 0 queue/ring loss, while a fresh .locked canary still produced R1002; ETW delivered 8,803 of the 20,000 deletes and that provider-side gap is not counted by the product. Remaining for closure: the FIM half of the same storm (needs AEGIS_FIM_PROOF_ROOT and a restart) and the 24 h soak.",
+      "description": "Option A is implemented end to end and proven live (delete filter + per-window aggregate, both counted in queue.stats). Option B was measured instead of implemented: the hash chain is per-record and serial and covers the whole 4 KiB slot, so batching can amortise only ~50 ns of the 4,200 ns mandatory pass (QLOSS-B-MEASURE-001-E2-20261118). The ~14x gain needs the hashed span narrowed to header+payload, which is an integrity-contract change requiring its own ADR, a coverage-version byte and matching verifier changes. ETW-lane storm measured on 2026-11-18 (QLOSS-DELFILTER-002-E5-20261118): 20,000 noise deletes produced 8,801 filtered rows, 2 aggregate events and 0 queue/ring loss, while a fresh .locked canary still produced R1002; ETW delivered 8,803 of the 20,000 deletes and that provider-side gap is not counted by the product. The FIM half of the same stimulus was then measured in an elevated window (QLOSS-FIMSTORM-003-E5-20261118): 41,520 FIM rows, 0 drops, 0 quota/tail shed, 0 ring loss, R1002 still fires. Remaining for closure: only the 24 h soak.",
       "files_changed": [
         "src/pipeline/event_queue.zig",
         "docs/adr/0010-host-telemetry-admission.md"
@@ -14913,8 +14944,35 @@
       "status": "OPEN",
       "closed_at": "2026-11-08",
       "evidence": "QLOSS-ISOLATION-002-E5-20261108: both host sources reach their full 7,168 share on the deployed daemon with reserved_tail_shed 0 and all 206,999 refusals attributed to source_quota_shed.",
-      "next_step": "Option B was measured and rejected (QLOSS-B-MEASURE-001-E2-20261118), so the remaining route is A alone: run the same 20k storm with the FIM proof root in an elevated window and compare total drops/shed_overload to QLOSS-CRITICAL-001, then run the 24 h soak with --loss-budget 3500 --shed-budget 20000.",
-      "current_observation": "2026-11-18: ETW delete storm (20k files) -> 8,801 filtered, 2 aggregate rows, 0 queue/ring loss, R1002 canary PASS before and after. 2026-11-14 soak: queue dropped 0, shed_overload 0, loss_budget 3500 over 2.5 h; no loss observed under current load"
+      "next_step": "Both halves are measured and option B is rejected (QLOSS-B-MEASURE-001-E2-20261118). The only remaining gate is the 24 h soak on the new build with --loss-budget 3500 --shed-budget 20000, which the owner scheduled last.",
+      "current_observation": "2026-11-18: ETW delete storm (20k files) -> 8,801 filtered, 2 aggregate rows, 0 queue/ring loss, R1002 canary PASS before and after. FIM-half storm with AEGIS_FIM_PROOF_ROOT -> 41,520 FIM rows, 0 dropped, 0 quota/tail shed, R1002 PASS. 2026-11-14 soak: queue dropped 0, shed_overload 0, loss_budget 3500 over 2.5 h; no loss observed under current load"
+    },
+    {
+      "id": "GAP-FIM-NATIVE-OVERFLOW-003",
+      "head_sha": "ca378ba",
+      "timestamp": "2026-11-18",
+      "title": "Native FIM ReadDirectoryChangesW watcher discards an overflown 64 KiB batch without a counter",
+      "level": "E5",
+      "component": "src/windows/fim_native.c (fim_thread completion handling)",
+      "flow_id": "QLOSS-HEALTH-001",
+      "description": "During the FIM-half QLOSS storm (QLOSS-FIMSTORM-003-E5-20261118) the native watcher delivered 1,167 notifications for 20,004 creates + 20,004 deletes. A 100-file control batch on the same daemon yields exactly one native notification per file operation, so ~40,008 were expected; 38,841 (97.1%) went missing while batch_overflow stayed 0 and every loss counter stayed 0. src/windows/fim_native.c:112-132 treats a zero-byte completion as 'no data' (GetOverlappedResult succeeds with bytes_returned == 0 when the directory buffer overflows) and never reads ERROR_NOTIFY_ENUM_DIR, so the whole batch is dropped silently. The minifilter lane observed the same operations (40,353 records), which is why the pipeline still held in this run.",
+      "files_changed": [
+        "src/windows/fim_native.c"
+      ],
+      "tests": [
+        "E5: native_poll +1,167 of ~40,008 expected under the 20k burst; batch_overflow 0; no fim overflow counter exists",
+        "E5 control: 100 files -> native_poll +100 on create and +100 on delete, so the expected yield is one record per operation"
+      ],
+      "result": "E5_SILENT_BATCH_LOSS_CONFIRMED",
+      "finding": "This is silent event loss in a telemetry component, which AGENTS.md lists as a stop-the-line condition. It did not become pipeline loss here because the minifilter lane covered the same operations, so the finding is scoped to the native watcher being an untrustworthy fallback rather than to host coverage in this window. No fix was written in the measurement window.",
+      "required_evidence": [
+        "Count zero-byte/ERROR_NOTIFY_ENUM_DIR completions in fim_native.c and expose the total in queue.stats as a FIM-native overflow counter (never a silent continue).",
+        "E5 re-run of the same 20k storm: delivered native records plus the new overflow counter account for the full expected count.",
+        "Decide whether the native watcher remains a fallback lane for production System32/SysWOW64 or is retired in favour of the minifilter under burst."
+      ],
+      "tracking": "Local stop-the-line record (AGENTS.md: silent event loss); no GitHub issue filed",
+      "status": "OPEN",
+      "next_step": "Add the overflow counter first (observability, no behavioural change), then re-run the FIM storm to confirm the counter accounts for the 97% gap before changing buffer/rate behaviour."
     },
     {
       "id": "GAP-BRAIN-OUT-EVENTS",
