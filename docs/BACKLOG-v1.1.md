@@ -1,5 +1,11 @@
 # v1.1 backlog — everything left after v2.0.0
 
+> **HISTORICAL (superseded 2026-11-18).** Current truth is
+> `analysis/current-head/CURRENT-STATUS-20261118.md` and `EVIDENCE_INDEX.json`:
+> `EVI-G2-PEP-CACHE-001-LAB` and `CAPTURE-DUP-WIFI-001` are CLOSED, and the only
+> open gap is `GAP-QLOSS-ISOLATION-002` (the owner-run 24 h soak). The table
+> below is retained for provenance; rows marked CLOSED are no longer work.
+
 **Created:** 2026-11-17
 **Base:** v2.0.0, build source `7c604d5`, tag `v2.0.0` → `7b484a1`
 **Companion record:** `analysis/current-head/PROJECT-CLOSEOUT-20261117.md`
@@ -23,8 +29,8 @@ maintenance window on this host with a hash-verified rollback.
 
 | ID | Sev | Level | What remains | Cost to close |
 |---|---|---|---|---|
-| `EVI-G2-PEP-CACHE-001-LAB` | — | E5 | PEP cache swap, direction verify, duplicate canary, unblock, base restore | lab window on this host: lab build + canary from Kali + documented block + hash-verified rollback (no second host) |
-| `CAPTURE-DUP-WIFI-001` | P3 | E5 | This Wi-Fi adapter/Npcap delivers every frame twice | try another adapter/host config (raw 802.11, Killer prioritisation); or a bounded, counted dedup keyed by `(ip.id, tcp.seq, payload hash)` that cannot drop a real retransmission |
+| ~~`EVI-G2-PEP-CACHE-001-LAB`~~ | — | **CLOSED E5** | — (`EVI-G2-PEP-CACHE-001-LAB-20261023` in `EVIDENCE_INDEX.json`) | — |
+| ~~`CAPTURE-DUP-WIFI-001`~~ | P3 | **CLOSED / NO PRODUCT DEFECT** | byte-level probe found 0 identical-byte pairs; see `CAPTURE-DUP-BYTE-LEVEL-E5-20261117` and the 2026-11-18 RB-024 re-measure | — |
 | ~~`RULE-LAYER-SCOPE-001`~~ | P3 | **CLOSED E5** | — (see below) | — |
 | `GAP-QLOSS-ISOLATION-002` | — | E5 | Option A holds on both halves of the 20k stimulus: ETW 8,801/37,108 deletes filtered with an aggregate row, FIM 41,520 rows with 0 drops/0 quota/0 tail, ring 0, `R1002` canary passes. Option B was measured and rejected. Only the 24 h soak remains. | the single v1.1 24 h soak |
 | ~~`GAP-FIM-NATIVE-OVERFLOW-003`~~ | P2 | **CLOSED E5** | — (see below) | — |

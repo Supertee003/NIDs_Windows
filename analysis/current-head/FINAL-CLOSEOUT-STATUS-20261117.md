@@ -1,5 +1,11 @@
 # FINAL CLOSEOUT STATUS — 2026-11-17
 
+> **HISTORICAL — superseded 2026-11-18.** This snapshot used build source
+> `b955f91`; current build source is `4169839` and current truth is
+> `analysis/current-head/CURRENT-STATUS-20261118.md` and `EVIDENCE_INDEX.json`.
+> The only open gate is the owner-run 24 h soak; the other closeout items here
+> have since been reconciled or closed.
+
 **Read this before claiming the project is closed.** It states what is proven, what
 is open, and what cannot be closed from this host at all.
 
@@ -39,7 +45,7 @@ python tools/host_soak_check.py --start 2026-11-17T19:21:08 \
   --json admin-evidence/e5-clean-host-20261117-soak3/soak-24h-delta-latest.json
 ```
 
-## Open gaps (1)
+## Historical closeout items (superseded)
 
 ### `RULE-LAYER-SCOPE-001` — CLOSED at E5 (2026-11-17 21:26, re-measured)
 

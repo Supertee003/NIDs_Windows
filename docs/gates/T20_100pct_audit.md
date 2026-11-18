@@ -6,7 +6,7 @@
 
 - Component audit: **COMPLETE**
 - Release: **NOT SHIPPABLE** — open gates: soak_24h
-- Commit: `7d91e30`
+- Commit: `197747e`
 - Part I modules: 66/66 pass
 - Part I production failures: 0
 - Part II holds: 5/5
