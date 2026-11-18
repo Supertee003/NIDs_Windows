@@ -8963,7 +8963,7 @@
       "flow_id": "REL-001",
       "component": "installer, kernel telemetry driver load, host preflight, capture selection, upgrade/rollback",
       "title": "RB-024 steps 1-6 revalidated on the fail-closed build before the final soak",
-      "description": "Rebuilt installer 360B9C06 installed runtime 0CB573EC from signed candidate b597e71 on build source f4cde3c. Driver images 2/2 Valid; 4/4 services RUNNING; host_preflight PASS with 0 failed checks; capture topology proved two disjoint devices with ingress advancing; byte-level duplicate probe 0/20191; upgrade/rollback PASS with AegisNids RUNNING. The earlier 2026-11-19T00:20:11 soak is VOIDED BY SUPERSEDED BUILD; a new 24 h window started 2026-11-19T01:44:10 and remains the only open release gate.",
+      "description": "Rebuilt installer 360B9C06 installed runtime 0CB573EC from signed candidate b597e71 on build source f4cde3c. Driver images 2/2 Valid; 4/4 services RUNNING; host_preflight PASS with 0 failed checks; capture topology proved two disjoint devices with ingress advancing; byte-level duplicate probe 0/20191; upgrade/rollback PASS with AegisNids RUNNING. All three 2026-11-19 windows are void: 00:20:11 by superseded build, 01:44:10 and 02:23:21 by owner decision before remaining work. None is a failure or release proof; one fresh 24 h window is still the only open release gate.",
       "evidence_artifact": "analysis/current-head/RB-024-F4CDE3C-20261119.md",
       "artifacts": [
         "analysis/current-head/RB-024-F4CDE3C-20261119.md",

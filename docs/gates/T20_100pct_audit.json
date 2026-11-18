@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "63990c8",
+  "commit": "debd3c7",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE"
@@ -62,7 +62,7 @@
         "id": "soak_24h",
         "ok": false,
         "owner": "time",
-        "detail": "admin-evidence\\e5-clean-host-20261119-final\\soak-24h-delta-20261119-0149.json is IN_PROGRESS at 0.2/24.0 h; an older PASS (admin-evidence\\e5-clean-host-20261117-process-soak\\soak-24h-process-start.json at 24.62 h) predates the current source commit and does not close this gate"
+        "detail": "admin-evidence\\e5-clean-host-20261119-final\\soak-24h-final-delta-20261119-0223.json is IN_PROGRESS at 0.01/24.0 h; an older PASS (admin-evidence\\e5-clean-host-20261117-process-soak\\soak-24h-process-start.json at 24.62 h) predates the current source commit and does not close this gate"
       },
       {
         "id": "evidence_debt",

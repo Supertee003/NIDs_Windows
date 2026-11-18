@@ -183,11 +183,15 @@ pins resolving to disjoint devices with ingress advancing, 18,774/20,191 ratio
 pairs but byte-level 0/20,191 identical pairs, and rollback drill PASS with
 `AegisNids` RUNNING. The Wi-Fi item stays open under the runbook's literal rule.
 
-The 24 h window started `2026-11-19T01:44:10` with `--baseline auto`; first
-delta `soak-24h-delta-20261119-0144.json` is `IN_PROGRESS` at 0/24 h with all
-loss/shed counters 0. The earlier `2026-11-19T00:20:11` window is
-**VOIDED BY SUPERSEDED BUILD** and is retained only for provenance.
-Details: `analysis/current-head/RB-024-F4CDE3C-20261119.md`.
+No soak currently passes. The `2026-11-19T00:20:11` window is
+**VOIDED BY SUPERSEDED BUILD**; the `2026-11-19T01:44:10` and
+`2026-11-19T02:23:21` windows were stopped by owner decision at 0.2 h and 0.01 h
+respectively (`VOIDED_BY_OWNER_DECISION_PENDING_HANDOFF_AUDIT` and
+`VOIDED_BY_OWNER_DECISION_PENDING_REMAINING_WORK`) with 0 loss, 0 shed and no
+problems. They are retained only for provenance and are not release proof. One
+fresh 24 h window with `--baseline auto` is still required after all remaining
+work is closed. Details: `analysis/current-head/RB-024-F4CDE3C-20261119.md`,
+`analysis/current-head/AI-HANDOFF-AUDIT-20261119.md`.
 
 ## Result — 2026-11-18 (steps 1-6, historical)
 

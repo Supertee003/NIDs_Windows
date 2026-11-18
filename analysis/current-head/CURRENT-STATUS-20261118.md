@@ -28,7 +28,7 @@ python tools/final_audit.py --release-check
   PASS  component_audit      modules 66/66, prod failures 0, part_ii 5/5
   PASS  release_signature    b597e71 signs SHA256SUMS; owner anchor recorded
   PASS  clean_host_e5        2026-11-19 preflight, loader under C:\Program Files\AEGIS NIDS
-  OPEN  soak_24h             24 h window started 2026-11-19T01:44:10 on f4cde3c
+  OPEN  soak_24h             no active window: two 2026-11-19 windows voided by owner decision; one fresh window to start after remaining work
   PASS  evidence_debt        0 unnamed product files
   release: NOT SHIPPABLE (5/6)
 ```
