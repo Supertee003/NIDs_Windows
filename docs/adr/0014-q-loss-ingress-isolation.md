@@ -121,3 +121,36 @@ still needed after A lands.** Reasons:
   costs one build, one signature and one soak instead of two.
 - The gap stays **open** until the chosen option is implemented, measured, and
   soaked. This document does not close it.
+
+## Measurement of option B on this host (2026-11-18)
+
+Option B claims that batching the forensic append "amortises" the per-record
+4 KiB pass. Measured with the ring's own code (`src/forensic/crc32_slicing.zig`,
+`std.crypto.hash.sha2.Sha256`), 20,000 iterations, `-OReleaseSafe`, on the host
+the product runs on:
+
+| part of the mandatory pass | per record |
+|---|---|
+| `@memset(slot, 0)` over 4 KiB | **50 ns** |
+| SHA-256 over the same 4,092-byte span the chain covers | **2,387 ns** |
+| CRC32 slicing-by-8 over the same span | **1,792 ns** |
+| **total mandatory pass** | **≈ 4.2 µs** |
+| SHA-256 over a 200-byte header+payload span (for comparison) | **176 ns** |
+
+The observed `stage=forensic_append p50` on the live daemon is 16.4 µs, so the
+mandatory pass is roughly a quarter of the append and the rest is record
+construction, the ring mutex and perf instrumentation.
+
+**Conclusion: B as specified cannot deliver what it promises.** The hash chain is
+per-record and serial (record N hashes `prev_hash` of record N-1), so records
+cannot be hashed in parallel or in one batch, and the hash covers the *whole*
+slot by contract. Batching therefore amortises only the memset and the lock --
+about 50 ns out of 4,200 ns, i.e. ~1%. The ~14x win that would matter
+(4.2 µs → 0.3 µs) comes from *narrowing the hashed span* to header + payload,
+which is a **format and integrity-contract change**, not a batching change: it
+needs its own ADR, a coverage-version byte so old and new records can be
+distinguished, matching changes in `verifyRecord`, `verifyHashChain`,
+`replay_verifier` and the handler's verify path, plus golden-vector updates.
+
+Recorded, not implemented: changing what the forensic hash covers silently is a
+crypto-contract change and is out of scope for this ADR.

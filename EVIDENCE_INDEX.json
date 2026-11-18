@@ -8540,6 +8540,29 @@
         "ADR acceptance criterion 1 (drops and shed_overload strictly below the QLOSS baseline for the same stimulus) still needs the controlled storm comparison, which is scheduled with the soak.",
         "Only one window was observed live; the top-N folding was pinned in a unit test (three paths, two prefixes) rather than observed under a real million-row delete storm."
       ]
+    },
+    {
+      "id": "QLOSS-B-MEASURE-001-E2-20261118",
+      "head_sha": "3a7b0b1",
+      "timestamp": "2026-11-18",
+      "level": "E2",
+      "flow_id": "FOR-001",
+      "component": "src/forensic/forensic_pipeline.zig, src/forensic/crc32_slicing.zig",
+      "title": "Option B measured: batching cannot amortise a per-record serial hash over the whole slot",
+      "description": "Measured the mandatory per-record pass of the forensic append with the ring's own primitives (crc32_slicing.Crc32.hash and std.crypto.hash.sha2.Sha256), 20,000 iterations at -OReleaseSafe on the host the product runs on: memset over 4 KiB 50 ns, SHA-256 over the 4,092-byte span the chain covers 2,387 ns, CRC32 slicing-by-8 over the same span 1,792 ns -- 4.2 us total, against a live stage=forensic_append p50 of 16.4 us. A 200-byte header+payload span hashes in 176 ns. So option B (batched append) can amortise only the memset and the lock (~50 ns of 4,200 ns, ~1%) because the hash chain is per-record and serial and covers the whole slot by contract; the ~14x win needs the hashed span narrowed, which is an integrity-contract change and is recorded as such in docs/adr/0014-q-loss-ingress-isolation.md rather than implemented silently.",
+      "evidence_artifact": "docs/adr/0014-q-loss-ingress-isolation.md",
+      "artifacts": [
+        "docs/adr/0014-q-loss-ingress-isolation.md",
+        "src/forensic/forensic_pipeline.zig"
+      ],
+      "commands": [
+        "zig run -OReleaseSafe src/_tmp_forensic_hash_bench.zig",
+        "aegisctl queue"
+      ],
+      "limitations": [
+        "This is a measurement of the primitives, not of a storm: it says what B can save, not what the ceiling becomes.",
+        "The benchmark file was a throwaway and has been deleted; the numbers live in the ADR."
+      ]
     }
   ],
   "known_gaps": [
@@ -14789,7 +14812,7 @@
       "level": "E2",
       "component": "src/pipeline/event_queue.zig admission; FIM/ETW ingress volume",
       "flow_id": "QLOSS-HEALTH-001",
-      "description": "Option A is now implemented end to end and proven live: delete filter (QLOSS-DELFILTER-001-E5-20261118) plus the per-window aggregate record (QLOSS-DELAGG-001-E5-20261118) and both counters in queue.stats. Remaining before this gap can close: option B (batched forensic append) as the owner asked, the storm comparison against the QLOSS baseline, and the 24 h soak on the final build.",
+      "description": "Option A is implemented end to end and proven live (delete filter + per-window aggregate, both counted in queue.stats). Option B was measured instead of implemented: the hash chain is per-record and serial and covers the whole 4 KiB slot, so batching can amortise only ~50 ns of the 4,200 ns mandatory pass (QLOSS-B-MEASURE-001-E2-20261118). The ~14x gain needs the hashed span narrowed to header+payload, which is an integrity-contract change requiring its own ADR, a coverage-version byte and matching verifier changes. Remaining for closure: the storm comparison against the QLOSS baseline and the 24 h soak.",
       "files_changed": [
         "src/pipeline/event_queue.zig",
         "docs/adr/0010-host-telemetry-admission.md"
@@ -14809,7 +14832,7 @@
       "status": "OPEN",
       "closed_at": "2026-11-08",
       "evidence": "QLOSS-ISOLATION-002-E5-20261108: both host sources reach their full 7,168 share on the deployed daemon with reserved_tail_shed 0 and all 206,999 refusals attributed to source_quota_shed.",
-      "next_step": "Implement B (batched forensic append in the hot path), then run the controlled storm comparison the ADR's acceptance criterion 1 requires, then the soak.",
+      "next_step": "Owner decision on B': either accept the hashed-span change under its own ADR (about 14x less per-record crypto cost, format change) or close QLOSS with A alone; either way the storm comparison and the soak come next.",
       "current_observation": "2026-11-14 soak: queue dropped 0, shed_overload 0, loss_budget 3500 over 2.5 h; no loss observed under current load"
     },
     {
@@ -15161,7 +15184,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 24,
-    "E2_count": 125,
+    "E2_count": 126,
     "E3_count": 14,
     "E4_count": 4,
     "E5_count": 109,
