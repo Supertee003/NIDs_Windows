@@ -1021,7 +1021,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "a029b7ce2e88bcc1672c7caa5af11a0499ac9237c67f07969cf591e541db7a2a",
+      "sha256": "e155592dc720deb8863ce17d40b8c4c2ecb2ba400d7922e950e9119df9dc706c",
       "language": "json"
     },
     {
@@ -2016,8 +2016,8 @@
     },
     {
       "path": "src/control/handler_registry.zig",
-      "size": 164133,
-      "sha256": "5bd973c5e19e96e766e5083cbe643a0772a05e60f11005687e6198dd9534817c",
+      "size": 164234,
+      "sha256": "f1627bda4839ea510ea94daf73e0cb11c1fb5da2606143b35e775099d5f2a412",
       "language": "zig"
     },
     {
@@ -2514,8 +2514,8 @@
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",
-      "size": 43435,
-      "sha256": "6c04f2adea37a67cf899cd982bc3e61f1099d3c07838966cc1ac04641eed77f8",
+      "size": 45927,
+      "sha256": "ca8519861561839fa607029edf534898309919aa70d9a88d16c44b4479733f0f",
       "language": "zig"
     },
     {
