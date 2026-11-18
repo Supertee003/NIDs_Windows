@@ -51,11 +51,13 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      - name: Install pytest and optional graph dependencies
-        # CI-CODEX-002: align with ci.yml. The graph command test needs
-        # networkx/pyvis, and host_live tests need a running Windows daemon;
-        # neither exists on this Linux logic-layer runner.
-        run: pip install pytest networkx pyvis
+      - name: Install test and optional graph dependencies
+        # CI-CODEX-004: align with ci.yml. requirements.txt provides Flask,
+        # PyYAML and the other imports used by tests/runtime (e.g.
+        # test_defcon_authority.py); networkx/pyvis are the optional graph
+        # deps. host_live tests are deselected below - they need a Windows
+        # control daemon that does not exist on this Linux logic runner.
+        run: pip install -r requirements.txt networkx pyvis
       - name: Run runtime contract tests
         run: |
           if [ -d tests/runtime ]; then

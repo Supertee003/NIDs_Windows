@@ -838,9 +838,11 @@ def main() -> int:
     part_ii = {}
     gp_steps_real = any(m.get("golden_path") and m.get("status") == "REAL"
                         for m in eng.modules.values())
+    # REL-AUDIT-WDK-PATH-001: WDK outputs are generated under build/x64;
+    # drivers/ holds sources and must not be treated as a shipped binary dir.
     part_ii["Windows-Verified"] = bool(
-        (REPO / "drivers" / "wfp_callout" / "aegis_wfp.sys").exists() or
-        (REPO / "drivers" / "wfp_callout" / "aegis_minifilter.sys").exists())
+        (REPO / "build" / "x64" / "wfp" / "aegis_wfp.sys").exists() or
+        (REPO / "build" / "x64" / "minifilter" / "aegis_minifilter.sys").exists())
     part_ii["Real-Telemetry-Verified"] = bool(
         any(("npcap_capture" in k or "etw" in k or "noise" in k) for k in eng.modules) or
         (REPO / "core" / "npcap_capture.zig").exists())
