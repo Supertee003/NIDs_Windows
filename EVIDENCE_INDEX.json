@@ -15043,7 +15043,7 @@
       "status": "OPEN",
       "closed_at": "2026-11-08",
       "evidence": "QLOSS-ISOLATION-002-E5-20261108: both host sources reach their full 7,168 share on the deployed daemon with reserved_tail_shed 0 and all 206,999 refusals attributed to source_quota_shed.",
-      "next_step": "Both halves are measured and option B is rejected (QLOSS-B-MEASURE-001-E2-20261118). The only remaining gate is the 24 h soak on the installed build a02fc7fb (source aa42fca, which includes the FIM overflow counter) with --loss-budget 3500 --shed-budget 20000; the owner scheduled it last.",
+      "next_step": "Both halves are measured and option B is rejected (QLOSS-B-MEASURE-001-E2-20261118). The only remaining gate is the 24 h soak on the installed build 4169839 (source aa42fca plus CAPTURE-SELECT-001 and the FIM overflow counter), installed from the signed candidate bece8f1, with --loss-budget 3500 --shed-budget 20000; the owner runs it last, per RB-024.",
       "current_observation": "2026-11-18: ETW delete storm (20k files) -> 8,801 filtered, 2 aggregate rows, 0 queue/ring loss, R1002 canary PASS before and after. FIM-half storm with AEGIS_FIM_PROOF_ROOT -> 41,520 FIM rows, 0 dropped, 0 quota/tail shed, R1002 PASS. 2026-11-14 soak: queue dropped 0, shed_overload 0, loss_budget 3500 over 2.5 h; no loss observed under current load"
     },
     {

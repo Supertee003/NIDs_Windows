@@ -180,9 +180,10 @@ Local full suite on the same tree: 1423 passed, 4 skipped, 1 xfailed, 1 xpassed,
    `g3_dup_bytes.py` on this build.
 3. Re-run `clean_host_e5` against the installed current build; the passing
    artifact today is from 2026-11-14.
-4. Owner confirms the trust anchor public key
-   `txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o=` is the release key. It is the
-   key that already signed `ad7948c`; no new key material was created.
+4. ~~Owner confirms the release trust anchor public key~~ — **DONE 2026-11-18**:
+   `txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o=` is the approved anchor,
+   recorded in `docs/gates/RELEASE_TRUST_ANCHOR.md`. It is the key that already
+   signed `ad7948c`; no new key material was created.
 5. Merge to `main` and tag `v1.1` only after the board is complete.
 6. Soak 24 h alone, then close the board.
 
