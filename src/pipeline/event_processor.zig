@@ -197,7 +197,17 @@ fn recordXdrAdvisoryReceipt(
 ///
 /// Returning null means "this source has no payload rules", not "use all of
 /// them": an unknown producer must not inherit the network catalog by accident.
-fn ruleLayerIndexForSource(source: event.EventSource) ?usize {
+/// PROC-LAYER-001: a process event belongs to the process layer no matter which
+/// sensor carried it. The rows that actually produce `etw_process_create` on
+/// this host come from the minifilter (`file_sensor`), and selecting by source
+/// alone sent them to the *file* automaton -- so R2001-R2005 could not fire even
+/// though the event existed. Kind wins where the kind is process-scoped; every
+/// other row keeps the source mapping unchanged.
+fn ruleLayerIndexForSource(source: event.EventSource, kind: event.EventKind) ?usize {
+    switch (kind) {
+        .etw_process_create, .etw_process_exit => return @intFromEnum(state.RuleLayer.kernel_process),
+        else => {},
+    }
     return switch (source) {
         .capture_npcap, .capture_wfp => @intFromEnum(state.RuleLayer.network),
         .capture_fim, .capture_registry => @intFromEnum(state.RuleLayer.kernel_file),
@@ -284,7 +294,7 @@ fn processEvent(
     // the rule layer this event belongs to, not against every rule at once. The
     // network automaton is the fallback when the reload path has not installed a
     // layered set yet (and for the single-automaton tests).
-    const layer_idx = ruleLayerIndexForSource(ev.source);
+    const layer_idx = ruleLayerIndexForSource(ev.source, ev.kind);
     if (layer_idx) |li| {
         active_ac = state.g_layer_ac[li] orelse state.g_active_ac;
     }
@@ -1195,14 +1205,18 @@ pub fn pipelineLoop(
 }
 
 test "RULE-LAYER-SCOPE: each event source maps to its own rule layer" {
-    try std.testing.expectEqual(@as(?usize, 0), ruleLayerIndexForSource(.capture_npcap));
-    try std.testing.expectEqual(@as(?usize, 0), ruleLayerIndexForSource(.capture_wfp));
-    try std.testing.expectEqual(@as(?usize, 1), ruleLayerIndexForSource(.capture_fim));
-    try std.testing.expectEqual(@as(?usize, 1), ruleLayerIndexForSource(.capture_registry));
-    try std.testing.expectEqual(@as(?usize, 2), ruleLayerIndexForSource(.capture_etw));
-    try std.testing.expectEqual(@as(?usize, 3), ruleLayerIndexForSource(.capture_pipe_monitor));
+    try std.testing.expectEqual(@as(?usize, 0), ruleLayerIndexForSource(.capture_npcap, .packet_captured));
+    try std.testing.expectEqual(@as(?usize, 0), ruleLayerIndexForSource(.capture_wfp, .packet_captured));
+    try std.testing.expectEqual(@as(?usize, 1), ruleLayerIndexForSource(.capture_fim, .fim_change));
+    try std.testing.expectEqual(@as(?usize, 1), ruleLayerIndexForSource(.capture_registry, .reg_change));
+    try std.testing.expectEqual(@as(?usize, 2), ruleLayerIndexForSource(.capture_etw, .etw_process_create));
+    try std.testing.expectEqual(@as(?usize, 3), ruleLayerIndexForSource(.capture_pipe_monitor, .packet_captured));
+    // PROC-LAYER-001: the kind decides for process rows, whichever sensor
+    // carried them -- the minifilter is the producer on this host.
+    try std.testing.expectEqual(@as(?usize, 2), ruleLayerIndexForSource(.capture_fim, .etw_process_create));
+    try std.testing.expectEqual(@as(?usize, 2), ruleLayerIndexForSource(.capture_fim, .etw_process_exit));
     // Sources that carry no wire payload must not inherit the network catalog.
-    try std.testing.expectEqual(@as(?usize, null), ruleLayerIndexForSource(.capture_host_net));
-    try std.testing.expectEqual(@as(?usize, null), ruleLayerIndexForSource(.detection_brain));
-    try std.testing.expectEqual(@as(?usize, null), ruleLayerIndexForSource(.system));
+    try std.testing.expectEqual(@as(?usize, null), ruleLayerIndexForSource(.capture_host_net, .packet_captured));
+    try std.testing.expectEqual(@as(?usize, null), ruleLayerIndexForSource(.detection_brain, .packet_captured));
+    try std.testing.expectEqual(@as(?usize, null), ruleLayerIndexForSource(.system, .packet_captured));
 }

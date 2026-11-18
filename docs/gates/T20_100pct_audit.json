@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "ef728b3",
+  "commit": "50986b3",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE"
@@ -24,13 +24,16 @@
     "shippable": false,
     "shippable_with_waiver": false,
     "open": [
+      "release_signature",
       "soak_24h"
     ],
     "waived": [],
     "unwaived": [
+      "release_signature",
       "soak_24h"
     ],
     "owners": [
+      "owner",
       "time"
     ],
     "gates": [
@@ -38,7 +41,7 @@
         "id": "truth_artifacts",
         "ok": true,
         "owner": "none",
-        "detail": "TRUTH_VALID — artifacts carry build source b955f91 (ancestor of HEAD; source history and worktree clean)"
+        "detail": "TRUTH_VALID — artifacts carry build source efe6b6f (ancestor of HEAD; source history and worktree clean)"
       },
       {
         "id": "component_audit",
@@ -48,9 +51,9 @@
       },
       {
         "id": "release_signature",
-        "ok": true,
+        "ok": false,
         "owner": "owner",
-        "detail": "release\\T20-final\\ad7948c\\signatures.json signs SHA256SUMS (C15022458409F5C9...) with a ed25519 key; commit ad7948c contains runtime b955f91"
+        "detail": "release\\T20-final\\ad7948c\\signatures.json was built from ad7948c, which does not contain the current runtime commit efe6b6faa4b9d61b8b633082a0962537cf7f0041; the signed tree predates the shipped runtime"
       },
       {
         "id": "clean_host_e5",

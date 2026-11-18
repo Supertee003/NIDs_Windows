@@ -8462,6 +8462,31 @@
         "The scan covers the retained ring window only; a 0 can still mean 'aged out' rather than 'never seen', and the response does not yet say which sequence range was scanned.",
         "The frames came from the host side of VMnet1 (the Kali guest cannot be driven for exec on this host), so the source is host-originated traffic on the captured interface."
       ]
+    },
+    {
+      "id": "PROC-LAYER-001-E5-20261118",
+      "head_sha": "50986b3",
+      "timestamp": "2026-11-18",
+      "level": "E5",
+      "flow_id": "DET-001",
+      "component": "C:/Program Files/AEGIS NIDS/runtime/aegis_nids.exe",
+      "title": "Process-create events reach the process rule layer: R2004 fires on a real certutil launch",
+      "description": "Process-create rows on this host are produced by the minifilter (source file_sensor) but ruleLayerIndexForSource() selected the automaton by source alone, so those rows were matched against the FILE automaton and R2001-R2005 could never fire even when the event existed. The layer now follows the event kind: etw_process_create/etw_process_exit go to the kernel_process automaton whichever sensor carried them, and every other row keeps its source mapping unchanged (pins updated in src/pipeline/event_processor.zig). Proven live on the installed build e3a2586a7c899af0 (same sha256 as zig-out/bin/aegis_nids.exe, service RUNNING): launching certutil.exe -? produced 'forensic search --field rule --value R2004' = 2 records, where the same query returned 0 on the previous build; R2001 (mimikatz) and R2002 (svchost) stayed at 0 in the same window, so the match is the stimulus and not ambient noise. What is NOT fixed: the payload still carries a 61-byte image path and no command line, so R2003 (IEX) remains unable to match -- that half is now a separate, explicit limitation.",
+      "evidence_artifact": "src/pipeline/event_processor.zig",
+      "artifacts": [
+        "src/pipeline/event_processor.zig",
+        "configs/Rules.json"
+      ],
+      "commands": [
+        "zig build test",
+        "zig build",
+        "aegisctl forensic search --field rule --value R2004",
+        "aegisctl forensic search --field rule --value R2001"
+      ],
+      "limitations": [
+        "R2003 (IEX) still cannot fire: the producing lane carries the image path only, not the command line.",
+        "The positive control is one rule (R2004) on one stimulus; R2001/R2002 remained at 0 in the same window but that is a negative control, not proof they work."
+      ]
     }
   ],
   "known_gaps": [
@@ -15074,10 +15099,10 @@
       "id": "PROCESS-CMDLINE-001",
       "status": "OPEN",
       "severity": "P2",
-      "title": "KERNEL_PROCESS rules never see a process event: the producing lane carries the image path only and is routed to the file layer",
-      "description": "Measured 2026-11-18 on the installed build f57f2320. Launching 'powershell -Command \"IEX Write-Output R2003-MARKER-77\"' produced no R2003 match; forensic search for the marker string matched 0 records, while search for the word powershell matched 4 records whose payload_len is 61 bytes -- an image path, not a command line. Two independent causes, both in-tree: (1) the rows that carry process-create events come from source minifilter/file_sensor (kind etw_process_create), but ruleLayerIndexForSource() in src/pipeline/event_processor.zig maps .capture_fim to the kernel_file automaton and only .capture_etw to kernel_process, so a process-create row is matched against file rules; (2) the payload has no command line, so a pattern like IEX cannot match even on the right layer. R2001-R2005 are therefore dead rules on this host, which is exactly what the earlier 'R2003 positive control never fired' note observed without explaining.",
+      "title": "KERNEL_PROCESS rules now run, but the payload carries the image path only (no command line)",
+      "description": "Resolved half (E5, PROC-LAYER-001-E5-20261118): the layer follows the event kind, so process-create rows from the minifilter reach the kernel_process automaton and R2004 fires on a real certutil launch. Remaining: the row payload is a 61-byte image path with no command line (measured: search for a marker argument inside a launched command matched 0 records, while the word powershell matched 4 records of 61 bytes), so R2003 (IEX) can never match, and R2001/R2002/R2005 depend on the image name.",
       "recorded_by": "analysis/current-head/PROJECT-SCAN-20261118.md",
-      "next_step": "Decide the shape before coding: (A) route by event kind (etw_process_create/exit to the kernel_process automaton regardless of source), a small Zig change that makes process rules reachable, plus retarget the rules to what the lane can see (image path); or (B) extend the producing lane to carry the command line (C++ sensor change, bigger, and it grows the payload for every process event). A alone leaves IEX-style rules unable to fire and must say so in KNOWN_LIMITATIONS."
+      "next_step": "Decide: extend the producing lane to carry the command line (C++ sensor change, grows every process payload) or retarget R2003 to what the lane can see and record the loss of command-line visibility in KNOWN_LIMITATIONS."
     }
   ],
   "evidence_level_summary": {
@@ -15086,11 +15111,11 @@
     "E2_count": 125,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 106,
+    "E5_count": 107,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 56,
-    "known_gaps_count": 284
+    "E5_with_artifact_count": 57,
+    "known_gaps_count": 285
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
 }
