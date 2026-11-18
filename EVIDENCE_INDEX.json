@@ -21,6 +21,38 @@
   },
   "evidence": [
     {
+      "id": "FIM-NATIVE-OVERFLOW-001-E5-20261118",
+      "head_sha": "aa42fca",
+      "timestamp": "2026-11-18",
+      "title": "Native FIM watcher overflow is counted and re-measured: 7 discarded batches under the 20k storm, 0 in the control batch",
+      "level": "E5",
+      "component": "src/windows/fim_native.c overflow counter -> src/windows/fim.zig takeOverflow -> fim_probe.native_overflow in queue.stats; deployed daemon a02fc7fb + helper 5a047ce6",
+      "flow_id": "QLOSS-HEALTH-001",
+      "description": "The new build was installed with hash-verified backups of e32ba355/5275ed8b, restarted with AEGIS_FIM_PROOF_ROOT=D:\\tmp\\aegis-fim-storm-20261118b, and exercised with the same stimulus. A 100-file control batch reported native_poll +100/+100 and native_overflow 0 in both phases. The 20,004-file storm (create 1.72 s / delete 1.61 s) reported capture_fim +40,328 (minifilter +40,320, native_poll +8), native_overflow +7, dropped_total/shed_overload/source_quota_shed/reserved_tail_shed/minifilter ring and pipeline drops all 0, depth_peak +1,131. The canary fimfix-canary-20261118.locked produced 4 file_sensor rows with rule 3830763994 plus one 559 B host_telemetry row, and the R1002 search returned the 4 file_sensor rows. zig build test --summary all: 3,335 passed / 10 skipped / 0 failed.",
+      "files_verified": [
+        "src/windows/fim_native.c",
+        "src/windows/fim.zig",
+        "src/pipeline/telemetry_threads.zig",
+        "src/pipeline/runtime_state.zig",
+        "src/control/handler_registry.zig",
+        "analysis/current-head/FIM-NATIVE-OVERFLOW-001-20261118.md"
+      ],
+      "tests": [
+        "zig build: success",
+        "zig build test --summary all: 3,335 passed / 10 skipped / 0 failed (includes the fim_probe.native_overflow schema assertion)",
+        "E5 control 100 files: native_poll +100/+100, native_overflow 0/0",
+        "E5 storm 20,004 files: native_overflow +7, native_poll +8, minifilter +40,320, all loss counters 0, R1002 canary passes"
+      ],
+      "result": "PASS_E5_OVERFLOW_COUNTED",
+      "finding": "The silent overflow path is closed: a batch lost to ReadDirectoryChangesW overflow now increments fim_probe.native_overflow, so an idle watcher and a lossy watcher are distinguishable in queue.stats. The counter is batch-level because Windows discards the buffer contents; the number of notifications inside a lost batch is not recoverable. The native lane remains a counted fallback; production FIM coverage is the minifilter, which delivered 40,320 records for the same operations.",
+      "evidence_artifact": "analysis/current-head/FIM-NATIVE-OVERFLOW-001-20261118.md",
+      "limitations": [
+        "Only 7 overflow batches are counted; the records inside them cannot be recovered, so this is not a record-level loss budget.",
+        "The 500 ms poll cadence remains the native lane's throughput bound; that is a separate change with its own soak.",
+        "Installed build is a local unsigned build (a02fc7fb); a release cut still needs rebuild + re-sign."
+      ]
+    },
+    {
       "id": "QLOSS-FIMSTORM-003-E5-20261118",
       "head_sha": "ca378ba",
       "timestamp": "2026-11-18",
@@ -14944,7 +14976,7 @@
       "status": "OPEN",
       "closed_at": "2026-11-08",
       "evidence": "QLOSS-ISOLATION-002-E5-20261108: both host sources reach their full 7,168 share on the deployed daemon with reserved_tail_shed 0 and all 206,999 refusals attributed to source_quota_shed.",
-      "next_step": "Both halves are measured and option B is rejected (QLOSS-B-MEASURE-001-E2-20261118). The only remaining gate is the 24 h soak on the new build with --loss-budget 3500 --shed-budget 20000, which the owner scheduled last.",
+      "next_step": "Both halves are measured and option B is rejected (QLOSS-B-MEASURE-001-E2-20261118). The only remaining gate is the 24 h soak on the installed build a02fc7fb (source aa42fca, which includes the FIM overflow counter) with --loss-budget 3500 --shed-budget 20000; the owner scheduled it last.",
       "current_observation": "2026-11-18: ETW delete storm (20k files) -> 8,801 filtered, 2 aggregate rows, 0 queue/ring loss, R1002 canary PASS before and after. FIM-half storm with AEGIS_FIM_PROOF_ROOT -> 41,520 FIM rows, 0 dropped, 0 quota/tail shed, R1002 PASS. 2026-11-14 soak: queue dropped 0, shed_overload 0, loss_budget 3500 over 2.5 h; no loss observed under current load"
     },
     {
@@ -14971,8 +15003,11 @@
         "Decide whether the native watcher remains a fallback lane for production System32/SysWOW64 or is retired in favour of the minifilter under burst."
       ],
       "tracking": "Local stop-the-line record (AGENTS.md: silent event loss); no GitHub issue filed",
-      "status": "OPEN",
-      "next_step": "Add the overflow counter first (observability, no behavioural change), then re-run the FIM storm to confirm the counter accounts for the 97% gap before changing buffer/rate behaviour."
+      "status": "CLOSED",
+      "closed_at": "2026-11-18",
+      "closed_by": "FIM-NATIVE-OVERFLOW-001-E5-20261118",
+      "resolution": "The helper now counts both overflow completions (ERROR_NOTIFY_ENUM_DIR and the zero-byte success) per session, the Zig watcher publishes the delta and queue.stats exposes fim_probe.native_overflow. E5 re-run: control batch 0 overflows, 20k storm 7 discarded batches with every pipeline loss counter at 0 and the minifilter covering 40,320 records; R1002 still fires. The lane stays as a counted fallback; record-level loss inside a discarded batch is unrecoverable by API design and is recorded as a limitation.",
+      "next_step": "If the native lane is ever promoted back to primary, bound or re-tune the 500 ms poll cadence in its own change and soak; the counter already makes the loss visible in the meantime."
     },
     {
       "id": "GAP-BRAIN-OUT-EVENTS",

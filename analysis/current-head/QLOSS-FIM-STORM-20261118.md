@@ -128,3 +128,8 @@ which is consistent with the delete aggregate.
   `ERROR_NOTIFY_ENUM_DIR` / zero-byte completions in the helper and surface a
   `fim_native_overflow` counter in `queue.stats`; then bound the rate or drain
   faster. Not fixed in this window.
+
+**Update 2026-11-18:** fixed and re-measured in
+`FIM-NATIVE-OVERFLOW-001-20261118.md` (source `aa42fca`, installed
+`a02fc7fb`). The storm now reports `fim_probe.native_overflow` +7 with zero
+pipeline loss; `GAP-FIM-NATIVE-OVERFLOW-003` is CLOSED at E5.

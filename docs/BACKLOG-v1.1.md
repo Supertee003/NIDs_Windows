@@ -27,7 +27,21 @@ maintenance window on this host with a hash-verified rollback.
 | `CAPTURE-DUP-WIFI-001` | P3 | E5 | This Wi-Fi adapter/Npcap delivers every frame twice | try another adapter/host config (raw 802.11, Killer prioritisation); or a bounded, counted dedup keyed by `(ip.id, tcp.seq, payload hash)` that cannot drop a real retransmission |
 | ~~`RULE-LAYER-SCOPE-001`~~ | P3 | **CLOSED E5** | — (see below) | — |
 | `GAP-QLOSS-ISOLATION-002` | — | E5 | Option A holds on both halves of the 20k stimulus: ETW 8,801/37,108 deletes filtered with an aggregate row, FIM 41,520 rows with 0 drops/0 quota/0 tail, ring 0, `R1002` canary passes. Option B was measured and rejected. Only the 24 h soak remains. | the single v1.1 24 h soak |
-| `GAP-FIM-NATIVE-OVERFLOW-003` | P2 | E5 | The native `ReadDirectoryChangesW` watcher dropped 38,841 of ~40,008 notifications (97.1%) in the FIM storm with no counter; `fim_native.c` treats a zero-byte overflow completion as "no data". The minifilter covered the same operations, so host coverage held, but the fallback lane is untrustworthy under burst. | count the overflow in `queue.stats`, re-run the storm, then decide whether the native lane stays a production fallback (code change forces rebuild + re-sign + soak) |
+| ~~`GAP-FIM-NATIVE-OVERFLOW-003`~~ | P2 | **CLOSED E5** | — (see below) | — |
+
+### Closed during the 2026-11-18 closure pass
+
+`GAP-FIM-NATIVE-OVERFLOW-003` (P2) is **CLOSED at E5**: the native
+`ReadDirectoryChangesW` helper counts both overflow completions
+(`ERROR_NOTIFY_ENUM_DIR` and the zero-byte success), the Zig watcher publishes
+the delta, and `queue.stats` exposes `fim_probe.native_overflow`. Re-measured on
+the deployed build `a02fc7fb` (source `aa42fca`): the 100-file control batch
+reports 0 overflows, the 20,004-file storm reports **7 discarded batches**, all
+pipeline loss counters stay 0, the minifilter delivers 40,320 records for the
+same operations, and `R1002` still fires. The counter is batch-level because
+Windows discards the buffer contents; the lane remains a counted fallback, not
+the primary FIM source. Record:
+`analysis/current-head/FIM-NATIVE-OVERFLOW-001-20261118.md`.
 
 ### Closed during the 2026-11-17 closure pass
 
