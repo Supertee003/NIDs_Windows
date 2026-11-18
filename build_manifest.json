@@ -1021,7 +1021,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "f821e80f52546ce93f33599f13237ecda1ac4c8416772e205eb9c6a5c7d88372",
+      "sha256": "a029b7ce2e88bcc1672c7caa5af11a0499ac9237c67f07969cf591e541db7a2a",
       "language": "json"
     },
     {
@@ -2478,8 +2478,8 @@
     },
     {
       "path": "src/pipeline/event_processor.zig",
-      "size": 57884,
-      "sha256": "f6237ed0d813b7d018632a18e94c5d0a506cf627c159f8b5dab46944da5ad04d",
+      "size": 59030,
+      "sha256": "ed6a95dd67a66dd34f1f2a39788b3749ca815000fdcb7b78f3a1401cc609b0d0",
       "language": "zig"
     },
     {
