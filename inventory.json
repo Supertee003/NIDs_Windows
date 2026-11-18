@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-18T09:51:26.772380+00:00",
+  "generated_at": "2026-11-18T10:28:52.624564+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 2483,
+  "total_files": 2484,
   "by_class": {
-    "canonical-docs": 468,
+    "canonical-docs": 469,
     "canonical-build": 261,
     "unclassified": 21,
     "canonical-source": 1307,
@@ -883,6 +883,12 @@
       "class": "unclassified",
       "role": "other",
       "size": 15943
+    },
+    {
+      "path": "analysis/current-head/PROCESS-CMDLINE-001-20261118.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5331
     },
     {
       "path": "analysis/current-head/PROJECT-CLOSEOUT-20261109.md",
@@ -2796,7 +2802,7 @@
       "path": "docs/BACKLOG-v1.1.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10000
+      "size": 10749
     },
     {
       "path": "docs/BASELINE_20260906.md",
@@ -3822,7 +3828,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1431872
+      "size": 1435009
     },
     {
       "path": "FLOW_MAP.json",
@@ -4188,7 +4194,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9693
+      "size": 9574
     },
     {
       "path": "pytest.ini",
@@ -10170,7 +10176,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23767
+      "size": 23219
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -12762,7 +12768,7 @@
       "path": "src/windows/etw_native.c",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 19596
+      "size": 20416
     },
     {
       "path": "src/windows/etw_realtime.zig",
@@ -14730,7 +14736,7 @@
       "path": "tools/release_candidate.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 11114
+      "size": 11493
     },
     {
       "path": "tools/release_engineering.py",
@@ -14913,5 +14919,5 @@
       "size": 624
     }
   ],
-  "source_commit": "9c9f22f"
+  "source_commit": "b600a25"
 }

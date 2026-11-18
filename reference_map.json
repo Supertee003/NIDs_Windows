@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-18T09:51:26.775958+00:00",
+  "generated_at": "2026-11-18T10:28:52.628162+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 2483,
+  "total_files": 2484,
   "by_role": {
-    "documentation": 453,
+    "documentation": 454,
     "build-config": 250,
     "other": 21,
     "lockfile": 6,
@@ -903,6 +903,10 @@
     "analysis/current-head/prepatch-working-tree-safety.diff": {
       "class": "unclassified",
       "role": "other"
+    },
+    "analysis/current-head/PROCESS-CMDLINE-001-20261118.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
     },
     "analysis/current-head/PROJECT-CLOSEOUT-20261109.md": {
       "class": "canonical-docs",
@@ -10257,5 +10261,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "9c9f22f"
+  "source_commit": "b600a25"
 }
