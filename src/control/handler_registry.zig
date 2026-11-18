@@ -780,11 +780,12 @@ const handlers = struct {
             }) catch return null;
         }
         writer.writeAll("],\"etw\":{") catch return null;
-        writer.print("\"process_start\":{},\"file_name_create\":{},\"name_create_deduped\":{},\"file_name_delete\":{},\"file_write\":{},\"file_write_filtered\":{},\"reg_create\":{},\"reg_set\":{},\"dropped_unmapped\":{},\"predecode_dropped\":{},\"shed_exempted\":{}}}", .{
+        writer.print("\"process_start\":{},\"file_name_create\":{},\"name_create_deduped\":{},\"file_name_delete\":{},\"name_delete_filtered\":{},\"file_write\":{},\"file_write_filtered\":{},\"reg_create\":{},\"reg_set\":{},\"dropped_unmapped\":{},\"predecode_dropped\":{},\"shed_exempted\":{}}}", .{
             telemetry.g_etw_classes.process_start.load(.acquire),
             telemetry.g_etw_classes.file_name_create.load(.acquire),
             telemetry.g_etw_classes.name_create_deduped.load(.acquire),
             telemetry.g_etw_classes.file_name_delete.load(.acquire),
+            telemetry.g_etw_classes.name_delete_filtered.load(.acquire),
             telemetry.g_etw_classes.file_write.load(.acquire),
             telemetry.g_etw_classes.file_write_filtered.load(.acquire),
             telemetry.g_etw_classes.reg_create.load(.acquire),

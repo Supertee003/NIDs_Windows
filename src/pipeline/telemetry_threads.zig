@@ -29,6 +29,13 @@ pub const EtwClasses = struct {
     file_name_create: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
     name_create_deduped: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
     file_name_delete: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
+    /// QLOSS-ETW-DELFILTER-001 (ADR-0014 option A): deletes dropped at the
+    /// source because their path is one no kernel-file rule can act on. A mass
+    /// delete that matters still passes (see shouldAdmitEtwWrite), so the match
+    /// set is unchanged -- only rows that could never carry a rule id go away,
+    /// and this counter keeps that reduction visible instead of looking like
+    /// lost throughput.
+    name_delete_filtered: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
     file_write: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
     /// Writes filtered at the source because their path is not one the rule
     /// set can act on (see shouldAdmitEtwWrite). Counted so the reduction is
@@ -168,6 +175,10 @@ fn containsIgnoreCase(haystack: []const u8, needle: []const u8) bool {
 /// callback still checks the raw TLV payload for a protected path, so a
 /// decoder regression cannot black out a System32 write that is present in the
 /// bytes.
+/// True when a file path is one the kernel-file rule set can act on. Despite the
+/// name it is the path-admission question for every Kernel-File name event: the
+/// write filter (QLOSS-ETW-WRITEFILTER-001) and the delete filter
+/// (QLOSS-ETW-DELFILTER-001) both ask it, so the two lanes cannot drift apart.
 pub fn shouldAdmitEtwWrite(path: []const u8) bool {
     if (path.len == 0) return false;
     if (queue.isCriticalPath(path)) return true;
@@ -179,6 +190,22 @@ pub fn shouldAdmitEtwWrite(path: []const u8) bool {
     if (containsIgnoreCase(path, "\\windows\\syswow64\\")) return true;
     if (containsIgnoreCase(path, "\\startup\\")) return true;
     return false;
+}
+
+/// True when a path matches a pattern in the kernel-file rule layer -- the
+/// question the delete filter must ask to leave the match set unchanged
+/// (ADR-0014 option A: only rows that could never carry a rule id go away).
+///
+/// Fail-open on purpose: before the layered automaton is installed (startup) or
+/// when the reload lock is busy, the caller keeps the row. Dropping a row we
+/// could not evaluate would trade coverage for throughput, which is the trade
+/// this filter must not make.
+pub fn pathMatchesKernelFileRule(path: []const u8) bool {
+    if (path.len == 0) return false;
+    if (!state.g_ac_mutex.tryLock()) return true;
+    defer state.g_ac_mutex.unlock();
+    const ac = state.g_layer_ac[@intFromEnum(state.RuleLayer.kernel_file)] orelse return true;
+    return ac.matchFirst(path) != null;
 }
 
 /// Scan the raw TLV payload for a protected **file path** (kind 3 only).
@@ -351,6 +378,21 @@ fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []cons
         return;
     }
 
+    // QLOSS-ETW-DELFILTER-001 (ADR-0014 option A, the delete half): the same
+    // rule-path question answered for NameDelete. A delete of a path no
+    // kernel-file rule can act on is not enqueued; a delete that DID pass the
+    // rule-path check is signal and is exempt from the storm shed below, exactly
+    // as a critical write is. Nothing that could raise a rule disappears.
+    const is_name_delete = std.mem.eql(u8, &rec.provider_guid, &etw.KERNEL_FILE_GUID.guid) and
+        rec.event_id == 0x0B;
+    const critical_delete = is_name_delete and
+        (pathMatchesKernelFileRule(rec.filePath()) or shouldAdmitEtwWrite(rec.filePath()) or
+        payloadFileHasCriticalPath(ext_data));
+    if (is_name_delete and !critical_delete) {
+        _ = g_etw_classes.name_delete_filtered.fetchAdd(1, .monotonic);
+        return;
+    }
+
     // Queue storage is bounded; hash and measure the exact bytes that will be
     // copied so forensic metadata cannot claim more payload than was retained.
     const payload_len = @min(ext_data.len, queue.MAX_PAYLOAD_BYTES);
@@ -362,7 +404,7 @@ fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []cons
     // downstream. First sightings are exempt (tryExempt) so a new file's
     // content is always evaluated once even mid-storm; FIM duplicates
     // deletes regardless.
-    if (!critical_write and isStormSheddable(&rec.provider_guid, rec.event_id) and
+    if (!critical_write and !critical_delete and isStormSheddable(&rec.provider_guid, rec.event_id) and
         etwSharePressure(queue.queueDepth(), queue.sourceOccupancy(.capture_etw)))
     {
         if (!tryExempt(payload, std.time.milliTimestamp())) {

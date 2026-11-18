@@ -8487,6 +8487,33 @@
         "R2003 (IEX) still cannot fire: the producing lane carries the image path only, not the command line.",
         "The positive control is one rule (R2004) on one stimulus; R2001/R2002 remained at 0 in the same window but that is a negative control, not proof they work."
       ]
+    },
+    {
+      "id": "QLOSS-DELFILTER-001-E5-20261118",
+      "head_sha": "ed2d7c1",
+      "timestamp": "2026-11-18",
+      "level": "E5",
+      "flow_id": "FIM-001",
+      "component": "C:/Program Files/AEGIS NIDS/runtime/aegis_nids.exe",
+      "title": "ETW deletes that no kernel-file rule can act on stop entering the pipeline; the R1002 lane still fires",
+      "description": "ADR-0014 option A, delete half: a Kernel-File NameDelete (Id 0x0B) is not enqueued unless its path matches the kernel-file rule layer, and a delete that does match is exempt from the storm shed. The admission question is pathMatchesKernelFileRule(), which asks the actual layer-1 automaton under the reload lock and fails OPEN (admit) when the layer is not installed or the lock is busy, so coverage is never traded for throughput. Every dropped row is counted in g_etw_classes.name_delete_filtered and surfaced in queue.stats. Measured on the installed build c8a1696d646410c5 (same sha256 as zig-out/bin/aegis_nids.exe, service RUNNING): after deleting a noise file (D:\tmp\u0007egis-canary\\plain.tmp) and a rule-visible file (del.locked) the counters read file_name_delete 44 / name_delete_filtered 43 -- exactly the rule-visible delete passed -- and 'forensic search --field rule --value R1002' matched 2 records, so the R1002 lane still works while the noise deletes stop entering the pipeline.",
+      "evidence_artifact": "src/pipeline/telemetry_threads.zig",
+      "artifacts": [
+        "src/pipeline/telemetry_threads.zig",
+        "src/control/handler_registry.zig",
+        "configs/Rules.json"
+      ],
+      "commands": [
+        "zig build test",
+        "zig build",
+        "aegisctl queue --json",
+        "aegisctl forensic search --field rule --value R1002"
+      ],
+      "limitations": [
+        "Acceptance criterion 1 of the ADR (total drops and shed_overload strictly below the QLOSS baseline for the same stimulus) is NOT measured yet: it needs a controlled storm plus the 24 h soak, and the soak is the last step.",
+        "The aggregate row for a mass delete (one high-count event with top-N prefixes) is not implemented yet; today the reduction is visible only as the name_delete_filtered counter.",
+        "Option B (batched forensic append) is not started; the ADR itself gates it on the measurement above."
+      ]
     }
   ],
   "known_gaps": [
@@ -14736,7 +14763,7 @@
       "level": "E2",
       "component": "src/pipeline/event_queue.zig admission; FIM/ETW ingress volume",
       "flow_id": "QLOSS-HEALTH-001",
-      "description": "The per-source fair share was over-subscribed against the working tail (two caps 7,680 = 15,360 > 14,336), so the shared boundary could still refuse a second host source before its own cap. Source 12093dd sizes the cap from WORKING_HOST_TAIL and pins the invariant at unit level. The remaining QLOSS loss is the storming source's own excess, which no queue/cap change can remove.",
+      "description": "Option A chosen by the owner (A + B in one batch). Delete half landed at E5 (QLOSS-DELFILTER-001-E5-20261118): NameDelete rows whose path matches no kernel-file rule are dropped at the source, matching deletes are exempt from the storm shed, and the reduction is counted in queue.stats as name_delete_filtered (measured 43 filtered / 44 admitted, R1002 still firing). Still open: the mass-delete aggregate row, option B (batched forensic append), the storm measurement against the QLOSS baseline, and the 24 h soak.",
       "files_changed": [
         "src/pipeline/event_queue.zig",
         "docs/adr/0010-host-telemetry-admission.md"
@@ -14756,7 +14783,7 @@
       "status": "OPEN",
       "closed_at": "2026-11-08",
       "evidence": "QLOSS-ISOLATION-002-E5-20261108: both host sources reach their full 7,168 share on the deployed daemon with reserved_tail_shed 0 and all 206,999 refusals attributed to source_quota_shed.",
-      "next_step": "reduce FIM/ETW ingress volume from the storming source, starting with the ETW Kernel-File NameDelete lane (18.15M rows, the real volume lever) rather than the 2.4M minifilter lane; not required for detection-only delivery",
+      "next_step": "Emit the aggregate row for mass deletes (one event with count, top-N prefixes, sample path), then decide B from the measurement the ADR asks for, then run the storm comparison and the soak.",
       "current_observation": "2026-11-14 soak: queue dropped 0, shed_overload 0, loss_budget 3500 over 2.5 h; no loss observed under current load"
     },
     {
@@ -15111,10 +15138,10 @@
     "E2_count": 125,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 107,
+    "E5_count": 108,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 57,
+    "E5_with_artifact_count": 58,
     "known_gaps_count": 285
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
