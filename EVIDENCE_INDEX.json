@@ -8990,6 +8990,54 @@
         "No EV/HLK driver signing, clean-machine boot model, or WFP enforcement is proven.",
         "The Wi-Fi ratio probe stayed non-zero; the byte-level probe found 0 identical pairs, so the item stays open per the runbook."
       ]
+    },
+    {
+      "id": "AI-HANDOFF-AUDIT-F4CDE3C-20261119",
+      "head_sha": "96adeb2",
+      "timestamp": "2026-11-19",
+      "level": "E1",
+      "flow_id": "REL-001",
+      "component": "all AI worktrees, stash and scratch handoffs",
+      "title": "Read-only handoff audit before the single final soak",
+      "description": "Inspected all 9 registered worktrees, every .manus/worktrees/* directory, stash@{0}, .work/, .manus/mcp-results, .cloud-attachments and root AEGIS_*HANDOFF* reports against delivery tip 96adeb2 / build source f4cde3c. No genuinely unmerged current work; nothing to port. Copilot WIP branches are superseded; the dirty bsvfv3ocng18lqju64moj event_processor.zig is a fail-open reversion that must not be copied; the fail-closed slice is already f4cde3c.",
+      "evidence_artifact": "analysis/current-head/AI-HANDOFF-AUDIT-20261119.md",
+      "artifacts": [
+        "analysis/current-head/AI-HANDOFF-AUDIT-20261119.md",
+        "analysis/current-head/CURRENT-STATUS-20261118.md"
+      ],
+      "commands": [
+        "git worktree list --porcelain",
+        "git status --short (each worktree)",
+        "git merge-base --is-ancestor <worktree HEAD> 96adeb2"
+      ],
+      "limitations": [
+        "Read-only inspection; no worktree content was copied or merged.",
+        "Records-level audit of handoff completeness; it does not re-run product tests."
+      ]
+    },
+    {
+      "id": "SOAK-VOID-OWNER-AUDIT-20261119",
+      "head_sha": "96adeb2",
+      "timestamp": "2026-11-19",
+      "level": "E5",
+      "flow_id": "REL-001",
+      "component": "24 h host soak window 2026-11-19T01:44:10",
+      "title": "Second soak window voided by owner decision so all handoffs finish first",
+      "description": "The window opened 2026-11-19T01:44:10 on the rebuilt b597e71 image was stopped at 0.2 h by owner decision before the handoff audit. Last check: 0 loss, 0 shed, no problems, 4/4 services RUNNING, verdict IN_PROGRESS. Disposition VOIDED_BY_OWNER_DECISION_PENDING_HANDOFF_AUDIT; not a failure and not release proof. A fresh 24 h window with --baseline auto is required after the audit.",
+      "evidence_artifact": "admin-evidence/e5-clean-host-20261119-final/voided-soak-owner-audit-20261119.json",
+      "artifacts": [
+        "admin-evidence/e5-clean-host-20261119-final/voided-soak-owner-audit-20261119.json",
+        "admin-evidence/e5-clean-host-20261119-final/soak-24h-delta-20261119-0144.json",
+        "admin-evidence/e5-clean-host-20261119-final/soak-24h-delta-20261119-0149.json",
+        "admin-evidence/e5-clean-host-20261119-final/soak-watch.log"
+      ],
+      "commands": [
+        "python tools\\host_soak_check.py --start auto --hours 24 --loss-budget 3500 --shed-budget 20000 --baseline soak-24h.baseline.json --json soak-24h-delta-latest.json"
+      ],
+      "limitations": [
+        "Never reached PASS; deliberately stopped before the 24 h requirement.",
+        "No host change or restart occurred during the window."
+      ]
     }
   ],
   "known_gaps": [
@@ -15655,14 +15703,14 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 24,
+    "E1_count": 25,
     "E2_count": 131,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 117,
+    "E5_count": 118,
     "E6_count": 1,
     "E7_count": 3,
-    "E5_with_artifact_count": 67,
+    "E5_with_artifact_count": 68,
     "known_gaps_count": 287
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."

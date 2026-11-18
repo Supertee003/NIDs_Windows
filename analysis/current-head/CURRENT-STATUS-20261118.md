@@ -224,19 +224,33 @@ on the pre-change installed image is **VOIDED BY SUPERSEDED BUILD** because the
 fail-closed source slice moved the build source to `f4cde3c`. It never reached
 PASS and is not a failed soak. It is retained only for provenance.
 
-**Active final window:** started `2026-11-19T01:44:10` on the rebuilt
-`b597e71` image; baseline `admin-evidence/e5-clean-host-20261119-final/soak-24h.baseline.json`;
-first delta `soak-24h-delta-20261119-0144.json` (`IN_PROGRESS`, 0/24 h, all loss
-and shed counters 0, 4/4 services RUNNING). Due `2026-11-20T01:44:10`.
+**Second window also voided:** the window started `2026-11-19T01:44:10` was
+stopped at 0.2 h by owner decision so every AI handoff could be audited first.
+It is `VOIDED_BY_OWNER_DECISION_PENDING_HANDOFF_AUDIT` in
+`admin-evidence/e5-clean-host-20261119-final/voided-soak-owner-audit-20261119.json`
+(0 loss, 0 shed, no problems, 4/4 services RUNNING, never PASS). It is not a
+failure and not release proof.
 
-1. Do not install, restart, switch capture topology, or run adversarial load
-   during the window. Recheck with the same baseline and finish after 24 h with
-   `--loss-budget 3500 --shed-budget 20000`, then follow steps 7–8 of
+**Handoff audit:** `analysis/current-head/AI-HANDOFF-AUDIT-20261119.md` inspected
+all 9 worktrees, the stash and all scratch locations. No genuinely unmerged
+current work exists; nothing to port. The fail-open reversion in
+`bsvfvv3ocng18lqju64moj` must **not** be copied.
+
+**PR #36 conflict resolved before the soak:** `63990c8` merged `origin/main`
+(`daf9088`) into `codex/v1.1-release` with `-s ours`. The release tree, build
+source `f4cde3c`, signed candidate `b597e71` and installer are unchanged; only
+the PR's mergeability was fixed.
+
+1. Start one fresh 24 h window with `--baseline auto` on the unchanged build;
+   record its new baseline and first delta, then recheck against **that**
+   baseline. Do not install, restart, switch capture topology, or run
+   adversarial load during the window. Finish with `--loss-budget 3500
+   --shed-budget 20000` and follow steps 7–8 of
    `docs/runbooks/RB-024-final-release-window.md`.
 2. When the soak is PASS, rerun `final_audit.py --release-check` for 6/6, record
-   the final artifact paths in `EVIDENCE_INDEX.json`, resolve PR #36 by taking
-   the release tree, merge `codex/v1.1-release` into `main`, tag `v1.1`, and
-   delete the release branch. Do not merge or tag before then.
+   the final artifact paths in `EVIDENCE_INDEX.json`, merge
+   `codex/v1.1-release` into `main`, tag `v1.1`, and delete the release branch.
+   Do not merge or tag before then.
 
 ## Out of scope on this host (record as limitations, never as passes)
 
@@ -246,17 +260,19 @@ and shed counters 0, 4/4 services RUNNING). Due `2026-11-20T01:44:10`.
   test certificate installed).
 - Production host-effect/WFP enforcement (detection-only by design).
 
-## AI handoff disposition (recorded 2026-11-19, soak window active)
+## AI handoff disposition (audited 2026-11-19, before the final soak)
 
 These local-only `.manus/worktrees/*` artifacts are inventoried so no handoff is
 silently lost. None is on the delivery branch and none changes the current
-build source `f4cde3c`.
+build source `f4cde3c`. The full read-only audit is
+`analysis/current-head/AI-HANDOFF-AUDIT-20261119.md`: **no unmerged current
+work; nothing to port.**
 
 | Worktree / artifact | Disposition |
 |---|---|
 | `gqdpidnmund6c83v5uk40n` (`closeout/rule-layer-failclosed-001`, `3aafce0` + `e8112be`) | **INCLUDED IN v1.1 (owner decision 2026-11-19).** Ported onto current source as build source `f4cde3c` (the old patch used the pre-PROC-LAYER one-argument mapper). The fail-closed selection seam and the additive `rule_layer_unavailable_events` metric are proven at E2 in `RULE-LAYER-FAILCLOSED-001-20261119.md`. Because this moved the build source, the earlier 24 h window is voided and RB-024 + soak restart once on `f4cde3c`. |
 | `bvgnivewxkgl19ends2e4n` (untracked `RELEASE-SIG-CRYPTO-BYPASS-20261118.md`, `TRUTH-AND-EVIDENCE-RECONCILIATION-20261118.md`) | **SUPERSEDED.** Written against source `b955f91` / records `ef728b3`. Their OPEN P0 claims (#33 crypto bypass, #32 source/evidence reconciliation) are resolved at release tip by the Ed25519 trust-anchor gate and the records-only truth fixes; both issues are closed on GitHub. Banners added in place; do not port as current claims. |
-| `bsvfvv3ocng18lqju64moj` (detached `f01bc04`, dirty board files + comment-only `event_processor.zig` + untracked `release/T20-final/09ced4f/`) | **HISTORICAL / TOOL SIDE-EFFECT.** The T20 commit-stamp rewrites are produced by running `final_audit.py`; the Zig edit is a comment only. Nothing needed for v1.1. |
+| `bsvfvv3ocng18lqju64moj` (detached `f01bc04`, dirty board files + dirty `event_processor.zig` + untracked `release/T20-final/09ced4f/`) | **HISTORICAL — DO NOT PORT.** The dirty Zig file **reverts** `resolveRuleAutomaton`, `g_ac_skipped_unavailable_layer` and the fail-closed test; copying it would reintroduce fail-open. Board rewrites are `final_audit.py` side-effects. Nothing needed for v1.1. |
 | `crtxl0uoqqyft7d3oxbl4y` (`fix/stopline-truth-ci-signature-001`, `317693b`) | **INCORPORATED / SUPERSEDED.** Signature-verification work is in the delivery branch, which also carries the newer newest-PASS preflight selection. |
 | `.manus/mcp-results`, `.cloud-attachments`, `.work`, root `AEGIS_*HANDOFF*` reports | **HISTORICAL / IGNORED SCRATCH.** Transient tool payloads, old lab scratch and 2026-09/10 handoffs; no current release claim. |
 
