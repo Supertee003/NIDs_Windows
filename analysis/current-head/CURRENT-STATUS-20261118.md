@@ -105,23 +105,39 @@ plus a deliberate restart.
 ## Release candidate and bundle — closed
 
 `release/T20-final/ad7948c` predated the shipped runtime, so it could not close
-`release_signature`. A new candidate was assembled from records HEAD `f5cc38e`
+`release_signature`. A new candidate was assembled from records HEAD `bece8f1`
 (build source `4169839`) and signed with the same ed25519 key as before:
 
 ```
-release/T20-final/f5cc38e        302 files on disk, 255 checksum entries
-SHA256SUMS                       358FD0A37A865B609C7E53DBE3A2C6F18683372ADF592E38FD97399CD9C17E00
+release/T20-final/bece8f1        258 files on disk, 251 checksum entries
+SHA256SUMS                       B008EA1CFA24A1A504E80DC950274790C1BF2B7FDAEE49B3D7BE36E8DA17C754
 signatures.json                  ed25519, public key txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o=
 dist/aegis_setup_6.0.0_trial.exe 6233653 B, sha256 BC61B102933C30D8DD404363D088F4DEA503D825E44C8F57FFA4D1B082769C14
 ```
 
-The installer packages `zig-out\bin\aegis_nids.exe` from `4169839`, so the
-bundle and the signed tree carry the same runtime. Gate board:
+All 251 per-file digests recompute from the bytes on disk (0 mismatches, 0
+missing). The installer packages `zig-out\bin\aegis_nids.exe` from `4169839`, so
+the bundle and the signed tree carry the same runtime.
+
+Two defects were found by checking the artifact instead of trusting `RC PASS`:
+
+- **SIGNED-TREE-001** — `* text eol=lf` rewrote the signed `SHA256SUMS` bytes on
+  commit (`C1502245...` signed vs `0A86680F...` committed for `ad7948c`), so a
+  signature verified on this machine and failed on every clone. `release/**` is
+  now `-text`, every signed tree is re-staged byte-for-byte, and
+  `tests/release/test_signed_tree_bytes.py` recomputes each committed digest.
+- **PACKAGING-CACHE-001** — the first candidate copied
+  `brain/aegis_brain_cython/.pytest_cache/` into the signed tree, making the
+  bytes unreproducible and shipping local test names. `release_candidate.py`
+  now ignores tool/test caches and a pin covers it; that tree was deleted and
+  rebuilt.
+
+Gate board:
 
 ```
 PASS  truth_artifacts     TRUTH_VALID at source 4169839
 PASS  component_audit     66/66 modules, 0 production failures, part_ii 5/5
-PASS  release_signature   f5cc38e signs SHA256SUMS; commit contains runtime 4169839
+PASS  release_signature   bece8f1 signs SHA256SUMS; commit contains runtime 4169839
 PASS  clean_host_e5       2026-11-14 preflight, loader under C:\Program Files\AEGIS NIDS
 OPEN  soak_24h            no 24 h artifact covers source 4169839
 PASS  evidence_debt       0 unnamed product files

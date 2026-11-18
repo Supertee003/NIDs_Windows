@@ -8746,29 +8746,33 @@
       "level": "E7",
       "flow_id": "REL-001",
       "component": "tools/release_candidate.py, tools/sign_release.py, tools/installer.py, tools/final_audit.py",
-      "title": "The release candidate was rebuilt from current source, signed with the existing anchor and re-verified by the gate",
-      "description": "release/T20-final/ad7948c predated the shipped runtime and could not close release_signature. A new candidate was assembled at records HEAD f5cc38e (build source 4169839) carrying 302 files and a 255-entry SHA256SUMS hashing to 358FD0A37A865B609C7E53DBE3A2C6F18683372ADF592E38FD97399CD9C17E00. tools/sign_release.py signed those bytes with the ed25519 key that signed the previous candidate (public key txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o=), so the trust anchor has continuity rather than a new key. tools/final_audit.py --release-check with AEGIS_RELEASE_TRUSTED_PUBLIC_KEY set now reports release_signature PASS: the detached signature verifies, the digest matches the SHA256SUMS bytes, the signed commit is in HEAD history for the first time in this lineage (the previous candidate's commit was earlier), the signed commit contains runtime 4169839, and the signer key matches the owner anchor. The 6.0.0 bundle (dist/aegis_setup_6.0.0_trial.exe, 6233653 bytes, sha256 BC61B102933C30D8DD404363D088F4DEA503D825E44C8F57FFA4D1B082769C14) packages zig-out/bin/aegis_nids.exe as built from 4169839. Gate board is 5/6 PASS; soak_24h is the only open gate and is the owner's final step.",
-      "evidence_artifact": "analysis/current-head/RC-F5CC38E-20261118.md",
+      "title": "The release candidate was rebuilt from current source, signed with the existing anchor, and its signature proven to survive a clone",
+      "description": "release/T20-final/ad7948c predated the shipped runtime, so release_signature could not close. The candidate is release/T20-final/bece8f1, assembled at records HEAD bece8f1 from build source 4169839: 258 files on disk, 251 checksummed entries, SHA256SUMS hashing to B008EA1CFA24A1A504E80DC950274790C1BF2B7FDAEE49B3D7BE36E8DA17C754, signed with the ed25519 key that already signed ad7948c (txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o=), so the trust anchor has continuity rather than new key material. All 251 per-file digests were recomputed from the bytes on disk: 0 mismatches, 0 missing. final_audit --release-check with AEGIS_RELEASE_TRUSTED_PUBLIC_KEY set reports release_signature PASS. Two defects were found by checking the artifact rather than trusting RC PASS. SIGNED-TREE-001: '* text eol=lf' rewrote the signed SHA256SUMS bytes on commit, so ad7948c and the first candidate verified on the signing machine and would fail on every clone; release/** is now -text, the trees are re-staged byte-for-byte, and tests/release/test_signed_tree_bytes.py recomputes every committed digest. PACKAGING-CACHE-001: the first candidate copied brain/aegis_brain_cython/.pytest_cache into the signed tree (unreproducible bytes, local test names shipped); release_candidate.COPY_IGNORE now drops test/tool caches and tests/release/test_release_candidate_packaging.py pins it. That first tree was deleted and rebuilt. The 6.0.0 bundle (dist/aegis_setup_6.0.0_trial.exe, 6233653 bytes, sha256 BC61B102933C30D8DD404363D088F4DEA503D825E44C8F57FFA4D1B082769C14) packages zig-out/bin/aegis_nids.exe as built from 4169839. Gate board is 5/6 PASS; soak_24h is the only open gate and is the owner's final step.",
+      "evidence_artifact": "analysis/current-head/RC-BECE8F1-20261118.md",
       "artifacts": [
-        "release/T20-final/f5cc38e/SHA256SUMS",
-        "release/T20-final/f5cc38e/signatures.json",
-        "release/T20-final/f5cc38e/SBOM.json",
-        "release/T20-final/f5cc38e/KNOWN_LIMITATIONS.md",
-        "release/T20-final/f5cc38e/ROLLBACK.md",
-        "dist/aegis_setup_6.0.0_trial.exe"
+        "release/T20-final/bece8f1/SHA256SUMS",
+        "release/T20-final/bece8f1/signatures.json",
+        "release/T20-final/bece8f1/SBOM.json",
+        "release/T20-final/bece8f1/KNOWN_LIMITATIONS.md",
+        "release/T20-final/bece8f1/ROLLBACK.md",
+        "tools/release_candidate.py",
+        "tests/release/test_signed_tree_bytes.py",
+        "tests/release/test_release_candidate_packaging.py"
       ],
       "commands": [
         "python tools/release_candidate.py",
-        "python tools/sign_release.py --sign --dir release/T20-final/f5cc38e --key-file .keys/aegis-release.ed25519",
-        "python tools/sign_release.py --verify --dir release/T20-final/f5cc38e",
+        "python tools/sign_release.py --sign --dir release/T20-final/bece8f1 --key-file .keys/aegis-release.ed25519",
+        "python tools/sign_release.py --verify --dir release/T20-final/bece8f1",
         "set AEGIS_RELEASE_TRUSTED_PUBLIC_KEY=txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o= && python tools/final_audit.py --release-check",
+        "python -m pytest -q tests/release/test_signed_tree_bytes.py tests/release/test_release_candidate_packaging.py",
         "python tools/installer.py --package --output dist/aegis_setup_6.0.0_trial.exe"
       ],
       "result": "PASS",
       "limitations": [
         "The installer has not been installed on this host: no elevated session was available, so the in-place upgrade, rollback drill and a current-source clean_host_e5 preflight are still owner steps.",
         "clean_host_e5 passes on the 2026-11-14 preflight, which predates build source 4169839; it proves the gate's shape, not this build.",
-        "The installer file sits under dist/, which is ignored and therefore not committed; its sha256 is recorded here instead."
+        "The installer sits under dist/, which is ignored and not committed; its sha256 is recorded here instead.",
+        "Seven tree files carry no digest: SHA256SUMS, signatures.json, KNOWN_LIMITATIONS.md, ROLLBACK.md and the three generated reports. They are the tree's own metadata, not shipped runtime."
       ]
     }
   ],
