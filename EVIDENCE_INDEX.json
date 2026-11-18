@@ -15029,8 +15029,17 @@
       "detail": "LNK1104 on dist/aegis_ipc.dll; a write-open is Permission denied with a normal ACL, so a process maps it. Stopping AegisNids does not clear it. 579 other release/security tests pass.",
       "next_step": "identify the mapping process with an elevated handle query (or clear it with a reboot) and rerun the single test; the product does not read dist/, so the release itself is unaffected",
       "reverified_by": "DIST-DLL-LOCK-001-E5-20261117",
-      "closed_note": "The artifact was held by a stray elevated pythonw (PID 3168) left by an earlier automation run. Stopping it released the file and test_bridge_builds_into_dist passes; the suite that had carried this as a red is green (tests/release/test_native_build_and_scripts.py 10/10).",
-      "remaining": "none"
+      "closed_note": "Stopping the stray elevated pythonw (PID 3168) released the file once, but the same class of session-0 process held it again (PID 3800) and the artifact answered PermissionError on append during the 2026-11-18 scan. What removed the dependency is the test change: bridge/ is now built from a scratch copy, so its ../dist is scratch too, and a holder on the repository's dist/ can neither fail the test nor fake a pass for it (tests/release/test_native_build_and_scripts.py, 10 passed). The gap is closed because the suite no longer depends on that host state -- not because the holder is gone.",
+      "remaining": "A stray elevated pythonw in session 0 still maps the repository's dist/aegis_ipc.dll; killing it needs elevation and is now hygiene only."
+    },
+    {
+      "id": "FORENSIC-SEARCH-EMPTY-001",
+      "status": "OPEN",
+      "severity": "P2",
+      "title": "aegisctl forensic search reports 0 matches for records that exist (rule and payload_prefix)",
+      "description": "Measured 2026-11-18 on the installed build: 'aegisctl forensic search --field rule --value R9059' and '--field payload_prefix --value GET /scan' both return records_matched 0, records_returned 0, truncated false, on a ring of 18.7 M records, while 'aegisctl events tail --count 20 --src-ip 192.168.126.1 --json' shows R9059 rows produced minutes earlier from the same stimulus. Candidates: the client-side rule hashing in the search path differs from hashRuleId; the scan window does not cover the records; or payload_prefix is compared against the wrong byte span. It matters because searching the ring is the operator's only way back from a record to its bytes, and the 2026-11-17 note that payload-prefix returns 0 on this build is an unexplained defect rather than a usage quirk (the correct invocation is --field payload_prefix --value ...; --json is not accepted there).",
+      "recorded_by": "analysis/current-head/PROJECT-SCAN-20261118.md",
+      "next_step": "Compare the search path's rule hashing with the runtime hashRuleId, confirm which records the scan walks, and pin the result; then re-measure both fields with a stimulus whose rule id is known."
     }
   ],
   "evidence_level_summary": {
@@ -15043,7 +15052,7 @@
     "E6_count": 1,
     "E7_count": 2,
     "E5_with_artifact_count": 55,
-    "known_gaps_count": 283
+    "known_gaps_count": 284
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
 }
