@@ -1033,7 +1033,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "8305376c27372bcd277cb0d2661a096975f4f407b3018b7d9d8ad0e021b948e8",
+      "sha256": "9e4b093c19ead7b3069d3014cf88dce4a3e5d59babc50f847d35168005e484b1",
       "language": "json"
     },
     {
@@ -2046,8 +2046,8 @@
     },
     {
       "path": "src/control/handler_registry.zig",
-      "size": 164717,
-      "sha256": "f4458e6cf7212b359497656c0d2e86c8af723a87306260f57f010e532cebaf7d",
+      "size": 165568,
+      "sha256": "fccdf7496307c0c36f0eb4696ab815b0a6526f689b6b409b66875c3925a109ae",
       "language": "zig"
     },
     {
@@ -2520,8 +2520,8 @@
     },
     {
       "path": "src/pipeline/event_processor.zig",
-      "size": 59139,
-      "sha256": "95e337e0710e55957a34d7a11b253a083f387efd7f7b1a8a809d14a34dfd876c",
+      "size": 63451,
+      "sha256": "01291dd61872a52ddb0e4e0ea8d63d901c0f63db876f5fb2839d140b82daab8c",
       "language": "zig"
     },
     {
@@ -2550,14 +2550,14 @@
     },
     {
       "path": "src/pipeline/rule_loader.zig",
-      "size": 34152,
-      "sha256": "d82f84276d304249e790c9f9866f6884b577e550611165711c46334ff064d67f",
+      "size": 34431,
+      "sha256": "250316120da03d8a4f80bc3996699c1c0893d60bc37255d638477c08fc1b93c3",
       "language": "zig"
     },
     {
       "path": "src/pipeline/runtime_state.zig",
-      "size": 24480,
-      "sha256": "44625be4d76935fecb180b3c1a120b1fd290e19d45f2ec74adc4a719233d7bc6",
+      "size": 24944,
+      "sha256": "cc0ff85cc2f76cc26ce118a7988843d7b8f6e25451a583072c7bbb1423b255c0",
       "language": "zig"
     },
     {
