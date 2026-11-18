@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "aa42fca",
+  "source_commit": "4169839",
   "build_date": "2026-10-23T00:00:00.000000+00:00",
   "build_host": "windows",
   "platform": {
@@ -198,8 +198,8 @@
   "artifacts": [
     {
       "path": ".github/workflows/ci.yml",
-      "size": 13397,
-      "sha256": "22878fc48bf740d7a04bdbdf079d85c20e24a81a8ef31922b0036b11ada82302",
+      "size": 13742,
+      "sha256": "3c21cdec8803543b617b8acea39ee690c8ad550a8d7136e12d883174168a3972",
       "language": "yaml"
     },
     {
@@ -959,6 +959,12 @@
       "language": "go"
     },
     {
+      "path": "nose/payload_v3_test.go",
+      "size": 10583,
+      "sha256": "aaa4f59959df28a19074bb4bfb9199eeb064d11b9c4734450b21c46b9a272f88",
+      "language": "go"
+    },
+    {
       "path": "nose/pipe_writer.go",
       "size": 5423,
       "sha256": "1241cb1b05fcc11c5706d9360063e8a25ca71c07b139a8f075287cbdf1a00a80",
@@ -1013,6 +1019,12 @@
       "language": "go"
     },
     {
+      "path": "nose/verdict_authority_test.go",
+      "size": 3657,
+      "sha256": "832b901430237b3975c9460770394be29dae5161577e53babba0d00d7e7ee282",
+      "language": "go"
+    },
+    {
       "path": "requirements.txt",
       "size": 528,
       "sha256": "7d295f60b0f82d744c78773ad22745dbad02b3fccb96abd61a2df338036266df",
@@ -1021,7 +1033,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "e4a5ad601e77c7cebebe616c1a61aee907b826581003fe0ccff6d992764d1f4b",
+      "sha256": "d737a1fbe690013caaf711ea7dff892f96bafe779b12d02abbf4660c3b1b0828",
       "language": "json"
     },
     {
@@ -1181,6 +1193,12 @@
       "language": "python/cython"
     },
     {
+      "path": "scripts/boot-sequence.ps1",
+      "size": 5531,
+      "sha256": "265aeabbb8ff450e02579be3df58b6f3e19ec900a0378407a667fd0085b68850",
+      "language": "script"
+    },
+    {
       "path": "scripts/build_all.bat",
       "size": 8820,
       "sha256": "d656b41e7f81c7fd510d061c09ba4ea243c4c5fde4253fb2b6c7ba2073fa6b1f",
@@ -1275,6 +1293,12 @@
       "size": 11606,
       "sha256": "3b333c3944eb2128006e3c0890991fcc6245ae66e3224d37462469a5fc048ab3",
       "language": "python/cython"
+    },
+    {
+      "path": "scripts/e5-clean-host.ps1",
+      "size": 7199,
+      "sha256": "5b3a25a3c8106ca7c66ef255ddfa148fb6a940d39e9107593e6e3e942ac0a4ef",
+      "language": "script"
     },
     {
       "path": "scripts/e5-o2-remote-sink.json",
@@ -1449,6 +1473,12 @@
       "size": 6483,
       "sha256": "f387bbd813f58d740844accb31c0839930ff120dbafff36db767187f4efb0554",
       "language": "python/cython"
+    },
+    {
+      "path": "scripts/install-boot-task.ps1",
+      "size": 3922,
+      "sha256": "080830d6cd1db83bf45d9d570e463224ca539437b4b1af2ee1e2934d44188b22",
+      "language": "script"
     },
     {
       "path": "scripts/install_aegis.ps1",
@@ -1872,8 +1902,8 @@
     },
     {
       "path": "src/capture/npcap_adapter.zig",
-      "size": 20179,
-      "sha256": "3a20b9a2ccb1e305571dd3ea5ebf39af4dc87f0fdcba32a3702704e2f06cb841",
+      "size": 26191,
+      "sha256": "8f9296b55c784aeae5e41b3adbea8c9ee566bf9ca248243e765fb65e5950a608",
       "language": "zig"
     },
     {
@@ -2016,8 +2046,8 @@
     },
     {
       "path": "src/control/handler_registry.zig",
-      "size": 164341,
-      "sha256": "cbebcc0d0ec62d097ce276a7d7564a1c28fa6258308378a7d6f32c0f90561b21",
+      "size": 164717,
+      "sha256": "f4458e6cf7212b359497656c0d2e86c8af723a87306260f57f010e532cebaf7d",
       "language": "zig"
     },
     {
@@ -2166,8 +2196,8 @@
     },
     {
       "path": "src/daemon.zig",
-      "size": 52024,
-      "sha256": "2c56d511cc8f29ab9446f87e4c6aba9961f81993ef0ad0b62b9a2eaa47f0e6a8",
+      "size": 52373,
+      "sha256": "f933c45ca0c55a065d355120053c65f291156798eccbb8644b23c39102f2a284",
       "language": "zig"
     },
     {
@@ -2321,6 +2351,12 @@
       "language": "zig"
     },
     {
+      "path": "src/forensic/crc32_slicing.zig",
+      "size": 4331,
+      "sha256": "dff50a145537bdb122df64913f34318ebc80f2836f803ea0ee01398c17b5abe0",
+      "language": "zig"
+    },
+    {
       "path": "src/forensic/decision_trace.zig",
       "size": 13466,
       "sha256": "9bc48e44f50f68efbdef93509cf7d5893cc5615ad63dd70a76e338d2c0321fc7",
@@ -2465,6 +2501,12 @@
       "language": "zig"
     },
     {
+      "path": "src/out_of_unit_tests.zig",
+      "size": 3687,
+      "sha256": "c319819d77dcf7b42bb7ad792022f692ef85b41552a9e0b14a0cdee2844f5b6d",
+      "language": "zig"
+    },
+    {
       "path": "src/perf_bench_main.zig",
       "size": 351,
       "sha256": "7e1d9fd8ec58d5903d4bf4f28ed10847e9f7ef235c4d3870db4375571506ea1c",
@@ -2478,14 +2520,20 @@
     },
     {
       "path": "src/pipeline/event_processor.zig",
-      "size": 59030,
-      "sha256": "ed6a95dd67a66dd34f1f2a39788b3749ca815000fdcb7b78f3a1401cc609b0d0",
+      "size": 59139,
+      "sha256": "95e337e0710e55957a34d7a11b253a083f387efd7f7b1a8a809d14a34dfd876c",
       "language": "zig"
     },
     {
       "path": "src/pipeline/event_queue.zig",
       "size": 60346,
       "sha256": "b264120b0ed02a0b3f4fcfcfe88976b28799e643fca0152b3d944457e9540c30",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/fim_dedup.zig",
+      "size": 8074,
+      "sha256": "4bcc1e8b693aedb8fe1115ffa6b21191585258a6a7a7cbf559c36741b7694ee0",
       "language": "zig"
     },
     {
@@ -2508,14 +2556,14 @@
     },
     {
       "path": "src/pipeline/runtime_state.zig",
-      "size": 24086,
-      "sha256": "1a5837a1ad0417b26b40de2cf29ef3b00224660e5d2a34f968c6e259a28c832a",
+      "size": 24480,
+      "sha256": "44625be4d76935fecb180b3c1a120b1fd290e19d45f2ec74adc4a719233d7bc6",
       "language": "zig"
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",
-      "size": 52507,
-      "sha256": "400ca4b906a64cb710e94314fcb4423721d3cc24dd009a30364b5af488eec65f",
+      "size": 52915,
+      "sha256": "0de8b0054f5cd9eb75d57e71a9d6e7e3acc5386cde74a1fc1923a1b59f030392",
       "language": "zig"
     },
     {
@@ -2666,6 +2714,12 @@
       "path": "src/reliability/lifecycle.zig",
       "size": 23383,
       "sha256": "3946fcfb1c593487f0b0b3463b4d27e13fa19ff91ec34e347a2e1238e7ac9237",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/monotonic_clock.zig",
+      "size": 3632,
+      "sha256": "8565471dea05309a9dc708dd110a2d7fc437f70949f1c99fe64f688e91f6fa67",
       "language": "zig"
     },
     {
@@ -3191,6 +3245,12 @@
       "language": "zig"
     },
     {
+      "path": "src/tests/pipeline/l7_join_test.zig",
+      "size": 3934,
+      "sha256": "be5d7bcbd45d9c218c926764a54bc62242493a12d9df9c9863459ed7e96c8de9",
+      "language": "zig"
+    },
+    {
       "path": "src/tests/policy/action_dispatcher.zig",
       "size": 261,
       "sha256": "568e91074ce104fdbcbf45076ef65892ef181fea5183d9c31db566a7f0c6e4f8",
@@ -3341,6 +3401,12 @@
       "language": "zig"
     },
     {
+      "path": "src/tests/reliability/monotonic_clock.zig",
+      "size": 1882,
+      "sha256": "d7be1f94760b28ccbe7de38072453cf688253069f36d13116d65a1706ebcb138",
+      "language": "zig"
+    },
+    {
       "path": "src/tests/reliability/security_check.zig",
       "size": 262,
       "sha256": "dcf27bfc85ebdaf8d3024c168c13a486ad7cabcee77cdd2f433c11179727a4f2",
@@ -3374,6 +3440,12 @@
       "path": "src/tests/windows/fim.zig",
       "size": 221,
       "sha256": "ece54410aeba71c535b88c5a8c39d2c0696497e4f5118bc6e3af2884ab2cc0d1",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/windows/host_net.zig",
+      "size": 1260,
+      "sha256": "dc80fbffe02c1fff2c06cf1e1afec7ae5cef1f0fe46e0246a7e1fcb8158072d9",
       "language": "zig"
     },
     {
@@ -3420,8 +3492,8 @@
     },
     {
       "path": "src/windows/etw_native.c",
-      "size": 19596,
-      "sha256": "f9f99bab3582274c1f3ad8d5ceca5ba171174ec2504238e7d7fa86c55838f856",
+      "size": 20416,
+      "sha256": "35fb8ad2eba4d310cff6ba67b25c3e819fd7a9481e621ae81912a0239e02d4dc",
       "language": "c/c++"
     },
     {
@@ -3432,14 +3504,14 @@
     },
     {
       "path": "src/windows/fim.zig",
-      "size": 13401,
-      "sha256": "40a05d66c91967f3d845daa3f48657351c1dbd2079cd33d2c53af77c7cb7d7c6",
+      "size": 14277,
+      "sha256": "afc7c9f8054b0c4d6c20be2abe42cd1c6fd54ff0d229188722c058b78f27b8a5",
       "language": "zig"
     },
     {
       "path": "src/windows/fim_native.c",
-      "size": 9572,
-      "sha256": "e0182619257cb9c777a8aa4ef9848f063ae85f73d6c1f6b562946526d1a2761a",
+      "size": 10599,
+      "sha256": "a17b5af2784c12de5ab44a62b5cac1872784db549acbca4dad5f4a36d39be7de",
       "language": "c/c++"
     },
     {
@@ -3452,6 +3524,12 @@
       "path": "src/windows/hids_process_monitor.zig",
       "size": 2311,
       "sha256": "8c9ac1cce445e709b18d386db72edcc258234ce2cf3605069576323211ca242f",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/host_net.zig",
+      "size": 31059,
+      "sha256": "af21229a38419de331c2dcfcf39745b479f451576638d4720a7559daee777e9d",
       "language": "zig"
     },
     {
@@ -3659,6 +3737,12 @@
       "language": "python/cython"
     },
     {
+      "path": "tools/capture_select.py",
+      "size": 18433,
+      "sha256": "304f1919cccc07fe7c7d7d7ca212a7f136c0c0a35b675e9b72f6fc3ee9566f0e",
+      "language": "python/cython"
+    },
+    {
       "path": "tools/ci_coverage.py",
       "size": 8193,
       "sha256": "1e7077aa7abede05c6fc7845f4e23eec206131413dfab9c4c27288037a8e7b61",
@@ -3689,9 +3773,15 @@
       "language": "c/c++"
     },
     {
+      "path": "tools/evidence_debt.py",
+      "size": 3363,
+      "sha256": "2804c5f65996a9fb6a6c6ab4c896f1172afc3ac7bc25900610ef1f97fb1e552a",
+      "language": "python/cython"
+    },
+    {
       "path": "tools/final_audit.py",
-      "size": 41546,
-      "sha256": "3c56ca8160635290e2e30ef710eff8edc44d359b365cdb6f2a7479e42314387c",
+      "size": 44912,
+      "sha256": "fbf8c5439aa15a5793cc12a3381c7591b0b8f3ffe9c575542c207a5d196c2168",
       "language": "python/cython"
     },
     {
@@ -3719,6 +3809,18 @@
       "language": "python/cython"
     },
     {
+      "path": "tools/host_preflight.py",
+      "size": 11902,
+      "sha256": "748e19d5dc3e61370324b7afe3ab6157bfe261837b8f8033cf2cd08cbdb7cf85",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/host_soak_check.py",
+      "size": 16260,
+      "sha256": "b7780ce94aed254bcc642c2c70e0fc37d98b9e9d0c8efebf89490ea8a2aea8ed",
+      "language": "python/cython"
+    },
+    {
       "path": "tools/inspect_pe_exports.py",
       "size": 2842,
       "sha256": "adf194c9cd0a39eb9146519de6826f59079a57a44bd55fa94b67a331fe08bc89",
@@ -3728,6 +3830,12 @@
       "path": "tools/installer.py",
       "size": 27671,
       "sha256": "6c1c01c6d645e6729ef0b807f2738abc64bdeef767f53b886ba88075b6cfd229",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/lab_attack_window.py",
+      "size": 24475,
+      "sha256": "5215048ed327088d2a093c1ddc76f9f382a46e2046ad89a91ea2f37112023ed2",
       "language": "python/cython"
     },
     {
@@ -3929,6 +4037,12 @@
       "language": "python/cython"
     },
     {
+      "path": "tools/legacy/update_health_cmd.py",
+      "size": 2942,
+      "sha256": "46eacad85f91824d402f2281226f2bd6437a3a3571f2829bc5a115f637626bcb",
+      "language": "python/cython"
+    },
+    {
       "path": "tools/probe_control_pipe.py",
       "size": 2906,
       "sha256": "a1e17d824314fa619b6e6589aef663959fd9fd931f8a45e97cb2529a5510f399",
@@ -3942,8 +4056,8 @@
     },
     {
       "path": "tools/release_candidate.py",
-      "size": 11114,
-      "sha256": "f2d88e4bf02de911dcd4a51a26bae002f2bca8009f890caf1a2fec9b4291de87",
+      "size": 11493,
+      "sha256": "71dc2a68d2d3bde5d45f9c22caba4961235a81f7c58a7d63e874c0d085902acd",
       "language": "python/cython"
     },
     {
@@ -3965,6 +4079,36 @@
       "language": "python/cython"
     },
     {
+      "path": "tools/sign_release.py",
+      "size": 8498,
+      "sha256": "21fd42ed2eb4493d5a961bfdade18a732efe1299bafd315567a537f566259408",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/soak_rate.py",
+      "size": 9811,
+      "sha256": "1875fb24511016ebade1c34cc180da862e9a7540367dade9caafaebffd41e619",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/stage_helpers.py",
+      "size": 6474,
+      "sha256": "d338814060be0f5a5f3d9d502f24f1ed9a0b215c67cabe2aac676cd89def7518",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/stix_export.py",
+      "size": 12438,
+      "sha256": "2c2c8e80b0ab6703664a0a1775a005b08a2e3a33690f3bd981f3a5c5086d6f41",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/taxii_push.py",
+      "size": 7839,
+      "sha256": "87dc4aafc066bdddaba4b0a49e8a4f65c7e1852a1fe5ea38a5a53dd00ae80762",
+      "language": "python/cython"
+    },
+    {
       "path": "tools/truth.py",
       "size": 12402,
       "sha256": "4ded8b0d7f7eafec2bcaffe07572c474d73f06211527821eec77695ffd0c46c1",
@@ -3974,6 +4118,18 @@
       "path": "tools/upgrade_rollback.py",
       "size": 8482,
       "sha256": "c150249e746a040f96443416a1c8f1d54d6bbdf99e0678260e81eadbd4a18791",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/verify_release_digest.py",
+      "size": 4092,
+      "sha256": "60caa33a712a6db3ee8e676ef0d4fa32f83352a6903d86a4657b712abfa9144e",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/wfp_filter_audit.py",
+      "size": 4253,
+      "sha256": "332f6755e44b3a357b422560f035b8d4a3d8084cd44a4d2a723aa1fa9d198d1a",
       "language": "python/cython"
     },
     {
