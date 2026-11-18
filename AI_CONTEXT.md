@@ -6,7 +6,7 @@
 
 **HEAD:** `4169839bff11937060ed4471b3a74717f11a50c3` (build source commit — ADR-0008)
 
-**RECORDS TIP:** `4169839bff11937060ed4471b3a74717f11a50c3` (records head before this generator run; a commit cannot contain its own SHA)
+**RECORDS TIP:** `1964c79` (records head before this edit; a commit cannot contain its own SHA)
 
 **BRANCH:** `codex/o2-etw-context`
 
