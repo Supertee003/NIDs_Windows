@@ -77,3 +77,30 @@ This is E1/E3 evidence for the CI gates themselves, not a Windows-host driver
 load proof. Driver install/signature verification remains E5 evidence from
 RB-024 (`admin-evidence/e5-clean-host-20261119-final/RB-024-result.json`),
 which is unchanged by this patch.
+
+## Correction after first CI run (`44395854509`)
+
+The first run proved the WDK job green on `windows-2022`, but exposed a
+cross-job artifact-layout regression: adding `dist/*` files to `native_helpers`
+moved upload-artifact's least-common-ancestor from `build/Release` to the repo
+root, so the Zig job downloaded the import libraries as
+`target/helpers/build/Release/aegis_fim_helper.lib` instead of the path
+`build.zig` requires (`target/helpers/aegis_fim_helper.lib`). That reddened
+`Zig Build & Test`, which then reddened `ci-matrix` and skipped
+`Package Release`.
+
+Fix (records/CI only):
+
+- `native_helpers` now uploads only files under `build/Release` (the four
+  original helper files plus `aegis_wfp_user.dll/.lib`), restoring the flat
+  layout the canonical Zig link expects.
+- The native bridge is built inside `package-release` itself
+  (`cd bridge && cmake -B build && cmake --build build --config Release`),
+  which produces `dist/aegis_ipc.dll` at the repo root; staging asserts it
+  there and copies it to `zig-out/bin`.
+- Staging paths changed from `native_helpers/build/Release/...` and
+  `native_helpers/dist/aegis_ipc.dll` to `native_helpers/aegis_*.dll` and
+  `dist/aegis_ipc.dll`.
+
+All other invariants unchanged: no source/build/signed-candidate change,
+publish remains tag-only, soak and tag remain on hold.

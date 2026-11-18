@@ -9153,6 +9153,28 @@
       "limitations": [
         "Records/CI only; soak_24h remains OPEN and v1.1 remains untagged."
       ]
+    },
+    {
+      "id": "CI-GREY-GATES-LCA-FIX-20261119",
+      "head_sha": "4f914ad",
+      "timestamp": "2026-11-19",
+      "level": "E1",
+      "flow_id": "REL-001",
+      "component": "release CI grey-gate closeout - artifact layout correction",
+      "title": "Flat native_helpers layout restored; bridge built in package-release so Zig link succeeds",
+      "description": "First CI run 44395854509 showed Kernel Drivers Build (WDK) green on windows-2022 but Zig Build & Test red: adding dist/* to native_helpers moved upload-artifact common root to the repo root, so build.zig could not find target/helpers/aegis_fim_helper.lib and ci-matrix failed, leaving Package Release skipped. Corrected by keeping native_helpers strictly under build/Release (restoring flat download layout), building the native bridge inside package-release to produce dist/aegis_ipc.dll, and asserting the corrected staging paths. No source/build/signed-candidate change.",
+      "evidence_artifact": "analysis/current-head/CI-GREY-GATES-CLOSEOUT-20261119.md",
+      "artifacts": [
+        "analysis/current-head/CI-GREY-GATES-CLOSEOUT-20261119.md",
+        ".github/workflows/ci.yml"
+      ],
+      "commands": [
+        "python tools/ci_coverage.py",
+        "python tools/truth.py verify"
+      ],
+      "limitations": [
+        "Records/CI only; soak_24h remains OPEN and v1.1 remains untagged."
+      ]
     }
   ],
   "known_gaps": [
@@ -15818,7 +15840,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 30,
+    "E1_count": 31,
     "E2_count": 131,
     "E3_count": 14,
     "E4_count": 4,

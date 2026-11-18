@@ -89,11 +89,12 @@ jobs:
         run: cmake -B build -S .
       - name: Build
         run: cmake --build build --config Release
-      - name: Build native bridge (dist/aegis_ipc.dll)
-        run: |
-          cd bridge
-          cmake -B build
-          cmake --build build --config Release
+      # Keep every uploaded path under build/Release so upload-artifact's
+      # least-common-ancestor is build/Release. The Zig job downloads this
+      # artifact into target/helpers and build.zig requires the .lib files at
+      # the root of that directory (target/helpers/aegis_fim_helper.lib).
+      # Mixing dist/* here would nest them as build/Release/* and dist/* and
+      # break the canonical Zig link (observed on 4f914ad).
       - name: Upload native helper artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -105,9 +106,6 @@ jobs:
             build/Release/aegis_fim_helper.lib
             build/Release/aegis_wfp_user.dll
             build/Release/aegis_wfp_user.lib
-            dist/aegis_ipc.dll
-            dist/aegis_adapter.dll
-            dist/aegis_bridge.exe
           if-no-files-found: error
 
   shield-build:
@@ -404,6 +402,11 @@ jobs:
           python-version: "3.11"
       - name: Download build artifacts
         uses: actions/download-artifact@v4
+      - name: Build native bridge (dist/aegis_ipc.dll)
+        run: |
+          cd bridge
+          cmake -B build
+          cmake --build build --config Release
       - name: Stage canonical runtime layout
         shell: pwsh
         run: |
@@ -414,10 +417,12 @@ jobs:
           Need "runtime_exe/aegis_nids.exe"
           Need "aegis_pep_dll/aegis_pep.dll"
           Need "nose_exe/aegis-nose.exe"
-          Need "native_helpers/build/Release/aegis_wfp_user.dll"
-          Need "native_helpers/build/Release/aegis_etw_helper.dll"
-          Need "native_helpers/build/Release/aegis_fim_helper.dll"
-          Need "native_helpers/dist/aegis_ipc.dll"
+          # native_helpers is uploaded with build/Release as the common root,
+          # so download-artifact places each file directly in native_helpers/.
+          Need "native_helpers/aegis_wfp_user.dll"
+          Need "native_helpers/aegis_etw_helper.dll"
+          Need "native_helpers/aegis_fim_helper.dll"
+          Need "dist/aegis_ipc.dll"
           $wfp = Get-ChildItem -Recurse -File -Filter "aegis_wfp.sys" "kernel_drivers" |
                  Select-Object -First 1
           $mf = Get-ChildItem -Recurse -File -Filter "aegis_minifilter.sys" "kernel_drivers" |
@@ -433,11 +438,10 @@ jobs:
           Copy-Item "aegis_pep_dll/aegis_pep.dll" "target/release/" -Force
           Copy-Item "nose_exe/aegis-nose.exe" "nose/" -Force
           foreach ($f in @("aegis_wfp_user.dll", "aegis_etw_helper.dll", "aegis_fim_helper.dll")) {
-            Copy-Item "native_helpers/build/Release/$f" "build/Release/" -Force
-            Copy-Item "native_helpers/build/Release/$f" "zig-out/bin/" -Force
+            Copy-Item "native_helpers/$f" "build/Release/" -Force
+            Copy-Item "native_helpers/$f" "zig-out/bin/" -Force
           }
-          Copy-Item "native_helpers/dist/aegis_ipc.dll" "dist/" -Force
-          Copy-Item "native_helpers/dist/aegis_ipc.dll" "zig-out/bin/" -Force
+          Copy-Item "dist/aegis_ipc.dll" "zig-out/bin/" -Force
           Copy-Item $wfp.FullName "build/x64/wfp/" -Force
           Copy-Item $mf.FullName "build/x64/minifilter/" -Force
           Write-Host "OK: canonical runtime layout staged"
