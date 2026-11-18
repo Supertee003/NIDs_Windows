@@ -1,5 +1,5 @@
 {
-  "head_sha": "4169839bff11937060ed4471b3a74717f11a50c3",
+  "head_sha": "f4cde3c503fd8b696183751a608b999768caa769",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-18",
   "generator_version": "3.0",
@@ -8924,6 +8924,36 @@
         "The byte-level probe covers this 1084-frame sample only; it does not prove absence at all traffic rates.",
         "pcap files live in local-only admin-evidence and are not committed."
       ]
+    },
+    {
+      "id": "RULE-LAYER-FAILCLOSED-001-E2-20261119",
+      "head_sha": "f4cde3c",
+      "timestamp": "2026-11-19",
+      "level": "E2",
+      "flow_id": "DET-001",
+      "component": "src/pipeline/event_processor.zig, src/pipeline/runtime_state.zig, src/pipeline/rule_loader.zig, src/control/handler_registry.zig",
+      "title": "Fail closed on an unavailable configured rule layer after the layered swap",
+      "description": "Ported the unmerged Manus fail-closed patch onto current source (ruleLayerIndexForSource now takes source and kind). After g_layered_rules_active is set by reloadRules, a configured layer whose AC is unavailable yields no automaton and increments rule_layer_unavailable_events; the legacy single-AC fallback remains only before the first layered swap. PROC-LAYER kind precedence, unknown-source debt and empty-layer no-match are preserved. zig fmt --check PASS, RULE-LAYER focused 5/5, zig build PASS, full zig build test 3339/3349 passed / 10 skipped / 0 failed.",
+      "evidence_artifact": "analysis/current-head/RULE-LAYER-FAILCLOSED-001-20261119.md",
+      "artifacts": [
+        "analysis/current-head/RULE-LAYER-FAILCLOSED-001-20261119.md",
+        "src/pipeline/event_processor.zig",
+        "src/pipeline/runtime_state.zig",
+        "src/pipeline/rule_loader.zig",
+        "src/control/handler_registry.zig"
+      ],
+      "commands": [
+        "zig fmt --check src/pipeline/event_processor.zig src/pipeline/runtime_state.zig src/pipeline/rule_loader.zig src/control/handler_registry.zig",
+        "zig test src/all_tests.zig --test-filter RULE-LAYER",
+        "cargo build --release",
+        "zig build",
+        "zig build test --summary all"
+      ],
+      "limitations": [
+        "E2 source/build proof only; no live E5 attribution on the rebuilt binary yet.",
+        "No deterministic fault injection forces a production AC build failure; the selection seam and counter are unit-pinned.",
+        "The 24 h soak opened on the pre-change build is VOIDED by this source change and must restart after RB-024."
+      ]
     }
   ],
   "known_gaps": [
@@ -15590,7 +15620,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 24,
-    "E2_count": 130,
+    "E2_count": 131,
     "E3_count": 14,
     "E4_count": 4,
     "E5_count": 116,

@@ -217,9 +217,15 @@ corrected `7d91e30` bundle. Result artifact:
 
 ## Remaining work (soak excluded, owner runs it last)
 
+**Soak void notice (2026-11-19):** the window opened at `2026-11-19T00:20:11`
+on the pre-change installed image is **VOIDED BY SUPERSEDED BUILD** because the
+fail-closed source slice moved the build source to `f4cde3c`. It never reached
+PASS and is not a failed soak. Do not score it; rerun RB-024 and start one fresh
+24 h window against `f4cde3c`.
+
 1. Start the 24 h soak with nothing else touching the host. Score it with
    `--loss-budget 3500 --shed-budget 20000` against the installed build from
-   `7d91e30`, then follow steps 7-8 of
+   `f4cde3c`, then follow steps 7-8 of
    `docs/runbooks/RB-024-final-release-window.md`.
 2. When the soak is PASS, rerun `final_audit.py --release-check` for 6/6, record
    the artifact paths in `EVIDENCE_INDEX.json`, then merge `codex/v1.1-release`
@@ -241,7 +247,7 @@ silently lost. None is on the delivery branch and none changes build source
 
 | Worktree / artifact | Disposition |
 |---|---|
-| `gqdpidnmund6c83v5uk40n` (`closeout/rule-layer-failclosed-001`, `3aafce0` + `e8112be`) | **PENDING OWNER DECISION — NOT MERGED.** Real Zig change: after a layered ruleset is installed, a configured-but-unavailable layer AC never borrows another layer's automaton, and `rule_layer_unavailable_events` is exported. Current `RULE-LAYER-SCOPE-001` is already CLOSED at E5 in `EVIDENCE_INDEX.json` (`...-E5-20261117c`). Merging now would move the build source, invalidate the release signature and the running 24 h soak, and force rebuild + re-sign + a fresh soak. Do not touch during the soak; decide post-v1.1. |
+| `gqdpidnmund6c83v5uk40n` (`closeout/rule-layer-failclosed-001`, `3aafce0` + `e8112be`) | **INCLUDED IN v1.1 (owner decision 2026-11-19).** Ported onto current source as build source `f4cde3c` (the old patch used the pre-PROC-LAYER one-argument mapper). The fail-closed selection seam and the additive `rule_layer_unavailable_events` metric are proven at E2 in `RULE-LAYER-FAILCLOSED-001-20261119.md`. Because this moved the build source, the earlier 24 h window is voided and RB-024 + soak restart once on `f4cde3c`. |
 | `bvgnivewxkgl19ends2e4n` (untracked `RELEASE-SIG-CRYPTO-BYPASS-20261118.md`, `TRUTH-AND-EVIDENCE-RECONCILIATION-20261118.md`) | **SUPERSEDED.** Written against source `b955f91` / records `ef728b3`. Their OPEN P0 claims (#33 crypto bypass, #32 source/evidence reconciliation) are resolved at release tip by the Ed25519 trust-anchor gate and the records-only truth fixes; both issues are closed on GitHub. Banners added in place; do not port as current claims. |
 | `bsvfvv3ocng18lqju64moj` (detached `f01bc04`, dirty board files + comment-only `event_processor.zig` + untracked `release/T20-final/09ced4f/`) | **HISTORICAL / TOOL SIDE-EFFECT.** The T20 commit-stamp rewrites are produced by running `final_audit.py`; the Zig edit is a comment only. Nothing needed for v1.1. |
 | `crtxl0uoqqyft7d3oxbl4y` (`fix/stopline-truth-ci-signature-001`, `317693b`) | **INCORPORATED / SUPERSEDED.** Signature-verification work is in the delivery branch, which also carries the newer newest-PASS preflight selection. |
