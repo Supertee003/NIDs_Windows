@@ -8774,6 +8774,31 @@
         "The installer sits under dist/, which is ignored and not committed; its sha256 is recorded here instead.",
         "Seven tree files carry no digest: SHA256SUMS, signatures.json, KNOWN_LIMITATIONS.md, ROLLBACK.md and the three generated reports. They are the tree's own metadata, not shipped runtime."
       ]
+    },
+    {
+      "id": "SUITE-FLAKE-FRESHCACHE-001-E2-20261118",
+      "head_sha": "4169839",
+      "timestamp": "2026-11-18",
+      "level": "E2",
+      "flow_id": "VER-001",
+      "component": "build.zig, src/all_tests.zig, src/xdr/xdr_engine.zig",
+      "title": "The historical full-suite XdrEngine prune process death did not reproduce on the recorded source under fresh-cache local runs or CI",
+      "description": "Three earlier full-suite zig build test runs ended with the build runner reporting that the test process died while executing xdr.xdr_engine.test.XdrEngine prune (2103/2114 passed, 1 failed, 10 skipped), although the 11 XDR tests passed in isolation. No XDR or test-runner source changed between those runs and later passing runs. At the recorded build source 4169839, CI runs 44323795191 (records tip 6b1b664) and 44325060322 (records tip 1ab2109) both completed with Zig Build & Test success and overall success. Two additional local runs used separate fresh Zig cache directories (zig build test --summary all --cache-dir <fresh>) and both exited 0 with Build Summary: 8/8 steps succeeded; 3337/3347 tests passed; 10 skipped. Two cached local runs also exited 0 but are not used as evidence because they did not re-execute the binaries. The root cause is not claimed; this closes the item at the recorded source only, with a recurrence rule requiring the full log, host memory state and exact source SHA.",
+      "evidence_artifact": "analysis/current-head/SUITE-FLAKE-RESOLUTION-20261118.md",
+      "artifacts": [
+        "analysis/current-head/SUITE-FLAKE-RESOLUTION-20261118.md"
+      ],
+      "commands": [
+        "zig build test --summary all --cache-dir <fresh-cache-1>",
+        "zig build test --summary all --cache-dir <fresh-cache-2>",
+        "gh run view 44323795191",
+        "gh run view 44325060322"
+      ],
+      "result": "PASS_AT_RECORDED_SOURCE",
+      "limitations": [
+        "Root cause of the three historical deaths is not proven; the finding is non-reproduction at the recorded source, not a memory-safety proof.",
+        "Cached runs were excluded from the evidence because they can replay a previous pass."
+      ]
     }
   ],
   "known_gaps": [
@@ -15423,18 +15448,24 @@
     },
     {
       "id": "SUITE-FLAKE-001",
-      "status": "OPEN",
+      "status": "CLOSED_AT_RECORDED_HEAD",
       "severity": "P2",
       "title": "Full-suite zig build test is nondeterministic: the test process dies at xdr prune in some runs, and all XDR tests pass alone",
       "description": "Three consecutive full-suite runs on 2026-11-18 ended with \"while executing test 'xdr.xdr_engine.test.XdrEngine prune', the following test command failed\" (2103/2114 passed, 1 failed, 10 skipped). Between those runs and the next one the only changes were records and tooling: no XDR or test-runner source was touched. A fourth full-suite run exited 0, and `zig test ... --test-filter XdrEngine` passes 11/11 in isolation, as does the adapter suite in isolation. The wording is the build runner reporting that the test *process* died while that test was executing, not an assertion failure, so either the test binary itself is intermittently corrupting memory or a thread leaked by an earlier test faults there. Attribution to XdrEngine is therefore provisional.",
       "recorded_by": "analysis/current-head/CAPTURE-SELECT-001-20261118.md",
-      "next_step": "Reproduce with the full suite twice, then bisect by per-directory test groups (xdr, windows, capture) to find the leaking thread or the corrupting allocation; if no product code is at fault, join the leaking test thread and re-pin. CI must not be called green on a run that has not exited 0."
+      "next_step": "No source change is justified. If the failure recurs, reopen with the full runner log, the build summary, host memory pressure and the exact source SHA; do not count a cached-green run.",
+      "head_sha": "4169839",
+      "timestamp": "2026-11-18",
+      "status_basis": "4169839",
+      "closed_by": "SUITE-FLAKE-FRESHCACHE-001-E2-20261118",
+      "resolution": "Two CI runs and two fresh-cache local runs on recorded source 4169839 exited 0 with 3337/3347 tests passed and 10 declared skips; the historical XdrEngine prune process death did not reproduce. Root cause is not claimed. Closed at the recorded source only; recurrence requires the full log, host memory state and exact source SHA.",
+      "evidence": "SUITE-FLAKE-FRESHCACHE-001-E2-20261118: fresh-cache local reruns and two green CI runs on 4169839"
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 24,
-    "E2_count": 128,
+    "E2_count": 129,
     "E3_count": 14,
     "E4_count": 4,
     "E5_count": 113,

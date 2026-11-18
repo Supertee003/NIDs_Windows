@@ -2,9 +2,10 @@
 
 ## Identity
 
-- **Records HEAD:** `1e2da48dbd1e0068c04da455ab86ea8f9ce3d3af`
-- **Build source HEAD:** `aa42fcaf65c9b2272cad34cb06ebf622180cdb0a`
-- **Working branch:** `codex/o2-etw-context`
+- **Records HEAD at this edit:** `c3cc44f` (records-only tip; final pointer
+  commits follow it and do not move the build source)
+- **Build source HEAD:** `4169839bff11937060ed4471b3a74717f11a50c3`
+- **Delivery branch:** `codex/v1.1-release` (local `codex/o2-etw-context`)
 - **Installed runtime:** `C:\Program Files\AEGIS NIDS\runtime\aegis_nids.exe`
   sha256 `A02FC7FBDCC9B6932E735099F2D056D6B420BDB2AE074B0843E40251907E3497`,
   identical to `zig-out\bin\aegis_nids.exe`.
@@ -19,23 +20,24 @@ and `installer/` do not move the source commit.
 ## Gates measured at this pass
 
 ```
-python tools/truth.py verify              -> TRUTH_VALID (source aa42fca)
+python tools/truth.py verify              -> TRUTH_VALID (source 4169839)
+python tools/release_engineering.py --verify -> OK, 674/674 digests
 python tools/final_audit.py --release-check
   PASS  truth_artifacts
   PASS  component_audit      modules 66/66, prod failures 0, part_ii 5/5
-  OPEN  release_signature    release/T20-final/ad7948c predates source aa42fca
-  PASS  clean_host_e5        STALE: the passing preflight is 2026-11-14;
-                             no preflight exists for source aa42fca
-  OPEN  soak_24h
-  PASS  evidence_debt
-  release: NOT SHIPPABLE
+  PASS  release_signature    bece8f1 signs SHA256SUMS; owner anchor recorded
+  PASS  clean_host_e5        2026-11-14 preflight, loader under C:\Program Files\AEGIS NIDS
+  OPEN  soak_24h             no 24 h artifact covers source 4169839
+  PASS  evidence_debt        0 unnamed product files
+  release: NOT SHIPPABLE (5/6)
 ```
 
-`clean_host_e5` is reported PASS by the tool because the evaluator accepts any
-PASS preflight artifact. That is not current-source evidence: the newest
-preflight (`admin-evidence/e5-clean-host-20261117-soak3/preflight-20261117-postlayers.json`)
-predates the 2026-11-18 source slices. Treat the gate as **open** until the
-current build is installed and preflighted.
+`clean_host_e5` is reported PASS by the evaluator because it accepts any PASS
+preflight artifact, but the newest PASS still predates this build. Treat it as
+**provisional until RB-024 installs `bece8f1` and runs `host_preflight`**. The
+release signature is no longer provisional: the owner approved
+`txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o=` in
+`docs/gates/RELEASE_TRUST_ANCHOR.md`, the same key that signed `ad7948c`.
 
 ## What this pass changed
 
@@ -150,42 +152,41 @@ with an `ABANDONED.md`; the gate now reports the honest newest artifact
 
 ## CI on the pushed delivery branch
 
-Branch `codex/v1.1-release` at `7920b01` (run 44314438349): 12 of 14 jobs
-green, including `Zig Build & Test` (the full-suite run exited 0 on CI, which
-`GAP-SUITE-FLAKE-001` still keeps open locally) and every build job. Two
-failures:
+| Run | Tip | Result |
+|---|---|---|
+| 44314438349 | `7920b01` | FAIL: only `Python Control Plane Tests` (an ignored `dist/aegis_ipc.dll` was listed as an evidence artifact) and the aggregate matrix job that depends on it |
+| 44323795191 | `6b1b664` | SUCCESS: all required jobs green; `Zig Build & Test` and `Cross-language CI Matrix` included |
+| 44325060322 | `1ab2109` | SUCCESS: all required jobs green, `Zig Build & Test` 4m11s, aggregate matrix green |
 
-- `Python Control Plane Tests` — `test_artifact_paths_exist` found
-  `DIST-DLL-LOCK-001-E5-20261117 -> dist/aegis_ipc.dll`: a git-ignored build
-  output was listed as an evidence artifact, so the pointer resolved on this
-  host and nowhere else. The pointer is removed (the dll stays named in the
-  title and component) and every remaining pointer was checked against
-  `git ls-files`; the only untracked ones left are two directories, which a
-  clone does.
-- `Cross-language CI Matrix` — that job aggregates the required-job results and
-  failed because of the Python job above.
+The first failure was a portability defect in `EVIDENCE_INDEX.json`, not a
+product regression: the pointer was removed, all remaining pointers were checked
+against `git ls-files`, and both follow-up runs passed. The WDK job and package
+job are intentionally `skipped` on this public runner.
 
 Local full suite on the same tree: 1423 passed, 4 skipped, 1 xfailed, 1 xpassed,
-27 subtests passed in 304.82 s.
+27 subtests passed in 304.82 s. `zig build test` is green on both passing CI
+runs. Two fresh-cache local runs on source `4169839` also exited 0 with
+`3337/3347 tests passed; 10 skipped`, so `SUITE-FLAKE-001` is
+`CLOSED_AT_RECORDED_HEAD` in `EVIDENCE_INDEX.json` (see
+`analysis/current-head/SUITE-FLAKE-RESOLUTION-20261118.md`). The root cause of
+the historical deaths is not claimed and no source was changed to make them go
+away.
+
+Only one known gap remains open: `GAP-QLOSS-ISOLATION-002`, whose remaining gate
+is the owner-run 24 h soak.
 
 ## Remaining work (soak excluded, owner runs it last)
 
-1. Push the delivery branch; CI must exit 0 on the pushed commit. The full-suite
-   Zig runner is nondeterministic (`GAP-SUITE-FLAKE-001`): one run exited 0,
-   three died at `xdr.xdr_engine.test.XdrEngine prune` with no XDR change, and
-   the XDR suite passes 11/11 in isolation. A green run on a different commit is
-   not evidence for this one.
-2. Elevated window: install `aegis_setup_6.0.0_trial.exe`, run `host_preflight`,
-   the upgrade/rollback drill, and re-measure the Wi-Fi byte-level duplicate with
-   `g3_dup_bytes.py` on this build.
-3. Re-run `clean_host_e5` against the installed current build; the passing
-   artifact today is from 2026-11-14.
-4. ~~Owner confirms the release trust anchor public key~~ — **DONE 2026-11-18**:
-   `txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o=` is the approved anchor,
-   recorded in `docs/gates/RELEASE_TRUST_ANCHOR.md`. It is the key that already
-   signed `ad7948c`; no new key material was created.
-5. Merge to `main` and tag `v1.1` only after the board is complete.
-6. Soak 24 h alone, then close the board.
+1. Run `docs/runbooks/RB-024-final-release-window.md` in one elevated window:
+   install `aegis_setup_6.0.0_trial.exe`, run `host_preflight`, confirm both
+   capture topologies, re-measure the Wi-Fi byte-level duplicate with
+   `g3_dup_bytes.py`, and drill upgrade/rollback.
+2. Start the 24 h soak only after step 1, with nothing else touching the host.
+   Score it with `--loss-budget 3500 --shed-budget 20000` against the installed
+   build from `bece8f1`.
+3. When the soak is PASS, rerun `final_audit.py --release-check` for 6/6, record
+   the artifact paths in `EVIDENCE_INDEX.json`, then merge `codex/v1.1-release`
+   into `main` and tag `v1.1`. Do not merge or tag before then.
 
 ## Out of scope on this host (record as limitations, never as passes)
 
