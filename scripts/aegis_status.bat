@@ -13,6 +13,8 @@ if exist "tools\aegisctl.py" (
 ) else (
     echo  [WARN] aegisctl not found, using fallback status
     set "R=0"
+    sc.exe query AegisNids 2>nul | find /I "RUNNING" >nul
+    if %ERRORLEVEL% equ 0 ( echo  [RUNNING] CORE  Zig   service AegisNids & set "R=1" ) else ( echo  [STOPPED] CORE  Zig service AegisNids )
     set "N=0"
     tasklist /NH 2>nul | find /I "aegis-nose.exe" >nul
     if %ERRORLEVEL% equ 0 set "N=1"

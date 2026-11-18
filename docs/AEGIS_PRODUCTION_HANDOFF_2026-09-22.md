@@ -1,5 +1,10 @@
 # AEGIS Production Handoff
 
+> **HISTORICAL — NOT CURRENT PRODUCT TRUTH.** This handoff predates the
+> 2026-10-30 owner decision that AEGIS is a detection-only Kernel NIDS and
+> production host-enforcement activation is out of scope. Use `README.md`,
+> `AI_CONTEXT.md`, and the current machine-readable maps for present scope.
+
 **Project:** AEGIS Windows-native NIDS/IPS  
 **Handoff date:** 2026-09-22  
 **Audience:** Future Manus agents, developers, reviewers, QA engineers, release operators, and security engineers  

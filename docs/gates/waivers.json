@@ -1,0 +1,20 @@
+{
+  "id": "RELEASE-WAIVERS",
+  "rule": "A waiver is an explicit owner exception, never a pass. A waived gate stays ok=false and is printed as WAIVED; the audit only returns success for it when run with --accept-waivers, and even then it says the release is not fully shippable. Delete an entry to restore the hard gate.",
+  "waivers": [],
+  "removed": [
+    {
+      "gate_id": "soak_24h",
+      "reason": "Owner decided not to wait for the 24 h window and to ship on the evidence collected so far.",
+      "accepted_by": "owner",
+      "accepted_at": "2026-11-14T22:35:00",
+      "removed_at": "2026-11-15T17:00:00",
+      "removed_because": "The window the waiver covered did not stay unrun: it ran and FAILED at 16.95 h on shed_overload 15,163 against a 4,000 budget (SOAK-SHED-001), because the adversarial gates ran inside it. A waiver that says 'we did not wait' cannot also stand in for a window that was measured and came back negative, so the gate is hard again. A replacement window started at 2026-11-15T16:50:31 against the reinstalled build (SOAK2-20261115) and is the artifact to judge at 2026-11-16T16:50.",
+      "not_proven": [
+        "No 24 h continuous window has been observed for this build; the recorded window failed at 16.95 of 24.0 h on shed_overload.",
+        "Absence of dropped rows, restarts and DEGRADED reports is proven only for the observed fraction, on the previous build.",
+        "The replacement window is IN_PROGRESS; until it closes, soak_24h is an open gate, not a waived one."
+      ]
+    }
+  ]
+}

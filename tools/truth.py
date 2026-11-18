@@ -1,9 +1,21 @@
 #!/usr/bin/env python3
 """Truth Artifact Verifier — single source of truth consistency gate.
 
-Verifies that every truth artifact in the repository carries the current
-HEAD SHA. Any mismatch means the artifact is STALE and the agent is
-reading outdated truth.
+Truth artifacts carry the *build source commit*: the last commit that touched
+the source/build tree (ADR-0008). They do not carry the commit that merely
+records evidence, because a commit cannot contain its own SHA.
+
+The verifier:
+  1. computes the source commit with `git log -1 -- <SOURCE_PATHS>`,
+  2. requires every head_sha/markdown_head/source_commit field to carry it,
+  3. requires the source commit to be an ancestor of HEAD,
+  4. requires the source paths to be clean between the source and HEAD, and
+  5. requires the source/build worktree itself to be clean (tracked changes and
+     untracked source/build files both invalidate the maps).
+
+A records-only commit therefore does not invalidate truth artifacts; a source
+or build change after the recorded source does. Uncommitted source/build work
+is never current truth either.
 
 Usage:
     python tools/truth.py verify          # human-readable output
@@ -11,8 +23,8 @@ Usage:
     python tools/truth.py verify --strict # also fail on missing files
 
 Exit codes:
-    0  TRUTH_VALID   — all artifacts carry current HEAD
-    1  TRUTH_INVALID — at least one artifact has stale/missing HEAD
+    0  TRUTH_VALID   — artifacts carry the current build source commit
+    1  TRUTH_INVALID — stale/mis-stamped artifact or dirty source tree
 """
 from __future__ import annotations
 
@@ -24,6 +36,34 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+# ── Build source boundary (ADR-0008) ──────────────────────────────
+# A commit that touches any of these paths produces new build inputs and must
+# move the recorded source commit. Everything else (docs, evidence, tests,
+# tooling, CI metadata) is records-only and must NOT move it.
+SOURCE_PATHS = (
+    "src",
+    "rust-src",
+    "shield",
+    "nose",
+    "go",
+    "brain",
+    "drivers",
+    "shared",
+    "bridge",
+    "mouth",
+    "configs",
+    "build.zig",
+    "Cargo.toml",
+    "Cargo.lock",
+    "CMakeLists.txt",
+    "requirements.txt",
+    # The WDK scripts are the only definition of the kernel compile/link
+    # flags; CMake delegates to them. They are build inputs, unlike the
+    # evidence/signing/deployment wrappers that consume their output.
+    "scripts/wdk_build_production.ps1",
+    "scripts/wdk_build_minifilter.ps1",
+)
 
 # ── Artifact definitions ──────────────────────────────────────────
 # Each entry: (file_path, field_type, field_name)
@@ -41,16 +81,17 @@ JSON_HEAD_SHA = [
 
 JSON_SOURCE_COMMIT = [
     "build_manifest.json",
+    # R-04: these two carry source_commit too. They used to be exempt, which is
+    # exactly how a stale inventory stayed invisible.
+    "inventory.json",
+    "reference_map.json",
 ]
 
 MARKDOWN_HEAD = [
     "AI_CONTEXT.md",
 ]
 
-NO_SHA_EXPECTED = [
-    "inventory.json",
-    "reference_map.json",
-]
+NO_SHA_EXPECTED: list[str] = []
 
 
 def git_head() -> str:
@@ -62,6 +103,59 @@ def git_head() -> str:
     if result.returncode != 0:
         raise RuntimeError(f"git rev-parse HEAD failed: {result.stderr.strip()}")
     return result.stdout.strip()
+
+
+def git_source() -> str:
+    """Return the full SHA of the last commit touching the source/build tree."""
+    result = subprocess.run(
+        ["git", "log", "-1", "--format=%H", "--", *SOURCE_PATHS],
+        capture_output=True, text=True, cwd=ROOT,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"git log source paths failed: {result.stderr.strip()}")
+    source = result.stdout.strip()
+    if not source:
+        raise RuntimeError("no commit touches the source/build paths")
+    return source
+
+
+def is_ancestor(commit: str, head: str) -> bool:
+    """True when commit is an ancestor of (or equal to) head."""
+    result = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", commit, head],
+        capture_output=True, text=True, cwd=ROOT,
+    )
+    return result.returncode == 0
+
+
+def source_tree_clean(source: str, head: str) -> bool:
+    """True when no source/build path changed between source and head."""
+    result = subprocess.run(
+        ["git", "diff", "--quiet", source, head, "--", *SOURCE_PATHS],
+        capture_output=True, text=True, cwd=ROOT,
+    )
+    return result.returncode == 0
+
+
+def source_worktree_changes() -> list[str]:
+    """Return tracked or untracked changes under the source/build paths.
+
+    Committed history alone is not enough: a dirty source tree means the maps
+    were generated from different bytes than the ones a build would use now.
+    Untracked source files count as changes; ignored build outputs do not.
+    """
+    result = subprocess.run(
+        [
+            "git", "status", "--porcelain=v1", "--untracked-files=all",
+            "--", *SOURCE_PATHS,
+        ],
+        capture_output=True, text=True, cwd=ROOT,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"git status source paths failed: {result.stderr.strip()}"
+        )
+    return [line for line in result.stdout.splitlines() if line.strip()]
 
 
 def read_json_head_sha(path: Path) -> str | None:
@@ -96,11 +190,47 @@ def read_markdown_head(path: Path) -> str | None:
 
 
 def verify(strict: bool = False) -> dict:
-    """Run all checks. Returns a result dict."""
+    """Run all checks against the build source commit. Returns a result dict."""
     head = git_head()
-    head_short = head[:7]
+    source = git_source()
+    source_short = source[:7]
+    ancestor = is_ancestor(source, head)
+    tree_clean = source_tree_clean(source, head) if ancestor else False
+    worktree_changes = source_worktree_changes()
+    worktree_clean = not worktree_changes
     results = []
-    all_ok = True
+    all_ok = ancestor and tree_clean and worktree_clean
+
+    # The source commit itself is the provenance root for every artifact.
+    results.append({
+        "file": "<source-ancestry>",
+        "type": "ancestry",
+        "expected": f"ancestor of {head[:7]}",
+        "actual": source_short,
+        "status": "PASS" if ancestor else "NOT_ANCESTOR",
+        "ok": ancestor,
+    })
+    results.append({
+        "file": "<source-paths>",
+        "type": "source_tree",
+        "expected": "clean since source",
+        "actual": "clean" if tree_clean else "changed",
+        "status": "PASS" if tree_clean else "CHANGED",
+        "ok": tree_clean,
+    })
+    results.append({
+        "file": "<source-worktree>",
+        "type": "worktree",
+        "expected": "clean working tree",
+        "actual": (
+            "clean" if worktree_clean
+            else f"dirty ({len(worktree_changes)} path(s)): "
+            + ", ".join(worktree_changes[:3])
+            + (" ..." if len(worktree_changes) > 3 else "")
+        ),
+        "status": "PASS" if worktree_clean else "DIRTY",
+        "ok": worktree_clean,
+    })
 
     # JSON files with head_sha (full 40-char)
     for fname in JSON_HEAD_SHA:
@@ -109,7 +239,7 @@ def verify(strict: bool = False) -> dict:
         if artifact_sha is None:
             status = "MISSING" if not path.exists() else "NO_SHA"
             ok = not strict
-        elif artifact_sha == head:
+        elif artifact_sha == source:
             status = "PASS"
             ok = True
         else:
@@ -120,9 +250,10 @@ def verify(strict: bool = False) -> dict:
         results.append({
             "file": fname,
             "type": "head_sha",
-            "expected": head,
+            "expected": source,
             "actual": artifact_sha,
             "status": status,
+            "ok": ok,
         })
 
     # JSON files with source_commit (7-char abbreviated)
@@ -132,7 +263,7 @@ def verify(strict: bool = False) -> dict:
         if artifact_sha is None:
             status = "MISSING" if not path.exists() else "NO_SHA"
             ok = not strict
-        elif artifact_sha == head_short:
+        elif artifact_sha == source_short:
             status = "PASS"
             ok = True
         else:
@@ -143,9 +274,10 @@ def verify(strict: bool = False) -> dict:
         results.append({
             "file": fname,
             "type": "source_commit",
-            "expected": head_short,
+            "expected": source_short,
             "actual": artifact_sha,
             "status": status,
+            "ok": ok,
         })
 
     # Markdown files with **HEAD:** inline
@@ -155,7 +287,7 @@ def verify(strict: bool = False) -> dict:
         if artifact_sha is None:
             status = "MISSING" if not path.exists() else "NO_SHA"
             ok = not strict
-        elif artifact_sha == head:
+        elif artifact_sha == source:
             status = "PASS"
             ok = True
         else:
@@ -166,25 +298,35 @@ def verify(strict: bool = False) -> dict:
         results.append({
             "file": fname,
             "type": "markdown_head",
-            "expected": head,
+            "expected": source,
             "actual": artifact_sha,
             "status": status,
+            "ok": ok,
         })
 
-    # Files with no SHA (expected — documented)
+    # Files with no SHA (expected — documented, but the file must exist)
     for fname in NO_SHA_EXPECTED:
         path = ROOT / fname
         exists = path.exists()
+        if not exists:
+            all_ok = False
         results.append({
             "file": fname,
             "type": "none",
             "expected": "N/A (no SHA field)",
             "actual": "N/A",
             "status": "PASS (no SHA expected)" if exists else "MISSING",
+            "ok": exists,
         })
 
     return {
         "head": head,
+        "source": source,
+        "source_short": source_short,
+        "source_is_ancestor": ancestor,
+        "source_paths_clean": tree_clean,
+        "source_worktree_clean": worktree_clean,
+        "source_worktree_changes": worktree_changes,
         "valid": all_ok,
         "results": results,
     }
@@ -192,7 +334,9 @@ def verify(strict: bool = False) -> dict:
 
 def print_human(res: dict) -> None:
     head = res["head"]
-    print(f"HEAD: {head}")
+    source = res["source"]
+    print(f"HEAD:   {head}")
+    print(f"SOURCE: {source}  (last commit touching the source/build tree)")
     print("-" * 72)
     for r in res["results"]:
         actual = r["actual"] or "—"
@@ -201,10 +345,14 @@ def print_human(res: dict) -> None:
         print(f"  {r['file']:<28} {r['type']:<14} {r['status']}")
     print("-" * 72)
     if res["valid"]:
-        print("TRUTH_VALID — all artifacts carry current HEAD")
+        print(
+            "TRUTH_VALID — artifacts carry build source "
+            f"{res['source_short']} (ancestor of HEAD; source history and "
+            "worktree clean)"
+        )
     else:
-        stale = [r["file"] for r in res["results"] if r["status"] == "STALE"]
-        print(f"TRUTH_INVALID — stale artifacts: {', '.join(stale)}")
+        bad = [r["file"] for r in res["results"] if not r.get("ok", True)]
+        print(f"TRUTH_INVALID — stale/mis-stamped artifacts: {', '.join(bad)}")
 
 
 def main() -> int:

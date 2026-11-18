@@ -11,8 +11,16 @@
       "regex_pattern": "'\\s*OR\\s*1=1|'\\s*OR\\s*'1'='1|INFO:SQLI_BYPASS",
       "severity": "Critical",
       "action": "Drop",
-      "target_ports": [80, 443, 8080, 3306, 8443],
-      "target_protocols": ["TCP"]
+      "target_ports": [
+        80,
+        443,
+        8080,
+        3306,
+        8443
+      ],
+      "target_protocols": [
+        "TCP"
+      ]
     },
     {
       "rule_id": "R9064",
@@ -24,8 +32,15 @@
       "regex_pattern": "INFO:OSI_SEMI|;\\s*id|;\\s*whoami|;\\s*cat",
       "severity": "Critical",
       "action": "Drop",
-      "target_ports": [80, 443, 8080, 8443],
-      "target_protocols": ["TCP"]
+      "target_ports": [
+        80,
+        443,
+        8080,
+        8443
+      ],
+      "target_protocols": [
+        "TCP"
+      ]
     },
     {
       "rule_id": "R9059",
@@ -37,8 +52,15 @@
       "regex_pattern": "<script>|alert[(]|INFO:XSS_BASIC|onerror=",
       "severity": "High",
       "action": "Alert",
-      "target_ports": [80, 443, 8080, 8443],
-      "target_protocols": ["TCP"]
+      "target_ports": [
+        80,
+        443,
+        8080,
+        8443
+      ],
+      "target_protocols": [
+        "TCP"
+      ]
     },
     {
       "rule_id": "R0088",
@@ -62,7 +84,12 @@
       "severity": "High",
       "action": "Drop",
       "target_ports": [],
-      "target_protocols": ["ICMP"]
+      "target_protocols": [
+        "ICMP"
+      ],
+      "rate_mode": "count",
+      "rate_threshold": 50,
+      "rate_window_ms": 1000
     },
     {
       "rule_id": "R9006",
@@ -75,7 +102,12 @@
       "severity": "Medium",
       "action": "Alert",
       "target_ports": [],
-      "target_protocols": ["TCP"]
+      "target_protocols": [
+        "TCP"
+      ],
+      "rate_mode": "distinct_dst_ports",
+      "rate_threshold": 20,
+      "rate_window_ms": 10000
     },
     {
       "rule_id": "R9007",
@@ -88,7 +120,9 @@
       "severity": "Medium",
       "action": "Alert",
       "target_ports": [],
-      "target_protocols": ["TCP"]
+      "target_protocols": [
+        "TCP"
+      ]
     },
     {
       "rule_id": "R1001",
@@ -253,6 +287,17 @@
       "match_pattern": "atsvc",
       "regex_pattern": "atsvc|\\\\pipe\\\\atsvc|ATEXEC|ScheduleTask",
       "severity": "High",
+      "action": "Block"
+    },
+    {
+      "rule_id": "R0089",
+      "name": "Remote File Inclusion (RFI)",
+      "category": "Injection",
+      "layer": "L7",
+      "fast_pattern": "RFI_INCLUDE",
+      "match_pattern": "?file=http://",
+      "regex_pattern": "\\?file=https?://|\\?page=https?://|include=https?://",
+      "severity": "Critical",
       "action": "Block"
     }
   ]

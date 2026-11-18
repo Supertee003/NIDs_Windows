@@ -12,7 +12,7 @@ pub const CONTROL_PROTOCOL_VERSION: u16 = 2;
 pub const CONTROL_NONCE_BYTES: usize = 16;
 
 // ============================================================
-// Command Enum — all 31 control commands
+// Command Enum — all 33 control commands
 // ============================================================
 
 pub const Command = enum(u16) {
@@ -37,10 +37,15 @@ pub const Command = enum(u16) {
     events_count = 400,
     events_stats = 401,
     events_tail = 402,
+    queue_stats = 403,
 
     // --- incidents domain ---
     incidents_list = 500,
     incidents_show = 501,
+    // XDR-WIRE-001: advisory read-only evidence view (no action field).
+    xdr_list = 510,
+    // XDR-005-B: replay-verify persisted advisory snapshots (read-only).
+    xdr_verify = 511,
 
     // --- policy domain ---
     policy_list = 600,
@@ -61,6 +66,9 @@ pub const Command = enum(u16) {
     enforcement_verify = 802,
     enforcement_block = 803,
     enforcement_unblock = 804,
+    enforcement_two_person = 805,
+    enforcement_approve = 806,
+    enforcement_quarantine = 807,
 
     // --- metrics/logs domain ---
     metrics_snapshot = 900,
@@ -88,8 +96,11 @@ pub const Command = enum(u16) {
             .{ .name = "events.count", .cmd = .events_count },
             .{ .name = "events.stats", .cmd = .events_stats },
             .{ .name = "events.tail", .cmd = .events_tail },
+            .{ .name = "queue.stats", .cmd = .queue_stats },
             .{ .name = "incidents.list", .cmd = .incidents_list },
             .{ .name = "incidents.show", .cmd = .incidents_show },
+            .{ .name = "xdr.list", .cmd = .xdr_list },
+            .{ .name = "xdr.verify", .cmd = .xdr_verify },
             .{ .name = "policy.list", .cmd = .policy_list },
             .{ .name = "policy.validate", .cmd = .policy_validate },
             .{ .name = "policy.verify", .cmd = .policy_verify },
@@ -104,6 +115,9 @@ pub const Command = enum(u16) {
             .{ .name = "enforcement.verify", .cmd = .enforcement_verify },
             .{ .name = "enforcement.block", .cmd = .enforcement_block },
             .{ .name = "enforcement.unblock", .cmd = .enforcement_unblock },
+            .{ .name = "enforcement.two_person", .cmd = .enforcement_two_person },
+            .{ .name = "enforcement.approve", .cmd = .enforcement_approve },
+            .{ .name = "enforcement.quarantine", .cmd = .enforcement_quarantine },
             .{ .name = "metrics.snapshot", .cmd = .metrics_snapshot },
             .{ .name = "logs.tail", .cmd = .logs_tail },
             .{ .name = "federation.status", .cmd = .federation_status },
@@ -205,16 +219,19 @@ pub fn contract(cmd: Command) CommandContract {
         .rules_list => .{ .command = cmd, .name = "rules.list", .required_role = .read, .description = "List rules", .is_mutation = false, .has_postcondition = false },
         .rules_show => .{ .command = cmd, .name = "rules.show", .required_role = .read, .description = "Show rule details", .is_mutation = false, .has_postcondition = false },
         .rules_validate => .{ .command = cmd, .name = "rules.validate", .required_role = .read, .description = "Validate rules", .is_mutation = false, .has_postcondition = false },
-        .rules_reload => .{ .command = cmd, .name = "rules.reload", .required_role = .operate, .description = "Reload rules into engine", .is_mutation = true, .has_postcondition = true },
+        .rules_reload => .{ .command = cmd, .name = "rules.reload", .required_role = .privileged, .description = "Reload rules into engine", .is_mutation = true, .has_postcondition = true },
 
         // --- events domain ---
         .events_count => .{ .command = cmd, .name = "events.count", .required_role = .read, .description = "Event count", .is_mutation = false, .has_postcondition = false },
         .events_stats => .{ .command = cmd, .name = "events.stats", .required_role = .read, .description = "Event statistics", .is_mutation = false, .has_postcondition = false },
         .events_tail => .{ .command = cmd, .name = "events.tail", .required_role = .read, .description = "Recent events", .is_mutation = false, .has_postcondition = false },
+        .queue_stats => .{ .command = cmd, .name = "queue.stats", .required_role = .read, .description = "Queue ingress per source plus pipeline latency snapshot", .is_mutation = false, .has_postcondition = false },
 
         // --- incidents domain ---
         .incidents_list => .{ .command = cmd, .name = "incidents.list", .required_role = .read, .description = "List incidents", .is_mutation = false, .has_postcondition = false },
         .incidents_show => .{ .command = cmd, .name = "incidents.show", .required_role = .read, .description = "Show incident details", .is_mutation = false, .has_postcondition = false },
+        .xdr_list => .{ .command = cmd, .name = "xdr.list", .required_role = .read, .description = "List advisory XDR evidence incidents (read-only, never a host action)", .is_mutation = false, .has_postcondition = false },
+        .xdr_verify => .{ .command = cmd, .name = "xdr.verify", .required_role = .read, .description = "Replay-verify persisted advisory XDR snapshots (read-only, never a host action)", .is_mutation = false, .has_postcondition = false },
 
         // --- policy domain ---
         .policy_list => .{ .command = cmd, .name = "policy.list", .required_role = .read, .description = "List policies", .is_mutation = false, .has_postcondition = false },
@@ -235,6 +252,9 @@ pub fn contract(cmd: Command) CommandContract {
         .enforcement_verify => .{ .command = cmd, .name = "enforcement.verify", .required_role = .operate, .description = "Verify enforcement", .is_mutation = false, .has_postcondition = false },
         .enforcement_block => .{ .command = cmd, .name = "enforcement.block", .required_role = .privileged, .description = "Block an exact IP/port/protocol flow through Rust PEP", .is_mutation = true, .has_postcondition = true },
         .enforcement_unblock => .{ .command = cmd, .name = "enforcement.unblock", .required_role = .privileged, .description = "Remove an exact filter by EnforcementReceipt filter_id", .is_mutation = true, .has_postcondition = true },
+        .enforcement_two_person => .{ .command = cmd, .name = "enforcement.two_person", .required_role = .privileged, .description = "Enable/disable the two-person rule for high-severity BLOCKs (Rust PEP)", .is_mutation = true, .has_postcondition = true },
+        .enforcement_approve => .{ .command = cmd, .name = "enforcement.approve", .required_role = .privileged, .description = "Record a one-shot second-human approval for an enforcement request_id", .is_mutation = true, .has_postcondition = true },
+        .enforcement_quarantine => .{ .command = cmd, .name = "enforcement.quarantine", .required_role = .privileged, .description = "Quarantine an exact IP/port/protocol flow through Rust PEP (severity-gated, receipt DECISION_QUARANTINE)", .is_mutation = true, .has_postcondition = true },
 
         // --- metrics/logs domain ---
         .metrics_snapshot => .{ .command = cmd, .name = "metrics.snapshot", .required_role = .read, .description = "Metrics snapshot", .is_mutation = false, .has_postcondition = false },
@@ -279,7 +299,7 @@ pub const Result = struct {
 
     pub fn errorResult(code: []const u8, state: []const u8, message: []const u8) Result {
         return .{ .ok = false, .code = code, .state = state, .data = .{ .object = .{
-            .{"message", .{ .string = message }},
+            .{ "message", .{ .string = message } },
         } } };
     }
 };
@@ -293,10 +313,14 @@ test "Command.fromString parses all commands" {
     try std.testing.expectEqual(Command.runtime_stop, Command.fromString("runtime.stop").?);
     try std.testing.expectEqual(Command.rules_reload, Command.fromString("rules.reload").?);
     try std.testing.expectEqual(Command.events_tail, Command.fromString("events.tail").?);
+    try std.testing.expectEqual(Command.queue_stats, Command.fromString("queue.stats").?);
     try std.testing.expectEqual(Command.incidents_list, Command.fromString("incidents.list").?);
     try std.testing.expectEqual(Command.policy_simulate, Command.fromString("policy.simulate").?);
     try std.testing.expectEqual(Command.forensics_export, Command.fromString("forensics.export").?);
     try std.testing.expectEqual(Command.enforcement_status, Command.fromString("enforcement.status").?);
+    try std.testing.expectEqual(Command.enforcement_two_person, Command.fromString("enforcement.two_person").?);
+    try std.testing.expectEqual(Command.enforcement_quarantine, Command.fromString("enforcement.quarantine").?);
+    try std.testing.expectEqual(Command.enforcement_approve, Command.fromString("enforcement.approve").?);
     try std.testing.expectEqual(Command.metrics_snapshot, Command.fromString("metrics.snapshot").?);
     try std.testing.expectEqual(Command.logs_tail, Command.fromString("logs.tail").?);
     try std.testing.expectEqual(Command.federation_status, Command.fromString("federation.status").?);
@@ -328,7 +352,10 @@ test "contracts: read-only commands have correct role" {
     try std.testing.expect(!c_status.is_mutation);
 
     const c_reload = contract(.rules_reload);
-    try std.testing.expectEqual(Role.operate, c_reload.required_role);
+    // S1-04: reload applies detection content, so it is an elevated action.
+    // A local non-elevated user can read status/health; changing what the
+    // NIDS detects requires an elevated caller.
+    try std.testing.expectEqual(Role.privileged, c_reload.required_role);
     try std.testing.expect(c_reload.is_mutation);
 
     const c_stop = contract(.runtime_stop);
@@ -336,9 +363,55 @@ test "contracts: read-only commands have correct role" {
     try std.testing.expect(c_stop.is_mutation);
 }
 
+test "contracts: every mutation requires an elevated caller (S1-04)" {
+    // A local user can open the control pipe (AU read/operate) so status,
+    // health and queue reads keep working without elevation. Anything that
+    // changes state - detection content included - must not be reachable at
+    // that level. This asserts the whole table, not just rules.reload, so a
+    // future mutation cannot be added below privileged.
+    inline for (std.meta.fields(Command)) |field| {
+        const cmd: Command = @enumFromInt(field.value);
+        const c = contract(cmd);
+        if (c.is_mutation) {
+            try std.testing.expectEqual(Role.privileged, c.required_role);
+        }
+    }
+}
+
 test "contracts: federation.status is read-only" {
     const c_fed = contract(.federation_status);
     try std.testing.expectEqual(Role.read, c_fed.required_role);
     try std.testing.expect(!c_fed.is_mutation);
     try std.testing.expect(!c_fed.has_postcondition);
+}
+
+test "contracts: XDR surfaces are read-only and never postconditioned" {
+    // XDR-WIRE-001 / XDR-005-B: both views are evidence reads. A mutation or
+    // postcondition flag here would imply the control plane acts on the host.
+    const c_list = contract(.xdr_list);
+    try std.testing.expectEqual(Role.read, c_list.required_role);
+    try std.testing.expect(!c_list.is_mutation);
+    try std.testing.expect(!c_list.has_postcondition);
+
+    const c_verify = contract(.xdr_verify);
+    try std.testing.expectEqual(Role.read, c_verify.required_role);
+    try std.testing.expect(!c_verify.is_mutation);
+    try std.testing.expect(!c_verify.has_postcondition);
+    try std.testing.expectEqual(Command.xdr_verify, Command.fromString("xdr.verify").?);
+}
+
+test "contracts: two-person commands are privileged mutations" {
+    // T3-TWOP-023: the control-plane edge of the two-person rule must stay
+    // privileged-gated end to end (protocol contract -> handler role check
+    // -> FFI capability bit). A downgrade here would let a reader flip
+    // enforcement authorization policy.
+    const c_tp = contract(.enforcement_two_person);
+    try std.testing.expectEqual(Role.privileged, c_tp.required_role);
+    try std.testing.expect(c_tp.is_mutation);
+    try std.testing.expect(c_tp.has_postcondition);
+
+    const c_ap = contract(.enforcement_approve);
+    try std.testing.expectEqual(Role.privileged, c_ap.required_role);
+    try std.testing.expect(c_ap.is_mutation);
+    try std.testing.expect(c_ap.has_postcondition);
 }

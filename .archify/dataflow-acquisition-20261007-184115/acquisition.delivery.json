@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "715bbd06-9829-4d4e-b34c-cbd0b0217cd3",
+  "status": "current",
+  "command": "deliver",
+  "type": "dataflow",
+  "input": "D:\\NIDs_Windows\\.archify\\dataflow-acquisition-20261007-184115\\candidate.json",
+  "output": "D:\\NIDs_Windows\\.archify\\dataflow-acquisition-20261007-184115\\acquisition.html",
+  "specification": {
+    "sha256": "c8634cf2706499ca4ecaff7d3b90aa8010c713bd2026bda3f76d35d1ebfbbd67",
+    "bytes": 3543
+  },
+  "artifact": {
+    "sha256": "eca5b53e00cfc0f29c65b0ef16eeb74a0047d0dc6685971642bb10538b0488d0",
+    "bytes": 759750
+  }
+}

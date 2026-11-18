@@ -1,0 +1,33 @@
+{
+  "schema": "aegis.rule22-single.v1",
+  "rule_id": "R9059",
+  "name": "Cross-Site Scripting (Basic)",
+  "layer": "L7",
+  "severity": "High",
+  "action": "Alert",
+  "patterns": {
+    "fast_pattern": "XSS_BASIC",
+    "match_pattern": "<script>",
+    "regex_pattern": "<script>|alert[(]|INFO:XSS_BASIC|onerror="
+  },
+  "fixture": {
+    "fixture_id": "FX-03-R9059",
+    "source": "synthetic_payload_event",
+    "marker": "XSS_BASIC",
+    "synthetic_signal": "XSS_BASIC <script> C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "regex_match": true
+  },
+  "expected_observe_only": {
+    "host_effect": "none",
+    "wfp_block": false,
+    "enforcement_receipt": false,
+    "forensic_record": true,
+    "canonical_event": true
+  },
+  "prevention_gate": "closed",
+  "vm_steps": [
+    "replay payload via run_synthetic_detection_adapters.py",
+    "host-only: kali_l7_benign_probe.sh, then malicious variant",
+    "verify: L7 parser event + signature match, no enforcement"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "schema": "aegis.rule22-single.v1",
+  "rule_id": "R9064",
+  "name": "OS Command Injection (Semicolon)",
+  "layer": "L7",
+  "severity": "Critical",
+  "action": "Drop",
+  "patterns": {
+    "fast_pattern": "OSI_SEMI",
+    "match_pattern": ";whoami",
+    "regex_pattern": "INFO:OSI_SEMI|;\\s*id|;\\s*whoami|;\\s*cat"
+  },
+  "fixture": {
+    "fixture_id": "FX-02-R9064",
+    "source": "synthetic_payload_event",
+    "marker": "OSI_SEMI",
+    "synthetic_signal": "OSI_SEMI ;whoami C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "regex_match": true
+  },
+  "expected_observe_only": {
+    "host_effect": "none",
+    "wfp_block": false,
+    "enforcement_receipt": false,
+    "forensic_record": true,
+    "canonical_event": true
+  },
+  "prevention_gate": "closed",
+  "vm_steps": [
+    "replay payload via run_synthetic_detection_adapters.py",
+    "host-only: kali_l7_benign_probe.sh, then malicious variant",
+    "verify: L7 parser event + signature match, no enforcement"
+  ]
+}

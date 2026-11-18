@@ -1,9 +1,11 @@
 # AEGIS NIDS — Component Matrix
 
-> Single source of truth for every runnable component in the AEGIS runtime.
-> Each row corresponds to one process (or loadable module) that the
-> supervisor (`aegisctl`) must be able to BUILD, START, READY, HEALTH, STOP,
-> RESTART, and VERSION per `RUNTIME_CONTRACT.md`.
+> **HISTORICAL (re-verified 2026-10-19):** this document describes the
+> pre-single-spine "hub-and-spoke" layout (bridge-first startup, `dist/`
+> binaries). It is kept for history and is NOT current runtime truth.
+> Current canonical runtime: AGENTS.md + `runtime_manifest.json` +
+> `build_truth.json`. Sections below are retained except where explicitly
+> noted.
 
 Document version: 1.0
 Last updated: 2026-09-01
@@ -56,8 +58,8 @@ component into `DEGRADED` instead of blocking startup.
 
 | Component        | Binary                                    | Language | Inputs                              | Outputs                              | Deps                  | Start                          | Health                                | Stop                         | Required | Gate |
 |------------------|-------------------------------------------|----------|-------------------------------------|--------------------------------------|-----------------------|--------------------------------|---------------------------------------|------------------------------|----------|------|
-| `wfp-callout`    | `drivers/wfp_callout/aegis_wfp.sys`       | C        | WFP layer callbacks                  | IOCTL to core, block actions          | `core`                | `sc start aegis_wfp`           | IOCTL `GET_HEALTH` (via core)         | `sc stop aegis_wfp`           | no* | D |
-| `minifilter`     | `drivers/minifilter/aegis_minifilter.sys` | C        | filesystem IRPs                      | pipe events to core                   | `core`                | `sc start aegis_minifilter`    | IOCTL `GET_HEALTH` (via core)         | `sc stop aegis_minifilter`    | no* | D |
+| `wfp-callout`    | `drivers/wfp_callout/aegis_wfp.sys`       | C        | WFP layer callbacks                  | IOCTL to core, block actions          | `core`                | `sc.exe start aegis_wfp`       | IOCTL `GET_HEALTH` (via core)         | `sc.exe stop aegis_wfp`           | no* | D |
+| `minifilter`     | `drivers/minifilter/aegis_minifilter.sys` | C        | filesystem IRPs                      | pipe events to core                   | `core`                | `sc.exe start aegis_minifilter` | IOCTL `GET_HEALTH` (via core)         | `sc.exe stop aegis_minifilter`    | no* | D |
 
 > Drivers marked `no*` are optional for the runtime contract — the system
 > can run in "sensor-only" mode without them — but they are required for
@@ -68,8 +70,8 @@ component into `DEGRADED` instead of blocking startup.
 | Component        | Binary                       | Language | Inputs                          | Outputs                              | Deps                  | Start                          | Health                                | Stop                          | Required | Gate |
 |------------------|------------------------------|----------|---------------------------------|--------------------------------------|-----------------------|--------------------------------|---------------------------------------|-------------------------------|----------|------|
 | `metrics`        | `scripts/aegis_metrics.py`    | Python   | core NDJSON, brain log          | Prometheus :9100 /metrics            | `core`*               | `python aegis_metrics.py`      | `127.0.0.1:9100/-/healthy`           | SIGINT → 2s → kill            | no  | C |
-| `notifier`       | `scripts/aegis_notifier.py`   | Python   | aggregator REST                 | email / webhook / syslog             | `aggregator`*         | `python aegis_notifier.py`      | `\\.\pipe\aegis-notifier-health`     | SIGINT → 2s → kill            | no  | C |
-| `dashboard`      | `aegis_dashboard/aegis_dashboard.exe` | Rust | core NDJSON, aggregator API     | egui window + axum :8080             | `core`*, `aggregator`* | `aegis_dashboard.exe`          | `127.0.0.1:8080/health`              | SIGINT → 2s → kill            | no  | C |
+| `notifier`       | `scripts/aegis_notifier.py`   | Python   | aggregator REST                 | email / webhook / syslog             | `aggregator`*         | RETIRED (EVT-152, no runner)   | n/a (retired)                         | n/a                           | no (retired) | C |
+| `dashboard`      | `aegis_dashboard/aegis_dashboard.exe` | Rust | core NDJSON (`logs/aegis_core.ndjson`) | egui window (local viewer; no HTTP server) | `core`* | `aegis_dashboard.exe`          | n/a (no HTTP server) | SIGINT -> 2s -> kill | no  | C |
 
 ---
 
@@ -89,7 +91,7 @@ To prevent collisions, every fixed transport endpoint is registered here.
 | `127.0.0.1:9999/health`                    | UDP       | brain        | Health probe (single-packet JSON) |
 | `127.0.0.1:9100`                           | HTTP      | metrics      | Prometheus /metrics              |
 | `127.0.0.1:9200`                           | HTTP      | aggregator   | REST API                         |
-| `127.0.0.1:8080`                           | HTTP      | dashboard    | Web UI + axum API                |
+| `127.0.0.1:5000`                           | HTTP      | web dashboard (operator-launched) | Flask operator UI (`python -m tools.aegisctl.web_dashboard.app`) |
 | `127.0.0.1:10001`                          | UDP       | dashboard    | Brain forward listener           |
 | `127.0.0.1:12345`                          | TCP       | core         | Admin pipe listener (debug)     |
 
@@ -171,7 +173,7 @@ manifest (`aegis.manifest.json`).
 | `shield`     | Embedded in core's version string (`shield=<semver>`) |
 | `aggregator` | `aegis-aggregator.exe --version`                    |
 | `metrics`    | `python aegis_metrics.py --version`                 |
-| `notifier`   | `python aegis_notifier.py --version`                |
+| `notifier`   | n/a (retired EVT-152)                               |
 | `dashboard`  | `aegis_dashboard.exe --version`                     |
 
 If a component does not yet implement `--version`, it is **not** Gate-A

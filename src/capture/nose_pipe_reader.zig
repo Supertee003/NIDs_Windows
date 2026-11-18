@@ -4,7 +4,12 @@
 // process and feeds CanonicalEvents into the Zig fabric (nose_contract).
 //
 // Frame protocol (matches nose/pipe_writer.go):
-//   u32 LE length (always 109) + 109 raw canonical event bytes.
+//   u32 LE length (109 v1, 133 v2, or 165..1189 v3) + raw canonical event
+//   bytes. v3 (PAYLOAD-ENVELOPE-V3-001) appends a 32-byte provenance/payload
+//   envelope and bounded payload bytes to the frozen v2 base layout.
+// v2 frames (T2-V6-022a) carry the full IPv6 tail; DecodedFrame sidecars
+// survive the queue to the flow/anomaly stages (V6-FLOW-036/V6-DETECT-037)
+// while detection/policy/forensic identity stays u32 + bit2.
 //
 // After each frame the reader validates schema via canonical.validate()
 // and submits through nose_contract.submitEvent(), routing the event
@@ -46,6 +51,30 @@ const ERROR_PIPE_CONNECTED = 535;
 const ERROR_PIPE_LISTENING = 536;
 
 const FRAME_SIZE: usize = 109; // canonical.WIRE_PAYLOAD_SIZE
+/// v3 frames are variable length: 165-byte fixed header + 0..1024 payload.
+const V3_MIN_FRAME: u32 = @intCast(canonical.WIRE_V3_HEADER_SIZE);
+const V3_MAX_FRAME: u32 = @intCast(canonical.WIRE_V3_MAX_SIZE);
+
+/// Bound for drain-and-continue on a malformed length (NOSE-DISC-042). A
+/// corrupt length header is a u32 with no credibility: draining more than
+/// this to "resync" lets one bad header stall the reader for gigabytes and
+/// the stream position after garbage is unknowable anyway. Larger lengths
+/// break the connection instead — nose reconnects and framing restarts
+/// clean. Legitimate frames are 109/133 bytes, orders below this bound.
+pub const MAX_DISCARD_BYTES: u32 = 64 * 1024;
+
+/// Pure frame-length classifier so the resync policy is unit-pinned
+/// without a pipe handle. drain = skip-and-continue, resync = drop the
+/// connection and let nose reconnect.
+pub const LengthVerdict = enum { accept_v1, accept_v2, accept_v3, drain, resync };
+
+pub fn classifyFrameLen(frameLen: u32) LengthVerdict {
+    if (frameLen == FRAME_SIZE) return .accept_v1;
+    if (frameLen == canonical.WIRE_V2_PAYLOAD_SIZE) return .accept_v2;
+    if (frameLen >= V3_MIN_FRAME and frameLen <= V3_MAX_FRAME) return .accept_v3;
+    if (frameLen <= MAX_DISCARD_BYTES) return .drain;
+    return .resync;
+}
 
 // ============================================================
 // Win32 Extern (kernel32) Î“Ã‡Ã¶ Pipe functions not in Zig std
@@ -86,6 +115,32 @@ extern "kernel32" fn CloseHandle(
     hObject: usize,
 ) callconv(.C) i32;
 
+extern "advapi32" fn ConvertStringSecurityDescriptorToSecurityDescriptorW(
+    StringSecurityDescriptor: [*:0]const u16,
+    StringSDRevision: u32,
+    SecurityDescriptor: *?*anyopaque,
+    SecurityDescriptorSize: ?*u32,
+) callconv(.C) i32;
+
+extern "kernel32" fn LocalFree(
+    hMem: ?*anyopaque,
+) callconv(.C) ?*anyopaque;
+
+// G6: explicit SDDL identical to the sensor pipe (BA+AU). The previous
+// null descriptor inherited a restrictive default DACL that rejected
+// non-SYSTEM writers (proven live: medium-IL client got ERROR_ACCESS_DENIED
+// while the daemon waited forever), so Go nose could never deliver.
+// Authenticated-user writers match the sensor pipe posture: pipe input is
+// untrusted sensor data by design (observe-only, trust-gated enforcement).
+const SDDL_NOSE_PIPE: [*:0]const u16 = @import("std").unicode.utf8ToUtf16LeStringLiteral("D:(A;;GA;;;BA)(A;;GA;;;AU)");
+const SDDL_REVISION: u32 = 1;
+
+const NoseSecurityAttributes = extern struct {
+    nLength: u32,
+    lpSecurityDescriptor: ?*anyopaque,
+    bInheritHandle: i32,
+};
+
 extern "kernel32" fn DisconnectNamedPipe(
     hNamedPipe: usize,
 ) callconv(.C) i32;
@@ -105,6 +160,30 @@ fn createPipeServer() !usize {
     // bounded handoff window instead of converting a transient ERROR_PIPE_BUSY
     // into nose_init_failed immediately.
     var attempt: u32 = 0;
+    // G6: explicit SDDL (fail-closed like the sensor pipe). The old null
+    // descriptor inherited a restrictive default DACL that rejected
+    // non-SYSTEM writers (proven live: medium-IL client got
+    // ERROR_ACCESS_DENIED while the daemon waited forever), so Go nose
+    // could never deliver. AU writers match the sensor pipe posture.
+    var pipe_sd: ?*anyopaque = null;
+    var sec_attr = NoseSecurityAttributes{
+        .nLength = @sizeOf(NoseSecurityAttributes),
+        .lpSecurityDescriptor = null,
+        .bInheritHandle = 0,
+    };
+    if (ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        SDDL_NOSE_PIPE,
+        SDDL_REVISION,
+        &pipe_sd,
+        null,
+    ) != 0) {
+        sec_attr.lpSecurityDescriptor = pipe_sd;
+    } else {
+        std.log.err("[NOSE PIPE] CRITICAL: SDDL conversion failed - REFUSING to create pipe (fail-closed)", .{});
+        runtime_state.markWorkerFailure(.nose);
+        return error.CreatePipeFailed;
+    }
+    defer _ = LocalFree(pipe_sd);
     while (attempt < 120) { // 60 seconds at 500 ms intervals
         const handle = CreateNamedPipeW(
             &PIPE_NAME,
@@ -112,9 +191,9 @@ fn createPipeServer() !usize {
             PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_NOWAIT,
             1, // single instance: never allow duplicate Nose authorities
             0, // no output buffer
-            FRAME_SIZE * 256, // input buffer: 256 frames
+            canonical.WIRE_V3_MAX_SIZE * 64, // input buffer: 64 max-size frames
             0, // default timeout
-            null,
+            @ptrCast(&sec_attr),
         );
         if (handle != INVALID_HANDLE) return handle;
 
@@ -238,13 +317,13 @@ pub fn runPipeReaderLoop(stopSignal: *std.atomic.Value(bool)) void {
         var wait_mode: u32 = PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | 0x00000000;
         _ = SetNamedPipeHandleState(server, &wait_mode, null, null);
         std.log.info("[NOSE PIPE] client connected", .{});
-        runtime_state.g_nose_connected = true;
+        runtime_state.g_nose_connected.store(true, .monotonic);
 
         // Read frames until disconnect
         readClientLoop(server, stopSignal);
 
         _ = DisconnectNamedPipe(server);
-        runtime_state.g_nose_connected = false;
+        runtime_state.g_nose_connected.store(false, .monotonic);
         std.log.info("[NOSE PIPE] client disconnected, waiting for next...", .{});
     }
 
@@ -267,7 +346,7 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
             std.log.warn("[NOSE PIPE] frame header read failed: GetLastError={d}", .{err});
             if (err == ERROR_BROKEN_PIPE or err == ERROR_NO_DATA) break;
             g_reader_stats.pipe_errors += 1;
-            runtime_state.g_nose_pipe_errors += 1;
+            _ = runtime_state.g_nose_pipe_errors.fetchAdd(1, .monotonic);
             break;
         }
         const frameLen = @as(u32, lenBuf[0]) |
@@ -275,9 +354,18 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
             (@as(u32, lenBuf[2]) << 16) |
             (@as(u32, lenBuf[3]) << 24);
 
-        if (frameLen != FRAME_SIZE) {
-            std.log.warn("[NOSE PIPE] rejected frame length: {d}, expected {d}", .{ frameLen, FRAME_SIZE });
-            // Skip malformed frame: read and discard
+        const verdict = classifyFrameLen(frameLen);
+        if (verdict == .resync) {
+            std.log.err("[NOSE PIPE] absurd frame length {d}: dropping connection to resync (nose will reconnect)", .{frameLen});
+            g_reader_stats.frames_dropped += 1;
+            g_reader_stats.pipe_errors += 1;
+            _ = runtime_state.g_nose_frames_dropped.fetchAdd(1, .monotonic);
+            _ = runtime_state.g_nose_pipe_errors.fetchAdd(1, .monotonic);
+            break;
+        }
+        if (verdict == .drain) {
+            std.log.warn("[NOSE PIPE] rejected frame length: {d}, expected {d}/{d} or v3 {d}..{d}", .{ frameLen, FRAME_SIZE, canonical.WIRE_V2_PAYLOAD_SIZE, V3_MIN_FRAME, V3_MAX_FRAME });
+            // Skip malformed frame: read and discard (bounded by classifier)
             var discard: [256]u8 = undefined;
             var remaining = frameLen;
             while (remaining > 0) {
@@ -286,50 +374,63 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
                 remaining -= @intCast(toRead);
             }
             g_reader_stats.frames_dropped += 1;
-            runtime_state.g_nose_frames_dropped += 1;
+            _ = runtime_state.g_nose_frames_dropped.fetchAdd(1, .monotonic);
             continue;
         }
 
-        // Read payload
-        var payload: [FRAME_SIZE]u8 = undefined;
-        if (!readExact(server, &payload, stopSignal)) {
+        // Read payload (v1 109, v2 133, or v3 165..1189 bytes, length-delimited)
+        var payload: [canonical.WIRE_V3_MAX_SIZE]u8 = undefined;
+        const payload_slice = payload[0..frameLen];
+        if (!readExact(server, payload_slice, stopSignal)) {
             std.log.warn("[NOSE PIPE] frame payload read failed: GetLastError={d}", .{GetLastError()});
             g_reader_stats.pipe_errors += 1;
             break;
         }
 
         g_reader_stats.frames_read += 1;
-        runtime_state.g_nose_frames_read += 1;
-        std.log.info("[NOSE PIPE] frame received: {d} bytes", .{FRAME_SIZE});
+        _ = runtime_state.g_nose_frames_read.fetchAdd(1, .monotonic);
+        // LOG-FLOOD-062: per-frame routine logs are debug, not info. At
+        // capture rates info-level per-frame lines flood the log sink on
+        // this hot thread; volume stays visible via frames_read/submitted
+        // counters (stats + metrics). Reject/duplicate/error lines below
+        // stay warn: they signal data-plane anomalies, not routine flow.
+        std.log.debug("[NOSE PIPE] frame received: {d} bytes", .{frameLen});
 
-        // Deserialize and validate
-        const event = canonical.deserializeFromBytes(&payload) orelse {
+        // Deserialize with version dispatch (v1 frozen path, v2 full-IPv6
+        // tail). v2 sidecars ride the DecodedFrame into the queue
+        // (V6-FLOW-036); v1 frames carry null sidecars by construction.
+        const frame = canonical.deserializeDispatch(payload_slice) orelse {
             std.log.warn("[NOSE PIPE] canonical frame rejected by deserializer", .{});
             g_reader_stats.frames_rejected += 1;
-            runtime_state.g_nose_frames_rejected += 1;
+            _ = runtime_state.g_nose_frames_rejected.fetchAdd(1, .monotonic);
             continue;
         };
+        const event = frame.event;
 
         if (event.event_id == previous_connection_event_id) {
-            runtime_state.g_nose_duplicate_event_ids += 1;
+            _ = runtime_state.g_nose_duplicate_event_ids.fetchAdd(1, .monotonic);
             std.log.warn("[NOSE PIPE] duplicate event_id={d}", .{event.event_id});
         } else if (previous_connection_event_id != 0 and event.event_id < previous_connection_event_id) {
-            runtime_state.g_nose_non_monotonic_event_ids += 1;
+            _ = runtime_state.g_nose_non_monotonic_event_ids.fetchAdd(1, .monotonic);
             std.log.warn("[NOSE PIPE] non-monotonic event_id={d}, previous={d}", .{ event.event_id, previous_connection_event_id });
         }
         previous_connection_event_id = event.event_id;
         g_last_event_id = event.event_id;
-        runtime_state.g_nose_last_event_id = event.event_id;
+        runtime_state.g_nose_last_event_id.store(event.event_id, .monotonic);
 
         // Submit directly to the queue consumed by event_processor. There is
         // no second acquisition queue between canonical validation and detect.
-        if (pipeline_queue.pushCanonicalEvent(&event)) {
+        // The full DecodedFrame goes in so v2 sidecars survive to the flow
+        // stage (V6-FLOW-036) and v3 payload/provenance reaches Zig detection.
+        // v1/v2 frames carry no wire payload (metadata-only compatibility);
+        // legacy v3-unaware callers still supply an empty slice.
+        if (pipeline_queue.pushDecodedFrame(&frame, frame.payload)) {
             g_reader_stats.frames_submitted += 1;
-            runtime_state.g_nose_frames_submitted += 1;
-            std.log.info("[NOSE PIPE] canonical event submitted: event_id={d}", .{event.event_id});
+            _ = runtime_state.g_nose_frames_submitted.fetchAdd(1, .monotonic);
+            std.log.debug("[NOSE PIPE] canonical event submitted: event_id={d}", .{event.event_id});
         } else {
             g_reader_stats.frames_dropped += 1;
-            runtime_state.g_nose_frames_dropped += 1;
+            _ = runtime_state.g_nose_frames_dropped.fetchAdd(1, .monotonic);
         }
     }
 }
@@ -346,4 +447,47 @@ test "PipeReaderStats default zeros" {
 
 test "FRAME_SIZE matches canonical wire payload" {
     try std.testing.expectEqual(canonical.WIRE_PAYLOAD_SIZE, FRAME_SIZE);
+}
+
+test "reader accepts v1, v2, and v3 frame lengths" {
+    // Contract pin: the length-delimited pipe carries 109 (v1, frozen),
+    // 133 (v2, full IPv6 tail), or a bounded v3 frame (165..1189).
+    try std.testing.expectEqual(@as(usize, 109), canonical.WIRE_PAYLOAD_SIZE);
+    try std.testing.expectEqual(@as(usize, 133), canonical.WIRE_V2_PAYLOAD_SIZE);
+    try std.testing.expectEqual(@as(usize, 165), canonical.WIRE_V3_HEADER_SIZE);
+    try std.testing.expectEqual(@as(usize, 1189), canonical.WIRE_V3_MAX_SIZE);
+}
+
+test "classifyFrameLen bounds the drain and resyncs on absurd lengths" {
+    // NOSE-DISC-042: legitimate frames pass; small garbage is drained; a
+    // corrupt u32 must never stall the reader draining gigabytes — the
+    // connection drops and nose reconnects instead.
+    try std.testing.expectEqual(LengthVerdict.accept_v1, classifyFrameLen(109));
+    try std.testing.expectEqual(LengthVerdict.accept_v2, classifyFrameLen(133));
+    try std.testing.expectEqual(LengthVerdict.accept_v3, classifyFrameLen(165));
+    try std.testing.expectEqual(LengthVerdict.accept_v3, classifyFrameLen(1189));
+    try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(0));
+    try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(108));
+    try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(134));
+    try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(164));
+    try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(1190));
+    try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(MAX_DISCARD_BYTES));
+    try std.testing.expectEqual(LengthVerdict.resync, classifyFrameLen(MAX_DISCARD_BYTES + 1));
+    try std.testing.expectEqual(LengthVerdict.resync, classifyFrameLen(std.math.maxInt(u32)));
+}
+
+test "G6 nose pipe SDDL converts (fail-closed path would refuse)" {
+    // A typo in the SDDL string makes createPipeServer refuse to create
+    // the pipe at all; pin the conversion itself so the constant cannot
+    // silently rot. Windows-only API — skip cleanly elsewhere.
+    if (@import("builtin").os.tag != .windows) return error.SkipZigTest;
+    var sd: ?*anyopaque = null;
+    try std.testing.expect(ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        SDDL_NOSE_PIPE,
+        SDDL_REVISION,
+        &sd,
+        null,
+    ) != 0);
+    try std.testing.expect(sd != null);
+    _ = LocalFree(sd);
 }

@@ -1,5 +1,17 @@
 ﻿//! dispatcher.zig - AEGIS Runtime Dispatcher (Phase B: Runtime Spine)
 //!
+//! QUARANTINED ORCHESTRATOR — test-harness only, NOT production. This module
+//! drives tests/integration/* facades and must never be wired into the
+//! daemon. The production pipeline is pipeline/event_processor.zig with
+//! enforcement through policy/action_dispatcher.zig (see AGENTS.md planes).
+//!
+//! PRESERVED AS REFERENCE (additive-first rule): this file is the only map
+//! of how the Universe-B subsystem family wires together (event_fabric ->
+//! flow/detection/verdict/correlation/threat-intel/rag/brain/policy/PEP/
+//! forensics integration facades). Those subsystems still exist and may be
+//! integrated into production one day; deleting this map would erase the
+//! wiring knowledge. To reuse any stage, migrate its facade behind a design
+//! slice — never import this file from production (forbidden-edges pin).
 //! Pops events from Event Fabric and routes through the pipeline.
 //! Replaces the old eventFabricDrain() in nids_analyze.zig.
 //!

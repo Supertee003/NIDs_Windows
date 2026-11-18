@@ -1,85 +1,72 @@
 # RB-004: Restore from Snapshot
 
 ## Objective
-Restore the AEGIS NIDS system state from a previously captured snapshot. This runbook covers the recovery procedure when the system needs to be rolled back to a known-good state.
+
+Recover system state from a previously captured snapshot using the
+upgrade/rollback tool. Destructive by nature: read fully before running.
 
 ## Prerequisites
-- AEGIS NIDS running with SnapshotManager initialized
-- At least one snapshot captured previously
-- Operator access to restore API
-- Estimated restore time: < 30 seconds (RTO bound)
+
+- Admin shell (service restart is part of recovery).
+- A snapshot id from a previous capture.
 
 ## Steps
 
-1. **List available snapshots**
+1. **List and pick**
+   ```bat
+   python tools/upgrade_rollback.py report
    ```
-   snapshot_manager.len()  # count of stored snapshots
-   snapshot_manager.latest()  # most recent snapshot
+   - Choose by incident timeline (latest known-good, not latest).
+   - Record the snapshot id and why it is trusted.
+
+2. **Capture the current (broken) state first**
+   ```bat
+   python tools/upgrade_rollback.py snapshot
    ```
-   - Verify snapshots exist before proceeding
-   - Note the snapshot_id of the target snapshot
+   - Never roll back without a return ticket.
 
-2. **Select the target snapshot**
-   - Choose based on the incident timeline:
-     - Latest snapshot: for recent known-good state
-     - Earlier snapshot: for deeper rollback
-   - Get the snapshot details: `snapshot_manager.getById(snapshot_id)`
-
-3. **Verify snapshot integrity**
+3. **Verify, then roll back**
+   ```bat
+   python tools/upgrade_rollback.py rollback --snapshot <id>
    ```
-   snapshot = snapshot_manager.getById(target_id)
-   expected_hash = computeStateHash(snapshot.state)
-   if snapshot.content_hash != expected_hash:
-       # SNAPSHOT IS CORRUPTED - do not use
+   - The tool verifies integrity before applying; a failed verify
+     aborts (do not force it).
+
+4. **Restart and confirm**
+   ```bat
+   sc.exe stop AegisNids
+   sc.exe start AegisNids
+   python scripts\aegis_open.py status
    ```
-   - The restore API automatically verifies content_hash
-   - If verification fails, restore returns null
+   - In PowerShell, `sc.exe` with the extension -- bare `sc` is the
+     Set-Content alias and writes junk files (see EVT-163). If SCM
+     stop hangs, use `aegisctl stop --all` (GAP-017).
+   - Expect 4 OK rows; daemon pid must be new.
 
-4. **Initiate the restore**
-   ```
-   restored_state = snapshot_manager.restore(snapshot_id, now_ms)
-   ```
-   - Restore is idempotent (same snapshot -> same state)
-   - Returns the SystemState (8 fields: ruleset_version, rule_count, total_events, etc.)
-   - Returns null if snapshot_id invalid or content_hash mismatch
+5. **Confirm the restore**
+   - `status` green, DEFCON as expected, events flowing
+     (`events count` advances), `forensic verify` true.
 
-5. **Verify the restored state**
-   - Check ruleset_version matches expected
-   - Check total_events count is correct
-   - Check defcon_level is restored
-   - Verify config_mtime_ms matches the snapshot time
-
-6. **Monitor system after restore**
-   - Watch health monitoring for stability
-   - Check DEFCON level (should match restored state)
-   - Verify event processing resumes normally
-
-7. **Record the restore in audit trail**
-   - Audit trail automatically records: action=system_restart, outcome=success
-   - Verify audit record created with restore timestamp
+6. **Record**: snapshot id, reason, before/after pids, verify output.
 
 ## Verification
-- `restore()` returns non-null SystemState
-- Restored state matches snapshot (all 8 fields)
-- Restore is idempotent (3 restores of same snapshot -> same state)
-- RTO satisfied: restore completes within 30 seconds
 
-## Rollback
-If the restore itself fails or produces unexpected state:
-1. Do NOT attempt to re-restore immediately
-2. Check snapshot integrity: `verifyChain()` on audit trail
-3. If audit trail is intact, capture a new snapshot of current (broken) state
-4. Try restoring from an earlier snapshot
-5. If all snapshots fail, contact engineering (possible database corruption)
+- Status green on the new pid; ring verifies; flow resumes.
+- RTO is measured wall-clock by the tool (`report`).
+
+## Rollback of the rollback
+
+- The step-2 snapshot is the way back; earlier snapshots next.
+- If everything fails: reinstall from release media, then restore.
 
 ## Notes
-- RPO (Recovery Point Objective): 5 minutes (default snapshot interval)
-- RTO (Recovery Time Objective): 30 seconds (restore + verify)
-- Max snapshots stored: 32 (oldest evicted when full)
-- Snapshot is content-addressed (FNV-1a hash over 8 state fields + seed 0xA171BAC5)
-- Restore does NOT modify the snapshot store (snapshots are immutable)
+
+- RPO/RTO are measured by the tool, not promised by this doc.
+- Keeper task: disable during the window, re-enable after
+  (`schtasks /change /tn AegisKeeper /disable|/enable`), or it may
+  start the service mid-procedure.
 
 ## References
-- G17: `core/backup_recovery_proof.zig` - Backup & recovery proof
-- G13: `core/health_monitoring_proof.zig` - Health monitoring (post-restore verification)
-- G14: `core/audit_trail_proof.zig` - Audit trail (records restore action)
+
+- `tools/upgrade_rollback.py --help`, `tools/fresh_deploy.py --plan`
+- RB-005 (config-only rollback, lighter), GAP-017 (stop paths)

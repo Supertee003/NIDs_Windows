@@ -72,7 +72,7 @@ pub const ModuleDoc = struct {
 /// v5.0 Section 73: G20 Exit Gate - no module without docs.
 pub const MODULE_DOCS = [_]ModuleDoc{
     // Proof modules (G1-G19).
-    .{ .name = "contract_freeze", .category = .proof, .phase = "G1", .has_api_reference = true, .has_runbook = false, .has_architecture_doc = true, .public_function_count = 5 },
+    .{ .name = "contract_freeze", .category = .proof, .phase = "G1", .has_api_reference = true, .has_runbook = false, .has_architecture_doc = true, .public_function_count = 6 },
     .{ .name = "fabric_accounting", .category = .proof, .phase = "G2", .has_api_reference = true, .has_runbook = false, .has_architecture_doc = true, .public_function_count = 8 },
     .{ .name = "runtime_spine", .category = .proof, .phase = "G3", .has_api_reference = true, .has_runbook = false, .has_architecture_doc = true, .public_function_count = 4 },
     .{ .name = "flow_state_proof", .category = .proof, .phase = "G4", .has_api_reference = true, .has_runbook = false, .has_architecture_doc = true, .public_function_count = 6 },

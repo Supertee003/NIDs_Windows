@@ -51,11 +51,14 @@ if _bridge_dll is None:
         _bridge_dll = None
 
 
-# ====== IPC Event Structure (48 bytes — matches C++ IpcEvent) ======
+# ====== IPC Event Structure (76 bytes, packed — matches C++ IpcEvent) ======
+# NOTE: older comments said 48/72 bytes; the field list sums to 76 in all
+# three implementations (C++ pack(1) == ctypes _pack_=1 == Cython packed).
+# The kernel-header compat ranges in aegis_ipc.hpp were corrected alongside.
 class AegisIpcEvent(ctypes.Structure):
     _pack_ = 1
     _fields_ = [
-        # ===== Core fields (bytes 0-39 — kernel AEGIS_EVENT_HEADER compatible) =====
+        # ===== Core fields (bytes 0-43 — kernel AEGIS_EVENT_HEADER compatible) =====
         ("event_type",      ctypes.c_uint32),   # 0=NETWORK, 1=KERNEL_FILE, 2=KERNEL_PROCESS, 3=L2_PIPE
         ("source_ip",       ctypes.c_uint32),   # IPv4 source (0 for host-only events)
         ("dest_ip",         ctypes.c_uint32),   # IPv4 destination (0 for host-only events)
@@ -70,10 +73,10 @@ class AegisIpcEvent(ctypes.Structure):
         ("severity",        ctypes.c_uint32),   # 0=Low, 1=Medium, 2=High, 3=Critical
         ("reserved",        ctypes.c_uint32),   # Reserved (0)
         ("timestamp",       ctypes.c_uint64),   # Event timestamp (ms since epoch)
-        # ===== Extended fields (bytes 40-47 — backward compatible) =====
+        # ===== Extended fields (bytes 44-51 — backward compatible) =====
         ("source_pid",      ctypes.c_uint32),   # PID of source process (0 if unknown)
         ("defcon_impact",   ctypes.c_uint32),   # DEFCON impact level (1-5)
-        # ===== G2 canonical extension (bytes 48-71 — NEW) =====
+        # ===== G2 canonical extension (bytes 52-75 — NEW) =====
         ("event_id",        ctypes.c_uint64),   # Unique event ID
         ("schema_version",  ctypes.c_uint16),   # Schema version (currently 2)
         ("confidence",      ctypes.c_uint8),    # Detection confidence 0-100
@@ -160,6 +163,32 @@ _bridge_pop = _get_func("aegis_bridge_pop_event",
     [ctypes.POINTER(AegisIpcEvent)], ctypes.c_int32)
 
 
+def _rule_to_u32(rule_id):
+    """Map a rule ID to its wire u32 (shared with brain.cython.bridge_ipc).
+
+    Integers pass through; digit strings/floats truncate via int(); anything
+    else (e.g. "R0056") hashes with FNV-1a (T2-BRAIN-023). The old code raised
+    ValueError on such IDs whenever the DLL was present.
+    """
+    if isinstance(rule_id, bool):
+        return int(rule_id)
+    if isinstance(rule_id, int):
+        return rule_id & 0xFFFFFFFF
+    if isinstance(rule_id, float):
+        return int(rule_id) & 0xFFFFFFFF
+    if isinstance(rule_id, str):
+        try:
+            return int(rule_id) & 0xFFFFFFFF
+        except ValueError:
+            pass
+        digest = 0x811C9DC5
+        for byte in rule_id.encode("utf-8"):
+            digest ^= byte
+            digest = (digest * 0x01000193) & 0xFFFFFFFF
+        return digest
+    return int(rule_id) & 0xFFFFFFFF
+
+
 def push_event(event_type, source_ip, dest_ip, source_port, dest_port,
                protocol, tier_result, rule_id, severity, direction=0):
     """Push an event to the C++ Bridge event queue."""
@@ -177,7 +206,7 @@ def push_event(event_type, source_ip, dest_ip, source_port, dest_port,
     event.layer_id       = 0 if event_type == 0 else event_type
     event.tier_result    = tier_result   # 2 = Tier-2 regex match
     event.payload_length = 0
-    event.rule_id        = int(rule_id) if isinstance(rule_id, (str, float)) else rule_id
+    event.rule_id        = _rule_to_u32(rule_id)
     event.severity       = severity
     event.reserved       = 0
     event.timestamp      = 0
@@ -360,3 +389,35 @@ def ips_decide(rule_id, severity, src_ip, action="alert"):
         return "enforcement_unavailable"
 
     return action if action in ("alert", "block") else "alert"
+
+
+# ====== Cython primary (standing rule: Python->C via Cython) ======
+# When brain/cython/bridge_ipc.pyd is importable, rebind every DLL-touching
+# callable above to the Cython implementation (same names, same signatures,
+# same fallback semantics). Pure-Python surface (DEFCON_* consts, labels,
+# AegisIpcEvent/AegisIpcCommand classes, _ip_to_int) stays defined here for
+# compatibility. When the .pyd is absent, the ctypes code above runs
+# unchanged. Either way there is exactly ONE active C edge per process.
+try:
+    from brain.cython import bridge_ipc as _cy_bridge
+except Exception:  # noqa: BLE001 (missing/stale .pyd must never break importers)
+    _cy_bridge = None
+
+if _cy_bridge is not None:
+    bridge_init = _cy_bridge.bridge_init
+    bridge_shutdown = _cy_bridge.bridge_shutdown
+    push_event = _cy_bridge.push_event
+    pop_event = _cy_bridge.pop_event
+    get_event_count = _cy_bridge.get_event_count
+    get_dropped_count = _cy_bridge.get_dropped_count
+    get_defcon_level = _cy_bridge.get_defcon_level
+    update_defcon = _cy_bridge.update_defcon
+    get_defcon_label = _cy_bridge.get_defcon_label
+    get_defcon_description = _cy_bridge.get_defcon_description
+    block_ip = _cy_bridge.block_ip
+    unblock_ip = _cy_bridge.unblock_ip
+    push_tier2_match = _cy_bridge.push_tier2_match
+    ips_decide = _cy_bridge.ips_decide
+    BRIDGE_VIA = "cython"
+else:
+    BRIDGE_VIA = "ctypes"

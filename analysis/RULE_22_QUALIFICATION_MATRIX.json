@@ -2,7 +2,7 @@
   "schema": "aegis.rule-qualification.v1",
   "source_rules": "configs/Rules.json",
   "source_policies": "configs/policies.json",
-  "rule_count": 22,
+  "rule_count": 23,
   "generic_policy_count": 6,
   "global_gate": "closed",
   "note": "configured action is not proof of enforcement; every rule remains unpromoted until evidence gates pass",
@@ -634,6 +634,34 @@
       "sensor": "pipe_telemetry",
       "sensor_assessment": "pipe sensor path exists; per-rule event production and block semantics require proof",
       "qualification_blocker": "PIPE_RULE_PROOF",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R0089",
+      "name": "Remote File Inclusion (RFI)",
+      "category": "Injection",
+      "layer": "L7",
+      "severity": "Critical",
+      "configured_action": "Block",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "user_or_application_payload",
+      "sensor_assessment": "current WFP callout exports 5-tuple only; payload match needs an application/proxy sensor",
+      "qualification_blocker": "L7_SENSOR_MAPPING",
       "target_ports": [],
       "target_protocols": [],
       "evidence_required": [

@@ -15,9 +15,10 @@
 const std = @import("std");
 
 pub const AEGIS_VERSION = "1.0.0-dev";
-pub const AEGIS_BUILD = "zig-0.13";
-pub const SHIELD_VERSION = "REMOVED";  // PEP-001: shield removed, enforcement via Rust PEP only
+pub const AEGIS_BUILD = "zig-0.13.0";
+pub const SHIELD_VERSION = "REMOVED"; // PEP-001: shield removed, enforcement via Rust PEP only
 const rust_pep = @import("rust_pep.zig");
+const pep_bindings = @import("../policy/pep_bindings.zig");
 const win = std.os.windows;
 
 // BP-I2: Named constants for UDP Brain logger configuration
@@ -38,17 +39,28 @@ pub const BridgeState = struct {
 
 var g_state = BridgeState{};
 
-/// CTRL-002: read-only snapshot of the bridge/dependency flags so the control
-/// plane can report real subsystem state instead of build-time capability
-/// flags. Used by src/platform/win32_pipe.zig health.check.
+/// CTRL-002: read-only live view of bridge/dependency readiness. WFP is
+/// re-attested through Rust on every snapshot so an early startup failure
+/// cannot leave health permanently stale after the provider becomes ready.
+/// The provider probe is read-only and does not open the prevention gate.
 pub fn status() BridgeState {
-    return g_state;
+    return projectWfpReadiness(g_state, pep_bindings.providerAttested());
 }
 
 /// CTRL-002: true when every in-process bridge subsystem is actually up. When
 /// false the runtime still serves the spine but reports `degraded: true`.
+pub fn isAllActive(snapshot: BridgeState) bool {
+    return snapshot.wfp_ioctl and snapshot.cpp_bridge and snapshot.udp_brain;
+}
+
 pub fn allActive() bool {
-    return g_state.wfp_ioctl and g_state.cpp_bridge and g_state.udp_brain;
+    return isAllActive(status());
+}
+
+fn projectWfpReadiness(snapshot: BridgeState, provider_ready: bool) BridgeState {
+    var current = snapshot;
+    current.wfp_ioctl = provider_ready;
+    return current;
 }
 
 // ============================================================
@@ -61,9 +73,9 @@ pub const AEGIS_IPC_MAGIC: u32 = 0x41454749; // "AEGI" in ASCII
 pub const AEGIS_IPC_VERSION: u16 = 1;
 
 pub const AegisIpcEvent = extern struct {
-    magic: u32,        // B-05: 0x41454749 ("AEGI") - validates struct layout
-    version: u16,      // B-05: struct version (bump on schema change)
-    struct_size: u16,  // B-05: sizeof(AegisIpcEvent) for forward compatibility
+    magic: u32, // B-05: 0x41454749 ("AEGI") - validates struct layout
+    version: u16, // B-05: struct version (bump on schema change)
+    struct_size: u16, // B-05: sizeof(AegisIpcEvent) for forward compatibility
     event_type: u32,
     source_ip: u32,
     dest_ip: u32,
@@ -125,6 +137,28 @@ var g_udp_sock: ?posix.socket_t = null;
 var g_udp_addr: net.Address = undefined;
 var g_udp_available: bool = false;
 
+// B2-AUTH-076: shared-secret auth for the UDP brain loop. Any local
+// process can send to 127.0.0.1:9999, and an unauthenticated "TIER-1
+// VERIFIED" offer reaches the brain's block-request path — so offers
+// carry HMAC-SHA256 when AEGIS_BRAIN_SECRET is set on both ends.
+// The secret is loaded once at startup (never logged); rotation is a
+// restart of daemon + brain with the new value. Absent secret keeps
+// the legacy bare-JSON wire (backwards compatible, documented
+// local-spoofable in UNWIRED_INVENTORY until this slice landed).
+var g_brain_secret: ?[]const u8 = null;
+
+fn loadBrainSecret() void {
+    const s = std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_BRAIN_SECRET") catch return;
+    if (s.len == 0) {
+        std.heap.page_allocator.free(s);
+        std.log.warn("[BRAIN-AUTH] no AEGIS_BRAIN_SECRET — loopback offers are unauthenticated", .{});
+        return;
+    }
+    if (s.len < 16) std.log.warn("[BRAIN-AUTH] secret shorter than 16 bytes; use a longer value", .{});
+    g_brain_secret = s;
+    std.log.info("[BRAIN-AUTH] shared-secret ON (offers carry HMAC-SHA256)", .{});
+}
+
 // B-10: UDP brain spool queue (prevents event loss on transient send failures)
 const BRAIN_SPOOL_MAX: usize = 1000;
 var g_brain_spool: [BRAIN_SPOOL_MAX]?[]const u8 = [_]?[]const u8{null} ** BRAIN_SPOOL_MAX;
@@ -134,6 +168,12 @@ var g_brain_spool_count: usize = 0;
 var g_brain_spool_lock: std.Thread.Mutex = .{};
 pub var g_brain_dropped_events: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 var g_spool_drain_running: bool = false;
+// EVT-156: the drain thread handle used to be dropped at spawn
+// (see initAll): shutdown closed the UDP socket while the thread could
+// still be inside sendto -> TOCTOU + leaked join (.analysis/runtime.md
+// "Ownership gap: bridge spool thread"). Stored now, joined in
+// joinSpoolDrainThread before any socket close.
+var g_spool_drain_thread: ?std.Thread = null;
 
 /// GAP-3: Background thread that drains the spool queue.
 /// Retries failed UDP sends every 100ms until queue is empty.
@@ -206,11 +246,17 @@ pub fn setBrainAllocator(allocator: std.mem.Allocator) void {
 // ============================================================
 
 fn initWfpIoctl() void {
-    if (rust_pep.wfpInit()) {
+    // EVT-202: single opener. The Rust adapter owns the device handle
+    // (adapter_cache); a second exclusive CreateFile here raced it and
+    // the two took turns failing the capability. Attest through Rust
+    // instead of opening -- EVT-212: the first successful attestation
+    // ADOPTS that single cached handle (no second opener, no orphan);
+    // read-only, no host effect.
+    if (pep_bindings.providerAttested()) {
         g_state.wfp_ioctl = true;
     } else {
-        std.log.warn("[INIT] WFP IOCTL: device not available (driver not loaded?)", .{});
-        std.debug.print("[INIT] WFP IOCTL: device not available (driver not loaded?)\n", .{});
+        std.log.warn("[INIT] WFP IOCTL: provider not attested (driver not loaded?)", .{});
+        std.debug.print("[INIT] WFP IOCTL: provider not attested (driver not loaded?)\n", .{});
     }
 }
 
@@ -312,6 +358,7 @@ fn shutdownCppBridge() void {
 // ============================================================
 
 fn initUdpBrain() void {
+    loadBrainSecret();
     if (net.Address.parseIp4(UDP_BRAIN_IP, UDP_BRAIN_PORT)) |addr| {
         g_udp_addr = addr;
         if (posix.socket(addr.any.family, posix.SOCK.DGRAM, 0)) |sock| {
@@ -340,6 +387,18 @@ fn shutdownUdpBrain() void {
         g_udp_available = false;
         g_state.udp_brain = false;
     }
+}
+
+/// Join the spool drain thread. Bounded: once g_shutdown is set the loop
+/// sleeps at most 1s per iteration before breaking, and the flag store
+/// below makes the join safe even if the caller never signaled shutdown.
+/// Idempotent: a second call is a no-op (handle is nulled after join).
+fn joinSpoolDrainThread() void {
+    const t = g_spool_drain_thread orelse return;
+    g_spool_drain_running = false;
+    g_shutdown.store(true, .seq_cst);
+    t.join();
+    g_spool_drain_thread = null;
 }
 
 // ============================================================
@@ -390,7 +449,8 @@ pub fn initAll() void {
             };
             break :blk t;
         };
-        if (drain_thread) |_| {
+        if (drain_thread) |t| {
+            g_spool_drain_thread = t;
             g_spool_drain_running = true;
         }
     }
@@ -418,6 +478,12 @@ pub fn initAll() void {
 pub fn shutdownAll() void {
     std.log.info("[SHUTDOWN] AEGIS BRIDGE SHUTDOWN", .{});
     std.debug.print("\n--- AEGIS BRIDGE SHUTDOWN ---\n", .{});
+    // EVT-156: requestShutdown is idempotent; calling it here guarantees
+    // the drain loop can exit even on paths that never signaled shutdown.
+    requestShutdown();
+    // Join BEFORE the socket close: the thread must never be inside
+    // sendto while shutdownUdpBrain closes the fd (TOCTOU, leaked join).
+    joinSpoolDrainThread();
     shutdownUdpBrain();
     shutdownCppBridge();
     shutdownWfpIoctl();
@@ -425,7 +491,7 @@ pub fn shutdownAll() void {
 
 /// Get the current bridge state (for status reporting).
 pub fn getState() BridgeState {
-    return g_state;
+    return status();
 }
 
 // ============================================================
@@ -478,25 +544,45 @@ pub fn getBridgeEventCount() u32 {
 /// P0.2: REMOVED — validatePayloadSafety stub deleted.
 /// Payload safety is now determined by Tier-3 state (tier3_state.zig).
 /// See nids_analyze.zig for the Tier-3 gating check.
-
 /// Send JSON message to Python brain via UDP.
 /// B-10: Uses a 1000-event spool queue ΓÇö if send fails, event is queued
 /// and retried by a background drain. Drops oldest if queue is full.
+/// Build the UDP brain wire bytes for a JSON body: bare body when no
+/// secret is configured, otherwise "<64 lowercase hex HMAC-SHA256>.<body>".
+/// The MAC covers the exact bytes sent, so the receiver verifies without
+/// re-serializing JSON (no cross-language canonicalization). A legacy body
+/// always starts with '{', so the "<hex>." prefix is an unambiguous
+/// discriminator for the receiver.
+pub fn formatBrainWire(allocator: std.mem.Allocator, body: []const u8, secret: ?[]const u8) ![]u8 {
+    const s = secret orelse return allocator.dupe(u8, body);
+    var mac: [32]u8 = undefined;
+    std.crypto.auth.hmac.sha2.HmacSha256.create(&mac, body, s);
+    const hex = std.fmt.bytesToHex(mac, .lower);
+    var out = try allocator.alloc(u8, hex.len + 1 + body.len);
+    @memcpy(out[0..hex.len], &hex);
+    out[hex.len] = '.';
+    @memcpy(out[hex.len + 1 ..], body);
+    return out;
+}
+
 pub fn sendToBrain(allocator: std.mem.Allocator, comptime T: type, msg: T) void {
     if (!g_udp_available) return;
     var string = std.ArrayList(u8).init(allocator);
     defer string.deinit();
     std.json.stringify(msg, .{}, string.writer()) catch return;
 
+    const wire = formatBrainWire(allocator, string.items, g_brain_secret) catch return;
+    defer allocator.free(wire);
+
     // B-10: Try direct send first (G28: unwrap optional g_udp_sock)
     if (g_udp_sock) |sock| {
-        _ = posix.sendto(sock, string.items, 0, &g_udp_addr.any, g_udp_addr.getOsSockLen()) catch {
+        _ = posix.sendto(sock, wire, 0, &g_udp_addr.any, g_udp_addr.getOsSockLen()) catch {
             // Send failed ΓÇö add to spool queue for retry
             g_brain_spool_lock.lock();
             defer g_brain_spool_lock.unlock();
             if (g_brain_spool_count < BRAIN_SPOOL_MAX) {
                 // Copy message into spool (uses global brain allocator for drain thread)
-                const msg_copy = g_brain_allocator.dupe(u8, string.items) catch return;
+                const msg_copy = g_brain_allocator.dupe(u8, wire) catch return;
                 g_brain_spool[g_brain_spool_head] = msg_copy;
                 g_brain_spool_head = (g_brain_spool_head + 1) % BRAIN_SPOOL_MAX;
                 g_brain_spool_count += 1;
@@ -526,6 +612,7 @@ pub fn getWfpStats() ?rust_pep.WfpRingStats {
 
 /// Print bridge status (call periodically from a status thread).
 pub fn printStatus() void {
+    const bridge = status();
     if (g_bridge_initialized) {
         const count = getBridgeEventCount();
         const defcon = getDefcon();
@@ -533,10 +620,68 @@ pub fn printStatus() void {
         std.log.info("[BRIDGE] C++ queue: {d} events | DEFCON: {d}", .{ count, defcon });
         std.debug.print("[BRIDGE] C++ queue: {d} events | DEFCON: {d}\n", .{ count, defcon });
     }
-    if (g_state.wfp_ioctl) {
+    if (bridge.wfp_ioctl) {
         if (getWfpStats()) |stats| {
             std.log.info("[BRIDGE] WFP ring: {d}/{} bytes", .{ stats.currentUsedBytes, stats.capacity });
             std.debug.print("[BRIDGE] WFP ring: {d}/{} bytes\n", .{ stats.currentUsedBytes, stats.capacity });
         }
     }
+}
+
+test "brain wire HMAC matches the verified RFC 4231 test case 1" {
+    // In-repo verified: Python hmac + manual ipad/opad recomputation agree.
+    var mac: [32]u8 = undefined;
+    const key = [_]u8{0x0b} ** 20;
+    std.crypto.auth.hmac.sha2.HmacSha256.create(&mac, "Hi There", &key);
+    try std.testing.expectEqualStrings(
+        "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7",
+        &std.fmt.bytesToHex(mac, .lower),
+    );
+}
+
+test "brain wire envelope carries the cross-language golden MAC" {
+    // Shared golden, also asserted by tests/brain/test_brain_udp_auth.py:
+    // secret "aegis-brain-auth-golden-v1" over the exact body bytes.
+    const body = "{\"source\":\"zig_pipeline\",\"src_ip\":\"10.0.0.11\"}";
+    const wire = try formatBrainWire(std.testing.allocator, body, "aegis-brain-auth-golden-v1");
+    defer std.testing.allocator.free(wire);
+    try std.testing.expectEqualStrings(
+        "d9f85d9f559cc451d738ce842d99b37872e9e23fb309651cc869671b864fb02b." ++ body,
+        wire,
+    );
+}
+
+test "brain wire without secret is the bare body" {
+    const wire = try formatBrainWire(std.testing.allocator, "{\"op\":\"HEALTH\"}", null);
+    defer std.testing.allocator.free(wire);
+    try std.testing.expectEqualStrings("{\"op\":\"HEALTH\"}", wire);
+}
+
+test "bridge health refreshes WFP readiness after a later successful provider probe" {
+    const startup = BridgeState{ .wfp_ioctl = false, .cpp_bridge = true, .udp_brain = true };
+    const current = projectWfpReadiness(startup, true);
+    try std.testing.expect(current.wfp_ioctl);
+    try std.testing.expect(isAllActive(current));
+    const unavailable = projectWfpReadiness(current, false);
+    try std.testing.expect(!unavailable.wfp_ioctl);
+    try std.testing.expect(!isAllActive(unavailable));
+}
+
+test "spool drain thread is stored and joined, never dropped" {
+    // Ownership mechanics without UDP: store a short-lived thread through
+    // the same globals shutdownAll joins, then join twice. join() stores
+    // g_shutdown, so save/restore it: the test runner shares one process
+    // with every other test and must not observe a shutdown.
+    const prev_shutdown = g_shutdown.load(.seq_cst);
+    defer g_shutdown.store(prev_shutdown, .seq_cst);
+    const Quick = struct {
+        fn run() void {}
+    };
+    g_spool_drain_thread = try std.Thread.spawn(.{}, Quick.run, .{});
+    g_spool_drain_running = true;
+    joinSpoolDrainThread();
+    try std.testing.expect(g_spool_drain_thread == null);
+    try std.testing.expect(!g_spool_drain_running);
+    joinSpoolDrainThread(); // idempotent no-op, must not hang
+    try std.testing.expect(g_spool_drain_thread == null);
 }

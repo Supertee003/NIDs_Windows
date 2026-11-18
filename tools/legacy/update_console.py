@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
 """Update console.py to use control_api instead of subprocess/bridge."""
 
+# QUARANTINED (LEGACY-INERT-001): retained for history only.
+# Nothing in the runtime imports this file and the installer does not ship it.
+# Several of these scripts rewrite tracked files when run (for example
+# tools/aegisctl/commands/console.py or AUTHORITY_MAP.json), so an accidental
+# `python tools/legacy/<name>.py` was a tree mutation. The guard below makes the
+# file inert: it exits before any line of the original body executes.
+raise SystemExit(
+    "QUARANTINED: tools/legacy/update_console.py must not run; retained for history only."
+)
+
 import sys
 import os
 

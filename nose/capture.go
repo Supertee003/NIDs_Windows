@@ -2,9 +2,11 @@
 // capture.go - AEGIS NOSE live packet capture -> CanonicalEvent -> Zig
 // =====================================================================
 // Acquisition-only (ADR-0001): this file captures packets and encodes
-// them into the frozen CanonicalEvent wire format. It performs NO
-// policy decisions and NO enforcement — everything flows to the Zig
-// core, which owns detection + policy + enforcement.
+// them into the CanonicalEvent wire format. It performs NO policy
+// decisions, NO signature verdicts, and NO enforcement — everything flows
+// to the Zig core, which owns detection + policy + enforcement. Live
+// packets are emitted as v3 frames carrying bounded frame bytes and
+// capture provenance (PAYLOAD-ENVELOPE-V3-001).
 //
 // Uses gopacket + Npcap (already installed at C:\Program Files\Npcap).
 // Launch:  nose -capture [-iface eth0] [-pipe \\.\pipe\aegis_nose]
@@ -17,6 +19,8 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"hash/crc32"
+	"net"
 	"os"
 	"strings"
 	"sync/atomic"
@@ -97,18 +101,34 @@ func printCaptureDevices() error {
 	return nil
 }
 
+func validateCaptureInterface(iface string) error {
+	devs, err := pcap.FindAllDevs()
+	if err != nil {
+		return fmt.Errorf("FindAllDevs: %w", err)
+	}
+	for _, d := range devs {
+		if d.Name == iface {
+			return nil
+		}
+	}
+	return fmt.Errorf("interface %q not found; run --list-devices and pass the exact Npcap name", iface)
+}
+
 // runCapture opens a live pcap handle, encodes packets as canonical
 // events, and streams them to the Zig core pipe until signalled.
 func runCapture(iface string, pipe string, stop <-chan struct{}) error {
-	if err := loadNoseSignatureRules(); err != nil {
-		fmt.Fprintf(os.Stderr, "[NOSE RULES] disabled: %v\n", err)
-	}
+	// Detection authority (ADR-0001 / CONTEXT.md): Go Nose acquires and
+	// reports evidence only. No signature verdict is produced here; Zig is
+	// the sole detection-verdict authority. v3 carries the bounded frame
+	// bytes + provenance to the Zig ingress.
 	if iface == "" {
 		name, err := firstUpDevice()
 		if err != nil {
 			return fmt.Errorf("nose capture: %w", err)
 		}
 		iface = name
+	} else if err := validateCaptureInterface(iface); err != nil {
+		return fmt.Errorf("nose capture: %w", err)
 	}
 
 	handle, err := pcap.OpenLive(iface, 65535, false, captureDefaultTimeout)
@@ -128,6 +148,7 @@ func runCapture(iface string, pipe string, stop <-chan struct{}) error {
 	fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] listening on %s -> %s\n", iface, pipe)
 
 	w := NewFrameWriter(pipe)
+	prov := newCaptureProvenance(iface)
 
 	count := 0
 	for {
@@ -154,10 +175,12 @@ func runCapture(iface string, pipe string, stop <-chan struct{}) error {
 			fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] first packet captured: len=%d\n", captureInfo.CaptureLength)
 		}
 		ev := eventFromPacket(packet)
-		classifyNosePacket(ev, packet)
+		// Attach the bounded captured frame bytes + provenance. No verdict,
+		// no rule_id, no event_type reinterpretation: Zig decides.
+		payload, env := captureAttachment(data, captureInfo, ev.EventID, prov)
 		atomic.AddUint64(&stateAtomic.canonical, 1)
 		atomic.AddUint64(&stateAtomic.bytesTotal, uint64(captureInfo.CaptureLength))
-		_ = w.Send(ev)
+		_ = w.SendWithPayload(ev, env, payload)
 		atomic.StoreUint64(&stateAtomic.droppedPipe, droppedVia(w))
 		count++
 		if count%100 == 0 {
@@ -176,6 +199,69 @@ func runCapture(iface string, pipe string, stop <-chan struct{}) error {
 func droppedVia(w *FrameWriter) uint64 {
 	_, dropped := w.Stats()
 	return dropped
+}
+
+// captureProvenance is the producer-side descriptor stamped into every v3
+// envelope. It identifies the acquisition process and interface so Zig can
+// correlate evidence without trusting a Go-side verdict.
+type captureProvenance struct {
+	epoch      uint32
+	generation uint32
+	interfaceID uint32
+}
+
+// newCaptureProvenance derives a stable, opaque interface id (FNV-1a of the
+// Npcap device name) plus the producer epoch for this process.
+func newCaptureProvenance(iface string) captureProvenance {
+	var h uint32 = 0x811c9dc5
+	for i := 0; i < len(iface); i++ {
+		h ^= uint32(iface[i])
+		h *= 0x01000193
+	}
+	return captureProvenance{
+		epoch:       uint32(time.Now().Unix()),
+		generation:  1,
+		interfaceID: h,
+	}
+}
+
+// captureAttachment builds the bounded payload + envelope for one captured
+// frame. `original` is the on-wire frame length; the attached bytes are the
+// raw frame bytes Npcap delivered (bounded to EventV3MaxPayload). Missing or
+// clamped bytes are reported as truncated, never as complete.
+func captureAttachment(frame []byte, ci gopacket.CaptureInfo, seq uint64, prov captureProvenance) ([]byte, V3Envelope) {
+	env := V3Envelope{
+		Flags:              V3FlagProvenanceValid,
+		Completeness:       PayloadUnavailable,
+		CaptureSequence:    seq,
+		ProducerEpoch:      prov.epoch,
+		ProducerGeneration: prov.generation,
+		InterfaceID:        prov.interfaceID,
+	}
+	original := ci.Length
+	if original < 0 {
+		original = 0
+	}
+	if original > 0xFFFF {
+		original = 0xFFFF
+	}
+	env.OriginalLen = uint16(original)
+
+	n := len(frame)
+	if n > EventV3MaxPayload {
+		n = EventV3MaxPayload
+	}
+	if n > 0 {
+		env.Flags |= V3FlagPayloadPresent
+		env.PayloadLen = uint16(n)
+		env.PayloadCRC32 = crc32.ChecksumIEEE(frame[:n])
+		if n == ci.Length {
+			env.Completeness = PayloadComplete
+		} else {
+			env.Completeness = PayloadTruncated
+		}
+	}
+	return frame[:n], env
 }
 
 // eventFromPacket converts one packet into the canonical event schema.
@@ -211,7 +297,10 @@ func eventFromPacket(packet gopacket.Packet) *CanonicalEvent {
 			}
 			ev.Protocol = uint8(net.Protocol)
 		case *layers.IPv6:
-			// IPv6 identity: embed first 4 bytes of each address.
+			// IPv6 identity: embed first 4 bytes of each address AND mark
+			// ContextV6Truncated. The v1 wire has no IPv6 fields, so the
+			// 32-bit identity is degraded by construction and must never be
+			// confused with an IPv4 address downstream.
 			srcIP := net.SrcIP.To16()
 			dstIP := net.DstIP.To16()
 			if len(srcIP) >= 4 {
@@ -220,6 +309,16 @@ func eventFromPacket(packet gopacket.Packet) *CanonicalEvent {
 			if len(dstIP) >= 4 {
 				ev.DestIP = binary.BigEndian.Uint32(dstIP[:4])
 			}
+			// T2-V6-022b: retain the full addresses for v2 frames. The
+			// queue/forensic identity stays first-4-bytes + bit2 (frozen
+			// u32 path); the tail travels for forensics/display plumbing.
+			if len(srcIP) == 16 {
+				copy(ev.Src6[:], srcIP)
+			}
+			if len(dstIP) == 16 {
+				copy(ev.Dst6[:], dstIP)
+			}
+			ev.ContextFlags |= ContextV6Truncated
 			ev.Protocol = uint8(net.NextHeader)
 		}
 	}
@@ -231,6 +330,12 @@ func eventFromPacket(packet gopacket.Packet) *CanonicalEvent {
 			ev.SourcePort = uint16(tr.SrcPort)
 			ev.DestPort = uint16(tr.DstPort)
 			ev.Protocol = 6
+			// RB-021-NOSE-FLAGS: carry the raw flags byte in the
+			// ContextFlags transport lane. The byte layout matches the
+			// direct Zig path's transport-header byte 13 (FIN..CWR), so
+			// FLAGS:S / FLAGS:FPU predicates see the same evidence on
+			// both acquisition paths.
+			ev.SetTCPFlags(tcpFlagsByte(tr))
 		case *layers.UDP:
 			ev.SourcePort = uint16(tr.SrcPort)
 			ev.DestPort = uint16(tr.DstPort)
@@ -248,6 +353,39 @@ func eventFromPacket(packet gopacket.Packet) *CanonicalEvent {
 		ev.PayloadHash = quickHash(data)
 	}
 	return ev
+}
+
+// tcpFlagsByte renders the TCP control bits in the same one-byte layout
+// the packet header uses (FIN=0x01, SYN=0x02, RST=0x04, PSH=0x08,
+// ACK=0x10, URG=0x20, ECE=0x40, CWR=0x80). NS lives in the preceding
+// byte and is intentionally not part of the L4 predicate vocabulary.
+func tcpFlagsByte(tcp *layers.TCP) uint8 {
+	var flags uint8
+	if tcp.FIN {
+		flags |= 0x01
+	}
+	if tcp.SYN {
+		flags |= 0x02
+	}
+	if tcp.RST {
+		flags |= 0x04
+	}
+	if tcp.PSH {
+		flags |= 0x08
+	}
+	if tcp.ACK {
+		flags |= 0x10
+	}
+	if tcp.URG {
+		flags |= 0x20
+	}
+	if tcp.ECE {
+		flags |= 0x40
+	}
+	if tcp.CWR {
+		flags |= 0x80
+	}
+	return flags
 }
 
 // quickHash gives a numeric dedup reference from the payload bytes.
@@ -270,6 +408,8 @@ func captureProbeRun(iface string, duration time.Duration) error {
 			return err
 		}
 		iface = name
+	} else if err := validateCaptureInterface(iface); err != nil {
+		return fmt.Errorf("nose probe: %w", err)
 	}
 	handle, err := pcap.OpenLive(iface, 65535, false, 500*time.Millisecond)
 	if err != nil {
@@ -358,5 +498,38 @@ func captureSelfTest() error {
 	}
 	fmt.Printf("capture self-test OK: %d bytes wire, magic 0x%08X, src %d.%d.%d.%d\n",
 		len(wire), EventMagic, wire[33], wire[34], wire[35], wire[36])
+	// T2-V6-022b: v6 synthetic exercises the emit path end to end
+	// (eventFromPacket fills Src6/Dst6; Send dispatches to SerializeV2).
+	v6src := net.ParseIP("2001:db8::1")
+	v6dst := net.ParseIP("2001:db8::2")
+	if v6src.To16() == nil || v6dst.To16() == nil {
+		return fmt.Errorf("capture self-test: test host cannot parse IPv6 literals")
+	}
+	v6ev := &CanonicalEvent{
+		Source:       SourceNpcapSensor,
+		SourceIP:     binary.BigEndian.Uint32(v6src.To16()[:4]),
+		DestIP:       binary.BigEndian.Uint32(v6dst.To16()[:4]),
+		ContextFlags: ContextV6Truncated,
+	}
+	copy(v6ev.Src6[:], v6src.To16())
+	copy(v6ev.Dst6[:], v6dst.To16())
+	if !v6ev.IsV6() {
+		return fmt.Errorf("capture self-test: IsV6 must hold with bit2 set")
+	}
+	v6wire, err := v6ev.SerializeV2()
+	if err != nil {
+		return fmt.Errorf("capture self-test: v2 serialize: %w", err)
+	}
+	if len(v6wire) != EventV2WireSize {
+		return fmt.Errorf("capture self-test: v2 wire size %d != %d", len(v6wire), EventV2WireSize)
+	}
+	back, err := DeserializeDispatch(v6wire[:])
+	if err != nil {
+		return fmt.Errorf("capture self-test: v2 dispatch: %w", err)
+	}
+	if back.Src6 != v6ev.Src6 || back.Dst6 != v6ev.Dst6 {
+		return fmt.Errorf("capture self-test: v2 full addresses differ after dispatch")
+	}
+	fmt.Printf("capture self-test OK: v2 %d bytes wire, full identity round-trips\n", len(v6wire))
 	return nil
 }

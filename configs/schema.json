@@ -5,7 +5,7 @@
   "additionalProperties": false,
   "required": ["version", "capture", "detection", "policy", "forensic"],
   "properties": {
-    "version": { "type": "string", "enum": ["5.0", "5.0.1", "5.1"] },
+    "version": { "type": "string", "enum": ["5.0", "5.0.0", "5.0.1", "5.1"] },
     "interface": {
       "type": "object",
       "properties": {

@@ -1,5 +1,12 @@
 # AEGIS Windows-native NIDS/IPS — Data Plane and Detection Review
 
+> **HISTORICAL (2026-11-10).** This review was pinned at HEAD `46b93dc` and is
+> kept as the record of what was true then. One referenced file no longer
+> exists: `nose/signature_classifier.go` was deleted by VERDICT-AUTH-001
+> (`analysis/current-head/VERDICT-AUTH-001-20261110.md`), which also strips any
+> acquisition-authored verdict at Zig ingress. Current truth is the machine
+> maps, not this review.
+
 **Review ID:** `AEGIS-CURRENT-HEAD-04`  
 **Repository:** `/mnt/7e95cf32-1f55-43b0-8e52-61ade7757bda/NIDs_Windows`  
 **Reviewed HEAD:** `46b93dcf9cca17b323ddff7a4c71e33e81c37fb5`  

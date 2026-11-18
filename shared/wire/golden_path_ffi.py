@@ -8,14 +8,19 @@
 import struct
 import json
 import os
+import socket
 import sys
 
 # ── Path setup ──────────────────────────────────────────────────
-VECTORS_DIR = os.path.join(os.path.dirname(__file__),
+# Vectors live in the repo tree (this script runs from shared/wire/).
+_REPO_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+VECTORS_DIR = os.path.join(_REPO_ROOT,
                            "tests", "contracts", "event_vectors",
                            "event_vectors")
-GOLDEN_JSON = os.path.join(os.path.dirname(__file__),
+GOLDEN_JSON = os.path.join(_REPO_ROOT,
                            "tests", "contracts", "event_vectors",
+                           "event_vectors",
                            "golden_vectors.json")
 
 # ── Wire format constants (matches canonical_event.zig + wire_codec.py) ────────
@@ -180,10 +185,20 @@ def parse_wire(data):
     return fields
 
 
+def _expected_num(name, value):
+    """Normalize a golden_vectors.json field to int (hex/"0x", dotted IP)."""
+    if isinstance(value, int):
+        return value
+    text = str(value)
+    if "." in text and name.endswith("ip"):
+        return struct.unpack("!I", socket.inet_aton(text))[0]
+    return int(text, 0)
+
+
 def validate_vector(vector_name, parsed_fields, expected_fields):
     """Validate parsed fields against the expected golden vector definition."""
     errors = []
-    fields = expected_fields["fields"]
+    fields = expected_fields
 
     # Map parsed tuple positions to field names
     field_map = {
@@ -219,23 +234,13 @@ def validate_vector(vector_name, parsed_fields, expected_fields):
         expected_val = fields.get(name)
         if expected_val is None:
             continue
-
-        # Extract the actual value from parsed fields
-        if fmt == "I":  # u32
-            actual_val = parsed_fields[idx]
-        elif fmt == "H":  # u16
-            actual_val = parsed_fields[idx]
-        elif fmt == "Q":  # u64
-            actual_val = parsed_fields[idx]
-        elif fmt == "B":  # u8
-            actual_val = parsed_fields[idx]
-
-        # Compare with expected, handling hex vs decimal
-        expected_str = str(expected_val)
-        actual_str = str(actual_val)
-
-        if actual_str != expected_str:
-            errors.append(f"  {name}: got {actual_val} (0x{actual_val:08x if 'ip' in name else ''}), expected {expected_val} (0x{expected_val:08x if 'ip' in name else ''})")
+        actual_val = parsed_fields[idx]
+        try:
+            want = _expected_num(name, expected_val)
+        except (ValueError, OSError):
+            continue  # human-only annotations (names, descriptions)
+        if actual_val != want:
+            errors.append(f"  {name}: got {actual_val} (0x{actual_val:08X}), expected {want} ({expected_val})")
 
     if errors:
         print(f"FAIL: {vector_name}")

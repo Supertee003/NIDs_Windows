@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import json, os
-base = r'tests/contracts/event_vectors'
+base = r'tests/contracts/event_vectors/event_vectors'
 meta_path = os.path.join(base, 'vectors_metadata.json')
 print('Looking for:', meta_path)
 print('Exists:', os.path.exists(meta_path))
@@ -15,4 +15,3 @@ if os.path.exists(meta_path):
         print(f'Vector {vid}: size={sz}, desc={desc}, fields={fields}')
 else:
     print('Metadata not found')
-PYEOF

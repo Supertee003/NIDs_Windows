@@ -63,8 +63,16 @@ extern "kernel32" fn GetNamedPipeClientProcessId(
 ) std.os.windows.BOOL;
 extern "kernel32" fn LocalFree(h_mem: ?*anyopaque) ?*anyopaque;
 const SDDL_REVISION_1_V: std.os.windows.DWORD = 1;
-// Local SYSTEM and built-in Administrators only; no Everyone ACE. The client
-// token is still impersonated and checked before dispatch.
+// Pipe DACL admits SY + BA + AU: reads/operate for any authenticated
+// local user, mutations gated per-command by role below (impersonated
+// token). There is deliberately no Everyone ACE; file ACLs (repo,
+// Rules.json) are the second wall -- see OPERATOR_COMMAND_MAP.md.
+//
+// S1-04 boundary: the role is elevation-only, so "AU" means "can read and
+// can send any command", and authorization is what makes that safe. Every
+// command with is_mutation=true therefore requires .privileged (asserted in
+// protocol.zig "contracts: every mutation requires an elevated caller");
+// rules.reload was the last mutation reachable at .operate and now is not.
 const CONTROL_PIPE_SDDL = "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GA;;;AU)";
 
 // The role is derived from the impersonated client token below; the JSON
@@ -140,12 +148,11 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
     }
     var ctx = control.handler_registry.HandlerContext{
         .start_ns = start_ns,
-        .request_id = @as(u64, @intCast(state.g_pipeline_audit_id)),
+        .request_id = state.g_pipeline_audit_id.fetchAdd(1, .monotonic),
         .caller_role = local_role,
         .caller_pid = @as(u32, @intCast(client_pid)),
         .caps = caps,
     };
-    state.g_pipeline_audit_id +|= 1;
     const result = control.handler_registry.dispatch(a, pipe, payload, &ctx, &auth, &control.audit.g_audit);
     return result.shutdown;
 }
@@ -173,8 +180,44 @@ fn getClientRole(pipe: std.os.windows.HANDLE) ?control.protocol.Role {
     return .operate;
 }
 
-pub fn serveWindowsPipe(caps: *const manifest.Capability, start_ns: i128) !void {
-    // P0.4: Initialize the command handler registry
+/// GAP-020: single-owner preflight. Returns true when another runtime
+/// already owns the control pipe, so the caller can refuse fast BEFORE
+/// arming workers (sensor pipe is unlimited-instance: a stray second
+/// daemon would split nose flow = silent event loss).
+///
+/// Zero-touch when prod runs: a failed CreateNamedPipe creates nothing.
+/// When prod is down the probe briefly holds instance #1 and closes it;
+/// a racily-starting peer either takes ownership (we then see BUSY and
+/// refuse) or loses the race (it sees BUSY and refuses) -- exactly one
+/// owner survives either way. Daemon exit code for refusal is 3.
+pub fn controlPipeOwnedByAnother() bool {
+    const w = std.os.windows;
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const pipe_name_z = utf16zFromSlice(arena.allocator(), control_pipe_name) catch return false;
+    const probe = CreateNamedPipeW(
+        pipe_name_z,
+        PIPE_ACCESS_DUPLEX,
+        PIPE_TYPE_MESSAGE_V | PIPE_READMODE_MESSAGE_V | PIPE_WAIT_V,
+        CONTROL_PIPE_MAX_INSTANCES,
+        CONTROL_PIPE_BUFFER_SIZE,
+        CONTROL_PIPE_BUFFER_SIZE,
+        0,
+        null, // probe carries no DACL: the handle is closed immediately
+    );
+    if (probe == w.INVALID_HANDLE_VALUE) {
+        const err = w.kernel32.GetLastError();
+        const code = @intFromEnum(err);
+        // 231 BUSY = instance held; 5 ACCESS_DENIED = held under a
+        // tighter DACL (e.g. SYSTEM service vs unelevated probe).
+        // Anything else is our own problem; let the real create surface it.
+        return code == 231 or code == 5;
+    }
+    _ = w.CloseHandle(probe);
+    return false;
+}
+
+pub fn serveWindowsPipe(caps: *const manifest.Capability, start_ns: i128) !void {    // P0.4: Initialize the command handler registry
     control.handler_registry.initHandlers();
     diag.info("control plane: {d} command handlers registered", .{control.handler_registry.g_handler_count});
     const w = std.os.windows;

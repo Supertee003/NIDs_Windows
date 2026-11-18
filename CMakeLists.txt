@@ -64,9 +64,19 @@ install(TARGETS aegis_wfp_user aegis_etw_helper aegis_fim_helper
 # Optionally build kernel-mode driver (requires WDK)
 option(BUILD_KERNEL_DRIVER "Build the WFP kernel-mode callout driver" OFF)
 if(BUILD_KERNEL_DRIVER)
-    # The repository contains WDK source under drivers/wfp_callout but no
-    # current CMake/WDK project that selects one authoritative dispatch
-    # implementation. Refuse the option rather than silently building a
-    # different or stale driver graph.
-    message(FATAL_ERROR "BUILD_KERNEL_DRIVER is not wired: use the reviewed WDK project for drivers/wfp_callout after source/build authority is established")
+    # Delegate to the sanctioned WDK build script instead of invoking cl.exe
+    # directly. scripts/wdk_build_production.ps1 is the single authoritative
+    # driver build (MSVC/WDK discovery, kernel-mode flags, link libs) and it
+    # emits build/x64/wfp/aegis_wfp.sys. It needs no elevation; signing and
+    # deployment stay separate, explicit steps (wfp_sign.ps1 / wfp_service.ps1).
+    find_program(AEGIS_POWERSHELL_EXE NAMES powershell pwsh)
+    if(NOT AEGIS_POWERSHELL_EXE)
+        message(FATAL_ERROR "BUILD_KERNEL_DRIVER=ON requires PowerShell to run scripts/wdk_build_production.ps1")
+    endif()
+    add_custom_target(aegis_wfp_kernel ALL
+        COMMAND ${AEGIS_POWERSHELL_EXE} -ExecutionPolicy Bypass -File
+                "${CMAKE_CURRENT_SOURCE_DIR}/scripts/wdk_build_production.ps1"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        COMMENT "Building WFP kernel driver via scripts/wdk_build_production.ps1"
+        VERBATIM)
 endif()

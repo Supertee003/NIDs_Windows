@@ -95,23 +95,40 @@ def main() -> int:
         print(f"ERROR: config file not found: {args.config}", file=sys.stderr)
         return 2
 
-    schema = load_schema(args.schema)
-    config = load_config(args.config)
+    # CONFIG-VALIDATE-001: a bad input is a diagnostic, not a traceback. The
+    # messages here used to be non-ASCII literals saved through a mis-encoded
+    # conversion, which raised UnicodeEncodeError on a cp1252 console while
+    # *reporting* a failure - the report could crash where the config did not.
+    try:
+        schema = load_schema(args.schema)
+    except (OSError, ValueError) as exc:
+        print(f"ERROR: cannot read schema {args.schema}: {exc}", file=sys.stderr)
+        return 2
+    try:
+        config = load_config(args.config)
+    except (OSError, ValueError) as exc:
+        print(f"ERROR: cannot read config {args.config} as JSON/TOML: {exc}", file=sys.stderr)
+        return 2
+    if not isinstance(config, dict):
+        print(f"ERROR: {args.config} is not a JSON object", file=sys.stderr)
+        return 2
     errors = validate_config(config, schema, strict=args.strict)
     if errors:
-        print(f"âŒ Config validation failed ({len(errors)} errors):")
+        print(f"FAIL: config validation failed ({len(errors)} errors):")
         for e in errors:
             print(f"  - {e}")
         return 1
-    print(f"âœ… Config valid: {args.config}")
+    print(f"OK: config valid: {args.config}")
     if args.normalize:
         normalized = apply_defaults(config, schema)
         if args.output:
             with args.output.open("w", encoding="utf-8") as f:
                 json.dump(normalized, f, indent=2, ensure_ascii=False)
-            print(f"âœ… Normalized config written to: {args.output}")
+            print(f"OK: normalized config written to: {args.output}")
         else:
-            print(json.dumps(normalized, indent=2, ensure_ascii=False))
+            # Console output stays ASCII: ensure_ascii=False used to be able to
+            # raise UnicodeEncodeError half-way through printing a valid config.
+            print(json.dumps(normalized, indent=2, ensure_ascii=True))
     return 0
 
 

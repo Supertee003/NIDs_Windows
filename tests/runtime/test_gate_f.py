@@ -61,10 +61,29 @@ class TestReadOnlyCommands(unittest.TestCase):
         self.assertIn("No IPs", stdout)
 
     def test_enforce_status_is_read_only(self) -> None:
-        rc, stdout, _ = _run_aegisctl("enforce", "status")
-        self.assertEqual(rc, 0)
-        self.assertIn("PEP", stdout)
-        self.assertIn("Mode:", stdout)
+        """A status query reports the canonical prevention state and never
+        fabricates a host effect the provider cannot prove."""
+        rc, stdout, stderr = _run_aegisctl("enforce", "status")
+        payload = json.loads(stdout or stderr)
+        if rc == 0:
+            # The daemon answers with the canonical enforcement block.
+            self.assertIn("prevention_gate", payload)
+            self.assertIn(payload["prevention_gate"], {"open", "closed"})
+            self.assertIn("pep_available", payload)
+            self.assertTrue(payload["receipt_required"])
+            if payload.get("host_effect_confirmed"):
+                self.assertTrue(
+                    payload.get("host_effect_capable"),
+                    "host effect claimed without a capable enforcement provider",
+                )
+        else:
+            # Unreachable daemon => fail closed with a machine-readable reason;
+            # the CLI must not serve stale local enforcement state.
+            self.assertFalse(payload["available"])
+            self.assertTrue(payload["reason"])
+        # Read-only: a status query must not write local bookkeeping.
+        for path in (BLOCK_LIST_FILE, QUARANTINE_FILE, PEP_STATE_FILE):
+            self.assertFalse(path.exists(), f"enforce status wrote {path}")
 
 
 class TestPrivilegedMutationsFailClosed(unittest.TestCase):

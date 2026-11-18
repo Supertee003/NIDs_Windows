@@ -1,7 +1,8 @@
 # AGENTS.md — AEGIS NIDS Windows
 ## Version 2.0 — Current-HEAD Vertical Slice Workflow
 
-**HEAD:** `48eb2a72265a15c1b780a6bfa76d4f4dae2fc7f2`
+**RECORDS HEAD:** `git rev-parse HEAD` at read time (records-only commits do not move the build source; see ADR-0008)
+**BUILD SOURCE HEAD:** `f4cde3c503fd8b696183751a608b999768caa769` (last commit touching the source/build tree after RULE-LAYER-FAILCLOSED-001; see ADR-0008)
 **Applies to:** All human + AI agents contributing to AEGIS NIDS Windows
 
 ---
@@ -59,7 +60,7 @@ When sources disagree, use this order:
 8. README
 9. AI assumptions
 
-Never treat an old report as current truth. If a report contains a different HEAD SHA, mark it HISTORICAL.
+Never treat an old report as current truth. If a report's recorded source commit is not the current build source commit, mark it HISTORICAL.
 
 ---
 
@@ -80,7 +81,7 @@ Never treat an old report as current truth. If a report contains a different HEA
 
 Every machine map includes: `head_sha`, `created_at`, `generator_version`.
 
-If a map has a different HEAD than the current source, it is STALE. Do not use it as current truth.
+Machine maps carry the **build source commit** — the last commit that touched the source/build tree — not the records commit (ADR-0008). `python tools/truth.py verify` checks that the maps carry the source commit, that it is an ancestor of HEAD, and that the source paths are clean. A records-only commit does not make a map stale; a source/build change does.
 
 ---
 
@@ -153,7 +154,7 @@ git ls-files
 
 Read: `AI_CONTEXT.md`, `SYSTEM_MAP.json`, `FLOW_MAP.json`, `AUTHORITY_MAP.json`, `CONTRACT_MAP.json`, `EVIDENCE_INDEX.json`
 
-If any machine map has a different HEAD: MARK STALE. Do not use it as current truth.
+If any machine map does not carry the build source commit, or the source paths changed since that commit: MARK STALE. Do not use it as current truth.
 
 ---
 
@@ -244,6 +245,27 @@ Do not claim a higher level from a lower-level test.
 
 ---
 
+## TEST HYGIENE
+
+Coupling investigation (2026-10-04) proved three coupling classes. All
+slices must respect them:
+
+1. No import-time host effects. Product modules (brain, CLI, tools) must
+   be importable with no socket bind, no serve loop, no banner on stdout,
+   and no `sys.exit` under a test runner's argv. Pinned by
+   `tests/brain/test_import_hygiene.py` (subprocess import probe).
+2. No test writes to tracked tree state. Tests write to `tmp_path` (or
+   cwd-scoped scratch). `analysis/*` result stamps, `logs/*.json`
+   bookkeeping, and `tests/contracts/**/*.bin` are producer-owned (lab
+   reruns, CLI, vector generator) — a test that rewrites them dirties
+   every tree and invalidates `truth.py`/release gates.
+3. One schema, N codecs. `CanonicalEvent` exists in Zig/Go/C++/Python ×2
+   plus the golden tuple-map; any wire change updates all six plus a
+   shared `event_v*` vector in the SAME patch (staged pattern:
+   `shared/protocol/wire_v2.md`).
+
+---
+
 ## PRE-COMMIT CHECKS
 
 ```powershell
@@ -267,7 +289,7 @@ Test-Path AUTHORITY_MAP.json   # True
 Test-Path CONTRACT_MAP.json   # True
 Test-Path EVIDENCE_INDEX.json   # True
 
-# Truth artifacts carry current HEAD (no stale SHA)
+# Truth artifacts carry the build source commit (ADR-0008)
 python tools/truth.py verify   # TRUTH_VALID, exit 0
 ```
 

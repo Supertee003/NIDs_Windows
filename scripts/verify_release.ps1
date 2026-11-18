@@ -1,134 +1,123 @@
 # ============================================================
-# AEGIS NIDS - Release Verification Script (STEP 15)
+# AEGIS NIDS - bundle verification (read-only preflight)
 # ============================================================
-# Verifies a release package is complete and runnable.
+# Verifies a packaged Windows bundle (release\aegis-nids-windows-*)
+# against its manifest.json:
+#   1. manifest.json parses (product / version / artifacts)
+#   2. every artifact exists with the declared SHA256 + byte length
+#   3. the canonical required files are present
+#   4. canonical_rules points at a shipped artifact
+#
+# Read-only: nothing is extracted, created, or modified.
 #
 # Usage:
-#   .\scripts\verify_release.ps1
-#   .\scripts\verify_release.ps1 -ZipPath "release\aegis-nids-v2.0.0.zip"
+#   .\scripts\verify_release.ps1                      # latest bundle under release\
+#   .\scripts\verify_release.ps1 -BundleRoot <dir>    # explicit bundle directory
 # ============================================================
 
 param(
-    [string]$ZipPath = "",
-    [string]$ExtractDir = "release\verify"
+    [string]$BundleRoot = ""
 )
 
-$ErrorActionPreference = 'Continue'
-$ProjectRoot = $PSScriptRoot | Split-Path -Parent
-Set-Location $ProjectRoot
+$ErrorActionPreference = 'Stop'
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " AEGIS NIDS - Release Verification" -ForegroundColor Cyan
+Write-Host " AEGIS NIDS - bundle verification (read-only)" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
-# Step 1: Find release package
-if ($ZipPath -eq "") {
-    $zips = Get-ChildItem "release" -Filter "aegis-nids-v*.zip" -ErrorAction SilentlyContinue
-    if ($zips.Count -eq 0) {
-        Write-Host "[FAIL] No release ZIP found in release\" -ForegroundColor Red
-        Write-Host "       Run: .\scripts\release_package.ps1" -ForegroundColor Yellow
-        exit 1
-    }
-    $ZipPath = $zips | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    $ZipPath = $ZipPath.FullName
-}
-Write-Host "[1/6] Release package: $ZipPath" -ForegroundColor Yellow
-
-if (-not (Test-Path $ZipPath)) {
-    Write-Host "[FAIL] ZIP not found: $ZipPath" -ForegroundColor Red
-    exit 1
+$failures = @()
+function Add-Failure([string]$message) {
+    $script:failures += $message
+    Write-Host "  [FAIL] $message" -ForegroundColor Red
 }
 
-# Verify SHA256
-$hash_file = "$ZipPath.sha256"
-if (Test-Path $hash_file) {
-    $expected_hash = (Get-Content $hash_file).Split(' ')[0]
-    $actual_hash = (Get-FileHash $ZipPath -Algorithm SHA256).Hash
-    if ($expected_hash -ne $actual_hash) {
-        Write-Host "[FAIL] SHA256 mismatch" -ForegroundColor Red
-        Write-Host "  Expected: $expected_hash"
-        Write-Host "  Actual:   $actual_hash"
-        exit 1
-    }
-    Write-Host "  [OK] SHA256 verified" -ForegroundColor Green
-}
-
-# Step 2: Extract ZIP
-Write-Host "[2/6] Extracting to $ExtractDir..." -ForegroundColor Yellow
-if (Test-Path $ExtractDir) {
-    Remove-Item -Recurse -Force $ExtractDir
-}
-New-Item -ItemType Directory -Path $ExtractDir -Force | Out-Null
-Expand-Archive -Path $ZipPath -DestinationPath $ExtractDir -Force
-Write-Host "  [OK] Extracted" -ForegroundColor Green
-
-# Step 3: Verify required files
-Write-Host "[3/6] Checking required files..." -ForegroundColor Yellow
-$required = @(
-    "bin\aegis_nids.exe",
-    "configs\Rules.json",
-    "build.zig",
-    "src\release_info.zig",
-    "src\nids_main.zig",
-    "release-manifest.json"
-)
-$missing = @()
-foreach ($f in $required) {
-    $path = "$ExtractDir\$f"
-    if (Test-Path $path) {
-        Write-Host "  [OK] $f" -ForegroundColor Green
+# Step 1: locate the bundle
+if ($BundleRoot -eq "") {
+    $bundleCandidate = Join-Path $PSScriptRoot '..'
+    if (Test-Path (Join-Path $bundleCandidate 'manifest.json')) {
+        # Running from inside a bundle (<bundle>\scripts\verify_release.ps1)
+        $BundleRoot = (Resolve-Path $bundleCandidate).Path
     } else {
-        Write-Host "  [MISS] $f" -ForegroundColor Red
-        $missing += $f
+        $releaseDir = Join-Path $PSScriptRoot '..\release'
+        $latest = Get-ChildItem $releaseDir -Directory -Filter 'aegis-nids-windows-*' -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if (-not $latest) {
+            Write-Host "[FAIL] No aegis-nids-windows-* bundle found under $releaseDir" -ForegroundColor Red
+            Write-Host "       Pass one explicitly: -BundleRoot <dir>" -ForegroundColor Yellow
+            exit 1
+        }
+        $BundleRoot = $latest.FullName
+    }
+} else {
+    if (-not (Test-Path $BundleRoot)) {
+        Write-Host "[FAIL] Bundle not found: $BundleRoot" -ForegroundColor Red
+        exit 1
+    }
+    $BundleRoot = (Resolve-Path $BundleRoot).Path
+}
+Write-Host "[1/4] Bundle: $BundleRoot" -ForegroundColor Yellow
+
+# Step 2: manifest
+$manifestPath = Join-Path $BundleRoot 'manifest.json'
+if (-not (Test-Path $manifestPath)) {
+    Write-Host "[FAIL] manifest.json not found in bundle" -ForegroundColor Red
+    exit 1
+}
+$manifest = Get-Content $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+Write-Host "[2/4] manifest: product=$($manifest.product) version=$($manifest.version)" -ForegroundColor Yellow
+if ($manifest.product -ne 'AEGIS NIDS') { Add-Failure "unexpected product: $($manifest.product)" }
+if (-not $manifest.version) { Add-Failure "manifest.version is empty" }
+if (-not $manifest.artifacts -or $manifest.artifacts.Count -eq 0) { Add-Failure "manifest.artifacts is empty" }
+
+# Step 3: required files (canonical layout: runtime\ configs\ drivers\ scripts\)
+$requiredFiles = @(
+    'runtime/aegis_nids.exe',
+    'runtime/aegis_pep.dll',
+    'configs/Rules.json',
+    'configs/policies.json',
+    'drivers/aegis_wfp.sys',
+    'scripts/install_aegis.ps1',
+    'README.txt'
+)
+Write-Host "[3/4] Checking required files..." -ForegroundColor Yellow
+foreach ($rel in $requiredFiles) {
+    $filePath = Join-Path $BundleRoot ($rel -replace '/', '\')
+    if (Test-Path $filePath) { Write-Host "  [OK] $rel" -ForegroundColor Green }
+    else { Add-Failure "missing required file: $rel" }
+}
+
+# Step 4: artifact digests + lengths
+Write-Host "[4/4] Verifying manifest artifacts (SHA256 + length)..." -ForegroundColor Yellow
+$verified = 0
+foreach ($artifact in $manifest.artifacts) {
+    $rel = $artifact.path
+    $filePath = Join-Path $BundleRoot ($rel -replace '/', '\')
+    if (-not (Test-Path $filePath -PathType Leaf)) { Add-Failure "artifact missing: $rel"; continue }
+    $actualHash = (Get-FileHash $filePath -Algorithm SHA256).Hash
+    $actualLength = (Get-Item $filePath).Length
+    if ($actualHash -ne $artifact.sha256) { Add-Failure "SHA256 mismatch: $rel"; continue }
+    if ($actualLength -ne $artifact.length) { Add-Failure "length mismatch: $rel"; continue }
+    $verified++
+    Write-Host "  [OK] $rel" -ForegroundColor Green
+}
+if ($manifest.canonical_rules) {
+    $shipped = @($manifest.artifacts | ForEach-Object { $_.path })
+    if ($shipped -notcontains $manifest.canonical_rules) {
+        Add-Failure "canonical_rules not shipped: $($manifest.canonical_rules)"
     }
 }
-if ($missing.Count -gt 0) {
-    Write-Host "[FAIL] Missing $($missing.Count) required files" -ForegroundColor Red
-    exit 1
-}
 
-# Step 4: Verify manifest
-Write-Host "[4/6] Checking release manifest..." -ForegroundColor Yellow
-$manifest_path = "$ExtractDir\release-manifest.json"
-if (Test-Path $manifest_path) {
-    $manifest = Get-Content $manifest_path | ConvertFrom-Json
-    Write-Host "  [OK] Version: $($manifest.version)" -ForegroundColor Green
-    Write-Host "  [OK] Build date: $($manifest.build_date)" -ForegroundColor Green
-    Write-Host "  [OK] File count: $($manifest.files.Count)" -ForegroundColor Green
-} else {
-    Write-Host "[FAIL] Manifest not found" -ForegroundColor Red
-    exit 1
-}
-
-# Step 5: Verify binary exists + is executable
-Write-Host "[5/6] Checking binary..." -ForegroundColor Yellow
-$binary = "$ExtractDir\bin\aegis_nids.exe"
-if (Test-Path $binary) {
-    $size = (Get-Item $binary).Length
-    Write-Host "  [OK] Binary exists ($size bytes)" -ForegroundColor Green
-} else {
-    Write-Host "[FAIL] Binary not found" -ForegroundColor Red
-    exit 1
-}
-
-# Step 6: Summary
-Write-Host "[6/6] Verification summary..." -ForegroundColor Yellow
-$total_files = (Get-ChildItem -Recurse $ExtractDir | Where-Object { -not $_.PSIsContainer }).Count
-$total_size = (Get-ChildItem -Recurse $ExtractDir | Measure-Object -Property Length -Sum).Sum / 1MB
-Write-Host "  Total files: $total_files" -ForegroundColor Green
-Write-Host "  Total size:  $([math]::Round($total_size, 2)) MB" -ForegroundColor Green
-
+# Summary
 Write-Host ""
+if ($failures.Count -gt 0) {
+    Write-Host "============================================================" -ForegroundColor Cyan
+    Write-Host " VERIFICATION FAILED ($($failures.Count) problem(s); $verified artifact(s) verified)" -ForegroundColor Red
+    Write-Host "============================================================" -ForegroundColor Cyan
+    exit 1
+}
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host " VERIFICATION PASSED" -ForegroundColor Green
+Write-Host " Artifacts: $verified hash-verified against manifest.json" -ForegroundColor Green
+Write-Host " Layout:    runtime\ configs\ drivers\ scripts\" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " Version:      $($manifest.version)"
-Write-Host " Binary:       $binary"
-Write-Host " File count:   $total_files"
-Write-Host " Total size:   $([math]::Round($total_size, 2)) MB"
-Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "To run the binary:"
-Write-Host "  cd $ExtractDir\bin"
-Write-Host "  .\aegis_nids.exe"
-Write-Host ""
+exit 0

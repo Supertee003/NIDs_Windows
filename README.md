@@ -1,10 +1,65 @@
-# AEGIS NIDS for Windows
+# AEGIS Kernel NIDS for Windows
+AEGIS is a Windows-native, kernel-assisted network intrusion detection system. It combines kernel network telemetry, host telemetry, rule matching, policy evaluation, operator control, and forensic evidence in one supervised runtime. Production behavior is detection-only: findings are recorded and explained, not applied as host blocking or quarantine.
 
-AEGIS is a production-oriented Windows-native network intrusion detection and response platform. It combines kernel-assisted network telemetry, host telemetry, rule matching, policy evaluation, operator control, and forensic evidence in one supervised runtime.
+> **Release status:** The repository is maintained with production-grade contracts, authority boundaries, runbooks, and acceptance gates. The current release is approved for development, qualification, and observe-only operation. Enforcement activation is permanently outside the production product scope; historical IPS/WFP proof material is retained only as historical or lab evidence.
 
-> **Release status:** The repository is maintained with production-grade contracts, authority boundaries, runbooks, and acceptance gates. The current release is approved for development, qualification, and observe-only operation. Production IPS blocking remains **not accepted** until the isolated Windows host-effect proof, receipt validation, cleanup, signing, rollback, and recovery gates are complete.
+### Project 2 Runtime Gate
 
-This README is the official entry point for developers, reviewers, lab operators, and release operators. It describes the production reference architecture, the current verified path, the required deployment controls, and the acceptance evidence needed before an IPS release can be promoted. It distinguishes source implementation from active runtime capability and from production acceptance.
+Before starting any Kali qualification probe, run the single fail-closed preflight:
+
+```powershell
+powershell -ExecutionPolicy Bypass `
+  -File .\scripts\project2_runtime_gate.ps1
+```
+
+The gate writes health, readiness, snapshot, enforcement-status, and a result receipt under `admin-evidence`. It passes only when the daemon is `RUNNING`, `degraded=false`, all 22 rules are active, forensic verification is true, the Go Nose worker is connected, and enforcement remains `detection-only` with `prevention_gate=closed`. If it fails, do not start the Kali probes.
+
+### Unified Command Control Center
+
+AEGIS provides one unified operator control surface backed by the
+authenticated Zig control daemon. The operator surfaces do not create a
+second runtime authority.
+
+Use the following commands from the repository root:
+
+```powershell
+python tools\aegisctl.py snapshot
+python scripts\aegis_console_pro.py --role operator
+python scripts\Dashboard.py
+python scripts\aegis_console.py --mode dashboard
+
+```text
+The current verified operator state is:
+
+| Area | Status |
+|---|---|
+| Runtime | `RUNNING` |
+| Runtime readiness | `READY` |
+| Canonical authority | `rust_pep` |
+| Authority invariant | `HELD` |
+| Prevention gate | `CLOSED` |
+| Enforcement mode | `DETECTION-ONLY` |
+| Provider ready | diagnostic capability only |
+| Host effect capable | `false` |
+| Host effect | `NOT_PROVEN` |
+| Forensic integrity | `OK` |
+| Forensic verification | `true` |
+
+All operator surfaces consume the daemon-owned snapshot. Process scans are
+diagnostic-only and are not promoted to runtime truth when the control daemon
+is available. Local logs may provide forensic detail but do not override the
+authoritative control response.
+
+A policy action such as `BLOCK` represents an intended policy decision. It
+must not be displayed as a confirmed host block unless a valid,
+receipt-backed postcondition contains `status=ENFORCED` and
+`host_effect_confirmed=true`.
+
+The current release is an observe-only, fail-closed Kernel NIDS release.
+Production host enforcement is not a pending feature; it is outside the product scope.
+```
+
+This README is the official entry point for developers, reviewers, lab operators, and release operators. It describes the production reference architecture, the current verified detection path, the required deployment controls, and the evidence needed to operate the Kernel NIDS safely. It distinguishes source implementation, diagnostic provider readiness, and actual host effect; provider readiness never opens the production prevention gate.
 
 ## What AEGIS does
 
@@ -21,14 +76,14 @@ Network / host activity
         |
         +--> Policy decision
         |
-        +--> Rust PEP authority
+        +--> Rust PEP policy assessment (evidence only)
         |
-        +--> WFP host effect provider
+        +--> WFP telemetry provider (host effect is lab-only, not production)
         |
         +--> Forensic record, audit trail and operator views
 ```
 
-The Zig daemon is the runtime owner. Rust PEP is the only component allowed to authorize privileged enforcement. The user-mode WFP adapter and kernel WFP callout are effect-provider layers; their low-level IOCTL functions must be reached only through the authorized runtime path and must not be called directly by Python, Go, TypeScript, dashboards, or detection code. Those components may observe, analyze, request, or display state, but they must not independently mutate Windows filtering state.
+The Zig daemon is the runtime owner. Production Rust PEP evaluates policy and returns an assessment for evidence; it does not authorize a host effect. The user-mode WFP adapter and kernel WFP callout retain historical lab-only mutation code, but a production build has no reachable path that can create or confirm a host filter. A privileged cleanup command can remove only a pre-existing filter marked with the AEGIS proof-provider GUID; it cannot create one. Those components may observe, analyze, request, or display state, but they must not independently mutate Windows filtering state.
 
 A policy action named `BLOCK` is not evidence that a host block occurred. A confirmed block requires a valid `EnforcementReceipt` with a verified host postcondition.
 
@@ -57,20 +112,24 @@ The architecture is easiest to understand as a sequence of **observation, normal
 6. Decide
    Policy authority maps evidence to ALLOW, ALERT, ESCALATE, or BLOCK_REQUESTED
           |
-7. Authorize
-   Rust PEP validates capability, policy, target, expiry, and request freshness
+7. Authorize (LAB-ONLY, not production)
+   The isolated lab build may validate a host-effect request; production
+   Rust PEP only returns an evidence assessment.
           |
-8. Apply effect
-   WFP may apply a reversible host effect only when the prevention gate is open
+8. Apply effect (LAB-ONLY, not production)
+   The lab gate may apply a reversible WFP filter; production never opens it.
           |
-9. Verify
-   The runtime checks the host postcondition and creates EnforcementReceipt v1
+9. Verify (LAB-ONLY, not production)
+   The lab path checks the host postcondition and creates EnforcementReceipt v1.
           |
 10. Remember and present
     Forensic/audit records are written; CLI and dashboards display the result
 ```
 
-The current supported path stops safely after steps 1–6 for observe-only operation. Steps 7–9 are present as guarded enforcement boundaries, but the prevention gate remains closed until the isolated WFP proof is accepted.
+Production stops after step 6: the policy decision is assessed and recorded as
+evidence, with no host effect. Steps 7–9 exist only in the separately compiled
+lab gate and are retained for historical qualification; enforcement activation
+is outside the production product scope.
 
 ### What each layer is allowed to claim
 
@@ -133,6 +192,10 @@ File change under the configured watch root
 The `AEGIS_FIM_PROOF_ROOT` environment variable selects a disposable directory for testing. It is intentionally opt-in so that a proof does not mutate or monitor Windows system directories unnecessarily.
 
 ### Enforcement lifecycle
+
+> **Historical/lab-only.** This section documents the retained
+> `EnforcementReceipt v1` semantics for past lab qualification. It is not a
+> production capability and must not be read as a pending activation plan.
 
 The enforcement path has four different meanings that must not be collapsed:
 
@@ -231,14 +294,13 @@ The **why** field is especially important for failure handling. A record that sa
 | **Synthetic qualification** | Verify rule definitions against deterministic fixtures | No |
 | **Observe-only** | Observe WFP, FIM, ETW, and ingress events on a real Windows host | No |
 | **Degraded detection** | Continue safe telemetry when an optional or privileged dependency is unavailable | No |
-| **Controlled IPS proof** | Isolated lab validation of a reversible WFP effect | Not enabled by default |
-| **Production IPS** | Future release target | **Not yet accepted** |
+| **Historical/lab proof** | Retained evidence for past WFP/PEP qualification | Never part of production runtime |
 
-Do not use the current repository as a production blocking appliance. The prevention gate must remain closed until the project publishes a completed host-effect acceptance record.
+Do not use the current repository as a production blocking appliance. The prevention gate remains closed because production host enforcement is outside the product scope.
 
 ### Capability and evidence status
 
-Production release decisions use evidence, not the presence of source files. The following matrix is the current release interpretation:
+Production release decisions use evidence, not the presence of source files. The following matrix is the current detection release interpretation:
 
 | Capability | Source implementation | Active runtime path | Observe proof | Host-effect proof |
 |---|---:|---:|---:|---:|
@@ -247,7 +309,7 @@ Production release decisions use evidence, not the presence of source files. The
 | FIM real notifications | Yes | Yes | Proof and normalization in progress | Not applicable |
 | ETW and Registry adapters | Yes | Worker paths present | Coverage must be verified per host profile | Not applicable |
 | Rule-22 synthetic qualification | Yes | Yes | Passed for the qualification fixtures | Not applicable |
-| EnforcementReceipt v1 validation | Yes | Guarded | Structural tests passed | Host postcondition pending |
+| EnforcementReceipt v1 validation | Retained boundary | Guarded | Structural tests passed | Not a production acceptance gate |
 | WFP block and cleanup | Yes, guarded | Gate closed | Not applicable | Not accepted |
 
 `Yes` in the source column means that code exists. It does not mean that the capability is enabled, verified on the current build, or accepted for production. A release may be promoted only when the corresponding runtime and evidence columns satisfy the release gate.
@@ -515,7 +577,7 @@ Rule-22 qualification has three separate acceptance levels:
 2. **Real sensor observation:** a WFP, FIM, ETW, registry, or ingress event is captured and normalized.
 3. **Controlled response:** a policy decision is linked to a valid receipt and a verified reversible host postcondition.
 
-Passing level 1 does not imply passing levels 2 or 3. The current project focus is to complete real sensor observation before enabling controlled IPS proof.
+Passing level 1 does not imply passing level 2. Level 3 is retained only as a historical/lab receipt contract; it is not a production activation roadmap. The current project focus is real sensor observation, detection fidelity, forensic linkage, and fail-closed operation.
 
 ## Troubleshooting and provenance
 
@@ -550,22 +612,21 @@ A signature error, a stale installed driver, or a `Stop Pending` state must be r
 
 `DEGRADED` is an explicit safety state. Inspect `health --json` for worker failure reasons, data-plane counters, PEP readiness, WFP provider readiness, FIM readiness, and forensic integrity. The correct response is to fix the missing dependency or remain in detection-only mode, not to assume that enforcement succeeded.
 
-## Production-readiness gates
+## Production detection-readiness gates
 
-AEGIS should not be marketed or deployed as production IPS until all of the following are complete on the current build:
+AEGIS is marketed and operated as a production Kernel NIDS, not as an IPS. The current build must satisfy the following detection-readiness conditions:
 
 - One authoritative runtime owner is verified after clean install and restart.
 - Canonical event and policy contracts pass cross-language tests.
 - WFP observe-only telemetry is reproducible on the supported Windows versions.
 - FIM events are normalized and linked to Rule-22 evidence.
-- EnforcementReceipt v1 contains request, event, trace, audit, provider, filter, and host-postcondition fields.
-- A controlled block proof shows a real reversible WFP effect.
-- Cleanup removes the exact receipt filter and is independently verified.
-- Restart and recovery leave no stale process, filter, pipe, or forensic inconsistency.
+- EnforcementReceipt v1 remains a retained, fail-closed boundary and never claims a host effect without proof.
+- No production command opens the prevention gate or applies a host mutation.
+- Restart and recovery leave no stale process, pipe, or forensic inconsistency.
 - Driver, binaries, configuration, and policy artifacts are signed or verified according to the release profile.
 - A clean installation, rollback, and release-manifest verification pass.
 
-Until then, the correct product statement is **Windows-native NIDS with observe-only and controlled-lab IPS development**, not production prevention.
+The correct product statement is **Windows-native Kernel NIDS with detection-only, observe-only, and forensic evidence capabilities**. Historical or lab IPS material must not be presented as a production feature.
 
 ## Documentation map
 

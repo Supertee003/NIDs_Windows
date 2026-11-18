@@ -88,8 +88,8 @@ const ALLOWED_MODULES = new Set([
   "node:buffer", "buffer",
   "node:url", "url",
   "node:path", "path",
-  "./types.js", "./compiler.js", "./seal.js", "./index.js",
-  "../src/index.js", "../src/types.js", "../src/compiler.js", "../src/seal.js",
+  "./types.js", "./compiler.js", "./seal.js", "./exporter.js", "./index.js",
+  "../src/index.js", "../src/types.js", "../src/compiler.js", "../src/seal.js", "../src/exporter.js",
 ]);
 
 function readSourceFiles(dir: string): Map<string, string> {
@@ -174,7 +174,10 @@ test("T6 AC4: ts_policy/src/ has no forbidden imports", () => {
 });
 
 test("T6 AC4: all imports in src/ are in the allowed list", () => {
-  const importRegex = /import\s+(?:.+?\s+from\s+)?["']([^"']+)["']/g;
+  // Covers both `import ... from "mod"` and `export ... from "mod"`
+  // (index.ts re-exports via `export * from`, which the old import-only
+  // pattern missed — a `export * from "node:fs"` would have bypassed T6 AC4).
+  const importRegex = /(?:import|export)\s+(?:.+?\s+from\s+)?["']([^"']+)["']/g;
   const violations: string[] = [];
   for (const [file, src] of files) {
     const code = stripCommentsAndStrings(src);

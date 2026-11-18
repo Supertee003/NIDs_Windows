@@ -1,8 +1,13 @@
 # AEGIS NIDS Windows — CLI control contracts and operator paths
 
+> **HISTORICAL (2026-10-19):** this review was performed against the
+> requested HEAD `46b93dc` in 2026-09; its map cross-references note even
+> older SHAs. Parts of the control plane have since been reworked by
+> later slices. Retained for history; not current truth.
+
 **Scope.** This report covers the Python `aegisctl` entrypoint and package, the JSON control path, Zig pipe/handler dispatch, policy/rules/enforcement/forensics/simulation operator paths, and duplicate legacy paths. It deliberately does not assess unrelated detection or ABI areas except where they are reached from an operator command.
 
-**Source baseline.** Findings are based on source at the requested current HEAD `46b93dcf9cca17b323ddff7a4c71e33e81c37fb5`. `AI_CONTEXT.md`, `AUTHORITY_MAP.json`, `CONTRACT_MAP.json`, and related generated maps identify `688ab566d477105df5f868cee1571fbec77eedfd`; that SHA is stale for this review and is treated as documentation evidence only, not as source truth.
+**Source baseline.** Findings are based on source at the requested review HEAD `46b93dcf9cca17b323ddff7a4c71e33e81c37fb5`. `AI_CONTEXT.md`, `AUTHORITY_MAP.json`, `CONTRACT_MAP.json`, and related generated maps identify `688ab566d477105df5f868cee1571fbec77eedfd`; that SHA is stale for this review and is treated as documentation evidence only, not as source truth.
 
 **Evidence notation.** `[S]` means a source/documentation fact inferred from the inspected files; `[R]` means a command executed in this Linux sandbox. No Windows daemon, named pipe, service, or WFP/PEP runtime was available, so `[R]` evidence does not prove Windows runtime behavior.
 
@@ -223,7 +228,7 @@ The active Zig handler registry does contain `events.count`, `events.stats`, `ev
 - The top-level Python parser and dispatch are visible in `tools/aegisctl.py` lines 811–957; package command registration is visibly inert.
 - The Brain's enforcement subprocess syntax and the active parser syntax disagree.
 - Rules, events, policy, forensic, block, quarantine, simulation, and lifecycle commands have local-file, UDP, subprocess, or unavailable branches that do not all converge on the active pipe.
-- The generated maps/documents are stale with respect to the mandated current HEAD and also reference the legacy binary protocol.
+- The generated maps/documents are stale with respect to the mandated review HEAD and also reference the legacy binary protocol.
 
 ### Runtime proof actually obtained
 
@@ -263,7 +268,7 @@ No probe established successful Windows named-pipe exchange, authorization, hand
 7. **Unify rules/policy/forensics/event sources.** Select the daemon-owned paths and route CLI list/show/validate/reload/query/export through control handlers; eliminate local file fallbacks for operations that claim runtime state. Align schema validation with the Zig loader (`nids_rules`, `match_pattern`).
 8. **Disable duplicate operator surfaces.** Remove or hard-fail package modules whose registration is inert, and turn deprecated scripts into wrappers that call the canonical CLI with compatible syntax—or remove them after zero-consumer proof. In particular, prevent `aegis_daemon.py` and `aegis_block.py` from creating alternate owners/bypass paths.
 9. **Replace constant handlers with real operations or explicit `NOT_IMPLEMENTED`.** A successful envelope must mean the postcondition was checked. Export, replay, verification, policy simulation, and enforcement verification need evidence-backed result schemas.
-10. **Add Windows-host proof gates.** Build the current HEAD, launch the service, exercise the full command matrix over the named pipe, test ACL/RBAC and stale/replay requests, prove Brain-to-PEP block/unblock, verify supervisor joins, and archive the raw request/response/audit evidence.
+10. **Add Windows-host proof gates.** Build the review HEAD, launch the service, exercise the full command matrix over the named pipe, test ACL/RBAC and stale/replay requests, prove Brain-to-PEP block/unblock, verify supervisor joins, and archive the raw request/response/audit evidence.
 
 ## Bottom line
 

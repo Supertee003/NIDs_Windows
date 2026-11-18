@@ -1,5 +1,12 @@
 # AEGIS NIDs Windows — Canonical Architecture (G1)
 
+> **HISTORICAL (2026-10-06):** this document is SUPERSEDED and is no
+> longer the Single Source of Truth. Current truth lives in AGENTS.md
+> (source-of-truth hierarchy) + `SYSTEM_MAP.json` + `FLOW_MAP.json` +
+> `AUTHORITY_MAP.json` + `UNWIRED_INVENTORY.md` + `docs/adr/`.
+> Preserved for history — do not use as current truth, do not update
+> its component table (e.g. federation rows predate the P1–P4 program).
+
 **สถานะ:** เอกสารนี้คือ **Single Source of Truth** ทาง architecture (ตั้งแต่ 2026-09-06)
 **ที่มา:** รวมจาก README.md (root) + PHASE32–44 READMEs (archive ไว้ที่ `docs/archive/`)
 **Baseline:** ดู `docs/BASELINE_20260906.md`
@@ -12,13 +19,14 @@
 Nose (Go/C)      = sensor — observe only, no policy authority
 Core (Zig)       = runtime — no direct enforcement
 Brain (Python)   = advisory — cannot enforce
-Shield (Rust)    = PEP — FINAL enforcement authority
+Shield (Rust)    = PEP — detection-only policy evaluation, no host effect
 Mouth (Rust)     = display only
-WFP driver       = kernel enforcement, สั่งได้จาก Shield/PEP path เท่านั้น
+WFP driver       = kernel telemetry, observe-only (block IOCTL = STATUS_NOT_SUPPORTED)
 ```
 
 ทุก module ใหม่ต้องเข้ากฎ: Detection/Correlation/Cluster ส่ง **evidence** เท่านั้น
-การ block/kill/quarantine เกิดที่ WFP ผ่าน Rust PEP เท่านั้น
+ไม่มี production path ใดสร้าง host effect; block/kill/quarantine เป็นเพียง
+ข้อเสนอเชิงหลักฐาน (ESCALATE reason 8) ให้มนุษย์พิจารณา
 
 ## 2. Pipeline
 
@@ -26,7 +34,7 @@ WFP driver       = kernel enforcement, สั่งได้จาก Shield/PEP
 Npcap capture (passive) ──────┐
 Host telemetry (ETW/FIM/Reg) ─┤→ CanonicalEvent → EventPump → HostTelemetry
 ML flow detector ─────────────┘        → incidents → ClusterCoord → XdrEngine (CEF→SIEM)
-                                       → enforcement = WFP (Shield only)
+                                       → evidence only (no host effect)
 ```
 
 ## 3. Component Map — Phase 32–44 (สถานะตามจริง ตาม Rule 3)
@@ -40,10 +48,10 @@ ML flow detector ─────────────┘        → incidents
 | 37 | HIDS correlation | `core/host_telemetry.zig` | LOGIC REAL — รอ adapters ป้อน event จริง |
 | 37E1 | Mock telemetry source | `core/host_telemetry_mock.zig` | MOCK — test scaffolding เท่านั้น |
 | 37E2 | MITRE scenario library | `core/host_telemetry_scenarios.zig` | MOCK (test) |
-| 37E3 | Extended detectors | `core/host_telemetry_detectors.zig` | REAL heuristics; injection detector **ถูกแทนด้วย Ext7** |
+| 37E3 | Extended detectors | `core/host_telemetry_detectors.zig` | REAL heuristics; injection heuristic **ถูกแทนด้วย Ext7** — ทั้งคู่ยังไม่ถูกเรียกจาก production (test/CLI เท่านั้น) |
 | 37E4 | Windows adapters (polling) | `core/windows_adapters.zig` | REAL on Windows (HOST-VERIFIED บางส่วน) — **ถูกแทนด้วย Ext5 ด้าน latency** |
 | 37E5 | ETW realtime source | `core/etw_realtime.zig` | REAL on Windows, stub on Linux |
-| 37E7 | T1055 injection detector | `core/injection_detector.zig` | REAL-time ETW path, ยังไม่ผ่าน Windows-host verification |
+| 37E7 | T1055 injection detector | `core/injection_detector.zig` | **NOT WIRED** — logic REAL + unit-tested, แต่ไม่มีผู้ผลิต event: ETW session ไม่สร้าง `InjectionEvent`, ไม่มี `ingest()` call site, และ `runtime_manifest.has_injection_detector` = false (S2-03) |
 | 39 | Cluster coordination | `core/cluster_coord.zig` | LOGIC REAL — federation transport ต่องานเพิ่ม |
 | 39E1 | Federation codec | `core/federation_codec.zig` | REAL (CRC32 = bit-flip detection ไม่ใช่ tamper resistance) |
 | 39E2 | TCP transport | `core/federation_tcp.zig` | REAL — **plaintext** |

@@ -126,14 +126,23 @@ class TestLiveVersionFlags(unittest.TestCase):
 
         try:
             result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=5,
+                cmd,
+                capture_output=True,
+                text=False,
+                timeout=5,
                 cwd=str(REPO_ROOT),
             )
         except (subprocess.TimeoutExpired, OSError) as e:
             self.skipTest(f"could not invoke {cmd}: {e}")
 
         # Combine stdout and stderr; many tools print --version on either.
-        output = (result.stdout + " " + result.stderr).strip()
+        # Some Windows launch paths can return None for one captured stream
+        # (notably when a native binary exits before attaching a console).
+        # Treat that stream as empty; a genuinely silent process is handled by
+        # the explicit skip below instead of crashing the harness itself.
+        stdout = (result.stdout or b"").decode("utf-8", errors="replace")
+        stderr = (result.stderr or b"").decode("utf-8", errors="replace")
+        output = (stdout + " " + stderr).strip()
         if not output:
             self.skipTest(f"{cmd} produced no output")
         return output

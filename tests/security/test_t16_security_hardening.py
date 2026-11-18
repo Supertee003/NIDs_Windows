@@ -12,13 +12,17 @@ Hardening review (AC1) - the categories in the ticket and where the fix
 lives today:
 
   memory safety / bounds / integer overflow
-    Rust PEP (shield/src/pep.rs) is the enforcement authority and is
-    memory-safe by construction (the sole point for privileged actions).
-    Zig stages use safe slices + bounds-checked arrays; fault matrix
-    (core/fault_matrix.zig) counts overflows instead of panicking.
+    The screening boundary (shield/src/lib.rs) rejects null and oversize
+    inputs before any slice is constructed; the detection-only policy
+    evaluation authority is the Rust PEP (rust-src/lib.rs), the only point
+    for policy evaluation, and it never authorizes a host effect. Zig stages
+    use safe slices + bounds-checked arrays; fault
+    matrix (core/fault_matrix.zig) counts overflows instead of panicking.
   FFI / ABI
-    shield/src/pep.rs converts C inputs into a safe PepRequest only via
-    checked CStr conversion; the shim is the only FFI boundary.
+    The screening shim exports exactly one C symbol (aegis_shield_screen),
+    loaded DynLib-only by src/policy/shield_screen.zig (no link-time
+    extern); it is advisory-only and never authorizes (policy evaluation
+    lives solely in rust-src/lib.rs and is detection-only).
   race / deadlock
     Replay is read-only; forensics ring is single-writer; health
     monitoring is isolated from the golden path.
@@ -33,11 +37,14 @@ lives today:
     Config hot reload validates before atomic swap (config_reload_proof);
     invalid rulesets are rejected (no partial swap).
   secret handling / certificate handling
-    auth token is a non-empty sentinel fingerprinted with FNV-1a
-    (shield/src/pep.rs); cert fingerprint stored + validated in
-    federation_tls CertificateValidator.
+    No secret material lives in the screening crate (PEP-001 removed the
+    former auth-sentinel vestige); privileged authorization binds caller
+    identity (caller_hash) + replay nonce in control_ipc.zig; federation
+    trust anchors are pinned + verified in rust-src (WebPkiClientVerifier,
+    empty roots fail closed).
   privilege boundaries
-    ADR-0001: Rust PEP is the ONLY enforcement authority; approaching it
+    ADR-0001: Rust PEP is the ONLY policy evaluation authority and is
+    detection-only; approaching it
     are only requests. See authority_invariants.
   audit integrity
     control IPC appends an audit record for every authorization decision;
@@ -70,11 +77,11 @@ SPAWN_TOKENS = (
     ".terminate()",
     ".kill()",
 )
-PEP_RS = "shield/src/pep.rs"
-PEP_LIB = "shield/src/lib.rs"
+SCREEN_RS = "shield/src/screen.rs"
+SCREEN_LIB = "shield/src/lib.rs"
 NOSE_PR = "src/capture/nose_pipe_reader.zig"
 CONFIG_RELOAD = "src/tests/proofs/config_reload_proof.zig"
-FED_TLS = "src/federation/federation_tls.zig"
+FED_TLS_RUST = "rust-src/lib.rs"
 FAULT_MATRIX = "src/reliability/fault_matrix.zig"
 
 # AC1: (hardening category, evidence that must exist somewhere real).
@@ -138,21 +145,21 @@ def test_hardening_categories_coverage() -> None:
     concrete evidence tokens exist (structurally, what implements each fix).
     """
     ipc = _read(CONTROL_IPC)
-    pep = _read(PEP_RS)
-    pep_lib = _read(PEP_LIB)
+    screen = _read(SCREEN_RS)
+    screen_lib = _read(SCREEN_LIB)
     nose = _read(NOSE_PR)
     config = _read(CONFIG_RELOAD)
-    fed = _read(FED_TLS)
+    fed_rust = _read(FED_TLS_RUST)
     fault = _read(FAULT_MATRIX)
 
     checks = {
         "memory safety / bounds": (
-            "PepRequest" in pep and "CStr" in pep_lib,
-            "Rust PEP (memory-safe authority) MUST convert C inputs via checked CStr (pep.rs/lib.rs)",
+            "is_null()" in screen_lib and "MAX_PAYLOAD_SIZE" in screen_lib,
+            "screening boundary must reject null/oversize input before any slice construction",
         ),
         "FFI / ABI": (
-            "fnv1a_64" in pep or "CStr" in pep_lib,
-            "PEP shim must have explicit FFI conversion surface",
+            "#[no_mangle]" in screen_lib and 'extern "C"' in screen_lib,
+            "screening shim must expose exactly one explicit C ABI symbol",
         ),
         "race / deadlock": (
             "getBySequence" in _read("src/forensic/forensics_engine.zig"),
@@ -172,15 +179,15 @@ def test_hardening_categories_coverage() -> None:
             "config reload must validate before atomic swap",
         ),
         "secret handling": (
-            "auth_token" in pep and "non-empty sentinel" in pep,
-            "auth token must be a non-empty sentinel fingerprint",
+            "caller_hash" in ipc and "nonce" in ipc,
+            "control-plane authorization must bind caller identity + replay nonce (no secret material in the screening crate)",
         ),
         "certificate handling": (
-            "ca_fingerprint" in fed and "CertificateValidator" in fed,
-            "federation TLS must fingerprint + validate certs",
+            "WebPkiClientVerifier" in fed_rust and "no trust anchors (empty roots fail closed)" in fed_rust,
+            "federation TLS must verify peer chains against pinned trust anchors (Rust stack, P2B2 cutover)",
         ),
         "privilege boundaries": (
-            "advisory" in _read("src/core/brain_engine.zig") or "never" in pep.lower(),
+            "advisory" in screen_lib and "never" in screen_lib,
             "non-authoritative stages must be advisory-only",
         ),
         "audit integrity": (
@@ -243,11 +250,16 @@ def test_privileged_authorization_layered() -> None:
 def test_aegisctl_issues_request_envelope_for_privileged_actions() -> None:
     """AC3: every privileged mutation in aegisctl (block add, enforce push)
     issues a control request envelope (request_id + nonce + caller + role)
-    and writes it to the append-only audit."""
+    and writes it to the append-only audit.
+
+    Live architecture (NEG-002): the old tools/aegisctl/commands/network.py
+    module was quarantined; mutations are gated in tools/aegisctl.py and
+    refused offline. Envelope construction lives in utils.control_request.
+    """
     src = _read(AEGISCTL)
-    # Check main entry point for modular imports
-    assert "aegisctl.commands" in src or "from .." in src, (
-        "aegisctl must have modular command structure"
+    # Live CLI is a thin client over the control plane (no modular package).
+    assert "control_request" in src or "query_control" in src or "AegisClient" in src, (
+        "aegisctl must route through the control plane client"
     )
     # Check config module for roles
     config_src = _read("tools/aegisctl/config.py")
@@ -261,13 +273,14 @@ def test_aegisctl_issues_request_envelope_for_privileged_actions() -> None:
         "envelope must include request_id + nonce (AC3)"
     )
     assert "caller" in utils_src, "envelope must include caller identity (AC3)"
-    # Check network module for privileged commands
-    network_src = _read("tools/aegisctl/commands/network.py")
-    assert 'control_request("block_request", ROLE_OPERATE' in network_src, (
-        "block add must emit an OPERATE request envelope (AC3)"
+    # Live mutation gates: block/quarantine/enforce mutations are refused
+    # without a daemon-owned postcondition (NEG-002 behavioral proof in
+    # tests/security/test_cli_mutation_gate.py).
+    assert "pep_wfp_postcondition_not_connected" in src, (
+        "block/quarantine mutations must gate on the PEP postcondition (AC3)"
     )
-    assert 'control_request("enforce_push", ROLE_PRIVILEGED' in network_src, (
-        "enforce push must emit a PRIVILEGED request envelope (AC3)"
+    assert "pep_runtime_postcondition_not_connected" in src, (
+        "enforce mutations must gate on the PEP postcondition (AC3)"
     )
     assert "CONTROL_AUDIT_LOG" in utils_src or "control_audit.ndjson" in utils_src or "control_audit.ndjson" in config_src, "requests must be appended to the audit log (AC3)"
 

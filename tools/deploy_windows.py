@@ -122,7 +122,7 @@ def install_service(target: Path) -> int:
         "reset=", "86400",
         "actions=", "restart/5000/restart/5000/restart/10000"
     ])
-    print("âœ… Service installed (start with: sc start AegisNids)")
+    print("âœ… Service installed (start with: sc.exe start AegisNids)")
     return 0
 
 

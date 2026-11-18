@@ -32,6 +32,10 @@ pub const IOCTL_AEGIS_GET_STATS   = CTL_CODE(FILE_DEVICE_NETWORK, 0x802, METHOD_
 
 // ============================================================
 // WFP Event Header (must match aegis_wfp.h AEGIS_EVENT_HEADER)
+// EVT-213: 48-byte stride. The kernel writes an explicit reserved2
+// before timestamp so its packed record equals this extern layout:
+// payload_length @20, rule_id @24, severity @28, timestamp @40.
+// Pinned by the layout test at the bottom of this file.
 // ============================================================
 
 pub const WfpEventHeader = extern struct {
@@ -51,7 +55,12 @@ pub const WfpEventHeader = extern struct {
     timestamp: u64,
 };
 
-// Ring stats returned by IOCTL_AEGIS_GET_STATS
+// Ring stats returned by IOCTL_AEGIS_GET_STATS.
+// LEGACY local-handle diagnostics path only: this struct does NOT mirror the
+// kernel AEGIS_RING_STATS layout (6x u32) and is unreachable from the daemon
+// (the Zig side never opens the device there -- the Rust PEP adapter is the
+// sole owner). Alignment is deferred as a tracked follow-up; do not use it
+// to interpret kernel ring stats.
 pub const WfpRingStats = extern struct {
     currentUsedBytes: u32,
     capacity: u32,
@@ -325,4 +334,16 @@ test "parseIpv4 and formatIpv4 round-trip" {
     try std.testing.expect(parsed == original);
     const formatted = formatIpv4(parsed, &buf);
     try std.testing.expect(std.mem.eql(u8, formatted, "192.168.1.100"));
+}
+
+test "EVT-213: WFP event header pins the 48-byte packed kernel stride" {
+    // The kernel AEGIS_EVENT_HEADER (drivers/wfp_callout/aegis_wfp.h) is
+    // pack(1) with an explicit reserved2: payload_length @20, rule_id @24,
+    // severity @28, timestamp @40, total 48. This extern struct must read
+    // the same stride, otherwise every record after the first is shifted.
+    try std.testing.expectEqual(@as(usize, 48), @sizeOf(WfpEventHeader));
+    try std.testing.expectEqual(@as(usize, 20), @offsetOf(WfpEventHeader, "payload_length"));
+    try std.testing.expectEqual(@as(usize, 24), @offsetOf(WfpEventHeader, "rule_id"));
+    try std.testing.expectEqual(@as(usize, 28), @offsetOf(WfpEventHeader, "severity"));
+    try std.testing.expectEqual(@as(usize, 40), @offsetOf(WfpEventHeader, "timestamp"));
 }

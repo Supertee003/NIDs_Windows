@@ -1,6 +1,6 @@
 //! nids_capture.zig - AEGIS NIDS Named Pipe IPC Sensor (Thread 2)
 //!
-//! Creates a named pipe server (\\.\pipe\aegis_sensor_pipe) that
+//! Creates a named pipe server (\\.\pipe\aegis_sensor_pipe_t1) that
 //! accepts connections from Python sensor scripts. Payloads received
 //! via the pipe are submitted to the daemon-owned canonical event queue.
 //! Detection, policy, and forensic processing are performed by the pipeline
@@ -58,6 +58,21 @@ fn applyJsonMetadata(ev: *event.IpcEvent, payload: []const u8) void {
     if (obj.get("severity")) |v| if (v == .string) {
         ev.severity = if (std.ascii.eqlIgnoreCase(v.string, "Critical")) .critical else if (std.ascii.eqlIgnoreCase(v.string, "High")) .alert else if (std.ascii.eqlIgnoreCase(v.string, "Medium")) .warning else .info;
     };
+    // Tier-2 brain return contract (T2-BRAIN-023): a sender that identifies
+    // itself as "brain_tier2" is recorded with brain provenance and its
+    // numeric rule_id is carried. Anything else keeps the default system
+    // packet identity above. Unknown/missing fields never fail the ingest.
+    if (obj.get("source")) |v| if (v == .string) {
+        if (std.ascii.eqlIgnoreCase(v.string, "brain_tier2")) {
+            ev.source = .detection_brain;
+            ev.kind = .anomaly_detected;
+        }
+    };
+    if (obj.get("rule_id")) |v| {
+        if (v == .integer and v.integer > 0) {
+            ev.rule_id = @intCast(@min(v.integer, std.math.maxInt(u32)));
+        }
+    }
 }
 
 // Win32 FFI
@@ -83,6 +98,10 @@ extern "kernel32" fn ReadFile(
 ) win.BOOL;
 
 // ====== BP19: Admin-Only Pipe ACL via SDDL ======
+// EVT-176 / GAP-018: Authenticated Users was listed here, letting any
+// local process inject detection input. Removed: sensor writes now need
+// SYSTEM or Administrators (gate-E canary flows already run elevated;
+// non-admin writers get an access-denied open, never silent loss).
 extern "advapi32" fn ConvertStringSecurityDescriptorToSecurityDescriptorA(
     StringSecurityDescriptor: [*:0]const u8,
     StringSDRevision: u32,
@@ -92,7 +111,7 @@ extern "advapi32" fn ConvertStringSecurityDescriptorToSecurityDescriptorA(
 
 extern "kernel32" fn LocalFree(hMem: ?*anyopaque) ?*anyopaque;
 
-const SDDL_ADMIN_ONLY = "D:(A;;GA;;;BA)(A;;GA;;;AU)";
+const SDDL_ADMIN_ONLY = "D:(A;;GA;;;SY)(A;;GA;;;BA)";
 const SDDL_REVISION: u32 = 1;
 
 const AegisSecurityAttributes = extern struct {
@@ -117,7 +136,7 @@ const WAIT_TIMEOUT = win32_io.WAIT_TIMEOUT;
 const IO_POLL_TIMEOUT_MS = win32_io.IO_POLL_TIMEOUT_MS;
 /// Thread 2 entry point: Named Pipe IPC Sensor.
 ///
-/// Creates a named pipe server (\\.\pipe\aegis_sensor_pipe) that accepts
+/// Creates a named pipe server (\\.\pipe\aegis_sensor_pipe_t1) that accepts
 /// connections from Python sensor scripts. Payloads received via the pipe
 /// are submitted to the canonical event queue for daemon-owned processing.
 ///
@@ -199,6 +218,9 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
 
     while (true) {
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
+        // WD-BEAT-049: 1s-timeout overlapped waits keep the cadence well
+        // under the 5s watchdog timeout.
+        runtime_state.g_wd.beatLazy(&runtime_state.g_wd_sensor_slot, .capture, "sensor");
         // BP-O2: Overlapped ConnectNamedPipe with 1s timeout for shutdown responsiveness
         // Phase 9: Uses win32_io helper constants and functions
         var overlapped: OVERLAPPED = std.mem.zeroes(OVERLAPPED);
@@ -308,4 +330,29 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
             _ = DisconnectNamedPipe(handle);
         }
     }
+}
+
+test "applyJsonMetadata carries brain_tier2 provenance and rule identity" {
+    var ev = event.IpcEvent.init(.packet_captured);
+    ev.source = .system;
+    const payload =
+        \\{"src_ip":"192.168.126.10","dst_ip":"192.168.126.20","src_port":4444,"dst_port":80,"protocol":"TCP","severity":"High","source":"brain_tier2","rule_id":2107512682}
+    ;
+    applyJsonMetadata(&ev, payload);
+    try std.testing.expectEqual(event.EventSource.detection_brain, ev.source);
+    try std.testing.expectEqual(event.EventKind.anomaly_detected, ev.kind);
+    try std.testing.expectEqual(@as(u32, 2107512682), ev.rule_id);
+    try std.testing.expectEqual(@as(u32, 0xC0A87E0A), ev.src_ip);
+    try std.testing.expectEqual(event.EventSeverity.alert, ev.severity);
+}
+
+test "applyJsonMetadata keeps default identity without brain fields" {
+    var ev = event.IpcEvent.init(.packet_captured);
+    ev.source = .system;
+    applyJsonMetadata(&ev,
+        \\{"src_ip":"10.0.0.1"}
+    );
+    try std.testing.expectEqual(event.EventSource.system, ev.source);
+    try std.testing.expectEqual(event.EventKind.packet_captured, ev.kind);
+    try std.testing.expectEqual(@as(u32, 0), ev.rule_id);
 }

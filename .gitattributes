@@ -9,3 +9,10 @@
 # break the build-manifest drift gate).
 installer/*.nsi text eol=lf
 scripts/verify_release.ps1 text eol=lf
+
+# SIGNED-TREE-001: a release candidate is a signed byte image, not source.
+# SHA256SUMS carries a digest per shipped file and signatures.json signs the
+# SHA256SUMS bytes, so any end-of-line translation between the working tree and
+# the committed blob breaks verification of a fresh clone. Store release trees
+# verbatim (`-text`): the digest is the identity, not the line endings.
+release/** -text

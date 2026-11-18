@@ -1,0 +1,32 @@
+{
+  "schema": "aegis.rule22-single.v1",
+  "rule_id": "R9007",
+  "name": "TCP XMAS Scan",
+  "layer": "L4",
+  "severity": "Medium",
+  "action": "Alert",
+  "patterns": {
+    "fast_pattern": "FPU",
+    "match_pattern": "FLAGS:FPU",
+    "regex_pattern": "FLAGS:FPU|0x29|XMAS_SCAN_STD"
+  },
+  "fixture": {
+    "fixture_id": "FX-07-R9007",
+    "source": "synthetic_wfp_network_event",
+    "marker": "FPU",
+    "synthetic_signal": "FPU FLAGS:FPU C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "regex_match": true
+  },
+  "expected_observe_only": {
+    "host_effect": "none",
+    "wfp_block": false,
+    "enforcement_receipt": false,
+    "forensic_record": true,
+    "canonical_event": true
+  },
+  "prevention_gate": "closed",
+  "vm_steps": [
+    "host-only: kali_hostonly_probe.sh (nmap/hping3)",
+    "verify: flow anomaly + rule match via metrics snapshot"
+  ]
+}

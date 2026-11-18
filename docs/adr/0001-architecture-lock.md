@@ -30,14 +30,14 @@ changes are permitted without a new ADR.
 | RAG | core/rag_engine.zig | Zig | Context enrichment only |
 | Brain | brain/windows_brain.py | Python | Advisory only |
 | Policy | core/policy_engine.zig | Zig | Final decision authority |
-| Rust PEP | shield/src/lib.rs | Rust | Final enforcement authority |
+| Rust PEP | rust-src/lib.rs | Rust | Detection-only policy evaluator; records evidence and never authorizes a host effect |
 | Forensics | core/forensics_engine.zig | Zig | Immutable trace |
 | aegisctl | tools/aegisctl.py | Python | Requests only, never bypasses PEP |
 
 ### Pipeline Order (Canonical)
 
 OBSERVE -> CANONICAL EVENT -> STATE -> EVIDENCE -> INTELLIGENCE
--> ADVISORY -> POLICY -> RUST AUTHORIZATION -> WINDOWS ENFORCEMENT
+-> ADVISORY -> POLICY -> RUST DETECTION EVIDENCE -> OBSERVE-ONLY WFP
 -> IMMUTABLE TRACE -> REPLAY
 
 ### Dispatcher as Sole Orchestrator

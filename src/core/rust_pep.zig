@@ -21,6 +21,7 @@ const std = @import("std");
 const canonical = @import("../contract/canonical_event.zig");
 const policy = @import("../policy/policy_engine.zig");
 const wfp_ioctl = @import("../policy/wfp_ioctl.zig"); // Phase 28: WFP kernel bridge
+const pep_bindings = @import("../policy/pep_bindings.zig"); // EVT-211: provider read surface
 
 // ============================================================
 // Enforcement Status
@@ -261,8 +262,12 @@ pub fn isCriticalInfra(ip: u32) bool {
 //
 // If the PEP DLL is unavailable the gate is FAIL-CLOSED (returns false) —
 // a privileged action is never silently executed without authorization.
-// wfpInit/wfpShutdown/wfpIsConnected/read_events/get_stats remain pure
-// telemetry transport (read-only, not privileged) and are unchanged.
+// wfpInit/wfpShutdown/wfpIsConnected/get_stats remain pure telemetry
+// transport (read-only, not privileged). EVT-211: read_events is now
+// provider-first -- reads go through the Rust PEP adapter's cached handle
+// (the sole device owner, aegis_pep_read_events), and the local-handle
+// path below is kept only for contexts that opened one themselves
+// (tests). In the daemon the local handle is deliberately never opened.
 // ============================================================
 
 pub const WfpRingStats = wfp_ioctl.WfpRingStats;
@@ -298,8 +303,42 @@ pub fn unblock_ip(ipv4: u32) bool {
     return false;
 }
 
+pub const WfpReadResult = union(enum) {
+    /// Provider/handle answered: bytes written into the buffer (0 = idle
+    /// ring, a valid non-error state).
+    bytes: u32,
+    /// No read path is available (no provider adapter and no local
+    /// handle). Callers MUST label this state, never render it as a
+    /// zero-row reading.
+    no_provider: void,
+};
+
+fn readOnce(out_buf: []u8) WfpReadResult {
+    switch (pep_bindings.readWfpEvents(out_buf)) {
+        .bytes => |n| return .{ .bytes = n },
+        .unavailable => {},
+    }
+    if (wfp_ioctl.isConnected()) return .{ .bytes = wfp_ioctl.read_events(out_buf) };
+    return .no_provider;
+}
+
+/// Read-only kernel flow telemetry, u32 contract (existing callers).
+/// Provider-first (EVT-211): the Rust PEP adapter holds the sole device
+/// handle; reading through its export keeps single ownership and works
+/// in the daemon where the Zig-side handle is never opened. A
+/// provider-missing host reads 0 -- callers that must distinguish that
+/// use read_events_status.
 pub fn read_events(out_buf: []u8) u32 {
-    return wfp_ioctl.read_events(out_buf);
+    return switch (readOnce(out_buf)) {
+        .bytes => |n| n,
+        .no_provider => 0,
+    };
+}
+
+/// Same read with the provider-missing state preserved so the capture
+/// loop can label absence instead of silently reporting zero.
+pub fn read_events_status(out_buf: []u8) WfpReadResult {
+    return readOnce(out_buf);
 }
 
 pub fn get_stats() ?WfpRingStats {

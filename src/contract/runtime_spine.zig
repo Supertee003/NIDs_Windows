@@ -6,11 +6,21 @@
 //!     Threat Intel, Brain, Policy, PEP, Forensics
 //!   Tooling: Replay, E2E, Performance, Canary, Fault Injection, Release
 //!
-//! T3: This file is the SINGLE runtime spine. It is the one authoritative
-//! registry of every runtime module (production + optional + tooling + proof),
-//! its init order, its shutdown order (reverse of init), and whether it sits
-//! on the golden path. No other file may maintain a second module list with
-//! different ordering (violated = "duplicate spine").
+//! T3: This file is the SINGLE runtime-spine REGISTRY (specification + proof)
+//! of every runtime module (production + optional + tooling + proof), its init
+//! order, its shutdown order (reverse of init), and whether it sits on the
+//! golden path. Any second module list in the tree is a duplicate-spine
+//! violation against THIS registry (docs may describe it; only this file
+//! enumerates it).
+//!
+//! T3 STATUS (pinned by tests/docs/test_stale_doc_sweep.py, LEFTOVER-SWEEP):
+//! the production binary does NOT load this registry. src/main.zig composes
+//! the runtime directly, and the lifecycle orchestrator built to consume the
+//! registry (src/reliability/lifecycle.zig) is quarantined - never invoked,
+//! registered in tests/security/test_zig_test_scope.py QUARANTINED_UNREACHABLE.
+//! Consumers today are tests and proofs only (src/all_tests.zig,
+//! src/tests/proofs/documentation_proof.zig). Wiring the registry into the
+//! production startup path is a dedicated-slice decision, never a default.
 //!
 //! v5.0 Section 17: Lifecycle
 //!   main -> runtime.start() -> runtime.run() -> runtime.shutdown()
@@ -103,7 +113,6 @@ pub const PRODUCTION_MODULES = [_]ModuleInfo{
 /// Optional runtime modules (T3). Started in every profile but NOT on the
 /// golden path and not required for the core pipeline to function.
 pub const OPTIONAL_MODULES = [_]ModuleInfo{
-    .{ .name = "xdr_harden_integration", .category = .optional, .init_order = 18, .shutdown_order = 8, .golden_path = false },
     .{ .name = "release_engineering_integration", .category = .optional, .init_order = 19, .shutdown_order = 7, .golden_path = false },
     .{ .name = "rag_integration", .category = .optional, .init_order = 20, .shutdown_order = 6, .golden_path = false },
     .{ .name = "hids_integration", .category = .optional, .init_order = 21, .shutdown_order = 5, .golden_path = false },
@@ -519,8 +528,15 @@ test "PRODUCTION_MODULES has 12 entries" {
     try std.testing.expect(PRODUCTION_MODULES.len == 12);
 }
 
-test "OPTIONAL_MODULES has 6 entries" {
-    try std.testing.expect(OPTIONAL_MODULES.len == 6);
+test "OPTIONAL_MODULES has 5 entries" {
+    try std.testing.expect(OPTIONAL_MODULES.len == 5);
+}
+
+test "XDR integration is not registered as a runtime module before production wiring" {
+    for (ALL_RUNTIME_MODULES) |module| {
+        try std.testing.expect(!std.mem.eql(u8, module.name, "xdr_harden_integration"));
+        try std.testing.expect(!std.mem.eql(u8, module.name, "xdr_incident_fabric"));
+    }
 }
 
 test "TOOLING_MODULES has 1 entry (replay)" {
@@ -536,9 +552,9 @@ test "BASE_MODULES has 5 entries" {
     try std.testing.expect(BASE_MODULES.len == 5);
 }
 
-test "T3: spine covers all 24 runtime modules exactly once (no duplicate spine)" {
-    try std.testing.expect(runtimeModuleCount() == 24);
-    try std.testing.expect(ALL_RUNTIME_MODULES.len == 24);
+test "T3: spine covers all 23 runtime modules exactly once (no duplicate spine)" {
+    try std.testing.expect(runtimeModuleCount() == 23);
+    try std.testing.expect(ALL_RUNTIME_MODULES.len == 23);
     try std.testing.expect(namesAreUnique());
 }
 
@@ -676,7 +692,7 @@ test "GoldenPathTracer clear" {
 test "RuntimeSpineReport isComplete" {
     const report = generateReport();
     try std.testing.expect(report.production_module_count == 12);
-    try std.testing.expect(report.optional_module_count == 6);
+    try std.testing.expect(report.optional_module_count == 5);
     try std.testing.expect(report.tooling_module_count == 1);
     try std.testing.expect(report.proof_module_count == 5);
     try std.testing.expect(report.base_module_count == 5);

@@ -29,7 +29,30 @@ int main() {
             if (buf[0] != 0x31 || buf[3] != 0x41) {
                 fprintf(stderr, "FAIL: %s magic\n", names[i]); return 4;
             }
+            // Keepalive honesty: etw/fim/registry first frames are forward(2)
+            // telemetry, never match(1). (process may report real new-PID
+            // observations and is exempt.)
+            if (i < 3) {
+                uint32_t etype = (uint32_t)buf[57] | ((uint32_t)buf[58] << 8) |
+                                 ((uint32_t)buf[59] << 16) | ((uint32_t)buf[60] << 24);
+                if (etype != 2) { fprintf(stderr, "FAIL: %s keepalive type=%u\n", names[i], etype); return 6; }
+            }
         }
+    }
+
+    // Bounds pin: a 200-byte buffer must never receive more than one
+    // 109B frame however large maxOut is (regression: per-copy overflow).
+    {
+        uint8_t small[200];
+        memset(small, 0xAA, sizeof(small));
+        uint8_t out[8];
+        uint32_t per = 0;
+        int32_t n = aegis_adapter_poll(handles[1], out, 8, small, sizeof(small), &per);
+        if (n < 0 || (uint32_t)n * 109u > sizeof(small)) {
+            fprintf(stderr, "FAIL: small-cap poll overflow n=%d\n", (int)n);
+            return 5;
+        }
+        fprintf(stdout, "small-cap poll -> %d events (bounded)\n", (int)n);
     }
 
     // Health check.

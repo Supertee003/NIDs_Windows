@@ -224,10 +224,12 @@ struct FimAdapter {
     PollResult poll(CanonicalFrame* out) {
 #ifdef _WIN32
         if (state != State::Started) return PollResult::NoEvent;
-        // v1: emit a periodic "fim watch active" keepalive as a file event
+        // v1: emit a periodic "fim watch active" keepalive as a file event.
         // (the buffer fills are wired in Ext under this boundary; the
         // framework contract is complete without blocking a poll loop.)
-        initFrame(out, kSourceFile, 1);
+        // Keepalives are forward(2) telemetry, never match(1): no signature
+        // was evaluated, so they must not be ingestible as detections.
+        initFrame(out, kSourceFile, 2);
         put32(out->data + kReservedOffset + 0, ::GetCurrentProcessId());
         out->data[kReservedOffset + 8] = 1; // proc_type=file_modify keepalive
         produced++;
@@ -253,7 +255,8 @@ struct RegistryAdapter {
     PollResult poll(CanonicalFrame* out) {
 #ifdef _WIN32
         if (state != State::Started) return PollResult::NoEvent;
-        initFrame(out, kSourceRegistry, 1);
+        // Keepalive: forward(2), never match(1) — see FimAdapter note.
+        initFrame(out, kSourceRegistry, 2);
         put32(out->data + kReservedOffset + 0, ::GetCurrentProcessId());
         produced++;
         return PollResult::Event;
@@ -280,7 +283,8 @@ struct EtwAdapter {
 #ifdef _WIN32
         if (state != State::Started) return PollResult::NoEvent;
         (void)::GetCurrentProcessId();
-        initFrame(out, kSourceProcess, 4 /* rejected = metadata keepalive */);
+        // Keepalive: forward(2), never match(1) — see FimAdapter note.
+        initFrame(out, kSourceProcess, 2 /* forward = metadata keepalive */);
         produced++;
         return PollResult::Event;
 #else
@@ -363,7 +367,14 @@ Adapter* registry_add(AdapterRegistry* r, Kind kind, const char* name) {
     RegistryEntry* e = new RegistryEntry;
     e->kind = kind;
     std::memset(e->name, 0, sizeof(e->name));
+#if defined(_MSC_VER)
+    // MSVC deprecates strncpy (C4996); strncpy_s is equivalent here given
+    // the bound, and the memset above already zeroed the buffer. Other
+    // compilers (Linux CI) have no Annex K, so keep strncpy there.
+    strncpy_s(e->name, sizeof(e->name), name ? name : "adapter", sizeof(e->name) - 1);
+#else
     std::strncpy(e->name, name ? name : "adapter", sizeof(e->name) - 1);
+#endif
     e->next = r->head;
 
     void* ctx = nullptr;
@@ -434,8 +445,12 @@ int32_t aegis_adapter_poll(void* handle, uint8_t* out, uint32_t maxOut,
     while (n < maxOut) {
         PollResult r = a->poll(a->ctx, &f);
         if (r == PollResult::Event) {
-            if (canonicalCap < (uint32_t)f.size) break;
-            std::memcpy(canonicalBuf + (n * f.size), f.data, f.size);
+            // Bound every copy against the remaining capacity, not just the
+            // first frame: canonicalCap < f.size once is insufficient when
+            // maxOut > 1 (e.g. cap=200, two 109B frames overflow by 18B).
+            const uint64_t off = (uint64_t)n * (uint64_t)f.size;
+            if (off + (uint64_t)f.size > (uint64_t)canonicalCap) break;
+            std::memcpy(canonicalBuf + off, f.data, f.size);
             out[n] = 1;
             n++;
         } else if (r == PollResult::Exhausted) {

@@ -5,7 +5,9 @@
 
 const std = @import("std");
 const diag = @import("../core/diagnostics.zig");
+const runtime_paths = @import("../core/runtime_paths.zig");
 const sig = @import("../detection/signature_engine.zig");
+const l4 = @import("l4_matcher.zig");
 const state = @import("runtime_state.zig");
 
 /// Hash a rule_id string (e.g. "R0056") to a deterministic u32.
@@ -19,25 +21,267 @@ pub fn hashRuleId(rule_id: []const u8) u32 {
     return h;
 }
 
+test "hashRuleId matches the cross-language golden table" {
+    // Shared golden values, also asserted by nose/signature_classifier_test.go (Go
+    // network classifier) and tests/security/test_detection_contract_pin.py.
+    // The Go classifier and this detector must map one rule_id to the same
+    // numeric rule id, or a detection attributed by one tier would name a
+    // different rule in the other.
+    const golden = [_]struct { id: []const u8, hash: u32 }{
+        .{ .id = "R0056", .hash = 2107512682 },
+        .{ .id = "R0088", .hash = 4254503461 },
+        .{ .id = "R0089", .hash = 4237725842 },
+        .{ .id = "R1001", .hash = 3813986375 },
+        .{ .id = "R1002", .hash = 3830763994 },
+        .{ .id = "R1003", .hash = 3847541613 },
+        .{ .id = "R1004", .hash = 3730098280 },
+        .{ .id = "R1005", .hash = 3746875899 },
+        .{ .id = "R2001", .hash = 2452150132 },
+        .{ .id = "R2002", .hash = 2502482989 },
+        .{ .id = "R2003", .hash = 2485705370 },
+        .{ .id = "R2004", .hash = 2401817275 },
+        .{ .id = "R2005", .hash = 2385039656 },
+        .{ .id = "R3001", .hash = 1836645033 },
+        .{ .id = "R3002", .hash = 1786312176 },
+        .{ .id = "R3003", .hash = 1803089795 },
+        .{ .id = "R3004", .hash = 1886977890 },
+        .{ .id = "R3005", .hash = 1903755509 },
+        .{ .id = "R9002", .hash = 1812566754 },
+        .{ .id = "R9006", .hash = 1745456278 },
+        .{ .id = "R9007", .hash = 1762233897 },
+        .{ .id = "R9059", .hash = 4009890390 },
+        .{ .id = "R9064", .hash = 4194591294 },
+    };
+    for (golden) |entry| {
+        try std.testing.expectEqual(entry.hash, hashRuleId(entry.id));
+    }
+}
+
+/// BE-DIS-089: honor config/disabled_rules.json in the daemon engine.
+///
+/// The CLI (`tools/aegisctl.py policy list`) has always shown DISABLED
+/// from that file, but the engine never read it — a rule shown DISABLED
+/// still fired. Both load paths (startup + rules.reload) now skip
+/// disabled IDs. Fail direction is deliberate: a missing/unreadable/
+/// malformed disabled file means NONE disabled (engine keeps firing),
+/// never a silent zero-rule engine. Malformed warns loudly.
+fn loadDisabledMap() std.StringHashMap(void) {
+    var map = std.StringHashMap(void).init(std.heap.page_allocator);
+    const runtime_root = runtime_paths.resolveRoot(std.heap.page_allocator) catch |err| {
+        diag.warn("disabled_rules: cannot resolve runtime root: {} — none disabled", .{err});
+        return map;
+    };
+    defer std.heap.page_allocator.free(runtime_root);
+    const disabled_path = runtime_paths.configPath(std.heap.page_allocator, runtime_root, "disabled_rules.json") catch |err| {
+        diag.warn("disabled_rules: cannot build path: {} — none disabled", .{err});
+        return map;
+    };
+    defer std.heap.page_allocator.free(disabled_path);
+    const file = std.fs.openFileAbsolute(disabled_path, .{}) catch {
+        return map; // absent file = none disabled (normal case)
+    };
+    defer file.close();
+    const bytes = file.readToEndAlloc(std.heap.page_allocator, 64 * 1024) catch |err| {
+        diag.warn("disabled_rules: cannot read {s}: {} — none disabled", .{ disabled_path, err });
+        return map;
+    };
+    defer std.heap.page_allocator.free(bytes);
+    var parsed = std.json.parseFromSlice(std.json.Value, std.heap.page_allocator, bytes, .{}) catch |err| {
+        diag.warn("disabled_rules: {s} is not valid JSON: {} — none disabled", .{ disabled_path, err });
+        return map;
+    };
+    defer parsed.deinit();
+    if (parsed.value != .object) {
+        diag.warn("disabled_rules: {s}: root must be an object — none disabled", .{disabled_path});
+        return map;
+    }
+    const list = parsed.value.object.get("disabled_rules") orelse return map;
+    if (list != .array) {
+        diag.warn("disabled_rules: {s}: disabled_rules is not an array — none disabled", .{disabled_path});
+        return map;
+    }
+    for (list.array.items) |v| {
+        if (v != .string or v.string.len == 0) continue;
+        map.put(v.string, {}) catch continue;
+    }
+    return map;
+}
+
+/// Pure membership check over parsed JSON bytes (no filesystem).
+/// Shared by the daemon filter and the unit test below.
+pub fn disabledListContains(disabled_bytes: []const u8, rule_id: []const u8) bool {
+    var parsed = std.json.parseFromSlice(std.json.Value, std.heap.page_allocator, disabled_bytes, .{}) catch return false;
+    defer parsed.deinit();
+    if (parsed.value != .object) return false;
+    const list = parsed.value.object.get("disabled_rules") orelse return false;
+    if (list != .array) return false;
+    for (list.array.items) |v| {
+        if (v != .string) continue;
+        if (std.mem.eql(u8, v.string, rule_id)) return true;
+    }
+    return false;
+}
+
+// ============================================================
+// BE-DRIFT-098: named skip accounting (no more silent drops).
+// ============================================================
+//
+// Every catalog entry ends in exactly one bucket: loaded, or skipped
+// with a reason AND (when it names one) its rule_id. Both load paths
+// share classifyRule so startup and reload can never disagree about
+// WHY a rule is absent. The report carries a bounded ID list (first
+// 16, truncation flagged) so the control response stays small while
+// proving completeness: loaded + all skipped == catalog entries.
+pub const MAX_SKIPPED_IDS: usize = 16;
+pub const MAX_SKIPPED_ID_LEN: usize = 31;
+
+pub const ReloadReport = struct {
+    loaded: u32 = 0,
+    skipped_no_pattern: u32 = 0,
+    skipped_disabled: u32 = 0,
+    skipped_malformed: u32 = 0,
+    skipped_add_failed: u32 = 0,
+    skipped_ids: [MAX_SKIPPED_IDS][MAX_SKIPPED_ID_LEN + 1]u8 = [_][MAX_SKIPPED_ID_LEN + 1]u8{[_]u8{0} ** (MAX_SKIPPED_ID_LEN + 1)} ** MAX_SKIPPED_IDS,
+    skipped_id_lens: [MAX_SKIPPED_IDS]u8 = [_]u8{0} ** MAX_SKIPPED_IDS,
+    skipped_id_count: u8 = 0,
+    skipped_truncated: bool = false,
+
+    pub fn totalSkipped(self: *const ReloadReport) u32 {
+        return self.skipped_no_pattern + self.skipped_disabled + self.skipped_malformed + self.skipped_add_failed;
+    }
+
+    pub fn recordSkip(self: *ReloadReport, reason: SkipReason, id: ?[]const u8) void {
+        switch (reason) {
+            .no_pattern => self.skipped_no_pattern += 1,
+            .disabled => self.skipped_disabled += 1,
+            .malformed => self.skipped_malformed += 1,
+            .add_failed => self.skipped_add_failed += 1,
+        }
+        const name = id orelse return;
+        if (name.len == 0) return;
+        if (self.skipped_id_count >= MAX_SKIPPED_IDS) {
+            self.skipped_truncated = true;
+            return;
+        }
+        const n: usize = @min(name.len, MAX_SKIPPED_ID_LEN);
+        @memcpy(self.skipped_ids[self.skipped_id_count][0..n], name[0..n]);
+        self.skipped_id_lens[self.skipped_id_count] = @intCast(n);
+        self.skipped_id_count += 1;
+        if (name.len > MAX_SKIPPED_ID_LEN) self.skipped_truncated = true;
+    }
+
+    pub fn skippedId(self: *const ReloadReport, i: usize) []const u8 {
+        return self.skipped_ids[i][0..self.skipped_id_lens[i]];
+    }
+};
+
+pub const SkipReason = enum { no_pattern, disabled, malformed, add_failed };
+
+pub const ClassifiedRule = struct {
+    verdict: enum { load, skip },
+    reason: SkipReason,
+    id: ?[]const u8,
+    pattern: ?[]const u8,
+};
+
+/// One classifier for both load paths. A rule loads ONLY with a
+/// non-empty string rule_id, no disabled hit, and a non-empty string
+/// match_pattern. Everything else names its reason.
+pub fn classifyRule(
+    rule_val: std.json.Value,
+    disabled: *const std.StringHashMap(void),
+) ClassifiedRule {
+    if (rule_val != .object) return .{ .verdict = .skip, .reason = .malformed, .id = null, .pattern = null };
+    const id_val = rule_val.object.get("rule_id") orelse return .{ .verdict = .skip, .reason = .malformed, .id = null, .pattern = null };
+    if (id_val != .string or id_val.string.len == 0) return .{ .verdict = .skip, .reason = .malformed, .id = null, .pattern = null };
+    const id = id_val.string;
+    if (disabled.contains(id)) return .{ .verdict = .skip, .reason = .disabled, .id = id, .pattern = null };
+    const pat_val = rule_val.object.get("match_pattern") orelse return .{ .verdict = .skip, .reason = .no_pattern, .id = id, .pattern = null };
+    if (pat_val != .string or pat_val.string.len == 0) return .{ .verdict = .skip, .reason = .no_pattern, .id = id, .pattern = null };
+    return .{ .verdict = .load, .reason = .malformed, .id = id, .pattern = pat_val.string };
+}
+
+/// RULE-LAYER-SCOPE-001: which automaton a rule belongs to.
+///
+/// A missing or unrecognised `layer` keeps the historical behaviour (network), so
+/// an operator's older Rules.json cannot silently lose rules; the layers that
+/// matter for scope are the KERNEL_* ones, which used to sit in the network
+/// automaton and fire on packet bytes.
+pub fn ruleLayer(rule_val: std.json.Value) state.RuleLayer {
+    if (rule_val != .object) return .network;
+    const layer_val = rule_val.object.get("layer") orelse return .network;
+    if (layer_val != .string) return .network;
+    const s = layer_val.string;
+    if (std.mem.eql(u8, s, "KERNEL_FILE")) return .kernel_file;
+    if (std.mem.eql(u8, s, "KERNEL_PROCESS")) return .kernel_process;
+    if (std.mem.eql(u8, s, "L2_PIPE")) return .l2_pipe;
+    return .network;
+}
+
+/// JSON-escape one string into a writer (rule IDs are operator-controlled;
+/// a quote in an ID must not break the control response).
+pub fn writeJsonString(writer: anytype, s: []const u8) void {
+    writer.writeByte('"') catch return;
+    for (s) |c| {
+        switch (c) {
+            '"' => writer.writeAll("\\\"") catch return,
+            '\\' => writer.writeAll("\\\\") catch return,
+            '\n' => writer.writeAll("\\n") catch return,
+            '\r' => writer.writeAll("\\r") catch return,
+            '\t' => writer.writeAll("\\t") catch return,
+            0...8, 11, 12, 14...31 => writer.print("\\u{x:0>4}", .{c}) catch return,
+            else => writer.writeByte(c) catch return,
+        }
+    }
+    writer.writeByte('"') catch return;
+}
+
 /// Reload Rules.json into a fresh Aho-Corasick automaton.
 /// Called from the control pipe thread on `rules.reload`.
 /// Thread-safe: rebuilds a new AC and swaps the global pointer atomically.
-pub fn reloadRules() u32 {
+/// Returns the full report (loaded + named skips) for the control response.
+pub fn reloadRules() ReloadReport {
     // Heap-allocate the new AC so the pointer survives after this function returns
     const heap_ac = std.heap.page_allocator.create(sig.AhoCorasick) catch |err| {
         diag.err("reload: failed to allocate AhoCorasick: {}", .{err});
-        return state.g_rules_loaded;
+        return .{};
     };
     heap_ac.* = sig.AhoCorasick.init(std.heap.page_allocator, 100_000) catch |err| {
         diag.err("reload: failed to init AhoCorasick: {}", .{err});
         std.heap.page_allocator.destroy(heap_ac);
-        return state.g_rules_loaded;
+        return .{};
     };
 
-    var new_count: u32 = 0;
+    var report = ReloadReport{};
+    var l4_rules: [l4.MAX_RULES]l4.Rule = l4.empty_rules;
+    var l4_count: usize = 0;
+    // RULE-LAYER-SCOPE-001: patterns are collected per layer while the JSON is
+    // still alive and built into their own automata inside the same block; the
+    // pointers are swapped in afterwards with the network one.
+    const MAX_LAYER_RULES = 1024;
+    const Pending = struct { id: u32, pat: []const u8 };
+    var pending: [3][MAX_LAYER_RULES]Pending = undefined;
+    var pending_n = [_]usize{ 0, 0, 0 };
+    var layer_counts = [_]u32{ 0, 0, 0, 0 };
+    var layer_acs = [_]?*sig.AhoCorasick{ null, null, null };
+    var disabled_map = loadDisabledMap();
+    defer disabled_map.deinit();
     blk: {
-        const rules_path = "configs/Rules.json";
-        const rules_file = std.fs.cwd().openFile(rules_path, .{}) catch |err| {
+        const runtime_root = runtime_paths.resolveRoot(std.heap.page_allocator) catch |err| {
+            diag.warn("reload: cannot resolve runtime root: {}", .{err});
+            heap_ac.deinit();
+            std.heap.page_allocator.destroy(heap_ac);
+            break :blk;
+        };
+        defer std.heap.page_allocator.free(runtime_root);
+        const rules_path = runtime_paths.configPath(std.heap.page_allocator, runtime_root, "Rules.json") catch |err| {
+            diag.warn("reload: cannot build Rules.json path: {}", .{err});
+            heap_ac.deinit();
+            std.heap.page_allocator.destroy(heap_ac);
+            break :blk;
+        };
+        defer std.heap.page_allocator.free(rules_path);
+        const rules_file = std.fs.openFileAbsolute(rules_path, .{}) catch |err| {
             diag.warn("reload: cannot open {s}: {}", .{ rules_path, err });
             heap_ac.deinit();
             std.heap.page_allocator.destroy(heap_ac);
@@ -81,19 +325,49 @@ pub fn reloadRules() u32 {
         }
 
         for (nids_rules.array.items) |rule_val| {
-            if (rule_val != .object) continue;
-            const rule_obj = rule_val.object;
-            const rule_id_str = rule_obj.get("rule_id") orelse continue;
-            if (rule_id_str != .string) continue;
-            const rule_id = hashRuleId(rule_id_str.string);
-            const match_pattern = rule_obj.get("match_pattern") orelse continue;
-            if (match_pattern != .string) continue;
-            if (match_pattern.string.len == 0) continue;
-            heap_ac.addPattern(rule_id, match_pattern.string) catch |err| {
-                diag.warn("reload: failed to add pattern for {s}: {}", .{ rule_id_str.string, err });
+            const c = classifyRule(rule_val, &disabled_map);
+            if (c.verdict != .load) {
+                report.recordSkip(c.reason, c.id);
                 continue;
-            };
-            new_count += 1;
+            }
+            if (l4.isL4(rule_val)) {
+                if (l4.parse(rule_val, c.pattern.?, hashRuleId(c.id.?))) |l4_rule| {
+                    if (l4_count < l4.MAX_RULES) {
+                        l4_rules[l4_count] = l4_rule;
+                        l4_count += 1;
+                        report.loaded += 1;
+                    } else {
+                        report.recordSkip(.malformed, c.id);
+                    }
+                } else {
+                    report.recordSkip(.malformed, c.id);
+                }
+                continue;
+            }
+            const rule_id = hashRuleId(c.id.?);
+            const layer = ruleLayer(rule_val);
+            // The network automaton holds ONLY network rules. Adding every
+            // non-L4 rule here as well (the first cut of this patch did) left the
+            // kernel patterns reachable for wire bytes, and the live check caught
+            // R2003 still firing on a UDP payload.
+            if (layer == .network) {
+                heap_ac.addPattern(rule_id, c.pattern.?) catch |err| {
+                    diag.warn("reload: failed to add pattern for {s}: {}", .{ c.id.?, err });
+                    report.recordSkip(.add_failed, c.id);
+                    continue;
+                };
+            }
+            report.loaded += 1;
+            layer_counts[@intFromEnum(layer)] += 1;
+            if (layer != .network) {
+                const li = @intFromEnum(layer) - 1;
+                if (pending_n[li] < MAX_LAYER_RULES) {
+                    pending[li][pending_n[li]] = .{ .id = rule_id, .pat = c.pattern.? };
+                    pending_n[li] += 1;
+                } else {
+                    diag.warn("reload: layer rule table full, {s} not in its layer automaton", .{c.id.?});
+                }
+            }
         }
 
         heap_ac.build() catch |err| {
@@ -102,14 +376,61 @@ pub fn reloadRules() u32 {
             std.heap.page_allocator.destroy(heap_ac);
             break :blk;
         };
+
+        // Build one automaton per non-network layer. A layer whose build fails is
+        // left null, which the pipeline reads as "no layered rules" and falls back
+        // to the network automaton for that layer rather than matching nothing.
+        for (&layer_acs, 0..) |*slot, li| {
+            if (pending_n[li] == 0) continue;
+            const extra = std.heap.page_allocator.create(sig.AhoCorasick) catch |err| {
+                diag.warn("reload: cannot allocate layer automaton {}: {}", .{ li, err });
+                continue;
+            };
+            extra.* = sig.AhoCorasick.init(std.heap.page_allocator, 100_000) catch |err| {
+                diag.warn("reload: cannot init layer automaton {}: {}", .{ li, err });
+                std.heap.page_allocator.destroy(extra);
+                continue;
+            };
+            var add_failed = false;
+            for (pending[li][0..pending_n[li]]) |pr| {
+                extra.addPattern(pr.id, pr.pat) catch |err| {
+                    diag.warn("reload: layer {} addPattern failed: {}", .{ li, err });
+                    add_failed = true;
+                    break;
+                };
+            }
+            if (add_failed) {
+                extra.deinit();
+                std.heap.page_allocator.destroy(extra);
+                continue;
+            }
+            extra.build() catch |err| {
+                diag.warn("reload: layer {} build failed: {}", .{ li, err });
+                extra.deinit();
+                std.heap.page_allocator.destroy(extra);
+                continue;
+            };
+            slot.* = extra;
+        }
     }
 
-    if (new_count > 0) {
+    if (report.loaded > 0) {
         // Swap: take old AC, install new heap-allocated one
         state.g_ac_mutex.lock();
         const old_ac_ptr = state.g_active_ac;
         state.g_active_ac = heap_ac;
-        state.g_rules_loaded = new_count;
+        state.g_layer_ac = .{ heap_ac, layer_acs[0], layer_acs[1], layer_acs[2] };
+        state.g_layer_rule_count = layer_counts;
+        // RULE-LAYER-FAILCLOSED-001: from this atomic swap onward, a missing
+        // layer AC is a degraded condition, never a reason to borrow another
+        // layer's catalog. Written under g_ac_mutex with the pointers above.
+        state.g_layered_rules_active = true;
+        state.g_l4_rules = l4_rules;
+        state.g_l4_rule_count = l4_count;
+        state.g_l4_rate_mutex.lock();
+        state.g_l4_rate.reset();
+        state.g_l4_rate_mutex.unlock();
+        state.g_rules_loaded.store(report.loaded, .monotonic);
         state.g_ac_mutex.unlock();
 
         // Do not destroy the old automaton here. The pipeline may have taken
@@ -119,20 +440,40 @@ pub fn reloadRules() u32 {
         // response. Retain retired automata for the daemon lifetime; reloads
         // are infrequent and this fail-safe policy prevents use-after-free.
         _ = old_ac_ptr;
-        diag.info("reload: loaded {} rules (swap complete)", .{new_count});
+        if (report.totalSkipped() > 0) {
+            diag.info("reload: loaded {} rules (swap complete), skipped {} (no_pattern={} disabled={} malformed={} add_failed={})", .{
+                report.loaded,             report.totalSkipped(),
+                report.skipped_no_pattern, report.skipped_disabled,
+                report.skipped_malformed,  report.skipped_add_failed,
+            });
+        } else {
+            diag.info("reload: loaded {} rules (swap complete)", .{report.loaded});
+        }
     } else {
         heap_ac.deinit();
         std.heap.page_allocator.destroy(heap_ac);
         diag.warn("reload: 0 rules loaded, keeping old ruleset", .{});
     }
 
-    return new_count;
+    return report;
 }
 
 /// Parse the nids_rules array from Rules.json bytes into an existing AC.
 /// Shared by initial startup load and reload; returns the loaded count.
-pub fn loadRulesInto(ac: *sig.AhoCorasick, bytes: []const u8, rules_path: []const u8) u32 {
-    var count: u32 = 0;
+///
+/// NOTE (Project 2 observe-only contract): only rule_id + match_pattern are
+/// loaded. A rule's `action` (Drop/Block/Alert) is an advisory display label;
+/// no detection tier branches on it. Enforcement orders come exclusively from
+/// configs/policies.json through the Rust PEP receipt path. See AC5 in
+/// tests/security/test_detection_contract_pin.py, which fails loudly if any
+/// tier starts reading rule actions.
+pub fn loadRulesInto(ac: *sig.AhoCorasick, bytes: []const u8, rules_path: []const u8) ReloadReport {
+    var report = ReloadReport{};
+    var l4_rules: [l4.MAX_RULES]l4.Rule = l4.empty_rules;
+    var l4_count: usize = 0;
+    var ac_ready = false;
+    var disabled_map = loadDisabledMap();
+    defer disabled_map.deinit();
     blk: {
         var rules_parsed = std.json.parseFromSlice(std.json.Value, std.heap.page_allocator, bytes, .{}) catch |err| {
             diag.warn("cannot parse {s}: {}", .{ rules_path, err });
@@ -155,25 +496,256 @@ pub fn loadRulesInto(ac: *sig.AhoCorasick, bytes: []const u8, rules_path: []cons
         }
 
         for (nids_rules.array.items) |rule_val| {
-            if (rule_val != .object) continue;
-            const rule_obj = rule_val.object;
-            const rule_id_str = rule_obj.get("rule_id") orelse continue;
-            if (rule_id_str != .string) continue;
-            const rule_id = hashRuleId(rule_id_str.string);
-            const match_pattern = rule_obj.get("match_pattern") orelse continue;
-            if (match_pattern != .string) continue;
-            if (match_pattern.string.len == 0) continue;
-            ac.addPattern(rule_id, match_pattern.string) catch |err| {
-                diag.warn("failed to add pattern for {s}: {}", .{ rule_id_str.string, err });
+            const c = classifyRule(rule_val, &disabled_map);
+            if (c.verdict != .load) {
+                report.recordSkip(c.reason, c.id);
+                continue;
+            }
+            if (l4.isL4(rule_val)) {
+                if (l4.parse(rule_val, c.pattern.?, hashRuleId(c.id.?))) |l4_rule| {
+                    if (l4_count < l4.MAX_RULES) {
+                        l4_rules[l4_count] = l4_rule;
+                        l4_count += 1;
+                        report.loaded += 1;
+                    } else {
+                        report.recordSkip(.malformed, c.id);
+                    }
+                } else {
+                    report.recordSkip(.malformed, c.id);
+                }
+                continue;
+            }
+            const rule_id = hashRuleId(c.id.?);
+            ac.addPattern(rule_id, c.pattern.?) catch |err| {
+                diag.warn("failed to add pattern for {s}: {}", .{ c.id.?, err });
+                report.recordSkip(.add_failed, c.id);
                 continue;
             };
-            count += 1;
+            report.loaded += 1;
         }
 
         ac.build() catch |err| {
             diag.err("failed to build Aho-Corasick automaton: {}", .{err});
             break :blk;
         };
+        ac_ready = true;
     }
-    return count;
+    if (ac_ready) {
+        // Publish the L4 half of the same parsed catalog only after the AC
+        // build succeeded. Startup is single-threaded, but taking the same
+        // mutex keeps the invariant identical to the reload swap.
+        state.g_ac_mutex.lock();
+        state.g_l4_rules = l4_rules;
+        state.g_l4_rule_count = l4_count;
+        state.g_l4_rate_mutex.lock();
+        state.g_l4_rate.reset();
+        state.g_l4_rate_mutex.unlock();
+        state.g_ac_mutex.unlock();
+    }
+    if (report.totalSkipped() > 0) {
+        diag.info("startup: loaded {} rules, skipped {} (no_pattern={} disabled={} malformed={} add_failed={})", .{
+            report.loaded,             report.totalSkipped(),
+            report.skipped_no_pattern, report.skipped_disabled,
+            report.skipped_malformed,  report.skipped_add_failed,
+        });
+    }
+    return report;
+}
+
+test "BE-DIS-089: disabledListContains honors the disabled_rules shape" {
+    // Positive: listed IDs match exactly, others do not.
+    try std.testing.expect(disabledListContains("{\"disabled_rules\":[\"R0001\",\"R0002\"]}", "R0001"));
+    try std.testing.expect(!disabledListContains("{\"disabled_rules\":[\"R0001\",\"R0002\"]}", "R0003"));
+    // Negative controls: malformed shapes never disable (fail-closed =
+    // engine keeps firing, never a silent zero-rule engine).
+    try std.testing.expect(!disabledListContains("not json", "R0001"));
+    try std.testing.expect(!disabledListContains("{\"disabled_rules\":\"R0001\"}", "R0001"));
+    try std.testing.expect(!disabledListContains("{\"other\":[]}", "R0001"));
+    try std.testing.expect(!disabledListContains("{\"disabled_rules\":[]}", "R0001"));
+}
+
+test "BE-DIS-089: engine skip uses exact-ID map membership (mirrors the load loop)" {
+    // The load/reload loops call disabled_map.contains(rule_id_str) and
+    // `continue` before addPattern. This pins that semantic: an exact
+    // listed ID is skipped, a prefix/suffix lookalike is not.
+    var map = std.StringHashMap(void).init(std.testing.allocator);
+    defer map.deinit();
+    try map.put("R0001", {});
+    try std.testing.expect(map.contains("R0001"));
+    try std.testing.expect(!map.contains("R00010"));
+    try std.testing.expect(!map.contains("R000"));
+    try std.testing.expect(!map.contains("r0001"));
+}
+
+test "BE-DRIFT-098: classifyRule names every skip reason" {
+    var empty = std.StringHashMap(void).init(std.testing.allocator);
+    defer empty.deinit();
+    var disabled = std.StringHashMap(void).init(std.testing.allocator);
+    defer disabled.deinit();
+    try disabled.put("R0009", {});
+
+    const doc =
+        \\{"nids_rules": [
+        \\ {"rule_id": "R0001", "match_pattern": "abc"},
+        \\ {"rule_id": "R0002"},
+        \\ {"rule_id": "R0003", "match_pattern": ""},
+        \\ {"rule_id": "R0009", "match_pattern": "xyz"},
+        \\ {"rule_id": 42, "match_pattern": "xyz"},
+        \\ {"match_pattern": "xyz"},
+        \\ 42
+        \\]}
+    ;
+    var parsed = try std.json.parseFromSlice(std.json.Value, std.testing.allocator, doc, .{});
+    defer parsed.deinit();
+    const items = parsed.value.object.get("nids_rules").?.array.items;
+
+    const c0 = classifyRule(items[0], &empty);
+    try std.testing.expect(c0.verdict == .load);
+    try std.testing.expectEqualStrings("R0001", c0.id.?);
+    try std.testing.expectEqualStrings("abc", c0.pattern.?);
+
+    const c1 = classifyRule(items[1], &empty);
+    try std.testing.expect(c1.verdict == .skip and c1.reason == .no_pattern);
+    try std.testing.expectEqualStrings("R0002", c1.id.?);
+
+    const c2 = classifyRule(items[2], &empty);
+    try std.testing.expect(c2.verdict == .skip and c2.reason == .no_pattern);
+
+    const c3 = classifyRule(items[3], &disabled);
+    try std.testing.expect(c3.verdict == .skip and c3.reason == .disabled);
+    try std.testing.expectEqualStrings("R0009", c3.id.?);
+
+    // Same rule without the disabled entry is a pattern issue, not disabled.
+    const c3b = classifyRule(items[3], &empty);
+    try std.testing.expect(c3b.verdict == .load);
+
+    // Malformed entries carry no ID.
+    for ([_]usize{ 4, 5, 6 }) |i| {
+        const c = classifyRule(items[i], &empty);
+        try std.testing.expect(c.verdict == .skip and c.reason == .malformed);
+        try std.testing.expect(c.id == null);
+    }
+}
+
+test "BE-DRIFT-098: loadRulesInto reports named skips end to end" {
+    // NOTE: loadDisabledMap reads the live configs/disabled_rules.json
+    // (absent in a clean tree = none disabled). IDs here avoid any
+    // plausible operator-disabled value.
+    const doc =
+        \\{"nids_rules": [
+        \\ {"rule_id": "R0101", "match_pattern": "alpha"},
+        \\ {"rule_id": "R0102"},
+        \\ {"rule_id": "R0103", "match_pattern": ""},
+        \\ {"nope": true},
+        \\ {"rule_id": "R0104", "match_pattern": "beta"}
+        \\]}
+    ;
+    var ac = sig.AhoCorasick.init(std.testing.allocator, 100) catch unreachable;
+    defer ac.deinit();
+    const rep = loadRulesInto(&ac, doc, "test-rules.json");
+    try std.testing.expectEqual(@as(u32, 2), rep.loaded);
+    try std.testing.expectEqual(@as(u32, 2), rep.skipped_no_pattern);
+    try std.testing.expectEqual(@as(u32, 0), rep.skipped_disabled);
+    try std.testing.expectEqual(@as(u32, 1), rep.skipped_malformed);
+    try std.testing.expectEqual(@as(u32, 3), rep.totalSkipped());
+    // Only skips that name an ID are listed (the malformed entry
+    // without rule_id contributes its count, not a name).
+    try std.testing.expectEqual(@as(u8, 2), rep.skipped_id_count);
+    try std.testing.expect(!rep.skipped_truncated);
+    try std.testing.expectEqualStrings("R0102", rep.skippedId(0));
+    try std.testing.expectEqualStrings("R0103", rep.skippedId(1));
+    // Completeness: every catalog entry is accounted for.
+    try std.testing.expectEqual(@as(usize, 5), rep.loaded + rep.totalSkipped());
+}
+
+test "L4 rules load into the predicate table, never the payload AC" {
+    const doc =
+        \\{"nids_rules": [
+        \\ {"rule_id": "R0056", "layer": "L7", "match_pattern": "' OR 1=1"},
+        \\ {"rule_id": "R9002", "layer": "L4", "match_pattern": "PROTO:ICMP", "target_protocols": ["ICMP"], "target_ports": []},
+        \\ {"rule_id": "R9006", "layer": "L4", "match_pattern": "FLAGS:S", "target_protocols": ["TCP"], "target_ports": []},
+        \\ {"rule_id": "R9007", "layer": "L4", "match_pattern": "FLAGS:FPU", "target_protocols": ["TCP"], "target_ports": []}
+        \\]}
+    ;
+    var ac = sig.AhoCorasick.init(std.testing.allocator, 100) catch unreachable;
+    defer ac.deinit();
+    defer {
+        state.g_ac_mutex.lock();
+        state.g_l4_rules = l4.empty_rules;
+        state.g_l4_rule_count = 0;
+        state.g_ac_mutex.unlock();
+    }
+
+    const rep = loadRulesInto(&ac, doc, "test-l4-rules.json");
+    try std.testing.expectEqual(@as(u32, 4), rep.loaded);
+    try std.testing.expectEqual(@as(u32, 0), rep.totalSkipped());
+    try std.testing.expectEqual(@as(usize, 3), state.g_l4_rule_count);
+
+    // A synthetic payload token must not hit the AC after the layer split.
+    try std.testing.expect(ac.matchFirst("FLAGS:S") == null);
+    try std.testing.expect(ac.matchFirst("FLAGS:FPU") == null);
+    const payload_hit = ac.matchFirst("' OR 1=1").?;
+    try std.testing.expectEqual(hashRuleId("R0056"), payload_hit.rule_id);
+
+    const syn = state.g_l4_rules[1];
+    try std.testing.expectEqual(hashRuleId("R9006"), syn.rule_id);
+    try std.testing.expect(l4.matches(&syn, 40000, 445, 6, 0x02));
+    try std.testing.expect(!l4.matches(&syn, 40000, 445, 6, 0x12));
+}
+
+test "BE-DRIFT-098: writeJsonString escapes operator-controlled IDs" {
+    var buf: [64]u8 = undefined;
+    var fbs = std.io.fixedBufferStream(&buf);
+    writeJsonString(fbs.writer(), "R01\"02\\");
+    try std.testing.expectEqualStrings("\"R01\\\"02\\\\\"", fbs.getWritten());
+}
+
+test "RULE-LAYER-SCOPE: a rule's layer decides its automaton" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const doc =
+        \\{"nids_rules": [
+        \\ {"rule_id": "R9059", "layer": "L7", "match_pattern": "<script>"},
+        \\ {"rule_id": "R1002", "layer": "KERNEL_FILE", "match_pattern": ".locked"},
+        \\ {"rule_id": "R2003", "layer": "KERNEL_PROCESS", "match_pattern": "IEX"},
+        \\ {"rule_id": "R3001", "layer": "L2_PIPE", "match_pattern": "MSSE-"},
+        \\ {"rule_id": "R0056", "match_pattern": "' OR 1=1"}
+        \\]}
+    ;
+    var parsed = try std.json.parseFromSlice(std.json.Value, arena.allocator(), doc, .{});
+    const rules = parsed.value.object.get("nids_rules").?.array.items;
+    try std.testing.expectEqual(state.RuleLayer.network, ruleLayer(rules[0]));
+    try std.testing.expectEqual(state.RuleLayer.kernel_file, ruleLayer(rules[1]));
+    try std.testing.expectEqual(state.RuleLayer.kernel_process, ruleLayer(rules[2]));
+    try std.testing.expectEqual(state.RuleLayer.l2_pipe, ruleLayer(rules[3]));
+    // No `layer` field keeps the historical network behaviour rather than
+    // silently dropping the rule.
+    try std.testing.expectEqual(state.RuleLayer.network, ruleLayer(rules[4]));
+}
+
+test "RULE-LAYER-SCOPE: kernel patterns do not fire on network bytes" {
+    // The defect: one automaton held every layer, so a TLS or HTTP payload that
+    // happened to contain `IEX` was tagged with the KERNEL_PROCESS rule id. Two
+    // automata built exactly as the loader builds them must not cross.
+    const alloc = std.testing.allocator;
+    var network = try sig.AhoCorasick.init(alloc, 10_000);
+    defer network.deinit();
+    var kernel_process = try sig.AhoCorasick.init(alloc, 10_000);
+    defer kernel_process.deinit();
+
+    try network.addPattern(hashRuleId("R9059"), "<script>");
+    try kernel_process.addPattern(hashRuleId("R2003"), "IEX");
+    try network.build();
+    try kernel_process.build();
+
+    const wire_bytes = "POST /upload HTTP/1.1\r\nHost: t\r\n\r\n{\"cmd\":\"IEX (New-Object Net.WebClient)\"}";
+    try std.testing.expect(network.matchFirst(wire_bytes) == null);
+    const kp_hit = kernel_process.matchFirst(wire_bytes);
+    try std.testing.expect(kp_hit != null);
+    try std.testing.expectEqual(hashRuleId("R2003"), kp_hit.?.rule_id);
+
+    // And the network layer still catches its own rule.
+    const hit = network.matchFirst("GET /?q=<script>alert(1)</script>");
+    try std.testing.expect(hit != null);
+    try std.testing.expectEqual(hashRuleId("R9059"), hit.?.rule_id);
 }

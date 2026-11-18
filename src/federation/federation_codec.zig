@@ -1487,3 +1487,67 @@ test "encode rejects oversized payload" {
     const n = try encode(msg, &buf);
     try std.testing.expect(n <= MAX_FRAME_SIZE);
 }
+
+// FED-P1B: frozen golden vectors (tests/contracts/federation_vectors/).
+// The Python reference codec must reproduce these bytes exactly and this
+// decoder must read them identically, so neither tier can drift the wire
+// alone. A wire change regenerates every vector in the same patch.
+const FED_VEC_DIR = "tests/contracts/federation_vectors/";
+
+fn readFedVector(allocator: std.mem.Allocator, name: []const u8) ![]u8 {
+    // `zig build test` runs with the repo root as cwd (same precedent as
+    // event_processor.zig's file-backed test).
+    var path_buf: [256]u8 = undefined;
+    const path = try std.fmt.bufPrint(&path_buf, "{s}{s}", .{ FED_VEC_DIR, name });
+    return std.fs.cwd().readFileAlloc(allocator, path, 65536);
+}
+
+test "fed golden 001 heartbeat decodes to documented fields" {
+    const raw = try readFedVector(std.testing.allocator, "fed_v1_001.bin");
+    defer std.testing.allocator.free(raw);
+    const m = try decode(raw);
+    try std.testing.expectEqual(cc.MessageType.heartbeat, m.msg_type);
+    try std.testing.expectEqual(@as(u32, 7), m.from_node_id);
+    try std.testing.expectEqual(@as(u32, 0), m.to_node_id);
+    try std.testing.expectEqual(@as(i64, 1700000000000000000), m.timestamp_ns);
+    try std.testing.expectEqual(@as(u32, 1), m.seq);
+    try std.testing.expect(m.node == null);
+    try std.testing.expect(m.threat_intel == null);
+    try std.testing.expectEqual(@as(u32, 0), m.leader_node_id);
+}
+
+test "fed golden 002 incident decodes with node and exact score" {
+    const raw = try readFedVector(std.testing.allocator, "fed_v1_002.bin");
+    defer std.testing.allocator.free(raw);
+    const m = try decode(raw);
+    try std.testing.expectEqual(cc.MessageType.incident_report, m.msg_type);
+    try std.testing.expectEqual(@as(u32, 7), m.from_node_id);
+    try std.testing.expectEqual(@as(u32, 9), m.to_node_id);
+    try std.testing.expectEqual(@as(u32, 42), m.seq);
+    const n = m.node.?;
+    try std.testing.expectEqualStrings("nids-07", n.nameStr());
+    try std.testing.expectEqualStrings("192.168.126.1:9001", n.endpointStr());
+    try std.testing.expectEqual(@as(u16, 1000), n.capacity);
+    try std.testing.expectEqualSlices(u8, &[_]u8{ 10, 0, 0, 14 }, &m.incident_source_ip);
+    try std.testing.expectEqual(@as(u16, 53), m.incident_remote_port);
+    try std.testing.expectEqual(@as(u8, 17), m.incident_proto);
+    try std.testing.expectEqual(cc.IncidentSeverity.high, m.incident_severity);
+    try std.testing.expectEqual(@as(f32, 7.5), m.incident_score);
+    try std.testing.expectEqualStrings("DNS-TUNNEL", m.incident_label[0..m.incident_label_len]);
+}
+
+test "fed golden 003 threat intel decodes with TI block" {
+    const raw = try readFedVector(std.testing.allocator, "fed_v1_003.bin");
+    defer std.testing.allocator.free(raw);
+    const m = try decode(raw);
+    try std.testing.expectEqual(cc.MessageType.threat_intel_share, m.msg_type);
+    try std.testing.expectEqual(@as(u32, 9), m.from_node_id);
+    try std.testing.expectEqual(@as(u32, 7), m.seq);
+    const ti = m.threat_intel.?;
+    try std.testing.expectEqual(cc.ThreatIntelKind.malicious_ip, ti.kind);
+    try std.testing.expectEqualSlices(u8, &[_]u8{ 10, 0, 0, 14 }, &ti.ip);
+    try std.testing.expectEqualStrings("evil.com", ti.domain[0..ti.domain_len]);
+    try std.testing.expectEqual(@as(u32, 9), ti.source_node_id);
+    try std.testing.expectEqual(@as(u8, 90), ti.confidence);
+    try std.testing.expectEqual(@as(u32, 2), m.leader_node_id);
+}

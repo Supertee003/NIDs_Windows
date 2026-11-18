@@ -138,8 +138,9 @@ pub extern "aegis_ipc" fn aegis_bridge_shutdown() callconv(.C) void;
 pub extern "aegis_ipc" fn aegis_bridge_push_event(event: *const IpcEvent) callconv(.C) i32;
 pub extern "aegis_ipc" fn aegis_bridge_pop_event(event: *IpcEvent) callconv(.C) i32;
 pub extern "aegis_ipc" fn aegis_bridge_get_defcon() callconv(.C) u32;
-pub extern "aegis_ipc" fn aegis_bridge_block_ip(ip: u32) callconv(.C) i32;
-pub extern "aegis_ipc" fn aegis_bridge_unblock_ip(ip: u32) callconv(.C) i32;
+// NOTE (quarantine): aegis_bridge block_ip/unblock_ip externs are intentionally
+// absent. Privileged mutation is owned solely by the Rust PEP receipt path;
+// no Zig module may link a direct bridge-mutation symbol.
 
 // ============================================================================
 // Contract 4: Zig Core → Rust PEP (FFI)
@@ -170,21 +171,37 @@ pub const PepResponse = extern struct {
 };
 
 /// PEP decision values.
+///
+/// ORDER-001 / CONTRACT-OPERATOR-001: this is the same ordinal space as the
+/// live enum in `src/policy/pep_bindings.zig` (which the Rust `DECISION_*`
+/// constants in `rust-src/lib.rs` mirror, and which
+/// `contracts/operator_contract_v1.json` declares). It used to stop at four
+/// values, so `escalate = 4` and `drop = 5` — the two the assessment path
+/// actually returns — had no member here while the test below still passed by
+/// checking only the shared four. Keep every member; do not renumber.
 pub const PepDecision = enum(u8) {
     allow = 0,
     block = 1,
     rate_limit = 2,
     quarantine = 3,
+    escalate = 4,
+    drop = 5,
 };
 
-/// Zig → Rust PEP FFI function signatures.
-pub extern "aegis_pep" fn aegis_pep_init() callconv(.C) i32;
-pub extern "aegis_pep" fn aegis_pep_shutdown() callconv(.C) void;
-pub extern "aegis_pep" fn aegis_pep_enforce(
-    req: *const PepRequest,
-    resp: *PepResponse,
-) callconv(.C) i32;
-pub extern "aegis_pep" fn aegis_pep_quota_remaining() callconv(.C) u32;
+// Zig PEP FFI signatures (QUARANTINED, see below).
+//
+// QUARANTINED (NEG-001): duplicate PEP surface. The live bindings are the
+// sole authority in src/policy/pep_bindings.zig (24-byte PepResponse with
+// filter_id). These declarations were stale (16-byte response, wrong quota
+// signature) and had zero callers. Kept commented as a negative control:
+// NEG-001 fails if an active `extern "aegis_pep"` reappears in this file.
+// pub extern "aegis_pep" fn aegis_pep_init() callconv(.C) i32;
+// pub extern "aegis_pep" fn aegis_pep_shutdown() callconv(.C) void;
+// pub extern "aegis_pep" fn aegis_pep_enforce(
+//     req: *const PepRequest,
+//     resp: *PepResponse,
+// ) callconv(.C) i32;
+// pub extern "aegis_pep" fn aegis_pep_quota_remaining() callconv(.C) u32;
 
 // ============================================================================
 // Tests

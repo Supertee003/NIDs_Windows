@@ -1,4 +1,4 @@
-﻿"""DEPRECATED: Use 'python tools/aegisctl.py start' or 'python tools/aegisctl.py stop' instead.
+"""DEPRECATED: Use 'python tools/aegisctl.py start' or 'python tools/aegisctl.py stop' instead.
 This script is kept for backward compatibility only.
 """
 """

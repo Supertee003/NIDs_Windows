@@ -4,6 +4,7 @@ This module is deliberately transport-neutral. It consumes the already
 validated PEP result and produces evidence; it does not call WFP or infer a
 host effect from a requested decision.
 """
+# SEAM-STATUS: not wired to the production entrypoint (brain/windows_brain.py); exercised by brain tests.
 from __future__ import annotations
 
 from typing import Any, Mapping

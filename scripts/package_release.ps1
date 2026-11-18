@@ -18,6 +18,27 @@ $scripts = Join-Path $bundle "scripts"
 
 New-Item -ItemType Directory -Force $runtime,$config,$drivers,$scripts | Out-Null
 
+# PACKAGING-GATE-001: a driver only enters a bundle when its signature is
+# Valid. The 2026-11-09 window found the opposite: the bundle shipped the
+# unsigned build output over a signed installed driver, and the minifilter
+# binary was not packaged at all. Both made D2 (driver load) impossible to
+# prove while looking like a successful install.
+$driverSignatures = @{
+    "build\x64\wfp\aegis_wfp.sys" = "scripts\sign_wfp_driver_20261024.ps1"
+    "build\x64\minifilter\aegis_minifilter.sys" = "scripts\minifilter_sign.ps1"
+}
+foreach ($rel in $driverSignatures.Keys) {
+    $abs = Join-Path $root $rel
+    if (-not (Test-Path $abs -PathType Leaf)) {
+        throw "Missing driver build output: $rel (build it first)"
+    }
+    $sig = Get-AuthenticodeSignature $abs
+    if ($sig.Status -ne "Valid") {
+        throw ("Driver {0} is {1}; sign it before packaging: powershell -File {2}" -f
+               $rel, $sig.Status, $driverSignatures[$rel])
+    }
+}
+
 $artifacts = @(
     @{ Source = "zig-out\bin\aegis_nids.exe"; Destination = "runtime\aegis_nids.exe" },
     @{ Source = "zig-out\bin\aegis_pep.dll"; Destination = "runtime\aegis_pep.dll" },
@@ -27,7 +48,8 @@ $artifacts = @(
     @{ Source = "zig-out\bin\aegis_ipc.dll"; Destination = "runtime\aegis_ipc.dll" },
     @{ Source = "configs\Rules.json"; Destination = "configs\Rules.json" },
     @{ Source = "configs\policies.json"; Destination = "configs\policies.json" },
-    @{ Source = "drivers\wfp_callout\aegis_wfp.sys"; Destination = "drivers\aegis_wfp.sys" }
+    @{ Source = "build\x64\wfp\aegis_wfp.sys"; Destination = "drivers\aegis_wfp.sys" },
+    @{ Source = "build\x64\minifilter\aegis_minifilter.sys"; Destination = "drivers\aegis_minifilter.sys" }
 )
 
 $manifest = @()
@@ -65,15 +87,36 @@ Platform: Windows x86_64
 Install (elevated PowerShell):
   powershell -ExecutionPolicy Bypass -File .\scripts\install_aegis.ps1 -BundleRoot .
 
-Verify:
-  Get-Content .\manifest.json | ConvertFrom-Json
+Verify (read-only):
+  powershell -ExecutionPolicy Bypass -File .\scripts\verify_release.ps1 -BundleRoot .
+
+Uninstall (elevated; configs preserved):
+  powershell -ExecutionPolicy Bypass -File .\scripts\install_aegis.ps1 -Uninstall
 
 Rollback:
   powershell -ExecutionPolicy Bypass -File .\scripts\install_aegis.ps1 -BundleRoot . -Rollback
 "@ | Set-Content (Join-Path $bundle "README.txt") -Encoding UTF8
 
-$installer = Join-Path $root "scripts\install_aegis.ps1"
-if (Test-Path $installer) { Copy-Item $installer (Join-Path $scripts "install_aegis.ps1") -Force }
+# BOOT-MODEL-003: the bundle must carry every script its own installer runs.
+# install_aegis.ps1 throws when $InstallRoot\scripts\install-boot-task.ps1 is
+# missing, and that script throws when its boot-sequence.ps1 sibling is missing,
+# so a bundle without both failed after the runtime was copied and the service
+# was created - a half-installed host with no boot loader. The list is explicit
+# and every entry must exist: a silent Test-Path guard is how the two files went
+# missing in the first place.
+$scriptPayload = @(
+    'install_aegis.ps1',
+    'install-boot-task.ps1',
+    'boot-sequence.ps1',
+    'verify_release.ps1'
+)
+foreach ($name in $scriptPayload) {
+    $source = Join-Path (Join-Path $root 'scripts') $name
+    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+        throw "Missing script payload: scripts\$name"
+    }
+    Copy-Item $source (Join-Path $scripts $name) -Force
+}
 
 $zip = "$bundle.zip"
 Compress-Archive -Path "$bundle\*" -DestinationPath $zip -Force

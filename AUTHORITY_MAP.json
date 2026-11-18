@@ -1,6 +1,6 @@
 {
-  "head_sha": "46b93dcf9cca17b323ddff7a4c71e33e81c37fb5",
-  "created_at": "2026-09-11",
+  "head_sha": "f4cde3c503fd8b696183751a608b999768caa769",
+  "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
   "planes": [
@@ -12,16 +12,16 @@
         "Go",
         "C/C++"
       ],
-      "boundary": "C ABI \u00e2\u2020\u2019 Zig Runtime Spine",
+      "boundary": "Go Nose named pipe; C/C++ C ABI -> Zig Runtime Spine",
       "components": [
         {
           "id": "GO_NOSE",
           "language": "Go",
-          "role": "Packet acquisition authority",
+          "role": "Canonical packet acquisition and event-frame production authority",
           "scope": [
             "packet capture",
             "flow collection",
-            "IPC reader",
+            "length-prefixed named-pipe writer",
             "canonical event production"
           ],
           "does_not_own": [
@@ -32,7 +32,7 @@
           "files": [
             "nose/*.go"
           ],
-          "boundary": "C ABI \u00e2\u2020\u2019 Zig",
+          "boundary": "Length-prefixed Windows named pipe -> Zig Nose reader",
           "note": "`go/aggregator/` is NOT part of the acquisition authority. It is an optional operator alert sidecar (SUPPORT) that reads NDJSON logs and serves REST :9200. It produces no Canonical Event."
         },
         {
@@ -55,7 +55,7 @@
             "bridge/*.cpp",
             "bridge/*.hpp"
           ],
-          "boundary": "C ABI \u00e2\u2020\u2019 Zig"
+          "boundary": "C ABI â†’ Zig"
         }
       ]
     },
@@ -80,12 +80,14 @@
             "action dispatch",
             "forensic recording",
             "control pipe",
-            "diagnostics"
+            "diagnostics",
+            "selected XDR evidence correlation (advisory-only; runtime-wired read-only via XDR-WIRE-001: detection-identity feed + xdr.list; no decision/effect path)"
           ],
           "does_not_own": [
             "privileged enforcement",
             "crypto operations",
-            "policy signature verification"
+            "policy signature verification",
+            "XDR policy or PEP dispatch"
           ],
           "files": [
             "src/main.zig",
@@ -100,7 +102,7 @@
             "src/xdr/*.zig",
             "src/windows/*.zig"
           ],
-          "note": "Zig is the runtime spine - the hub. All languages connect through C ABI or FFI."
+          "note": "Zig is the runtime spine. Transports are contract-specific: Go Nose uses a length-prefixed named pipe; C/C++ use C ABI; Rust uses PEP ABI; Python uses the Analytics Contract; TypeScript uses the Control Protocol. Selected XDR code authority: src/xdr/xdr_incident_fabric.zig; advisory-only and runtime-wired read-only (XDR-WIRE-001) exposed via xdr.list, with no policy/PEP/dispatch consumption; the full source-to-forensic-receipt XDR flow remains open. xdr_engine, xdr_harden, xdr_correlator, and xdr_incident_graph remain non-authoritative test/support candidates."
         }
       ]
     },
@@ -112,12 +114,12 @@
         "Python",
         "Cython"
       ],
-      "boundary": "Analytics Contract \u00e2\u2020\u2019 Zig Runtime Spine",
+      "boundary": "Optional Python UDP inspection offer and opt-in advisory sensor-pipe event return; no direct policy feedback",
       "components": [
         {
           "id": "PYTHON_BRAIN",
           "language": "Python",
-          "role": "Analytics authority",
+          "role": "Optional advisory analytics authority; not a policy or enforcement authority",
           "scope": [
             "threat analysis",
             "regex scanning",
@@ -128,13 +130,14 @@
           "does_not_own": [
             "privileged OS calls",
             "enforcement",
+            "policy decisions",
             "runtime orchestration"
           ],
           "files": [
             "brain/windows_brain.py",
             "brain/**/*.py"
           ],
-          "boundary": "Analytics Contract \u00e2\u2020\u2019 Zig"
+          "boundary": "Optional UDP inspection offer and opt-in named-pipe advisory event return; no direct policy feedback"
         },
         {
           "id": "CYTHON_BRIDGE",
@@ -154,7 +157,7 @@
           "files": [
             "brain/**/*.pyx"
           ],
-          "boundary": "Python \u00e2\u2020\u201d C/C++",
+          "boundary": "Python â†” C/C++",
           "note": "Cython is a performance bridge, NOT the system integration bus"
         }
       ]
@@ -162,21 +165,21 @@
     {
       "id": "PLANE-D",
       "name": "Security",
-      "description": "Rust PEP, crypto, WFP enforcement",
+      "description": "Rust PEP and crypto authority; production host-effect activation is out of scope",
       "languages": [
         "Rust"
       ],
-      "boundary": "PEP ABI \u00e2\u2020\u2019 Zig Runtime Spine",
+      "boundary": "PEP ABI â†’ Zig Runtime Spine",
       "components": [
         {
           "id": "RUST_PEP",
           "language": "Rust",
-          "role": "Security enforcement authority",
+          "role": "Detection-only policy evaluation and evidence authority; never authorizes a host effect",
           "scope": [
             "policy signature verification",
             "Ed25519 crypto",
             "TLS",
-            "WFP enforcement",
+            "policy evaluation and IDS evidence receipts (no host effect)",
             "authorization decisions",
             "trust store management"
           ],
@@ -189,16 +192,16 @@
           "files": [
             "rust-src/lib.rs"
           ],
-          "boundary": "PEP ABI \u00e2\u2020\u2019 Zig",
-          "is_final_enforcement": true,
-          "note": "There is exactly ONE security truth: the Rust PEP (rust-src/). No other component may claim final enforcement authority. `shield/src/pep.rs` and `shield/src/windows_enforce.rs` contain a duplicate PEP + WFP enforcement implementation and are NOT an authority (OPEN P0-7)."
+          "boundary": "PEP ABI â†’ Zig",
+          "is_final_enforcement": false,
+          "note": "The Rust PEP is a detection-only policy evaluator: it records evidence and reports BLOCK/QUARANTINE requests as ESCALATE reason 8. There is NO host-effect authority in production (RETIRE-HOST-EFFECT-001, issue #25): the driver block IOCTL returns STATUS_NOT_SUPPORTED and no path can install an AEGIS-owned filter. The former duplicate PEP + WFP surface in `shield/` is fully REMOVED (PEP-001, 2026-10-17)."
         },
         {
           "id": "SHIELD_TIER3",
           "language": "Rust",
           "role": "SUPPORT: Tier-3 payload screening",
           "scope": [
-            "payload safety screening symbol (validate_payload_safety)"
+            "advisory payload screening symbol (aegis_shield_screen)"
           ],
           "does_not_own": [
             "enforcement decisions",
@@ -208,15 +211,16 @@
             "policy evaluation"
           ],
           "files": [
-            "shield/src/lib.rs"
+            "shield/src/lib.rs",
+            "shield/src/screen.rs"
           ],
           "excluded_files": [
-            "shield/src/pep.rs",
-            "shield/src/windows_enforce.rs"
+            "shield/src/pep.rs (REMOVED -> screen.rs; advisory-only)",
+            "shield/src/windows_enforce.rs (DELETED)"
           ],
-          "boundary": "in-process DynLib call from src/core/bridge_init.zig",
+          "boundary": "in-process DynLib call from src/policy/shield_screen.zig (SHIELD-WIRE-123; no link-time extern)",
           "is_final_enforcement": false,
-          "note": "Loaded in-process to screen payloads. It must remain a screening helper only; a second enforcement authority is STOP-THE-LINE."
+          "note": "Loaded in-process to screen payloads (DynLib only). Advisory; never enforces. PEP-001 (2026-10-17): the former duplicate PEP/WFP surface is fully removed; a second enforcement authority remains STOP-THE-LINE."
         }
       ]
     },
@@ -228,7 +232,7 @@
         "TypeScript",
         "Python"
       ],
-      "boundary": "Control Protocol \u00e2\u2020\u2019 Zig Runtime Spine",
+      "boundary": "Control Protocol â†’ Zig Runtime Spine",
       "components": [
         {
           "id": "TYPESCRIPT_POLICY",
@@ -249,7 +253,7 @@
             "ts_policy/src/*.ts",
             "ts_policy/tests/*.ts"
           ],
-          "boundary": "Control Protocol \u00e2\u2020\u2019 Zig"
+          "boundary": "Control Protocol â†’ Zig"
         },
         {
           "id": "PYTHON_CLI",
@@ -267,7 +271,7 @@
           "files": [
             "tools/aegisctl.py"
           ],
-          "boundary": "Control Protocol \u00e2\u2020\u2019 Zig",
+          "boundary": "Control Protocol â†’ Zig",
           "note": "`tools/aegisctl.py` is the single canonical operator client. `scripts/aegisctl.py` does not exist."
         }
       ]
@@ -278,7 +282,7 @@
     "spokes": [
       {
         "language": "Go",
-        "boundary": "C ABI",
+        "boundary": "Length-prefixed named pipe",
         "direction": "inbound"
       },
       {
@@ -293,7 +297,7 @@
       },
       {
         "language": "Cython",
-        "boundary": "Python \u00e2\u2020\u201d C/C++",
+        "boundary": "Python â†” C/C++",
         "direction": "internal"
       },
       {
@@ -314,16 +318,16 @@
       "id": "SECURITY_TRUTH",
       "name": "Rust PEP",
       "language": "Rust",
-      "authority": "Final security truth and enforcement authority",
+      "authority": "Detection-only policy evaluation authority; never authorizes a host effect",
       "scope": [
-        "security enforcement",
+        "policy evaluation and evidence receipts (no host effect)",
         "PEP validation",
         "crypto verification"
       ],
       "files": [
         "rust-src/lib.rs"
       ],
-      "note": "There is exactly ONE security truth: the Rust PEP. No other component may claim final enforcement authority."
+      "note": "There is exactly ONE retained PEP authority: Rust PEP. Production is detection-only; PEP/provider presence or a PEP receipt does not establish production host-effect capability."
     },
     {
       "id": "RUNTIME_TRUTH",
@@ -341,7 +345,7 @@
         "src/main.zig",
         "src/contract/*.zig"
       ],
-      "note": "Zig is the runtime spine - the hub. All languages connect through C ABI or FFI."
+      "note": "Zig is the runtime spine. Transport is contract-specific: Go named pipe, C/C++ C ABI, Rust PEP ABI, Python Analytics Contract, and TypeScript Control Protocol."
     },
     {
       "id": "ACQUISITION_TRUTH",
@@ -351,12 +355,13 @@
       "scope": [
         "packet capture",
         "flow collection",
-        "IPC reader"
+        "CanonicalEvent frame production",
+        "named-pipe transport writer"
       ],
       "files": [
         "nose/*.go"
       ],
-      "note": "Go is the acquisition authority - sensors and I/O."
+      "note": "Go Nose is the canonical packet acquisition authority; the production Zig runtime reads its length-prefixed named-pipe frames."
     },
     {
       "id": "ANALYTICS_TRUTH",
@@ -394,17 +399,17 @@
       "id": "SHIELD_PEP",
       "authority": "rust-src/lib.rs (aegis_pep.dll)",
       "files": [
-        "shield/src/pep.rs",
-        "shield/src/windows_enforce.rs",
-        "shield/src/lib.rs (aegis_pep_evaluate / aegis_pep_status_count / aegis_pep_version)"
+        "shield/src/pep.rs (REMOVED -> shield/src/screen.rs, advisory screening only)",
+        "shield/src/windows_enforce.rs (DELETED)",
+        "shield/src/lib.rs (PEP exports REMOVED; single screening export remains)"
       ],
-      "status": "QUARANTINED",
+      "status": "REMOVED (PEP-001 complete, 2026-10-17)",
       "severity": "P0",
       "reason": "Second Policy Enforcement Point plus a second WFP enforcement path inside a crate that the runtime loads for payload screening only.",
       "still_bound": [
-        "# DORMANT: extern \"sec_monitor\" fn aegis_pep_evaluate removed from policy_contract.zig (PEP-001)",
-        "# Tests updated to point at rust-src/lib.rs instead of shield/src/pep.rs",
-        "# Shield PEP/WFP exports are quarantined; no active binding exists"
+        "# RESOLVED: dormant extern removed from policy_contract.zig",
+        "# RESOLVED: T8/T16 expectations point at rust-src/lib.rs",
+        "# RESOLVED: no PEP/WFP exports; legacy pep.rs name and dead second-PEP surface removed"
       ],
       "exit_criteria": [
         "shield exports no PEP symbol",
@@ -412,24 +417,26 @@
         "T8 PEP expectations point at rust-src/lib.rs",
         "a negative control fails if a PEP surface reappears in shield"
       ],
-      "tracking": "GAP-007; migration slice PEP-001",
-      "exit_criteria_status": "met 3/4: shield exports no PEP symbol, dormant Zig extern removed, T8 expectations point at rust-src/lib.rs"
+      "tracking": "GAP-007; migration slice PEP-001 - COMPLETE (EVT-228)",
+      "exit_criteria_status": "complete 4/4: shield exports no PEP symbol, dormant Zig extern removed, T8/T16 expectations point at rust-src/lib.rs, negative controls pin the removal (test_shield_exports_no_pep_surface + test_shield_screening_surface_is_minimal + test_zig_has_no_shield_linkage + test_zig_pep_extern_lives_in_one_module). PEP-001 additionally stripped the dead second-PEP vestiges and renamed pep.rs -> screen.rs, removed the ShieldPep*/ShieldScore* contract mirrors from policy_contract.zig, and extended the pins to the pep.rs absence."
     }
   ],
   "invariants": [
-    "Exactly one production enforcement authority (Rust PEP)",
-    "shield/ exports a payload-screening symbol only; its PEP and WFP enforcement modules are QUARANTINED and may not be called",
-    "Every privileged action passes through Rust PEP",
+    "Rust PEP is a detection-only policy evaluation authority; it never authorizes a host effect, and the driver block IOCTL is unsupported",
+    "shield/ exports a payload-screening symbol only; its former PEP and WFP enforcement modules are REMOVED (PEP-001) and must not reappear",
+    "No production path may request a host effect; the driver block IOCTL returns STATUS_NOT_SUPPORTED",
     "No UI may become an authoritative state owner",
     "No second runtime may exist",
     "No second Canonical Event may exist",
     "No second Policy Authority may exist",
-    "No second Enforcement Authority may exist",
-    "`shield/` is a payload-screening SUPPORT crate only; its enforcement modules are excluded from the authority surface",
+    "No host-effect authority may exist (retired by RETIRE-HOST-EFFECT-001)",
+    "`shield/` is a payload-screening SUPPORT crate only; its former enforcement modules are removed from the tree (PEP-001)",
     "`go/aggregator/` is an optional operator sidecar and produces no Canonical Event",
     "One canonical operator client: tools/aegisctl.py",
-    "Zig is the runtime hub - all languages connect through C ABI or FFI",
-    "Cython is a performance bridge, NOT the system integration bus"
+    "Production host-effect activation is out of scope; the default build prevention gate is closed",
+    "Zig is the runtime hub - transports follow their contracts: Go named pipe, C/C++ C ABI, Rust PEP ABI, Python Analytics Contract, TypeScript Control Protocol",
+    "Cython is a performance bridge, NOT the system integration bus",
+    "Selected XDR correlation authority is src/xdr/xdr_incident_fabric.zig; it emits advisory evidence only and has no policy/PEP action surface. Detection-identity events feed it, xdr_evidence_flow persists frozen multi-source assessments as recording-only IDS receipts after hash read-back with replay, and xdr.list exposes the advisory view and receipt counters; no policy/PEP/DEFCON/ActionDispatcher consumer exists. Source integration is E2-proven (XDR-RECEIPT-002). The recording-only route was host-proven on the deployed fc108b0 build on 2026-11-05 (XDR-005-E5-20261105); current-head Windows E5 is NOT_PROVEN."
   ],
   "stop_the_line": [
     "ABI mismatch",
@@ -449,6 +456,24 @@
     "forensic inconsistency",
     "production mock",
     "build/runtime mismatch",
-    "stale evidence"
+    "stale evidence",
+    "contradictory source-of-truth documents"
+  ],
+  "non_authoritative_candidates": [
+    {
+      "id": "XDR_NON_AUTHORITATIVE_CANDIDATES",
+      "selected_authority": "src/xdr/xdr_incident_fabric.zig (advisory-only; runtime-wired recording-only via XDR-WIRE-001 + XDR-RECEIPT-002)",
+      "files": [
+        "src/xdr/xdr_engine.zig",
+        "src/xdr/xdr_harden.zig",
+        "src/xdr/xdr_correlator.zig",
+        "src/xdr/xdr_incident_graph.zig",
+        "src/tests/integration/xdr_harden_integration.zig"
+      ],
+      "status": "NOT_SELECTED / TEST-SUPPORT ONLY",
+      "reason": "Source audit found no production main/daemon/build references. xdr_harden_integration is referenced by the quarantined lifecycle; other modules are in the unit-test graph. Do not wire these alternatives into production.",
+      "tracking": "IDS-XDR-005 / GitHub issue #26",
+      "completion_gate": "CLOSED 2026-11-05: source integration is E2-proven and Windows E5 host evidence is recorded (XDR-005-E5-20261105); recording-only, advisory, and no host-effect path."
+    }
   ]
 }

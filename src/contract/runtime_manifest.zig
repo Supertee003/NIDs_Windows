@@ -7,7 +7,7 @@
 
 const std = @import("std");
 const event = @import("event.zig");
-const wfp_ioctl = @import("../policy/wfp_ioctl.zig");
+const pep_bindings = @import("../policy/pep_bindings.zig");
 
 // ----------------------------------------------------------------------------
 // Capability flags (bitmask)
@@ -106,7 +106,15 @@ pub fn probeCapabilities() Capability {
     c.has_fim = probeFim();
     c.has_registry_monitor = probeRegistry();
     c.has_wfp_block = probeWfp();
-    c.has_injection_detector = true;
+    // S2-03: was an unconditional `true`, i.e. the manifest advertised T1055
+    // injection detection that no production path executed. The detector module
+    // (detection/injection_detector.zig) is complete and tested, but nothing
+    // builds an InjectionEvent from live telemetry and nothing calls ingest(),
+    // so the honest answer is "not wired". Flip this to a probe when a producer
+    // exists (process-open / thread-create / VirtualAllocEx / image-load ETW
+    // opcodes), because the capability then depends on the ETW session, not on
+    // the module being present.
+    c.has_injection_detector = false;
     c.has_federation = true;
     c.has_tls = true;
     c.has_pep_rust = true;
@@ -140,13 +148,10 @@ fn probeRegistry() bool {
 
 fn probeWfp() bool {
     if (@import("builtin").os.tag != .windows) return false;
-    // fwpuclnt.dll being present is not provider readiness. Attest the
-    // AEGIS device and its GET_STATS IOCTL, then leave the live handle to the
-    // bridge initializer. This keeps health truthful and fail-closed.
-    if (!wfp_ioctl.init()) return false;
-    const ready = wfp_ioctl.get_stats() != null;
-    wfp_ioctl.shutdown();
-    return ready;
+    // EVT-202: attest through the Rust adapter (sole device owner) instead
+    // of a transient exclusive open, which raced it. fwpuclnt.dll being
+    // present is not provider readiness; a successful attestation is.
+    return pep_bindings.providerAttested();
 }
 
 // ----------------------------------------------------------------------------

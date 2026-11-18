@@ -1,11 +1,16 @@
 [CmdletBinding()]
 param(
-    [string]$Repo = 'D:\NIDs_Windows',
+    # PORT-106: default derives from this script's location (scripts/..),
+    # not a hardcoded drive path — explicit -Repo still overrides.
+    [string]$Repo = '',
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release'
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($Repo)) {
+    $Repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+}
 Set-Location $Repo
 $evidence = Join-Path $Repo 'admin-evidence'
 New-Item -ItemType Directory -Force $evidence | Out-Null
@@ -35,9 +40,17 @@ $dll = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $dll) { throw "Build succeeded but aegis_wfp_user.dll was not found under $buildDir" }
 
 Write-Host "[3/5] Installing bridge beside runtime executable"
+# EVT-182: the repo-ROOT copy is intentionally GONE. A stale root copy
+# shadows the Rust PEP's bare-name LoadLibrary candidate (CWD is on the
+# DLL search order) and a stale copy missing one export fails the whole
+# adapter load with no fallback -- this silently broke T11 for weeks
+# (root 9/20 copy lacked aegis_wfp_ioctl_query_filter). Consumers use
+# zig-out/bin and build/Release; nothing reads the root copy on purpose.
 $destinations = @(
-    (Join-Path $Repo 'aegis_wfp_user.dll'),
-    (Join-Path $Repo "zig-out\bin\aegis_wfp_user.dll")
+    (Join-Path $Repo "zig-out\bin\aegis_wfp_user.dll"),
+    # The Rust adapter's documented fallback candidate. Keep it in sync
+    # with the built DLL; a stale copy here can shadow the real bridge.
+    (Join-Path $Repo "build\Release\aegis_wfp_user.dll")
 )
 foreach ($destination in $destinations) {
     New-Item -ItemType Directory -Force (Split-Path -Parent $destination) | Out-Null
@@ -57,7 +70,9 @@ $record = [ordered]@{
         'aegis_wfp_ioctl_block_ip',
         'aegis_wfp_ioctl_unblock_ip',
         'aegis_wfp_ioctl_block_flow',
-        'aegis_wfp_ioctl_unblock_filter'
+        'aegis_wfp_ioctl_unblock_filter',
+        'aegis_wfp_ioctl_query_filter',
+        'aegis_wfp_ioctl_query_filter_dir'
     )
 }
 $record | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $evidence 'wfp-user-bridge-provenance.json') -Encoding utf8

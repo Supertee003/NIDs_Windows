@@ -10,6 +10,7 @@ VOID AegisProcessCallback(
     PEPROCESS process, HANDLE pid, PPS_CREATE_NOTIFY_INFO createInfo)
 {
     ULONG pidVal;
+    ULONG parentPid = 0;
     WCHAR nameBuf[256];
 
     UNREFERENCED_PARAMETER(process);
@@ -21,6 +22,11 @@ VOID AegisProcessCallback(
     RtlZeroMemory(nameBuf, sizeof(nameBuf));
 
     if (createInfo) {
+        /* PPS_CREATE_NOTIFY_INFO::ParentProcessId is typed HANDLE but is
+         * documented as carrying the parent process ID value. Forward it so
+         * the user-mode reader can populate canonical parent identity. */
+        parentPid = (ULONG)(ULONG_PTR)createInfo->ParentProcessId;
+
         if (createInfo->ImageFileName &&
             createInfo->ImageFileName->Buffer &&
             createInfo->ImageFileName->Length > 0) {
@@ -30,7 +36,7 @@ VOID AegisProcessCallback(
             RtlCopyMemory(nameBuf, createInfo->ImageFileName->Buffer,
                 copyLen * sizeof(WCHAR));
         }
-        AegisRingWriteEvent(AEGIS_EVT_PROC_CREATE, pidVal, 0,
+        AegisRingWriteEvent(AEGIS_EVT_PROC_CREATE, pidVal, parentPid,
             STATUS_SUCCESS, nameBuf);
     } else {
         AegisRingWriteEvent(AEGIS_EVT_PROC_EXIT, pidVal, 0,

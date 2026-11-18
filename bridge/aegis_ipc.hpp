@@ -73,7 +73,7 @@ enum TierResult : uint8_t {
 // Kernel AEGIS_EVENT_HEADER (40 bytes) maps to the first 40 bytes of this struct.
 #pragma pack(push, 1)
 struct IpcEvent {
-    // ===== Core fields (bytes 0-39 — kernel AEGIS_EVENT_HEADER compatible) =====
+    // ===== Core fields (bytes 0-43 — kernel AEGIS_EVENT_HEADER compatible) =====
     uint32_t  event_type;       // EventType enum (0=network, 1=kernel_file, 2=kernel_process, 3=pipe)
     uint32_t  source_ip;        // IPv4 source (network events; 0 for host-only)
     uint32_t  dest_ip;          // IPv4 destination (network events; 0 for host-only)
@@ -89,11 +89,11 @@ struct IpcEvent {
     uint32_t  reserved;         // Reserved (was padding; now 0)
     uint64_t  timestamp;        // Event timestamp (milliseconds since epoch)
 
-    // ===== Extended fields (bytes 40-47 — user-mode IPC, backward compatible) =====
+    // ===== Extended fields (bytes 44-51 — user-mode IPC, backward compatible) =====
     uint32_t  source_pid;       // PID of the process that generated this event (0 if unknown)
     uint32_t  defcon_impact;    // DEFCON level impact (1-5)
 
-    // ===== G2 canonical extension (bytes 48-69 — NEW, appended for canonical contract) =====
+    // ===== G2 canonical extension (bytes 52-75 — NEW, appended for canonical contract) =====
     uint64_t  event_id;         // Unique event identifier (monotonic counter or hash)
     uint16_t  schema_version;   // Schema version of this event (currently 2)
     uint8_t   confidence;       // Detection confidence 0-100 (0 = no detection, 100 = certain)
@@ -101,7 +101,9 @@ struct IpcEvent {
     uint32_t  parent_pid;       // Parent process PID (for process tree correlation; 0 if unknown)
     uint32_t  evidence_offset;  // Offset to evidence data in payload (0 if none)
     uint32_t  evidence_length;  // Length of evidence data (0 if none)
-    // Total size: 72 bytes (was 48)
+    // Total size: 76 bytes (field sum; the old "72" comment predates the
+    // reserved/timestamp growth — all three implementations agree: C++
+    // pack(1) == ctypes _pack_=1 == Cython packed == 76).
 };
 #pragma pack(pop)
 

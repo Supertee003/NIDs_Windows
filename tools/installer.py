@@ -2,17 +2,70 @@
 """G27: Installer - NSIS script generator for AEGIS NIDS
 
 Consumes build artifacts and build_manifest.json to produce an installer.nsi
-that packages the runtime, preserves user data on upgrade, and writes a
-manifest-derived directive for every component.
+that packages the runtime - including the kernel telemetry drivers (WFP
+callout + minifilter, DEPLOY-120) - preserves user data on upgrade, and
+writes a manifest-derived directive for every component.
 """
 import argparse
 import json
 import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 MANIFEST_PATH = ROOT / "build_manifest.json"
+BUILD_TRUTH_PATH = ROOT / "build_truth.json"
+
+# Basenames already covered by the static template below. Manifest-derived
+# lines dedupe against this set so nothing is packaged twice.
+STATIC_FILES = {
+    "rules.json", "policies.json", "aegis_nids.exe", "aegis_pep.dll",
+    "aegis-nose.exe", "aegis_ipc.dll", "aegis_wfp_user.dll",
+    "aegis_etw_helper.dll", "aegis_fim_helper.dll", "build_manifest.json",
+    "aegis_wfp.sys", "aegis_minifilter.sys",
+}
+
+# Kernel telemetry drivers (DEPLOY-120, detection-only). The source paths are
+# the canonical WDK build outputs that scripts/wfp_service.ps1 and
+# scripts/minifilter_service.ps1 deploy to System32\drivers - the same
+# binaries EVT-231/EVT-232 proved live (payload copy + rule match).
+DRIVER_SOURCES = (
+    ("wfp", "build\\x64\\wfp\\aegis_wfp.sys"),
+    ("minifilter", "build\\x64\\minifilter\\aegis_minifilter.sys"),
+)
+
+
+def driver_presence() -> list:
+    """(tag, nsis-source-path, present-on-disk) for each kernel driver."""
+    return [
+        (tag, rel, (ROOT / rel.replace("\\", "/")).is_file())
+        for tag, rel in DRIVER_SOURCES
+    ]
+
+
+def _makensis_candidates() -> list:
+    """Standard NSIS install locations, checked after PATH."""
+    cands = []
+    for env_name in ("ProgramFiles(x86)", "ProgramFiles", "ProgramW6432"):
+        base = os.environ.get(env_name)
+        if base:
+            cands.append(Path(base) / "NSIS" / "makensis.exe")
+    return cands
+
+
+def find_makensis() -> str | None:
+    """PATH first, then the standard install dirs (NSIS is commonly installed
+    without a PATH entry; the EVT-227 host drill packaged from the standard
+    location). Returns the executable path or None (callers fail closed)."""
+    found = shutil.which("makensis")
+    if found:
+        return found
+    for cand in _makensis_candidates():
+        if cand.is_file():
+            return str(cand)
+    return None
 
 
 def load_manifest() -> dict:
@@ -34,84 +87,464 @@ def file_directive(name: str, dest: str = "") -> str:
     return f'  File "{name}"'
 
 
-NSIS_TEMPLATE = r"""#!define APPNAME "AEGIS NIDS"
-#!define APPVERSION "5.0.0"
-#!define PUBLISHER "AEGIS Security"
-#!define AEGIS_COMMIT "2c7cb30"
+def manifest_binaries() -> list[str]:
+    """Manifest-derived installable outputs (DEPLOY-119, additive).
+
+    Reads build_truth.json ``produces`` lists — the authoritative
+    build-command-to-output map. SUPPORT-classified outputs (shield
+    screening DLL, aggregator sidecar) and advisory-only entries (TS)
+    are excluded: the installer packs the production runtime only.
+    Only files present on disk are returned (never reference unbuilt
+    outputs); basenames covered by the static template are deduped.
+    Returns NSIS-style backslash paths, sorted. Empty (not error) when
+    build_truth.json is missing or nothing is built yet.
+    """
+    try:
+        truth = json.loads(BUILD_TRUTH_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    out: list[str] = []
+    seen = {name.lower() for name in STATIC_FILES}
+    for entry in truth.get("build_commands", {}).values():
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("classification") == "SUPPORT":
+            continue
+        for prod in entry.get("produces", []) or []:
+            full = ROOT / Path(str(prod).replace("/", os.sep))
+            if not full.is_file():
+                continue
+            if full.name.lower() in seen:
+                continue
+            seen.add(full.name.lower())
+            out.append(str(prod).replace("/", "\\"))
+    return sorted(out)
+
+
+NSIS_TEMPLATE = r"""!define APPNAME "AEGIS NIDS"
+!define APPVERSION "6.0.0"
+!define PUBLISHER "AEGIS Security"
+!define AEGIS_COMMIT "@AEGIS_COMMIT@"
 
 Name "${APPNAME} ${APPVERSION}"
 OutFile "aegis-installer-${APPVERSION}.exe"
-InstallDir "$PROGRAMFILES64\AEGIS"
+InstallDir "$PROGRAMFILES64\AEGIS NIDS"
+Unicode True
 RequestExecutionLevel admin
-PrivateBuild "${APPNAME} ${APPVERSION}"
+ShowInstDetails show
+!include "MUI2.nsh"
+!include "LogicLib.nsh"
+!include "FileFunc.nsh"
+Var ExistingRoot
+Var ExistingValid
 
-Page directory
-Page instfiles
-UninstPage unConfirm
-UninstPage instfiles
+VIAddVersionKey "PrivateBuild" "${APPNAME} ${APPVERSION} @AEGIS_COMMIT@"
+VIProductVersion "6.0.0.0"
+VIAddVersionKey "ProductName" "AEGIS NIDS"
+VIAddVersionKey "CompanyName" "AEGIS"
+VIAddVersionKey "LegalCopyright" "Copyright (c) 2026 AEGIS"
+VIAddVersionKey "FileVersion" "6.0.0.0"
+VIAddVersionKey "FileDescription" "AEGIS Network Intrusion Detection System"
 
+!insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_DIRECTORY
+!insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_FINISH
+
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_INSTFILES
+!insertmacro MUI_UNPAGE_FINISH
+
+!insertmacro MUI_LANGUAGE "English"
+
+; DEPLOY-120-PATHFIX: adopt an existing AegisNids service path instead of
+; trusting $PROGRAMFILES64. A registered service is authoritative: setup
+; must upgrade its actual runtime, never create a sibling duplicate.
+Function .onInit
+  StrCpy $ExistingRoot ""
+  StrCpy $ExistingValid "0"
+  ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Services\AegisNids" "ImagePath"
+  ${If} $0 != ""
+    ; Normalize surrounding quotes and the optional \??\ native prefix.
+    StrCpy $1 $0 1
+    ${If} $1 == '"'
+      StrCpy $0 $0 "" 1
+      StrCpy $0 $0 -1
+    ${EndIf}
+    StrCpy $1 $0 4
+    ${If} $1 == "\??\"
+      StrCpy $0 $0 "" 4
+    ${EndIf}
+    ${GetFileName} "$0" $1
+    ${GetParent} "$0" $2
+    ${GetFileName} "$2" $3
+    ${GetParent} "$2" $4
+    ${If} $1 == "aegis_nids.exe"
+      ${If} $3 == "runtime"
+        StrCpy $ExistingRoot $4
+        StrCpy $ExistingValid "1"
+        StrCpy $INSTDIR $ExistingRoot
+      ${Else}
+        MessageBox MB_ICONSTOP "AEGIS NIDS service path is not the canonical <install>\runtime\aegis_nids.exe: $0. Refusing to install over an unexpected service path."
+        Abort
+      ${EndIf}
+    ${Else}
+      MessageBox MB_ICONSTOP "AEGIS NIDS service path is not the canonical <install>\runtime\aegis_nids.exe: $0. Refusing to install over an unexpected service path."
+      Abort
+    ${EndIf}
+  ${EndIf}
+FunctionEnd
+
+; Canonical install layout (matches src/core/runtime_paths.zig):
+;   <install>\runtime\  binaries (service entrypoint + DLLs + nose)
+;   <install>\configs\  Rules.json + policies.json
+;   <install>\drivers\  kernel telemetry drivers (payload/provenance copy)
+; The kernel drivers also get a System32\drivers copy plus a service so the
+; daemon finds them where the proven scripts put them: AegisWfp (kernel,
+; demand) and AegisMinifilter (filesys, demand, altitude 370000). Both are
+; detection-only (observe/copy, never block) and TEST-SIGNED: loading needs
+; test signing plus the signing cert trusted on the target machine, and
+; setup logs each driver's signature status - see docs/DEPLOYMENT.md.
+; Production signing (EV cert/HLK) is still pending.
 Section "Install"
+  ; DEPLOY-120-PATHFIX: .onInit adopts the registered service path. If the
+  ; directory page is changed to a different path, abort before stopping the
+  ; service or copying any file: a second runtime would diverge from the SCM
+  ; binPath and its uninstaller would target shared services.
+  ${If} $ExistingValid == "1"
+    StrCpy $5 $INSTDIR 1 -1
+    ${If} $5 == "\"
+      StrCpy $INSTDIR $INSTDIR -1
+    ${EndIf}
+    ${If} $INSTDIR != $ExistingRoot
+      MessageBox MB_ICONSTOP "AEGIS NIDS is already installed at $ExistingRoot. Setup must upgrade that existing path; refusing to create a duplicate runtime at $INSTDIR. Keep the detected directory or uninstall the existing service first."
+      Abort
+    ${EndIf}
+  ${EndIf}
+
+  ; Upgrade safety (EVT-221): a running service locks its own image, so a
+  ; reinstall/upgrade over a live install fails mid-copy without this stop.
+  ; Reinstall-safe: an absent service/process just logs and continues;
+  ; "Start AEGIS Service Now" below restarts the service after the swap.
+  nsExec::ExecToLog "sc stop AegisNids"
+  nsExec::ExecToLog "taskkill /f /im aegis_nids.exe"
+  Sleep 2000
+
+  SetOutPath "$INSTDIR\configs"
+  File /oname=Rules.json "configs\Rules.json"
+  File /oname=policies.json "configs\policies.json"
+  ; S1-04: the rule files decide what the NIDS detects, and the daemon reads
+  ; them as SYSTEM. Remove inherited write access from Users/Authenticated
+  ; Users so a non-elevated local user cannot edit detection content. SIDs
+  ; are used instead of names so this is locale-independent.
+  nsExec::ExecToLog 'icacls "$INSTDIR\configs" /inheritance:r /grant:r *S-1-5-18:(OI)(CI)F *S-1-5-32-544:(OI)(CI)F *S-1-5-32-545:(OI)(CI)RX'
+
+  SetOutPath "$INSTDIR\runtime"
+  File "zig-out\bin\aegis_nids.exe"
+  File "target\release\aegis_pep.dll"
+  File "nose\aegis-nose.exe"
+  File "zig-out\bin\aegis_ipc.dll"
+  File "zig-out\bin\aegis_wfp_user.dll"
+  File "zig-out\bin\aegis_etw_helper.dll"
+  File "zig-out\bin\aegis_fim_helper.dll"
+
+  ; DEPLOY-120: kernel telemetry drivers from their canonical WDK build
+  ; outputs (build\x64\wfp + build\x64\minifilter). /nonfatal keeps
+  ; packaging possible on hosts that have not built the drivers yet;
+  ; setup then skips the matching service registration below.
+  SetOutPath "$INSTDIR\drivers"
+  File "/nonfatal" "/oname=aegis_wfp.sys" "build\x64\wfp\aegis_wfp.sys"
+  File "/nonfatal" "/oname=aegis_minifilter.sys" "build\x64\minifilter\aegis_minifilter.sys"
+
   SetOutPath "$INSTDIR"
-
-  ; Runtime binaries
-  File "aegis_nids.exe"
-  File "aegis_pep.dll"
-  File "aegis_wfp_user.dll"
-
-  ; Build manifest
   File "build_manifest.json"
 
-  ; Config
-  SetOutPath "$INSTDIR\config"
-  File "config\Rules.json"
+  ; BOOT-RING-LOSS-001 / LOSS-BUDGET-001: the boot loader and its installer
+  ; must ship with the product. The task, start mode and loss budget are
+  ; installed below by install-boot-task.ps1; without these files a fresh
+  ; install would come back AUTO_START and blind after a reboot.
+  SetOutPath "$INSTDIR\scripts"
+  File "scripts\boot-sequence.ps1"
+  File "scripts\install-boot-task.ps1"
+  SetOutPath "$INSTDIR"
 
-  ; Trust store
-  SetOutPath "$INSTDIR\config\trust_store"
-  File /nonfatal "configs\trust_store\*.*"
+  ; Service registration (demand-start: AegisBootSequence is the loader)
+  nsExec::ExecToLog 'sc create AegisNids binPath= "$INSTDIR\runtime\aegis_nids.exe" start= demand'
+  nsExec::ExecToLog 'sc description AegisNids "AEGIS Network Intrusion Detection System"'
+  nsExec::ExecToLog 'sc failure AegisNids reset= 86400 actions= restart/5000/restart/15000/restart/60000'
 
-  ; Audit
-  SetOutPath "$INSTDIR\audit"
+  ; ---- Kernel telemetry drivers (DEPLOY-120, detection-only) ----
+  ; Registration mirrors the proven lifecycle scripts exactly
+  ; (scripts\wfp_service.ps1: sc create type= kernel start= demand;
+  ;  scripts\minifilter_service.ps1: type= filesys + DisplayName + altitude
+  ;  370000 in both the service key and Instances\DefaultInstance).
+  ; Fail-soft + reinstall-safe: every step logs and continues; a payload
+  ; without a driver skips registration with an honest DetailPrint instead
+  ; of leaving a broken service behind. Teardown runs first because a
+  ; loaded driver image cannot be replaced on disk.
+  nsExec::ExecToLog "fltmc unload AegisMinifilter"
+  nsExec::ExecToLog "sc stop AegisMinifilter"
+  nsExec::ExecToLog "sc delete AegisMinifilter"
+  nsExec::ExecToLog "sc stop AegisWfp"
+  nsExec::ExecToLog "sc delete AegisWfp"
+  Sleep 1500
+  ${If} ${FileExists} "$INSTDIR\drivers\aegis_wfp.sys"
+    ; 2026-10-20 E5: NSIS is 32-bit, so file I/O to $SYSDIR is redirected
+    ; to SysWOW64. Copy through Sysnative so the kernel image really lands
+    ; in 64-bit System32 (the service path is the literal System32 path).
+    ; S1-01: `copy /y` exits 0 even when the loaded image makes the
+    ; replacement a silent no-op, and the old post-check inspected the OLD
+    ; file (also Valid). Copy, then byte-compare source vs destination; any
+    ; exit code other than 0 aborts setup instead of leaving a driver in
+    ; System32 that is not the one in the payload.
+    nsExec::ExecToLog 'cmd /c copy /y "$INSTDIR\drivers\aegis_wfp.sys" "$WINDIR\Sysnative\drivers\aegis_wfp.sys" >nul 2>&1 && fc /b "$INSTDIR\drivers\aegis_wfp.sys" "$WINDIR\Sysnative\drivers\aegis_wfp.sys" >nul 2>&1'
+    Pop $0
+    StrCmp $0 "0" wfp_driver_verified
+      MessageBox MB_ICONSTOP "AEGIS: aegis_wfp.sys was NOT replaced in System32 (image still loaded, or content mismatch). Stop the AegisWfp service and reinstall."
+      Abort
+    wfp_driver_verified:
+    DetailPrint "AEGIS: aegis_wfp.sys copied and byte-verified in System32\drivers"
+    nsExec::ExecToLog 'powershell -NoProfile -Command "Write-Host AEGIS_DRIVER_SIG_WFP (Get-AuthenticodeSignature $WINDIR\Sysnative\drivers\aegis_wfp.sys).Status"'
+    Delete "$WINDIR\SysWOW64\drivers\aegis_wfp.sys"
+    nsExec::ExecToLog 'sc create AegisWfp type= kernel start= demand binPath= "$WINDIR\System32\drivers\aegis_wfp.sys"'
+  ${Else}
+    DetailPrint "AEGIS: aegis_wfp.sys not in payload - AegisWfp service not registered (build it: scripts\wdk_build_production.ps1)"
+  ${EndIf}
+  ${If} ${FileExists} "$INSTDIR\drivers\aegis_minifilter.sys"
+    nsExec::ExecToLog 'cmd /c copy /y "$INSTDIR\drivers\aegis_minifilter.sys" "$WINDIR\Sysnative\drivers\aegis_minifilter.sys" >nul 2>&1 && fc /b "$INSTDIR\drivers\aegis_minifilter.sys" "$WINDIR\Sysnative\drivers\aegis_minifilter.sys" >nul 2>&1'
+    Pop $0
+    StrCmp $0 "0" fim_driver_verified
+      MessageBox MB_ICONSTOP "AEGIS: aegis_minifilter.sys was NOT replaced in System32 (filter still attached, or content mismatch). Unload AegisMinifilter and reinstall."
+      Abort
+    fim_driver_verified:
+    DetailPrint "AEGIS: aegis_minifilter.sys copied and byte-verified in System32\drivers"
+    nsExec::ExecToLog 'powershell -NoProfile -Command "Write-Host AEGIS_DRIVER_SIG_FIM (Get-AuthenticodeSignature $WINDIR\Sysnative\drivers\aegis_minifilter.sys).Status"'
+    Delete "$WINDIR\SysWOW64\drivers\aegis_minifilter.sys"
+    nsExec::ExecToLog 'sc create AegisMinifilter type= filesys start= demand binPath= "$WINDIR\System32\drivers\aegis_minifilter.sys" DisplayName= "AEGIS NIDS Minifilter Driver"'
+    ; Altitude: both registration forms (FLTMGR consumes the service-key
+    ; value or the Instances\DefaultInstance shape depending on the load
+    ; path). WriteRegStr writes values only - it never recreates the key -
+    ; so the SCM config sc create just wrote survives (the EVT-230 incident
+    ; was PowerShell New-Item -Force wiping it).
+    WriteRegStr HKLM "SYSTEM\CurrentControlSet\Services\AegisMinifilter" "Altitude" "370000"
+    WriteRegStr HKLM "SYSTEM\CurrentControlSet\Services\AegisMinifilter\Instances" "DefaultInstance" "AegisMinifilter Instance"
+    WriteRegStr HKLM "SYSTEM\CurrentControlSet\Services\AegisMinifilter\Instances\AegisMinifilter Instance" "Altitude" "370000"
+    WriteRegDWORD HKLM "SYSTEM\CurrentControlSet\Services\AegisMinifilter\Instances\AegisMinifilter Instance" "Flags" 0
+  ${Else}
+    DetailPrint "AEGIS: aegis_minifilter.sys not in payload - AegisMinifilter service not registered (build it: scripts\wdk_build_minifilter.ps1)"
+  ${EndIf}
 
-  ; Data directory (preserved)
-  SetOutPath "$INSTDIR\data"
-  File /nonfatal "data\default.json"
+  ; BOOT-RING-LOSS-001 / LOSS-BUDGET-001: install the loader, the demand-start
+  ; model and the loss budget before anything starts the daemon. Failure aborts
+  ; setup: an install that cannot come back after reboot is not an install.
+  nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\scripts\install-boot-task.ps1"'
+  Pop $0
+  StrCmp $0 "0" boot_model_ok
+    MessageBox MB_ICONSTOP "AEGIS: boot task / loss budget setup failed (install-boot-task.ps1). Setup aborted; the service was not started."
+    Abort
+  boot_model_ok:
+  DetailPrint "AEGIS: AegisBootSequence + AEGIS_LOSS_BUDGET installed"
 
-  ; Bin directory with run script
-  SetOutPath "$INSTDIR\bin"
+  ; Start menu shortcuts
+  CreateDirectory "$SMPROGRAMS\AEGIS NIDS"
+  CreateShortcut "$SMPROGRAMS\AEGIS NIDS\AEGIS Snapshot.lnk" "$INSTDIR\runtime\aegis_nids.exe"
+  CreateShortcut "$SMPROGRAMS\AEGIS NIDS\Uninstall AEGIS.lnk" "$INSTDIR\uninstall.exe"
 
-  ; Directories PRESERVED across upgrades
-  CreateDirectory "$INSTDIR\data"
-  CreateDirectory "$INSTDIR\config\trust_store"
-  CreateDirectory "$INSTDIR\logs"
+  ; Registry uninstall entry
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "DisplayName" "AEGIS NIDS v5.0+"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "UninstallString" '"$INSTDIR\uninstall.exe"'
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "InstallLocation" "$INSTDIR"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "Publisher" "AEGIS"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "DisplayVersion" "6.0.0.0"
 
   WriteUninstaller "$INSTDIR\uninstall.exe"
 SectionEnd
 
+Section "Start AEGIS Service Now"
+  ; Drivers first: the daemon opens the callout device and the filter comm
+  ; port at startup. fltmc load is the proven minifilter path; sc start
+  ; stays as the script's fallback - both are logged either way.
+  nsExec::ExecToLog 'sc start AegisWfp'
+  nsExec::ExecToLog "fltmc load AegisMinifilter"
+  Sleep 1500
+  nsExec::ExecToLog "sc start AegisMinifilter"
+  nsExec::ExecToLog 'sc start AegisNids'
+SectionEnd
+
 Section "Uninstall"
-  ; Stop services
-  nsExec::ExecToLog "taskkill /im aegis_nids.exe /f"
+  ; DEPLOY-120-PATHFIX: an uninstaller deletes the shared AegisNids service
+  ; and the driver services. If the registered service does not live under
+  ; this $INSTDIR, this is a duplicate/stale uninstaller: abort before
+  ; deleting anything.
+  ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Services\AegisNids" "ImagePath"
+  ${If} $0 != ""
+    StrCpy $1 $0 1
+    ${If} $1 == '"'
+      StrCpy $0 $0 "" 1
+      StrCpy $0 $0 -1
+    ${EndIf}
+    StrCpy $1 $0 4
+    ${If} $1 == "\??\"
+      StrCpy $0 $0 "" 4
+    ${EndIf}
+    ${GetFileName} "$0" $1
+    ${GetParent} "$0" $2
+    ${GetFileName} "$2" $3
+    ${GetParent} "$2" $4
+    ${If} $1 == "aegis_nids.exe"
+      ${If} $3 == "runtime"
+        StrCpy $5 $INSTDIR 1 -1
+        ${If} $5 == "\"
+          StrCpy $INSTDIR $INSTDIR -1
+        ${EndIf}
+        ${If} $4 != $INSTDIR
+          MessageBox MB_ICONSTOP "Refusing to uninstall: AegisNids service path $0 is not under $INSTDIR. Run the official uninstaller for the registered install; a duplicate runtime must not delete shared services."
+          Abort
+        ${EndIf}
+      ${Else}
+        MessageBox MB_ICONSTOP "Refusing to uninstall: AegisNids service path is not the canonical <install>\runtime\aegis_nids.exe: $0."
+        Abort
+      ${EndIf}
+    ${Else}
+      MessageBox MB_ICONSTOP "Refusing to uninstall: AegisNids service path is not the canonical <install>\runtime\aegis_nids.exe: $0."
+      Abort
+    ${EndIf}
+  ${EndIf}
 
-  ; Remove only executable payload
-  RMDir /r "$INSTDIR\bin"
-  Delete "$INSTDIR\*.exe"
-  Delete "$INSTDIR\*.dll"
+  nsExec::ExecToLog "sc stop AegisNids"
+  nsExec::ExecToLog "taskkill /f /im aegis_nids.exe"
+  Sleep 2000
+  nsExec::ExecToLog "schtasks /delete /tn AegisBootSequence /f"
+  nsExec::ExecToLog "sc delete AegisNids"
+  ; Kernel telemetry drivers (DEPLOY-120): unload before delete before
+  ; removing the System32 copies. The altitude values live inside the
+  ; service key and go with sc delete - never DeleteRegKey an SCM key.
+  nsExec::ExecToLog "fltmc unload AegisMinifilter"
+  Sleep 3000
+  nsExec::ExecToLog "sc stop AegisMinifilter"
+  nsExec::ExecToLog "sc delete AegisMinifilter"
+  nsExec::ExecToLog "sc stop AegisWfp"
+  Sleep 2000
+  nsExec::ExecToLog "sc delete AegisWfp"
+  ; 2026-10-20 E5 teardown: the first fixed installer deleted the services
+  ; but raced the kernel image release, leaving aegis_wfp.sys and
+  ; aegis_minifilter.sys in System32 (the services were already 1060).
+  ; The deeper cause: NSIS is 32-bit, so $SYSDIR file I/O was redirected to
+  ; SysWOW64. Delete through Sysnative for the real System32 image, and
+  ; clean a stale SysWOW64 copy left by the earlier artifact.
+  ; Wait for the unload to settle, then retry; a still-locked image is
+  ; scheduled with /REBOOTOK rather than silently left behind.
+  Sleep 6000
+  Delete "$WINDIR\Sysnative\drivers\aegis_wfp.sys"
+  Delete "$WINDIR\Sysnative\drivers\aegis_minifilter.sys"
+  Delete "$WINDIR\SysWOW64\drivers\aegis_wfp.sys"
+  Delete "$WINDIR\SysWOW64\drivers\aegis_minifilter.sys"
+  Sleep 1000
+  ${If} ${FileExists} "$WINDIR\Sysnative\drivers\aegis_wfp.sys"
+    Delete /REBOOTOK "$WINDIR\Sysnative\drivers\aegis_wfp.sys"
+    DetailPrint "AEGIS: aegis_wfp.sys still locked; scheduled for deletion at reboot"
+  ${EndIf}
+  ${If} ${FileExists} "$WINDIR\Sysnative\drivers\aegis_minifilter.sys"
+    Delete /REBOOTOK "$WINDIR\Sysnative\drivers\aegis_minifilter.sys"
+    DetailPrint "AEGIS: aegis_minifilter.sys still locked; scheduled for deletion at reboot"
+  ${EndIf}
+  ${If} ${FileExists} "$WINDIR\SysWOW64\drivers\aegis_wfp.sys"
+    Delete /REBOOTOK "$WINDIR\SysWOW64\drivers\aegis_wfp.sys"
+    DetailPrint "AEGIS: stale SysWOW64 aegis_wfp.sys scheduled for deletion at reboot"
+  ${EndIf}
+  ${If} ${FileExists} "$WINDIR\SysWOW64\drivers\aegis_minifilter.sys"
+    Delete /REBOOTOK "$WINDIR\SysWOW64\drivers\aegis_minifilter.sys"
+    DetailPrint "AEGIS: stale SysWOW64 aegis_minifilter.sys scheduled for deletion at reboot"
+  ${EndIf}
+  Delete "$SMPROGRAMS\AEGIS NIDS\AEGIS Snapshot.lnk"
+  Delete "$SMPROGRAMS\AEGIS NIDS\Uninstall AEGIS.lnk"
+  RMDir "$SMPROGRAMS\AEGIS NIDS"
+  RMDir /r "$INSTDIR\runtime"
+  RMDir /r "$INSTDIR\drivers"
+  RMDir /r "$INSTDIR\scripts"
+  Delete "$INSTDIR\build_manifest.json"
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids"
 
-  ; PRESERVED: data, config, logs, trust_store, audit
+  ; PRESERVED: configs (operator rules/policy survive reinstall)
   Delete "$INSTDIR\uninstall.exe"
-  RMDir "$INSTDIR"
 SectionEnd
 """
 
 
+def packaging_input_problems() -> list[str]:
+    """Refuse to generate a bundle whose native helpers are stale (#30).
+
+    zig-out/bin is what the File directives below read; CMake writes to
+    build/Release. Nothing used to couple them, so every bundle from
+    2026-10-16 to 2026-11-10 shipped a pre-fix aegis_fim_helper.dll that
+    crashed the service in aegis_fim_stop. Packaging a stale helper is a
+    fail-closed condition, not a warning.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import stage_helpers  # noqa: PLC0415
+    except Exception as exc:  # noqa: BLE001 - absence must not be silent
+        return [f"helper staging gate unavailable: {type(exc).__name__}: {exc}"]
+    return stage_helpers.check(ROOT)
+
+
 def generate_nsi(nsi_path: Path) -> None:
-    """Generate installer.nsi from build_manifest.json."""
+    """Generate installer NSI from build_manifest.json."""
+    problems = packaging_input_problems()
+    if problems:
+        for p in problems:
+            print(f"ERROR: {p}", file=sys.stderr)
+        print(
+            "ERROR: refusing to generate an installer from stale native helpers; "
+            "run: cmake --build build --config Release && python tools\\stage_helpers.py --stage",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
     manifest = load_manifest()
     components = manifest_components(manifest)
+    # ADR-0008 distinguishes the build source commit from records-only HEAD
+    # commits. Embed the same provenance stamp as the manifest, not whatever
+    # commit happened to update documentation last.
+    head = str(manifest.get("source_commit", "")).strip()[:7] or "unknown"
 
     lines = []
     for comp in components:
         lines.append(f"; component: {comp.get('id', 'unknown')} ({comp.get('language', '?')})")
-    lines.append(NSIS_TEMPLATE)
+    # DEPLOY-120: record which kernel drivers this generation can package.
+    presence = driver_presence()
+    for tag, rel, present in presence:
+        state = "present" if present else "ABSENT - not packaged"
+        lines.append(f"; kernel driver {tag}: {rel} ({state})")
+    missing = [tag for tag, _rel, present in presence if not present]
+    if missing:
+        print(
+            "WARN: kernel driver build output(s) missing: "
+            + ", ".join(missing)
+            + " - the installer ships without them and setup skips their "
+            "service registration; build first: "
+            "scripts\\wdk_build_production.ps1 + scripts\\wdk_build_minifilter.ps1",
+            file=sys.stderr,
+        )
+    body = NSIS_TEMPLATE.replace("@AEGIS_COMMIT@", head)
+    # Manifest-derived runtime outputs (DEPLOY-119). The File lines MUST be
+    # spliced INSIDE the Install section: NSIS rejects File outside any
+    # Section, so the old append-after-SectionEnd shape produced silently
+    # invalid installers whenever extra binaries were present on disk.
+    # Header + count are always emitted so output shape is deterministic
+    # even on a clean checkout.
+    extra = manifest_binaries()
+    block = [
+        "; Manifest-derived runtime outputs (build_truth.json produces, "
+        "present on disk at generation)",
+        f"; manifest binaries included: {len(extra)}",
+    ]
+    if extra:
+        block.append('SetOutPath "$INSTDIR\\runtime"')
+        block.extend(file_directive(p) for p in extra)
+    anchor = '  WriteUninstaller "$INSTDIR\\uninstall.exe"'
+    body = body.replace(anchor, "\n".join(block) + "\n" + anchor)
+    lines.append(body)
 
     nsi_path.parent.mkdir(parents=True, exist_ok=True)
     nsi_path.write_text("\n".join(lines), encoding="utf-8")
@@ -121,21 +554,51 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="AEGIS NIDS NSIS Installer Generator")
     parser.add_argument("--generate", action="store_true",
                         help="Generate NSIS installer script")
-    parser.add_argument("--nsi", type=Path, default=ROOT / "installer.nsi",
-                        help="Output path for generated .nsi file")
+    parser.add_argument("--nsi", type=Path, default=None,
+                        help="Output path for generated .nsi file (default: installer.nsi, or installer.generated.nsi with --package)")
+    parser.add_argument("--package", action="store_true",
+                        help="Generate NSI and build the installer with makensis (fail-closed if missing)")
+    parser.add_argument("--output", type=Path, default=ROOT / "aegis_setup.exe",
+                        help="Output path for the built installer exe")
     args = parser.parse_args()
 
-    if args.generate:
-        generate_nsi(args.nsi)
-        print(f"Generated {args.nsi}")
-        print("Build with: makensis installer.nsi")
-        print("Output: aegis-installer-5.0.0.exe")
+    if args.package:
+        nsi_path = args.nsi or (ROOT / "installer.generated.nsi")
+        generate_nsi(nsi_path)
+        makensis = find_makensis()
+        if makensis is None:
+            print("ERROR: makensis not found (PATH or the standard NSIS "
+                  "install dirs); install NSIS to build the installer",
+                  file=sys.stderr)
+            return 2
+        proc = subprocess.run([makensis, str(nsi_path)], cwd=str(ROOT))
+        if proc.returncode != 0:
+            print(f"ERROR: makensis failed with exit {proc.returncode}",
+                  file=sys.stderr)
+            return proc.returncode
+        built = sorted(ROOT.glob("aegis-installer-*.exe"))
+        if not built:
+            print("ERROR: makensis succeeded but no aegis-installer-*.exe was produced",
+                  file=sys.stderr)
+            return 2
+        newest = max(built, key=lambda p: p.stat().st_mtime)
+        if newest.resolve() != args.output.resolve():
+            shutil.copy2(newest, args.output)
+        print(f"Packaged {args.output}")
         return 0
 
-    generate_nsi(ROOT / "installer.nsi")
-    print("Generated installer.nsi")
-    print("Build with: makensis installer.nsi")
-    print("Output: aegis-installer-5.0.0.exe")
+    if args.generate:
+        out = args.nsi or (ROOT / "installer.generated.nsi")
+        generate_nsi(out)
+        print(f"Generated {out.name}")
+        print(f"Build with: makensis {out.name}")
+        print("Output: aegis-installer-6.0.0.exe")
+        return 0
+
+    generate_nsi(ROOT / "installer.generated.nsi")
+    print("Generated installer.generated.nsi")
+    print("Build with: makensis installer.generated.nsi")
+    print("Output: aegis-installer-6.0.0.exe")
     return 0
 
 

@@ -95,7 +95,7 @@ REPLAY (Zig - deterministic regression)
 | **C** | Stable ABI, wire types, fixed-width primitives, native headers | Business logic |
 | **C++** | Native adapters, Windows interop, legacy bridge compatibility, transport adapter | Becoming thinner over time |
 | **Go** | Nose, collectors, event ingestion, I/O-heavy concurrency, external aggregation | Independent policy authority |
-| **Rust** | Security boundary, policy verification, PEP, enforcement, privileged state, rollback | Final enforcement authority |
+| **Rust** | Security boundary, policy verification, PEP evidence, privileged state, rollback | Host effects (retired; detection-only product) |
 | **Python** | Brain orchestration, RAG, analytics, experiments, model lifecycle | Direct enforcement |
 | **Cython** | Feature extraction, hot loops, numeric preprocessing, performance-sensitive Brain ops | Policy decisions |
 
@@ -162,9 +162,11 @@ Use new objects for: DetectionEvidence, DetectionVerdict, CorrelationResult, Thr
 
 ## 7. Security Boundary
 
-**Rust PEP** is the final enforcement authority.
+**Rust PEP** is a detection-only policy evaluator. It records evidence and
+returns an escalation for human review; it never authorizes a host effect.
+The WFP block IOCTL hard-fails as `STATUS_NOT_SUPPORTED`.
 
-Rust validates before execution:
+Rust validates before classification:
 - policy
 - version
 - signature

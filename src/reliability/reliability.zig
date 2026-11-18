@@ -1,4 +1,16 @@
-﻿// G20: Reliability Î“Ã‡Ã¶ ReliabilityWatchdog + FaultMatrix
+﻿// REL-SPEC-050 / SRC-CLOSURE-001 -- SPECIMEN, NOT WIRED.
+//
+// This file is the G20-G33 design specimen: it carries a second
+// ReliabilityWatchdog, a stub SecurityCheck and drill-only canary/XDR
+// types. Nothing in any build root imports it -- src/main.zig's import
+// closure does not contain this path, and tests/security/test_forbidden_edges.py
+// fails if a production module imports it. The live homes of the same
+// behaviour are reliability/watchdog.zig, reliability/fault_injection.zig,
+// reliability/security_check.zig and reliability/latency_histogram.zig,
+// wired in daemon.zig. Its inline tests do not run under `zig build test`.
+// Kept as reference so the design history is readable; do not wire it in.
+
+// G20: Reliability Î“Ã‡Ã¶ ReliabilityWatchdog + FaultMatrix
 // G21: Fault Injection Î“Ã‡Ã¶ controlled injection framework
 // G22: Security Hardening Î“Ã‡Ã¶ input validation + ABI checks
 // G23: Performance Î“Ã‡Ã¶ latency histogram (p50/p95/p99)
@@ -7,6 +19,17 @@
 // G31: XDR Î“Ã‡Ã¶ evidence aggregation + incident creation
 // G32: Federation Production Î“Ã‡Ã¶ node trust + message auth
 // G33: Observability Î“Ã‡Ã¶ health/readiness/liveness/metrics
+
+//
+// REL-SPEC-050 SPECIMEN -- NOT production (additive-first rule). This file
+// is the original G20-G33 design sketch: its concepts moved to live homes
+// (G20 heartbeats to reliability/watchdog.zig, G21 to fault_injection.zig,
+// G22 to security_check.zig, G23 to latency_histogram.zig, all four wired
+// in daemon.zig), while the rest (canary/IPS/XDR/federation sections) is
+// drill/specimen surface kept for the T15 fault-matrix specs. Nothing
+// under src/ outside tests may import this module (forbidden-edges pin);
+// its inline test blocks do NOT execute (unimported files never compile
+// into `zig build test` -- T15 reads this file as text instead).
 
 const std = @import("std");
 

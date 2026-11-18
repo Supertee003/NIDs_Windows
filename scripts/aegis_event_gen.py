@@ -7,7 +7,8 @@ path: bridge → core → brain → aggregator → dashboard.
 
 Two transport modes:
   --pipe   : Send events via the named pipe `\\.\pipe\aegis_sensor_pipe` (the
-             sensor pipe that nids_capture.zig listens on).
+             sensor pipe that nids_capture.zig listens on). Needs
+             elevation: the pipe admits SYSTEM/Administrators only.
   --udp    : Send events via UDP to 127.0.0.1:9999 (the brain's alert
              port — used to test brain IPS directly).
   --tcp    : Send events via TCP to 127.0.0.1:12345 (the core's TCP
@@ -63,8 +64,10 @@ FIXTURES = {
     "command-injection": {"attack_type": ";whoami AEGIS_FIXTURE", "rule_id": "R9064", "severity": "Critical"},
 }
 
-# Pipe name (must match nids_capture.zig PIPE_NAME constant)
-NIDS_PIPE_NAME = r"\\.\pipe\aegis_sensor_pipe"
+# Pipe name (must match nids_capture.zig pipe_name constant).
+# F1: was \\.\pipe\aegis_sensor_pipe (stale) — the daemon listens on the
+# _t1 pipe, so fixtures never arrived until this pointed at it.
+NIDS_PIPE_NAME = r"\\.\pipe\aegis_sensor_pipe_t1"
 
 # Default ports (must match docs/runtime/COMPONENT_MATRIX.md §3)
 BRAIN_UDP_PORT = 9999

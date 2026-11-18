@@ -1,0 +1,25 @@
+{
+  "needle": "AEGIS",
+  "total_filters": 3829,
+  "matched_filters": 124,
+  "action_histogram": {
+    "FWP_ACTION_CALLOUT_TERMINATING": 4,
+    "FWP_ACTION_PERMIT": 120
+  },
+  "layers": {
+    "FWPM_LAYER_ALE_AUTH_LISTEN_V4": 15,
+    "FWPM_LAYER_ALE_AUTH_LISTEN_V6": 15,
+    "FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4": 30,
+    "FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V6": 30,
+    "FWPM_LAYER_ALE_RESOURCE_ASSIGNMENT_V4": 15,
+    "FWPM_LAYER_ALE_RESOURCE_ASSIGNMENT_V6": 15,
+    "FWPM_LAYER_INBOUND_TRANSPORT_V4": 1,
+    "FWPM_LAYER_INBOUND_TRANSPORT_V6": 1,
+    "FWPM_LAYER_OUTBOUND_TRANSPORT_V4": 1,
+    "FWPM_LAYER_OUTBOUND_TRANSPORT_V6": 1
+  },
+  "blocking_filters": [],
+  "blocking_filter_count": 0,
+  "verdict": "NO_BLOCK_FILTER",
+  "dump": "wfp_state_after_d2.xml"
+}

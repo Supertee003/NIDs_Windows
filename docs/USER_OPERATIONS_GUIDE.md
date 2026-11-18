@@ -1,6 +1,6 @@
 # AEGIS NIDS User Operations Guide
 
-AEGIS is operated as a single Windows security appliance. The operator should use `aegisctl.py` and the deployment profile rather than editing source files or calling component binaries independently. The Rust PEP is the only enforcement authority. If the PEP, WFP adapter, driver, or required worker is unavailable, AEGIS reports degraded or detection-only mode and does not silently claim that enforcement succeeded.
+AEGIS is operated as a single Windows security appliance. The operator should use `aegisctl.py` and the deployment profile rather than editing source files or calling component binaries independently. The product is detection-only: the Rust PEP evaluates policy and records evidence, and no path can request a host effect. If the PEP, the driver, or a required worker is unavailable, AEGIS reports degraded mode and does not silently claim that enforcement succeeded.
 
 ## First installation
 
@@ -46,12 +46,14 @@ python tools\aegisctl.py rules list
 python tools\aegisctl.py rules show --id R0056
 python tools\aegisctl.py rules validate
 python tools\aegisctl.py policy list
-python tools\aegisctl.py policy disable --id R0056
-python tools\aegisctl.py policy enable --id R0056
-python tools\aegisctl.py policy reload
+python tools\aegisctl.py policy show --id R0056
+python tools\aegisctl.py policy verify
+python tools\aegisctl.py policy validate
 ```
 
-Rule CRUD is atomic and validates the complete ruleset before replacing the canonical file. Use `rules add`, `rules update`, and `rules delete` only for reviewed changes. Policy enable/disable is runtime state; it does not mutate WFP directly.
+Rule CRUD is atomic and validates the complete ruleset before replacing the canonical file. Use `rules add`, `rules update`, and `rules delete` only for reviewed changes.
+
+`policy enable/disable/reload` are fail-closed: there is no active-policy postcondition behind them yet, so they return JSON with `available: false` and **exit code 4** instead of reporting success (see `docs/AEGIS_Command_Capability_Matrix.md`). To change rule state today, edit the operator-state file `configs/disabled_rules.json` (untracked, like `policy_trust.json`) and apply it with `python tools\aegisctl.py rules reload`; `policy list` shows the disabled set as a local candidate until the reload lands.
 
 ## Observe and investigate
 

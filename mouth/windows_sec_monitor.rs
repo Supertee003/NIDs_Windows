@@ -18,6 +18,7 @@
 use std::env;
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Seek, SeekFrom, Write};
+use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::thread;
 
@@ -27,7 +28,6 @@ use std::thread;
 // RUNTIME_CONTRACT.md §4.1.
 #[cfg(windows)]
 mod health_pipe {
-    use std::os::windows::io::AsRawHandle;
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
     use std::thread;
     use std::time::{Duration, Instant};
@@ -37,11 +37,14 @@ mod health_pipe {
     const PIPE_TYPE_MESSAGE: u32 = 0x00000004;
     const PIPE_READMODE_MESSAGE: u32 = 0x00000002;
     const PIPE_WAIT: u32 = 0x00000000;
-    const PIPE_UNLIMITED_INSTANCES: u32 = 255;
+    // Single health-probe client at a time: one instance is enough and
+    // bounds kernel handle/buffer commitment. (Default DACL is kept
+    // deliberately — an explicit SDDL would only widen it here; the
+    // null descriptor argument means default security, not a null DACL.)
+    const PIPE_MAX_INSTANCES: u32 = 1;
     const ERROR_PIPE_CONNECTED: u32 = 0x217;
     const ERROR_IO_PENDING: u32 = 0x3E5;
     const FILE_FLAG_OVERLAPPED: u32 = 0x40000000;
-    const INFINITE: u32 = 0xFFFFFFFF;
     const WAIT_TIMEOUT: u32 = 0x102;
     const WAIT_OBJECT_0: u32 = 0;
 
@@ -117,6 +120,24 @@ mod health_pipe {
     pub static START_TICK: std::sync::Once = std::sync::Once::new();
     pub static mut START_INSTANT: Option<Instant> = None;
 
+    /// DEADCODE-QUARANTINE: counters must move with real work, never sit at
+    /// a hardcoded zero (a supervisor could not tell a live tail from a
+    /// wedged one). Mouth's event stream is the core NDJSON log it tails
+    /// and displays: in_events counts ingested lines and LAST_EVENT_TICK
+    /// records the tick of the most recent one, so last_event_ms grows when
+    /// the tail loop stops. ERRORS/DROPPED stay 0: the loop has no
+    /// error/drop path (non-matching lines are skipped by design, not
+    /// dropped).
+    pub fn note_log_event() {
+        IN_EVENTS.fetch_add(1, Ordering::AcqRel);
+        LAST_EVENT_TICK.store(unsafe { GetTickCount64() }, Ordering::Release);
+    }
+
+    /// One health probe answered (response flushed) — mouth's only egress.
+    pub fn note_response_flushed() {
+        OUT_EVENTS.fetch_add(1, Ordering::AcqRel);
+    }
+
     const PIPE_NAME: &[u8] = b"\\\\.\\pipe\\aegis-mouth-health\0";
 
     pub fn server_loop(start_time: Instant) {
@@ -128,7 +149,7 @@ mod health_pipe {
                     PIPE_NAME.as_ptr(),
                     PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
                     PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
-                    PIPE_UNLIMITED_INSTANCES,
+                    PIPE_MAX_INSTANCES,
                     4096, 4096, 0,
                     std::ptr::null_mut(),
                 );
@@ -188,19 +209,28 @@ mod health_pipe {
                 // Build JSON response.
                 let now = GetTickCount64();
                 let last_event = LAST_EVENT_TICK.load(Ordering::Acquire);
-                let last_event_ms: u64 = if last_event > 0 { now.saturating_sub(last_event) } else { 0 };
+                let last_event_ms = super::last_event_age_ms(now, last_event);
                 let uptime_ms = start_time.elapsed().as_millis() as u64;
                 let latency_start = now;
+
+                // F5: attest the actual daemon state. The old code hardcoded
+                // deps core RUNNING, so a supervisor polling this pipe
+                // believed the core was up while the daemon was down.
+                // UNREACHABLE is a fact about this probe, not a core verdict.
+                let core_state = match super::daemon_pipe::query_daemon_defcon() {
+                    Some(_) => "RUNNING",
+                    None => "UNREACHABLE",
+                };
 
                 let json = format!(
                     "{{\"op\":\"HEALTH\",\"state\":\"RUNNING\",\"status\":\"OK\",\
                      \"component\":\"mouth\",\"subsystem\":\"mouth\",\
-                     \"version\":\"1.0.0\",\
+                     \"version\":\"3.0.0\",\
                      \"pid\":{},\"uptime_ms\":{},\
                      \"last_event_ms\":{},\"probe_latency_ms\":{},\
                      \"counters\":{{\"in_events\":{},\"out_events\":{},\
                      \"errors\":{},\"dropped\":{}}},\
-                     \"deps\":[{{\"name\":\"core\",\"state\":\"RUNNING\"}}]}}",
+                     \"deps\":[{{\"name\":\"core\",\"state\":\"{core_state}\"}}]}}",
                     GetCurrentProcessId(),
                     uptime_ms,
                     last_event_ms,
@@ -223,6 +253,7 @@ mod health_pipe {
                 );
                 GetOverlappedResult(h_pipe, &mut write_ov, &mut written, 1);
                 FlushFileBuffers(h_pipe);
+                note_response_flushed(); // counted once the reply is on the wire
                 CloseHandle(h_pipe);
                 CloseHandle(h_event);
             }
@@ -235,10 +266,246 @@ mod health_pipe {
             server_loop(start_time);
         });
     }
+}
 
-    /// Signal the health server to exit (called from main on shutdown).
-    pub fn shutdown() {
-        SHUTDOWN.store(true, Ordering::Release);
+// =====================================================================
+// DAEMON PIPE CLIENT — FE-DEF-095b: the daemon is the DEFCON authority
+// =====================================================================
+// Mouth projects daemon health (system.health → defcon_level/label from
+// control/defcon.zig) and keeps its file-tail ladder only as a labeled
+// diagnostic fallback. Std-only: raw Win32 FFI, no new dependencies, and
+// no PEP contact (health is a read-only command). Non-Windows builds get
+// a stub that always reports unreachable so `cargo test` stays portable.
+
+/// Validate + extract daemon DEFCON from a raw control response.
+/// Strict: level must be 1-5 AND the label must be the matching
+/// MAXIMUM-vocabulary entry. Anything else is None (fall back, loudly
+/// labeled — never render a mismatched pair).
+fn parse_daemon_defcon(response: &str) -> Option<(u8, String)> {
+    const LADDER: [&str; 6] = ["", "MAXIMUM", "SEVERE", "HIGH", "ELEVATED", "SAFE"];
+    let level = extract_json_number(response, "defcon_level")?;
+    if level < 1 || level > 5 {
+        return None;
+    }
+    let label = extract_json_field(response, "defcon_label")?;
+    if label.is_empty() || label != LADDER[level as usize] {
+        return None;
+    }
+    Some((level as u8, label))
+}
+
+/// A BLOCKED claim counts only with a verified receipt + host effect.
+/// Shared by the tail counters and the mitigation feed so the fallback
+/// DEFCON ladder and the mitigation list can never disagree (F4: the old
+/// tail counter fired on bare "Drop"/"Block" substrings).
+fn is_confirmed_block(line: &str) -> bool {
+    let policy = extract_json_field(line, "policy")
+        .or_else(|| extract_json_field(line, "action"))
+        .unwrap_or_default();
+    // BE-EVI-097: writer emits lowercase pipeline tags.
+    let policy_up = policy.to_uppercase();
+    if policy_up != "DROP" && policy_up != "BLOCK" {
+        return false;
+    }
+    let receipt_enforced = extract_json_field(line, "receipt_status")
+        .or_else(|| extract_json_field(line, "status"))
+        .or_else(|| extract_json_field(line, "enforcement_status"))
+        .map(|value| value == "ENFORCED" || value == "enforced")
+        .unwrap_or(false);
+    let host_effect_confirmed = extract_json_field(line, "host_effect_confirmed")
+        .map(|value| value == "true")
+        .unwrap_or(false);
+    receipt_enforced && host_effect_confirmed
+}
+
+/// Resolve which DEFCON to display: daemon authority wins, file ladder
+/// survives explicitly labeled as derived.
+fn resolve_defcon(daemon: Option<(u8, String)>, file_level: u8, file_label: &'static str) -> (u8, String, &'static str) {
+    if let Some((level, label)) = daemon {
+        return (level, label, "daemon");
+    }
+    (file_level, file_label.to_string(), "log-derived")
+}
+
+/// Annotation path = defcon_annotations.json next to the tailed log.
+/// (The old code only worked when the log was named anomalous.json.)
+fn annotation_for(log_path: &str) -> String {
+    if let Some(idx) = log_path.rfind(|c| c == '/' || c == '\\') {
+        format!("{}defcon_annotations.json", &log_path[..=idx])
+    } else {
+        "defcon_annotations.json".to_string()
+    }
+}
+
+/// DEADCODE-QUARANTINE: age of the last processed event; 0 = none yet
+/// (honest "never"), saturating so clock skew never underflows.
+fn last_event_age_ms(now: u64, last_event: u64) -> u64 {
+    if last_event == 0 {
+        0
+    } else {
+        now.saturating_sub(last_event)
+    }
+}
+
+#[cfg(windows)]
+mod daemon_pipe {
+    use super::parse_daemon_defcon;
+    use std::time::{Duration, Instant};
+
+    const GENERIC_READ: u32 = 0x80000000;
+    const GENERIC_WRITE: u32 = 0x40000000;
+    const OPEN_EXISTING: u32 = 3;
+    const FILE_FLAG_OVERLAPPED: u32 = 0x40000000;
+    const WAIT_OBJECT_0: u32 = 0;
+    const READ_BUDGET_MS: u64 = 1000;
+    const READ_CHUNK: u32 = 8192;
+    const READ_CAP_BYTES: usize = 262144;
+
+    const PIPE_NAME: &[u8] = b"\\\\.\\pipe\\aegis_control\0";
+    const HEALTH_REQUEST: &[u8] = b"{\"command\":\"system.health\",\"payload\":{}}\0";
+
+    #[repr(C)]
+    #[derive(Default)]
+    struct Overlapped {
+        internal: usize,
+        internal_high: usize,
+        offset: u32,
+        offset_high: u32,
+        h_event: *mut std::ffi::c_void,
+    }
+
+    extern "system" {
+        fn CreateFileA(
+            name: *const u8,
+            access: u32,
+            share: u32,
+            security: *mut std::ffi::c_void,
+            creation: u32,
+            flags: u32,
+            template: *mut std::ffi::c_void,
+        ) -> *mut std::ffi::c_void;
+        fn WriteFile(
+            handle: *mut std::ffi::c_void,
+            buffer: *const u8,
+            bytes_to_write: u32,
+            bytes_written: *mut u32,
+            overlapped: *mut Overlapped,
+        ) -> i32;
+        fn ReadFile(
+            handle: *mut std::ffi::c_void,
+            buffer: *mut u8,
+            bytes_to_read: u32,
+            bytes_read: *mut u32,
+            overlapped: *mut Overlapped,
+        ) -> i32;
+        fn CloseHandle(handle: *mut std::ffi::c_void) -> i32;
+        fn CreateEventW(
+            attrs: *mut std::ffi::c_void,
+            manual_reset: i32,
+            initial_state: i32,
+            name: *const u16,
+        ) -> *mut std::ffi::c_void;
+        fn WaitForSingleObject(handle: *mut std::ffi::c_void, ms: u32) -> u32;
+        fn GetOverlappedResult(
+            handle: *mut std::ffi::c_void,
+            overlapped: *mut Overlapped,
+            bytes: *mut u32,
+            wait: i32,
+        ) -> i32;
+        fn CancelIoEx(
+            handle: *mut std::ffi::c_void,
+            overlapped: *mut Overlapped,
+        ) -> i32;
+    }
+
+    fn invalid(handle: *mut std::ffi::c_void) -> bool {
+        handle.is_null() || handle as usize == usize::MAX
+    }
+
+    /// Query system.health and extract daemon DEFCON. None on any failure
+    /// (absent pipe, short write, read budget exhausted, invalid payload).
+    /// Reads are overlapped with a total budget so a wedged daemon cannot
+    /// hang the TUI loop; each 200 ms wait also re-checks the budget.
+    pub fn query_daemon_defcon() -> Option<(u8, String)> {
+        unsafe {
+            let pipe = CreateFileA(
+                PIPE_NAME.as_ptr(),
+                GENERIC_READ | GENERIC_WRITE,
+                0,
+                std::ptr::null_mut(),
+                OPEN_EXISTING,
+                FILE_FLAG_OVERLAPPED,
+                std::ptr::null_mut(),
+            );
+            if invalid(pipe) {
+                return None;
+            }
+            // The request is NUL-terminated in the constant; the wire
+            // envelope is the JSON bytes without the terminator.
+            let mut written: u32 = 0;
+            let mut write_ov: Overlapped = Default::default();
+            let ok = WriteFile(
+                pipe,
+                HEALTH_REQUEST.as_ptr(),
+                (HEALTH_REQUEST.len() - 1) as u32,
+                &mut written,
+                &mut write_ov,
+            );
+            // Overlapped write to a pipe: completion is effectively
+            // immediate for a 40-byte message; a failed start means no
+            // reader is serving this instance.
+            if ok == 0 {
+                CloseHandle(pipe);
+                return None;
+            }
+            let event = CreateEventW(std::ptr::null_mut(), 1, 0, std::ptr::null());
+            if event.is_null() {
+                CloseHandle(pipe);
+                return None;
+            }
+            let start = Instant::now();
+            let mut body: Vec<u8> = Vec::new();
+            let result = loop {
+                if start.elapsed() > Duration::from_millis(READ_BUDGET_MS) {
+                    break None;
+                }
+                if body.len() >= READ_CAP_BYTES {
+                    break None;
+                }
+                let mut chunk = [0u8; READ_CHUNK as usize];
+                let mut got: u32 = 0;
+                let mut read_ov: Overlapped = Default::default();
+                read_ov.h_event = event;
+                ReadFile(pipe, chunk.as_mut_ptr(), READ_CHUNK, &mut got, &mut read_ov);
+                let wait = WaitForSingleObject(event, 200);
+                if wait != WAIT_OBJECT_0 {
+                    CancelIoEx(pipe, &mut read_ov);
+                    continue;
+                }
+                let mut done: u32 = 0;
+                if GetOverlappedResult(pipe, &mut read_ov, &mut done, 0) == 0 || done == 0 {
+                    // No progress on a signaled read: server closed its end.
+                    break None;
+                }
+                body.extend_from_slice(&chunk[..done as usize]);
+                if let Ok(text) = std::str::from_utf8(&body) {
+                    if let Some(found) = parse_daemon_defcon(text) {
+                        break Some(found);
+                    }
+                }
+            };
+            CloseHandle(pipe);
+            CloseHandle(event);
+            result
+        }
+    }
+}
+
+#[cfg(not(windows))]
+mod daemon_pipe {
+    /// Non-Windows stub: no control pipe exists, always unreachable.
+    pub fn query_daemon_defcon() -> Option<(u8, String)> {
+        None
     }
 }
 
@@ -248,8 +515,44 @@ mod health_pipe {
 
 struct Config {
     log_path: String,
-    enforced_path: String,
+    annotation_path: String,
     refresh_ms: u64,
+}
+
+/// F4: where the live daemon log can live. Same newest-wins rule as the
+/// desktop dashboard and aegisctl events: the service writes relative to
+/// ITS cwd (System32), an interactive run relative to the repo.
+#[cfg(windows)]
+const SERVICE_LOG_PATH: &str = r"C:\Windows\System32\logs\aegis_core.ndjson";
+#[cfg(not(windows))]
+const SERVICE_LOG_PATH: &str = "/var/log/aegis_core.ndjson";
+
+/// F4: newest existing candidate wins; explicit --log always wins over
+/// both. Falls back to the CWD-relative default so a bare checkout
+/// behaves exactly as before.
+fn resolve_log_path_from(default_cwd_relative: &str, service_path: &str) -> String {
+    let candidates = [
+        PathBuf::from(service_path),
+        PathBuf::from(default_cwd_relative),
+    ];
+    let mut best: Option<PathBuf> = None;
+    let mut best_mtime = UNIX_EPOCH;
+    for path in &candidates {
+        if let Ok(meta) = fs::metadata(path) {
+            if let Ok(mtime) = meta.modified() {
+                if mtime > best_mtime {
+                    best_mtime = mtime;
+                    best = Some(path.clone());
+                }
+            }
+        }
+    }
+    best.map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|| default_cwd_relative.to_string())
+}
+
+fn resolve_log_path(default_cwd_relative: &str) -> String {
+    resolve_log_path_from(default_cwd_relative, SERVICE_LOG_PATH)
 }
 
 fn parse_args() -> Config {
@@ -260,12 +563,16 @@ fn parse_args() -> Config {
     // verify the binary is present and reports a parseable version.
     for arg in args.iter().skip(1) {
         if arg == "--version" || arg == "-v" || arg == "-V" {
-            println!("aegis-mouth 1.0.0");
+            println!("aegis-mouth 3.0.0");
             std::process::exit(0);
         }
     }
 
-    let mut log_path = "logs/anomalous.json".to_string();
+    // F4: default to the canonical evidence log (GAP-4: anomalous.json is
+    // the stale Brain format; the desktop dashboard moved off it long ago),
+    // resolved newest-wins (service System32 log vs dev-tree log) unless
+    // --log overrides explicitly.
+    let mut log_path = resolve_log_path("logs/aegis_core.ndjson");
     let mut refresh_ms: u64 = 1000;
 
     let mut i = 1;
@@ -273,6 +580,7 @@ fn parse_args() -> Config {
         match args[i].as_str() {
             "--log" => {
                 if i + 1 < args.len() {
+                    // Explicit --log always wins over auto-resolution.
                     log_path = args[i + 1].clone();
                     i += 1;
                 }
@@ -288,8 +596,8 @@ fn parse_args() -> Config {
         i += 1;
     }
 
-    let enforced_path = log_path.replace("anomalous.json", "enforced.json");
-    Config { log_path, enforced_path, refresh_ms }
+    let annotation_path = annotation_for(&log_path);
+    Config { log_path, annotation_path, refresh_ms }
 }
 
 // =====================================================================
@@ -305,7 +613,6 @@ const C_CYAN: &str = "\x1b[96;1m";
 const C_MAGENTA: &str = "\x1b[95;1m";
 const C_DIM: &str = "\x1b[2m";
 const C_BOLD: &str = "\x1b[1m";
-const C_BLUE: &str = "\x1b[94m";
 const C_WHITE: &str = "\x1b[97m";
 
 // v3.0: Cursor-based rendering (no flickering)
@@ -338,27 +645,40 @@ struct DefconInfo {
     border_color: &'static str,  // v3.0: border color for DEFCON level
 }
 
+/// Full display record for one DEFCON level. Single constructor so the
+/// daemon-authority path (FE-DEF-095b) and the file-tail fallback render
+/// identical colors, labels, and descriptions for the same level.
+fn defcon_for_level(level: u8) -> DefconInfo {
+    match level {
+        1 => DefconInfo { level: 1, label: "MAXIMUM", color: C_MAGENTA,
+            description: "10+ critical / 5+ blocks / kernel threats",
+            border_color: "\x1b[95m" },  // magenta border
+        2 => DefconInfo { level: 2, label: "SEVERE", color: C_RED,
+            description: "5+ critical or 3+ blocked IPs",
+            border_color: "\x1b[91m" },  // red border
+        3 => DefconInfo { level: 3, label: "HIGH", color: C_ORANGE,
+            description: "5+ alerts or 1+ critical",
+            border_color: "\x1b[38;5;208m" },  // orange border
+        4 => DefconInfo { level: 4, label: "ELEVATED", color: C_YELLOW,
+            description: "1-5 alerts detected",
+            border_color: "\x1b[93m" },  // yellow border
+        _ => DefconInfo { level: 5, label: "SAFE", color: C_GREEN,
+            description: "0 alerts - Normal operations",
+            border_color: "\x1b[92m" },  // green border
+    }
+}
+
 fn calculate_defcon(total: usize, critical: usize, blocked: usize, kernel: usize) -> DefconInfo {
     if critical >= 10 || blocked >= 5 || kernel >= 3 {
-        DefconInfo { level: 1, label: "MAXIMUM", color: C_MAGENTA,
-            description: "10+ critical / 5+ blocks / kernel threats",
-            border_color: "\x1b[95m" }  // magenta border
+        defcon_for_level(1)
     } else if critical >= 5 || blocked >= 3 {
-        DefconInfo { level: 2, label: "SEVERE", color: C_RED,
-            description: "5+ critical or 3+ blocked IPs",
-            border_color: "\x1b[91m" }  // red border
+        defcon_for_level(2)
     } else if total >= 5 || critical >= 1 {
-        DefconInfo { level: 3, label: "HIGH", color: C_ORANGE,
-            description: "5+ alerts or 1+ critical",
-            border_color: "\x1b[38;5;208m" }  // orange border
+        defcon_for_level(3)
     } else if total >= 1 {
-        DefconInfo { level: 4, label: "ELEVATED", color: C_YELLOW,
-            description: "1-5 alerts detected",
-            border_color: "\x1b[93m" }  // yellow border
+        defcon_for_level(4)
     } else {
-        DefconInfo { level: 5, label: "SAFE", color: C_GREEN,
-            description: "0 alerts - Normal operations",
-            border_color: "\x1b[92m" }  // green border
+        defcon_for_level(5)
     }
 }
 
@@ -394,9 +714,16 @@ impl AlertFeed {
     }
 
     fn push_from_log(&mut self, line: &str) {
-        // Parse JSON line to extract alert info
-        let time = extract_json_field(line, "timestamp").unwrap_or_else(|| "-".to_string());
-        let severity = extract_json_field(line, "severity").unwrap_or_else(|| "Info".to_string());
+        // Parse JSON line to extract alert info.
+        // BE-EVI-097 canonical keys: the daemon writer emits ts_ms +
+        // level (lowercase); legacy Brain lines carry timestamp +
+        // severity. Prefer canonical, accept legacy.
+        let time = extract_json_field(line, "ts_ms")
+            .or_else(|| extract_json_field(line, "timestamp"))
+            .unwrap_or_else(|| "-".to_string());
+        let severity = extract_json_field(line, "level")
+            .or_else(|| extract_json_field(line, "severity"))
+            .unwrap_or_else(|| "Info".to_string());
         let source = extract_json_field(line, "source_ip")
             .or_else(|| extract_json_field(line, "src_ip"))
             .or_else(|| extract_json_field(line, "attack_type"))
@@ -414,14 +741,19 @@ impl AlertFeed {
             .unwrap_or(false);
         let receipt_enforced = extract_json_field(line, "receipt_status")
             .or_else(|| extract_json_field(line, "status"))
-            .map(|value| value == "ENFORCED")
+            .or_else(|| extract_json_field(line, "enforcement_status"))
+            .map(|value| value == "ENFORCED" || value == "enforced")
             .unwrap_or(false);
-        let action = match policy.as_str() {
-            "Drop" | "Block" | "BLOCK" if receipt_enforced && host_effect_confirmed => "BLOCKED".to_string(),
-            "Drop" | "Block" | "BLOCK" => extract_json_field(line, "status")
+        // BE-EVI-097: the writer emits lowercase pipeline tags
+        // (block/alert/log); compare case-insensitively.
+        let policy_up = policy.to_uppercase();
+        let action = match policy_up.as_str() {
+            "DROP" | "BLOCK" if receipt_enforced && host_effect_confirmed => "BLOCKED".to_string(),
+            "DROP" | "BLOCK" => extract_json_field(line, "status")
+                .or_else(|| extract_json_field(line, "enforcement_status"))
                 .unwrap_or_else(|| "ENFORCEMENT_PENDING".to_string()),
-            "Alert" | "AlertOnly" => "ALERTED".to_string(),
-            "Terminate" | "Kill" => "TERMINATED".to_string(),
+            "ALERT" | "ALERTONLY" => "ALERTED".to_string(),
+            "TERMINATE" | "KILL" => "TERMINATED".to_string(),
             _ => format!("{}", policy),
         };
 
@@ -463,6 +795,10 @@ fn extract_json_field(line: &str, field: &str) -> Option<String> {
     None
 }
 
+fn extract_json_number(line: &str, field: &str) -> Option<u64> {
+    extract_json_field(line, field)?.parse::<u64>().ok()
+}
+
 // =====================================================================
 // Active Mitigations — Ring Buffer of recent enforcement actions
 // v3.0: แสดง IP ที่ถูกบล็อก + Process ที่ถูก Terminate
@@ -472,7 +808,6 @@ const MITIGATION_FEED_SIZE: usize = 6;
 
 #[derive(Clone)]
 struct MitigationEntry {
-    time: String,
     action: String,    // "BLOCKED IP" or "TERMINATED PID"
     target: String,    // IP address or PID
     reason: String,    // Why it was blocked
@@ -496,28 +831,16 @@ impl MitigationFeed {
 
     fn add_from_log(&mut self, line: &str) {
         // Only add a blocking mitigation when the receipt proves the host
-        // effect. A decision/action field alone is not sufficient evidence.
+        // effect (F4: shared is_confirmed_block rule — a decision/action
+        // field alone is never sufficient evidence).
         let policy = extract_json_field(line, "policy")
             .or_else(|| extract_json_field(line, "action"))
             .unwrap_or_default();
 
-        let receipt_enforced = extract_json_field(line, "receipt_status")
-            .or_else(|| extract_json_field(line, "status"))
-            .map(|value| value == "ENFORCED")
-            .unwrap_or(false);
-        let host_effect_confirmed = extract_json_field(line, "host_effect_confirmed")
-            .map(|value| value == "true")
-            .unwrap_or(false);
-        let is_block = receipt_enforced && host_effect_confirmed &&
-            (policy == "Drop" || policy == "Block" || policy == "BLOCK");
+        let is_block = is_confirmed_block(line);
         let is_terminate = policy == "Terminate" || policy == "Kill";
 
         if is_block || is_terminate {
-            let time = extract_json_field(line, "timestamp")
-                .unwrap_or_else(|| format!("{}", SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap_or(Duration::from_secs(0))
-                    .as_secs()));
             let source_ip = extract_json_field(line, "source_ip")
                 .or_else(|| extract_json_field(line, "src_ip"))
                 .unwrap_or_else(|| "unknown".to_string());
@@ -527,14 +850,12 @@ impl MitigationFeed {
 
             if is_block {
                 self.push(MitigationEntry {
-                    time,
                     action: "BLOCKED IP".to_string(),
                     target: source_ip,
                     reason: attack,
                 });
             } else {
                 self.push(MitigationEntry {
-                    time,
                     action: "TERMINATED".to_string(),
                     target: source_ip,
                     reason: attack,
@@ -609,8 +930,13 @@ impl TailReader {
                 stats.last_threat = content.clone();
                 new_lines.push(content.clone());
 
-                if content.contains("\"Critical\"") { stats.critical_count += 1; }
-                if content.contains("\"Drop\"") || content.contains("\"Block\"") || content.contains("\"BLOCK\"") {
+                // BE-EVI-097: canonical writer emits lowercase levels;
+                // legacy Brain lines use capitalized. Count both.
+                if content.contains("\"critical\"") || content.contains("\"Critical\"") { stats.critical_count += 1; }
+                // F4: a bare policy label is not a host effect. Count a
+                // block only with the same receipt rule the mitigation
+                // feed uses, so the fallback ladder and the feed agree.
+                if is_confirmed_block(&content) {
                     stats.blocked_count += 1;
                 }
                 if content.contains("\"Tier-3\"") || content.contains("\"KERNEL_FILE\"") || content.contains("\"KERNEL_PROCESS\"") {
@@ -665,8 +991,8 @@ impl CumulativeStats {
 // Enforcement Log (write when DEFCON changes)
 // =====================================================================
 
-fn write_enforcement_log(enforced_path: &str, level: u8, label: &str, prev_level: u8, stats: &CumulativeStats) {
-    if let Some(parent) = std::path::Path::new(enforced_path).parent() {
+fn write_defcon_annotation_log(annotation_path: &str, level: u8, label: &str, prev_level: u8, stats: &CumulativeStats) {
+    if let Some(parent) = std::path::Path::new(annotation_path).parent() {
         let _ = fs::create_dir_all(parent);
     }
 
@@ -699,20 +1025,13 @@ fn write_enforcement_log(enforced_path: &str, level: u8, label: &str, prev_level
     if let Ok(mut file) = OpenOptions::new()
         .create(true)
         .append(true)
-        .open(enforced_path)
+        .open(annotation_path)
     {
         let _ = writeln!(file, "{}", entry);
     }
 
     eprintln!("{}", entry);
 }
-
-// =====================================================================
-// ETW HOOK STUBS (future security monitoring)
-// =====================================================================
-
-fn etw_security_monitor_poll() -> u32 { 0 }
-fn process_creation_monitor_poll() -> u32 { 0 }
 
 // =====================================================================
 // RENDER — v3.0: "ยามรักษาความปลอดภัย + กระบอกเสียง"
@@ -735,7 +1054,7 @@ fn process_creation_monitor_poll() -> u32 { 0 }
 //   │  10:03:15 HIGH     10.0.0.55     → ALERTED          │
 //   │  ─────────────────────────────────────────────────── │
 //   │  Stats: 12 alerts | 3 critical | 2 blocked          │
-//   │  Enforced: logs/enforced.json                        │
+//   │  Annotations: logs/defcon_annotations.json (advisory only)  │
 //   └───────────────────────────────────────────────────────┘
 // =====================================================================
 
@@ -758,6 +1077,7 @@ fn render_separator(bc: &str) {
 fn render_dashboard(
     stats: &CumulativeStats,
     defcon: &DefconInfo,
+    defcon_source: &str,
     prev_level: u8,
     config: &Config,
     cycle: u64,
@@ -779,13 +1099,23 @@ fn render_dashboard(
     render_border_side(bc, &format!("{C_DIM}   \"ยามรักษาความปลอดภัย + กระบอกเสียง\" — Alert + Mitigate + Enforce{C_RESET}"));
     render_separator(bc);
 
-    // ── DEFCON Display — FOCAL POINT ──
-    let defcon_block = format!("{color}{C_BOLD}  ██ DEFCON {level}: {label} ██{C_RESET}",
-        color=defcon.color, level=defcon.level, label=defcon.label);
+    // ── DEFCON Display — FOCAL POINT
+    // Large DEFCON indicator with border and description
+    let defcon_block = format!(
+        "{color}{C_BOLD}  ████████ DEFCON {level}: {label} ████████{C_RESET}",
+        color=defcon.color, level=defcon.level, label=defcon.label
+    );
     render_border_side(bc, &defcon_block);
     render_border_side(bc, &format!("{C_DIM}  {desc}{C_RESET}", desc=defcon.description));
+    // FE-DEF-095b: always show which authority produced this level.
+    let source_note = if defcon_source == "daemon" {
+        "source: daemon authority"
+    } else {
+        "source: log-derived (diagnostic)"
+    };
+    render_border_side(bc, &format!("{C_DIM}  {source_note}{C_RESET}"));
 
-    // DEFCON change indicator
+    // DEFCON change indicator with arrow
     if defcon.level != prev_level {
         let arrow = if defcon.level < prev_level { "▲ ESCALATED" } else { "▼ DE-ESCALATED" };
         let arrow_color = if defcon.level < prev_level { C_RED } else { C_GREEN };
@@ -794,13 +1124,13 @@ fn render_dashboard(
         render_border_side(bc, "");
     }
 
-    // DEFCON Bar (visual bar with filled/empty blocks)
-    let mut bar_str = String::from("  ");
+    // DEFCON Bar (visual bar with filled/empty blocks) - wider bar
+    let mut bar_str = String::from("  DEFCON BAR: ");
     for i in 1..=5 {
         if i >= defcon.level {
-            bar_str.push_str(&format!("{color}██{C_RESET} ", color=defcon.color));
+            bar_str.push_str(&format!("{color}███{C_RESET} ", color=defcon.color));
         } else {
-            bar_str.push_str(&format!("{C_DIM}──{C_RESET} "));
+            bar_str.push_str(&format!("{C_DIM}---{C_RESET} "));
         }
     }
     bar_str.push_str("  1  2  3  4  5");
@@ -817,19 +1147,19 @@ fn render_dashboard(
         for entry in mitigation_feed.entries.iter().rev().take(5) {
             let action_color = if entry.action.starts_with("BLOCKED") { C_RED } else { C_ORANGE };
             // Truncate target for display
-            let target_display = if entry.target.len() > 18 {
-                format!("{}...", &entry.target[..15])
+            let target_display = if entry.target.len() > 20 {
+                format!("{}...", &entry.target[..17])
             } else {
                 entry.target.clone()
             };
             // Truncate reason for display
-            let reason_display = if entry.reason.len() > 22 {
-                format!("{}...", &entry.reason[..19])
+            let reason_display = if entry.reason.len() > 25 {
+                format!("{}...", &entry.reason[..22])
             } else {
                 entry.reason.clone()
             };
             render_border_side(bc, &format!(
-                "  {action_color}{action:<14}{C_RESET} {C_WHITE}{target:<18}{C_RESET} {C_DIM}{reason}{C_RESET}",
+                "  {action_color}{action:<16}{C_RESET} {C_WHITE}{target:<22}{C_RESET} {C_DIM}{reason}{C_RESET}",
                 action=entry.action, target=target_display, reason=reason_display
             ));
         }
@@ -838,7 +1168,7 @@ fn render_dashboard(
     render_separator(bc);
 
     // ── Alert Feed — Enhanced in v3.0 ──
-    render_border_side(bc, &format!("{C_YELLOW}{C_BOLD}[ ALERT FEED ]{C_RESET}  {C_DIM}[Time] [Sev] [Source] -> [Action]{C_RESET}"));
+    render_border_side(bc, &format!("{C_YELLOW}{C_BOLD}[ ALERT FEED ]{C_RESET}  {C_DIM}[HH:MM:SS] [Sev] [Source] -> [Action]{C_RESET}"));
 
     if alert_feed.entries.is_empty() {
         render_border_side(bc, &format!("  {C_DIM}>> Waiting for anomalous events...{C_RESET}"));
@@ -858,8 +1188,8 @@ fn render_dashboard(
                 _ => C_DIM,
             };
             // Truncate source for display
-            let src_display = if entry.source.len() > 16 {
-                format!("{}...", &entry.source[..13])
+            let src_display = if entry.source.len() > 20 {
+                format!("{}...", &entry.source[..17])
             } else {
                 entry.source.clone()
             };
@@ -880,28 +1210,29 @@ fn render_dashboard(
                 &entry.time
             };
             render_border_side(bc, &format!(
-                "  {C_DIM}{time:<8}{C_RESET} {sev_color}{sev:<8}{C_RESET} {C_WHITE}{src:<16}{C_RESET} {act_color}→ {act}{C_RESET}",
-                time=time_short, sev=entry.severity, src=src_display, act=entry.action
+                "  {C_DIM}{time_short:<8}{C_RESET} {sev_color}{sev:<8}{C_RESET} {C_WHITE}{src_display:<20}{C_RESET} {act_color}→ {act}{C_RESET}",
+                time_short=time_short, sev=entry.severity, src_display=src_display, act=entry.action
             ));
         }
     }
 
     render_separator(bc);
 
-    // ── Threat Statistics (compact) ──
+    // ── Threat Statistics (compact but wider) ──
     render_border_side(bc, &format!("{C_CYAN}[ THREAT STATS ]{C_RESET}"));
     render_border_side(bc, &format!(
-        "  Alerts: {C_WHITE}{total}{C_RESET} │ Critical: {C_RED}{crit}{C_RESET} │ Blocked: {C_ORANGE}{blk}{C_RESET} │ Kernel: {C_YELLOW}{kern}{C_RESET} │ New: {C_CYAN}{new}{C_RESET}",
+        "  {total}  {crit}  {blk}  {kern}  {new}",
         total=stats.total_alerts, crit=stats.critical_count, blk=stats.blocked_count,
         kern=stats.kernel_count, new=new_entries
     ));
+    // Simplified stats line due to format complexity
 
     // ── Footer ──
     render_separator(bc);
     let refresh_secs = config.refresh_ms as f64 / 1000.0;
     render_border_side(bc, &format!(
-        "{C_GREEN}[ READY TO ENFORCE ]{C_RESET} │ {refresh_secs:.1}s │ Cycle {cycle} │ Enforced: {C_DIM}{path}{C_RESET}",
-        path=config.enforced_path
+        "{C_GREEN}[ OBSERVE ONLY ]{C_RESET} │ {refresh_secs:.1}s │ Cycle {cycle}",
+        refresh_secs=refresh_secs, cycle=cycle
     ));
     render_border_bottom(bc);
 
@@ -911,7 +1242,11 @@ fn render_dashboard(
 
 #[cfg(test)]
 mod receipt_tests {
-    use super::{extract_json_field, AlertFeed, MitigationFeed};
+    use super::{
+        annotation_for, defcon_for_level, extract_json_field, is_confirmed_block,
+        last_event_age_ms, parse_daemon_defcon, resolve_defcon, resolve_log_path_from, AlertFeed,
+        MitigationFeed,
+    };
 
     #[test]
     fn parses_boolean_host_effect_confirmation() {
@@ -944,6 +1279,145 @@ mod receipt_tests {
         assert_eq!(feed.entries.len(), 1);
         assert_eq!(feed.entries[0].action, "PENDING");
     }
+
+    #[test]
+    fn confirmed_block_rule_matches_the_mitigation_feed() {
+        // F4: one rule shared by tail counters and the feed.
+        assert!(is_confirmed_block(r#"{"policy":"BLOCK","status":"ENFORCED","host_effect_confirmed":true}"#));
+        assert!(is_confirmed_block(r#"{"action":"Drop","receipt_status":"ENFORCED","host_effect_confirmed":true}"#));
+        // BE-EVI-097: canonical writer lines (lowercase tags).
+        assert!(is_confirmed_block(r#"{"policy":"block","enforcement_status":"enforced","host_effect_confirmed":true,"filter_id":301}"#));
+        assert!(!is_confirmed_block(r#"{"policy":"block","enforcement_status":"observed","host_effect_confirmed":false}"#));
+        assert!(!is_confirmed_block(r#"{"policy":"BLOCK","status":"ENFORCED","host_effect_confirmed":false}"#));
+        assert!(!is_confirmed_block(r#"{"policy":"BLOCK","status":"PENDING","host_effect_confirmed":false}"#));
+        assert!(!is_confirmed_block(r#"{"policy":"Alert","status":"ENFORCED","host_effect_confirmed":true}"#));
+        assert!(!is_confirmed_block("not json"));
+    }
+
+    #[test]
+    fn alert_feed_reads_canonical_writer_keys() {
+        // BE-EVI-097: ts_ms/level/policy lowercase writer line parses
+        // into a BLOCKED feed entry with a real timestamp.
+        let line = r#"{"ts_ms":1791296893400,"mono_ns":1,"level":"critical","event":"signature_match","rule":"4237725842","src_ip":"192.168.1.100","src_port":1234,"session_id":7,"payload_len":3,"policy":"block","policy_id":4,"event_id":201,"trace_id":202,"audit_id":203,"enforcement_status":"enforced","host_effect_confirmed":true,"filter_id":301,"request_id":302,"decision":"block","provider":"wfp","receipt_version":1}"#;
+        let mut feed = AlertFeed::new();
+        feed.push_from_log(line);
+        assert_eq!(feed.entries.len(), 1);
+        assert_eq!(feed.entries[0].action, "BLOCKED");
+        assert_eq!(feed.entries[0].source, "192.168.1.100");
+        assert_eq!(feed.entries[0].time, "1791296893400");
+        // Observed (unconfirmed) writer line never claims BLOCKED.
+        let line2 = r#"{"ts_ms":1791296893401,"level":"warn","event":"signature_match","rule":"1","src_ip":"10.0.0.1","policy":"alert","enforcement_status":"observed","host_effect_confirmed":false,"filter_id":0,"request_id":0}"#;
+        let mut feed2 = AlertFeed::new();
+        feed2.push_from_log(line2);
+        assert_eq!(feed2.entries[0].action, "ALERTED");
+    }
+
+    #[test]
+    fn log_path_prefers_newest_candidate() {
+        // F4: tmp-only fixtures, never the repo tree. Mirrors the desktop
+        // dashboard and aegisctl events newest-wins rule, in both orders.
+        let dir = std::env::temp_dir().join("aegis_mouth_f4_test");
+        let _ = std::fs::create_dir_all(&dir);
+        let old = dir.join("old.ndjson");
+        let new = dir.join("new.ndjson");
+        let missing = dir.join("missing.ndjson");
+        std::fs::write(&old, "{}\n").unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        std::fs::write(&new, "{}\n").unwrap();
+        let old_s = old.to_string_lossy().into_owned();
+        let new_s = new.to_string_lossy().into_owned();
+        let missing_s = missing.to_string_lossy().into_owned();
+        assert_eq!(resolve_log_path_from(&old_s, &new_s), new_s);
+        assert_eq!(resolve_log_path_from(&new_s, &old_s), new_s);
+        assert_eq!(resolve_log_path_from(&missing_s, &new_s), new_s);
+        assert_eq!(
+            resolve_log_path_from(&missing_s, &dir.join("also-missing.ndjson").to_string_lossy().into_owned()),
+            missing_s
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn daemon_defcon_parses_valid_health_and_rejects_garbage() {
+        // FE-DEF-095b: strict pair validation.
+        let ok = r#"{"ok":true,"data":{"defcon_level":3,"defcon_label":"HIGH"}}"#;
+        assert_eq!(parse_daemon_defcon(ok), Some((3, "HIGH".to_string())));
+        assert_eq!(parse_daemon_defcon(r#"{"data":{"defcon_level":1,"defcon_label":"MAXIMUM"}}"#), Some((1, "MAXIMUM".to_string())));
+        // Negative controls: out-of-range, mismatched, missing, garbage.
+        assert_eq!(parse_daemon_defcon(r#"{"data":{"defcon_level":9,"defcon_label":"MAXIMUM"}}"#), None);
+        assert_eq!(parse_daemon_defcon(r#"{"data":{"defcon_level":0,"defcon_label":"SAFE"}}"#), None);
+        assert_eq!(parse_daemon_defcon(r#"{"data":{"defcon_level":2,"defcon_label":"SAFE"}}"#), None);
+        assert_eq!(parse_daemon_defcon(r#"{"data":{"defcon_level":2}}"#), None);
+        assert_eq!(parse_daemon_defcon(r#"{"data":{}}"#), None);
+        assert_eq!(parse_daemon_defcon("not json"), None);
+        assert_eq!(parse_daemon_defcon(""), None);
+    }
+
+    #[test]
+    fn resolve_prefers_daemon_and_labels_the_fallback() {
+        let (level, label, source) = resolve_defcon(Some((3, "HIGH".to_string())), 5, "SAFE");
+        assert_eq!((level, label.as_str(), source), (3, "HIGH", "daemon"));
+        let (level, label, source) = resolve_defcon(None, 5, "SAFE");
+        assert_eq!((level, label.as_str(), source), (5, "SAFE", "log-derived"));
+    }
+
+    #[test]
+    fn annotation_sits_next_to_the_tailed_log() {
+        assert_eq!(annotation_for("logs/aegis_core.ndjson"), "logs/defcon_annotations.json");
+        assert_eq!(annotation_for("logs\\aegis_core.ndjson"), "logs\\defcon_annotations.json");
+        assert_eq!(annotation_for("logs/anomalous.json"), "logs/defcon_annotations.json");
+        assert_eq!(annotation_for("bare.ndjson"), "defcon_annotations.json");
+    }
+
+    #[test]
+    fn daemon_levels_map_to_the_same_display_record() {
+        // One constructor: daemon path and file path render identically.
+        assert_eq!(defcon_for_level(1).label, "MAXIMUM");
+        assert_eq!(defcon_for_level(2).label, "SEVERE");
+        assert_eq!(defcon_for_level(3).label, "HIGH");
+        assert_eq!(defcon_for_level(4).label, "ELEVATED");
+        assert_eq!(defcon_for_level(5).label, "SAFE");
+        assert_eq!(defcon_for_level(99).label, "SAFE");
+    }
+
+    #[test]
+    fn last_event_age_is_honest_and_saturating() {
+        // DEADCODE-QUARANTINE: 0 = never processed (honest), clock skew
+        // must clamp instead of underflowing a u64 subtraction.
+        assert_eq!(last_event_age_ms(5000, 0), 0);
+        assert_eq!(last_event_age_ms(5000, 4000), 1000);
+        assert_eq!(last_event_age_ms(4000, 5000), 0);
+    }
+}
+
+// =====================================================================
+// HEALTH COUNTER PINS (DEADCODE-QUARANTINE)
+// =====================================================================
+// The health pipe's counters must move with real work — the old response
+// reported hardcoded zeros, so a supervisor could not tell a live tail
+// loop from a wedged one. Windows-only because the pipe module itself is
+// (non-Windows builds use the daemon_pipe stub).
+#[cfg(all(test, windows))]
+mod health_counter_tests {
+    use std::sync::atomic::Ordering;
+
+    use super::health_pipe::{
+        note_log_event, note_response_flushed, IN_EVENTS, LAST_EVENT_TICK, OUT_EVENTS,
+    };
+
+    #[test]
+    fn counters_move_with_real_work() {
+        // Read-then-delta keeps the assertion order-independent; no other
+        // test in this binary touches these statics.
+        let in0 = IN_EVENTS.load(Ordering::Acquire);
+        let out0 = OUT_EVENTS.load(Ordering::Acquire);
+        note_log_event();
+        note_log_event();
+        note_response_flushed();
+        assert_eq!(IN_EVENTS.load(Ordering::Acquire), in0 + 2);
+        assert_eq!(OUT_EVENTS.load(Ordering::Acquire), out0 + 1);
+        assert!(LAST_EVENT_TICK.load(Ordering::Acquire) > 0);
+    }
 }
 
 // =====================================================================
@@ -970,6 +1444,10 @@ fn main() {
     let mut alert_feed = AlertFeed::new();
     let mut mitigation_feed = MitigationFeed::new();
 
+    // Shutdown semantics (EVT-112): this loop has no graceful exit — the
+    // SHUTDOWN flag is never set anywhere, so Ctrl+C terminates via the OS.
+    // Accepted because the monitor is read-only (tail + queries, no state
+    // to flush); adding a console handler needs runtime testing first.
     loop {
         let mut new_entries = 0;
 
@@ -983,26 +1461,36 @@ fn main() {
             for line in &new_lines {
                 alert_feed.push_from_log(line);
                 mitigation_feed.add_from_log(line);
+                // DEADCODE-QUARANTINE: health counters track the tail — the
+                // displayed security events ARE the lines ingested here.
+                #[cfg(windows)]
+                health_pipe::note_log_event();
             }
         } else {
             tail = TailReader::new(&config.log_path);
         }
 
-        // Calculate DEFCON from cumulative stats
-        let defcon = calculate_defcon(
+        // FE-DEF-095b: daemon health is the DEFCON authority. The file
+        // ladder survives only as an explicitly labeled fallback so a
+        // missing log can never display SAFE over live incidents.
+        let file_defcon = calculate_defcon(
             cum_stats.total_alerts,
             cum_stats.critical_count,
             cum_stats.blocked_count,
             cum_stats.kernel_count,
         );
+        let daemon = daemon_pipe::query_daemon_defcon();
+        let (resolved_level, _, resolved_source) =
+            resolve_defcon(daemon, file_defcon.level, file_defcon.label);
+        let defcon = defcon_for_level(resolved_level);
 
         // Render dashboard (v3.0: with alert + mitigation feeds)
-        render_dashboard(&cum_stats, &defcon, prev_defcon_level, &config, cycle, new_entries, &alert_feed, &mitigation_feed);
+        render_dashboard(&cum_stats, &defcon, resolved_source, prev_defcon_level, &config, cycle, new_entries, &alert_feed, &mitigation_feed);
 
-        // Write enforcement log when DEFCON changes
+        // Write DEFCON annotation when the level changes (advisory only)
         if defcon.level != prev_defcon_level {
-            write_enforcement_log(
-                &config.enforced_path,
+            write_defcon_annotation_log(
+                &config.annotation_path,
                 defcon.level,
                 defcon.label,
                 prev_defcon_level,
@@ -1012,10 +1500,6 @@ fn main() {
             // v3.0: Add DEFCON change to mitigation feed as well
             let action_label = if defcon.level < prev_defcon_level { "ESCALATED" } else { "DE-ESCALATED" };
             mitigation_feed.push(MitigationEntry {
-                time: format!("{}", SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap_or(Duration::from_secs(0))
-                    .as_secs()),
                 action: format!("DEFCON {}", action_label),
                 target: format!("Level {} → {}", prev_defcon_level, defcon.level),
                 reason: "Threat level change".to_string(),

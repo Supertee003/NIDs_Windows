@@ -11,6 +11,8 @@
 
 const std = @import("std");
 const runtime_state = @import("../pipeline/runtime_state.zig");
+const defcon = @import("defcon.zig");
+const diag = @import("../core/diagnostics.zig");
 
 // ============================================================
 // System State Machine
@@ -159,8 +161,13 @@ pub const RuntimeState = struct {
     started_at_ms: i64 = 0,
     uptime_ms: i64 = 0,
     version: []const u8 = "5.0.0",
-    build: []const u8 = "zig-0.13",
+    build: []const u8 = "zig-0.13.0",
     mutex: std.Thread.Mutex = .{},
+
+    /// READY-PROMOTION-001: consecutive healthy samples behind a promotion.
+    /// Kept in the state, not in a caller, so no second authority exists.
+    promote_streak: u8 = 0,
+    last_sample_ms: i64 = 0,
 
     /// Register a subsystem at startup.
     pub fn registerSubsystem(self: *RuntimeState, id: SubsystemId, name: []const u8, version: []const u8, capabilities: []const u8) void {
@@ -268,6 +275,79 @@ pub const RuntimeState = struct {
         }
     }
 
+    /// READY-PROMOTION-001. Healthy samples needed before each promotion step
+    /// and the minimum spacing between counted samples.
+    pub const PROMOTION_SAMPLES: u8 = 3;
+    pub const PROMOTION_MIN_INTERVAL_MS: i64 = 5_000;
+
+    /// The facts a promotion may depend on. They are the same booleans the
+    /// health contract publishes, which is the point: the lifecycle cannot be
+    /// promoted on something health does not also believe.
+    pub const LifecycleFacts = struct {
+        pipeline_ready: bool = false,
+        pipeline_failed: bool = false,
+        bridge_ready: bool = false,
+        data_loss_observed: bool = false,
+
+        pub fn allClear(self: LifecycleFacts) bool {
+            return self.pipeline_ready and !self.pipeline_failed and self.bridge_ready and !self.data_loss_observed;
+        }
+    };
+
+    /// Apply one lifecycle sample. Returns the new state when it changed.
+    ///
+    /// DEFECT-READY-001 was that the daemon sampled this once at startup and
+    /// never again, so a bridge that came up a second later left the process
+    /// DEGRADED until the next restart. DEMOTE is immediate (a failed subsystem
+    /// or fresh loss must not be averaged away); PROMOTE needs
+    /// PROMOTION_SAMPLES consecutive clear samples at least
+    /// PROMOTION_MIN_INTERVAL_MS apart, so a flapping bridge cannot hide.
+    pub fn reconcileLifecycle(self: *RuntimeState, now_ms: i64, facts: LifecycleFacts) ?SystemState {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+
+        var subsystems_healthy = true;
+        for (self.subsystems[0..self.subsystem_count]) |sub| {
+            if (!sub.isHealthy()) subsystems_healthy = false;
+        }
+        const clear = facts.allClear() and subsystems_healthy;
+
+        if (!clear) {
+            self.promote_streak = 0;
+            if (self.system_state == .running or self.system_state == .recovering) {
+                const old = self.system_state;
+                self.system_state = .degraded;
+                std.log.info("[STATE] System: {s} -> {s} (live facts disagree)", .{ old.toString(), self.system_state.toString() });
+                return self.system_state;
+            }
+            return null;
+        }
+
+        if (self.last_sample_ms != 0 and now_ms - self.last_sample_ms < PROMOTION_MIN_INTERVAL_MS) {
+            return null; // Too soon to count another sample; a fast poll must not promote.
+        }
+        self.last_sample_ms = now_ms;
+        if (self.promote_streak < PROMOTION_SAMPLES) self.promote_streak += 1;
+        if (self.promote_streak < PROMOTION_SAMPLES) return null;
+
+        const next: ?SystemState = switch (self.system_state) {
+            .degraded => .recovering,
+            .recovering => .running,
+            .starting, .ready => .running,
+            else => null,
+        };
+        if (next) |n| {
+            if (!self.system_state.canTransition(n)) return null;
+            const old = self.system_state;
+            self.system_state = n;
+            std.log.info("[STATE] System: {s} -> {s} ({} clear samples)", .{ old.toString(), n.toString(), self.promote_streak });
+            // Each step is paid for on its own: RECOVERING -> RUNNING must also
+            // wait PROMOTION_SAMPLES, so the streak restarts after every step.
+            self.promote_streak = 0;
+        }
+        return next;
+    }
+
     /// Get a subsystem by ID.
     pub fn getSubsystem(self: *RuntimeState, id: SubsystemId) ?*SubsystemInfo {
         self.mutex.lock();
@@ -292,8 +372,8 @@ pub const RuntimeState = struct {
         var arr = std.ArrayList(u8).init(a);
         var writer = arr.writer();
         try writer.print(
-            \\{{"state":"{s}","version":"{s}","build":"{s}","uptime_ms":{},"subsystems":[
-        , .{ ss.toString(), ver, bld, uptime });
+            \\{{"state":"{s}","version":"{s}","build":"{s}","uptime_ms":{},"packets_captured":{},"flows_active":{},"subsystems":[
+        , .{ ss.toString(), ver, bld, uptime, runtime_state.g_nose_frames_submitted.load(.acquire), diag.metrics.flows_active.get() });
 
         for (subs, 0..) |sub, i| {
             if (i > 0) try writer.writeByte(',');
@@ -308,6 +388,7 @@ pub const RuntimeState = struct {
         self.mutex.lock();
         const ss = self.system_state;
         const uptime = self.uptime_ms;
+        const ver = self.version;
         const sub_count = self.subsystem_count;
         const subs = self.subsystems[0..sub_count];
         self.mutex.unlock();
@@ -319,15 +400,57 @@ pub const RuntimeState = struct {
 
         var arr = std.ArrayList(u8).init(a);
         var writer = arr.writer();
-        // Hybrid runtime semantics: core liveness is the control/pipeline
-        // spine, while ETW/FIM/registry/WFP adapters are reported separately
-        // through degraded + worker failure fields. An optional data-plane
-        // adapter must not make a healthy control spine appear STOPPED.
+        // Health state must agree with the degraded flag. A live control or
+        // pipeline spine is useful for diagnostics, but it is not a fully
+        // operational NIDS when a required bridge/WFP dependency is absent.
+        // Keep the process serving, while reporting DEGRADED consistently in
+        // both `state` and `degraded`.
         const core_pipeline_failed = (workers.failure_mask & 0x01) != 0;
-        const operational_state = if (workers.pipeline and !core_pipeline_failed) "RUNNING" else "DEGRADED";
+        const queue_drops = runtime_state.g_queue_drops.load(.acquire);
+        const nose_rejected = runtime_state.g_nose_frames_rejected.load(.acquire);
+        const nose_dropped = runtime_state.g_nose_frames_dropped.load(.acquire);
+        const nose_pipe_errors = runtime_state.g_nose_pipe_errors.load(.acquire);
+        const minifilter_ring_dropped = runtime_state.g_minifilter_dropped.load(.acquire);
+        const minifilter_pipeline_dropped = runtime_state.g_minifilter_pipeline_dropped.load(.acquire);
+        // RC-CLOSEOUT: the owner-approved envelope. A counter at or below the
+        // budget is inside the declared loss envelope and must not flip the
+        // runtime to DEGRADED; above it, the strict behaviour returns.
+        const loss_budget = runtime_state.g_loss_budget.load(.acquire);
+        const data_loss_observed = queue_drops > loss_budget or nose_rejected > loss_budget or
+            nose_dropped > loss_budget or nose_pipe_errors > loss_budget or
+            minifilter_ring_dropped > loss_budget or minifilter_pipeline_dropped > loss_budget;
+        const operationally_ready = workers.pipeline and !core_pipeline_failed and bridge_ready and !data_loss_observed;
+        const operational_state = if (operationally_ready) "RUNNING" else "DEGRADED";
+        const health_degraded = !all_healthy or !workers.pipeline or core_pipeline_failed or !bridge_ready or data_loss_observed;
+        // FE-DEF-095a: daemon-owned DEFCON rides the health payload so every
+        // UI reads one authority instead of computing its own ladder from
+        // files. Additive fields; older readers ignore unknown keys.
+        const defcon_total = runtime_state.g_pipeline_detections.load(.acquire);
+        const defcon_critical = runtime_state.g_critical_detections.load(.acquire);
+        // QUAR-RCPT-112: confirmed counts every receipt-verified host effect
+        // (blocks plus quarantines, saturating). Thresholds in defcon.level
+        // are unchanged; only the input widens from blocks-only.
+        const defcon_confirmed = runtime_state.g_confirmed_blocks.load(.acquire) +|
+            runtime_state.g_confirmed_quarantines.load(.acquire);
+        const defcon_level = defcon.level(defcon_total, defcon_critical, defcon_confirmed);
+        // STEP-43 + P0-8 remainder, additive keys (older readers ignore
+        // unknown fields): packets_captured is canonical data-plane ingress
+        // (nose submissions, same source as metrics.snapshot and the Python
+        // counters synthesis — NOT the dormant direct-Npcap counter), and
+        // counters mirrors the control_api mapping so the daemon itself
+        // satisfies RUNTIME_CONTRACT §4.1.
         try writer.print(
-            \\{{"component":"core","state":"{s}","runtime_state":"{s}","pid":{} ,"uptime_ms":{},"last_event_ms":{},"degraded":{},"capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},"data_plane":{{"nose_connected":{},"nose_frames_read":{},"nose_frames_rejected":{},"nose_frames_submitted":{},"nose_frames_dropped":{},"nose_pipe_errors":{},"nose_last_event_id":{},"nose_duplicate_event_ids":{},"nose_non_monotonic_event_ids":{}}},"deps":[
-        , .{ operational_state, ss.toString(), pid, uptime, runtime_state.g_last_event_ms, !all_healthy or !bridge_ready, wfp_ready, cpp_ready, udp_ready, runtime_state.g_nose_connected, runtime_state.g_nose_frames_read, runtime_state.g_nose_frames_rejected, runtime_state.g_nose_frames_submitted, runtime_state.g_nose_frames_dropped, runtime_state.g_nose_pipe_errors, runtime_state.g_nose_last_event_id, runtime_state.g_nose_duplicate_event_ids, runtime_state.g_nose_non_monotonic_event_ids });
+            \\{{"component":"core","version":"{s}","state":"{s}","runtime_state":"{s}","pid":{} ,"uptime_ms":{},"last_event_ms":{},"degraded":{},"rules_loaded":{},"policies_loaded":{},"defcon_level":{},"defcon_label":"{s}","capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},"data_plane":{{"nose_connected":{},"nose_frames_read":{},"nose_frames_rejected":{},"nose_frames_submitted":{},"nose_frames_dropped":{},"nose_pipe_errors":{},"nose_last_event_id":{},"nose_duplicate_event_ids":{},"nose_non_monotonic_event_ids":{}}},"packets_captured":{},"flows_active":{},"counters":{{"in_events":{},"out_events":{},"errors":{},"dropped":{}}},
+        , .{ ver, operational_state, ss.toString(), pid, uptime, runtime_state.lastEventAgeMs(runtime_state.g_last_event_ms.load(.acquire), std.time.milliTimestamp()), health_degraded, runtime_state.g_rules_loaded.load(.acquire), runtime_state.g_policies_loaded.load(.acquire), defcon_level, defcon.labelFor(defcon_level), wfp_ready, cpp_ready, udp_ready, runtime_state.g_nose_connected.load(.acquire), runtime_state.g_nose_frames_read.load(.acquire), runtime_state.g_nose_frames_rejected.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), runtime_state.g_nose_frames_dropped.load(.acquire), runtime_state.g_nose_pipe_errors.load(.acquire), runtime_state.g_nose_last_event_id.load(.acquire), runtime_state.g_nose_duplicate_event_ids.load(.acquire), runtime_state.g_nose_non_monotonic_event_ids.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), diag.metrics.flows_active.get(), runtime_state.g_nose_frames_read.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), runtime_state.g_nose_pipe_errors.load(.acquire), runtime_state.g_nose_frames_dropped.load(.acquire) });
+        try writer.print("\"data_integrity\":{{\"queue_dropped_total\":{},\"nose_frames_rejected\":{},\"nose_frames_dropped\":{},\"nose_pipe_errors\":{},\"minifilter_ring_dropped\":{},\"minifilter_pipeline_dropped\":{},\"loss_budget\":{}}},\"deps\":[", .{
+            queue_drops,
+            nose_rejected,
+            nose_dropped,
+            nose_pipe_errors,
+            minifilter_ring_dropped,
+            minifilter_pipeline_dropped,
+            loss_budget,
+        });
 
         try writer.print("{{\"name\":\"bridge\",\"state\":\"{s}\"}},{{\"name\":\"pipeline\",\"state\":\"{s}\"}}],\"subsystems\":[", .{
             if (bridge_ready) "RUNNING" else "DEGRADED",
@@ -411,7 +534,7 @@ test "SubsystemState: health check" {
 test "RuntimeState: register and start subsystem" {
     var rs = RuntimeState{};
     rs.registerSubsystem(.zig, "zig", "5.0.0", "core");
-    rs.registerSubsystem(.go, "go", "2.1.0", "capture");
+    rs.registerSubsystem(.go, "go", "5.0.0", "capture");
 
     try std.testing.expectEqual(@as(usize, 2), rs.subsystem_count);
     try std.testing.expectEqual(SubsystemState.stopped, rs.subsystems[0].state);
@@ -424,12 +547,219 @@ test "RuntimeState: register and start subsystem" {
 test "RuntimeState: subsystem failure degrades system" {
     var rs = RuntimeState{};
     rs.registerSubsystem(.zig, "zig", "5.0.0", "");
-    rs.registerSubsystem(.go, "go", "2.1.0", "");
+    rs.registerSubsystem(.go, "go", "5.0.0", "");
     rs.subsystemStarted(.zig, 100);
     rs.subsystemStarted(.go, 200);
     rs.system_state = .running;
 
     rs.subsystemFailed(.go, "crashed");
     rs.recomputeHealth();
+    try std.testing.expectEqual(SystemState.degraded, rs.system_state);
+}
+
+test "statusJson exposes packets_captured and flows_active from live counters" {
+    // STEP-43: system.status readers did dict.get(key, 0) on absent keys.
+    const prev_sub = runtime_state.g_nose_frames_submitted.load(.acquire);
+    defer runtime_state.g_nose_frames_submitted.store(prev_sub, .monotonic);
+    const prev_flow: i64 = diag.metrics.flows_active.get();
+    defer diag.metrics.flows_active.set(prev_flow);
+    runtime_state.g_nose_frames_submitted.store(424242, .monotonic);
+    diag.metrics.flows_active.set(7);
+    var rs = RuntimeState{};
+    const out = try rs.statusJson(std.testing.allocator);
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"packets_captured\":424242") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"flows_active\":7") != null);
+}
+
+test "healthJson exposes packets_captured, flows_active and counters from live counters" {
+    // STEP-43 + P0-8 remainder: RUNTIME_CONTRACT §4.1 counters must come
+    // from the daemon, with the same mapping the Python shim synthesizes
+    // (in=read, out=submitted, errors=pipe_errors, dropped=dropped).
+    const prev_read = runtime_state.g_nose_frames_read.load(.acquire);
+    const prev_sub = runtime_state.g_nose_frames_submitted.load(.acquire);
+    const prev_err = runtime_state.g_nose_pipe_errors.load(.acquire);
+    const prev_drop = runtime_state.g_nose_frames_dropped.load(.acquire);
+    defer {
+        runtime_state.g_nose_frames_read.store(prev_read, .monotonic);
+        runtime_state.g_nose_frames_submitted.store(prev_sub, .monotonic);
+        runtime_state.g_nose_pipe_errors.store(prev_err, .monotonic);
+        runtime_state.g_nose_frames_dropped.store(prev_drop, .monotonic);
+    }
+    const prev_flow: i64 = diag.metrics.flows_active.get();
+    defer diag.metrics.flows_active.set(prev_flow);
+    runtime_state.g_nose_frames_read.store(1000, .monotonic);
+    runtime_state.g_nose_frames_submitted.store(900, .monotonic);
+    runtime_state.g_nose_pipe_errors.store(3, .monotonic);
+    runtime_state.g_nose_frames_dropped.store(12, .monotonic);
+    diag.metrics.flows_active.set(5);
+    var rs = RuntimeState{};
+    const workers = WorkerReadiness{ .pipeline = true, .sensor = true, .nose = true, .etw = true, .fim = true, .registry = true, .failed = false, .failure_reason = "", .failure_mask = 0 };
+    const out = try rs.healthJson(std.testing.allocator, 1234, true, true, true, true, workers);
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"packets_captured\":900") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"flows_active\":5") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"counters\":{\"in_events\":1000,\"out_events\":900,\"errors\":3,\"dropped\":12}") != null);
+}
+
+test "healthJson reports DEGRADED when ingress loss counters are nonzero" {
+    const saved = .{
+        runtime_state.g_queue_drops.load(.acquire),
+        runtime_state.g_nose_frames_rejected.load(.acquire),
+        runtime_state.g_nose_frames_dropped.load(.acquire),
+        runtime_state.g_nose_pipe_errors.load(.acquire),
+        runtime_state.g_minifilter_dropped.load(.acquire),
+        runtime_state.g_minifilter_pipeline_dropped.load(.acquire),
+    };
+    defer {
+        runtime_state.g_queue_drops.store(saved[0], .monotonic);
+        runtime_state.g_nose_frames_rejected.store(saved[1], .monotonic);
+        runtime_state.g_nose_frames_dropped.store(saved[2], .monotonic);
+        runtime_state.g_nose_pipe_errors.store(saved[3], .monotonic);
+        runtime_state.g_minifilter_dropped.store(saved[4], .monotonic);
+        runtime_state.g_minifilter_pipeline_dropped.store(saved[5], .monotonic);
+    }
+    runtime_state.g_queue_drops.store(1, .monotonic);
+    runtime_state.g_nose_frames_rejected.store(0, .monotonic);
+    runtime_state.g_nose_frames_dropped.store(0, .monotonic);
+    runtime_state.g_nose_pipe_errors.store(0, .monotonic);
+    runtime_state.g_minifilter_dropped.store(0, .monotonic);
+    runtime_state.g_minifilter_pipeline_dropped.store(0, .monotonic);
+    var rs = RuntimeState{};
+    const workers = WorkerReadiness{ .pipeline = true, .sensor = true, .nose = true, .etw = true, .fim = true, .registry = true, .failed = false, .failure_reason = "", .failure_mask = 0 };
+    const out = try rs.healthJson(std.testing.allocator, 1234, true, true, true, true, workers);
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"state\":\"DEGRADED\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"degraded\":true") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"queue_dropped_total\":1") != null);
+}
+
+test "healthJson accepts loss at or below the owner-approved budget" {
+    const saved = .{
+        runtime_state.g_queue_drops.load(.acquire),
+        runtime_state.g_nose_frames_rejected.load(.acquire),
+        runtime_state.g_nose_frames_dropped.load(.acquire),
+        runtime_state.g_nose_pipe_errors.load(.acquire),
+        runtime_state.g_minifilter_dropped.load(.acquire),
+        runtime_state.g_minifilter_pipeline_dropped.load(.acquire),
+        runtime_state.g_loss_budget.load(.acquire),
+    };
+    defer {
+        runtime_state.g_queue_drops.store(saved[0], .monotonic);
+        runtime_state.g_nose_frames_rejected.store(saved[1], .monotonic);
+        runtime_state.g_nose_frames_dropped.store(saved[2], .monotonic);
+        runtime_state.g_nose_pipe_errors.store(saved[3], .monotonic);
+        runtime_state.g_minifilter_dropped.store(saved[4], .monotonic);
+        runtime_state.g_minifilter_pipeline_dropped.store(saved[5], .monotonic);
+        runtime_state.g_loss_budget.store(saved[6], .monotonic);
+    }
+    runtime_state.g_queue_drops.store(1, .monotonic);
+    runtime_state.g_nose_frames_rejected.store(0, .monotonic);
+    runtime_state.g_nose_frames_dropped.store(0, .monotonic);
+    runtime_state.g_nose_pipe_errors.store(0, .monotonic);
+    runtime_state.g_minifilter_dropped.store(0, .monotonic);
+    runtime_state.g_minifilter_pipeline_dropped.store(0, .monotonic);
+    runtime_state.g_loss_budget.store(2, .monotonic);
+    var rs = RuntimeState{};
+    const workers = WorkerReadiness{ .pipeline = true, .sensor = true, .nose = true, .etw = true, .fim = true, .registry = true, .failed = false, .failure_reason = "", .failure_mask = 0 };
+    const out = try rs.healthJson(std.testing.allocator, 1234, true, true, true, true, workers);
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"state\":\"RUNNING\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"degraded\":false") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"loss_budget\":2") != null);
+}
+
+test "READY-PROMOTION: three clear samples promote DEGRADED -> RECOVERING -> RUNNING" {
+    var rs = RuntimeState{};
+    rs.registerSubsystem(.zig, "zig", "5.0.0", "");
+    rs.subsystemStarted(.zig, 1);
+    rs.system_state = .degraded;
+    const clear = RuntimeState.LifecycleFacts{
+        .pipeline_ready = true,
+        .pipeline_failed = false,
+        .bridge_ready = true,
+        .data_loss_observed = false,
+    };
+    var t: i64 = 1_000;
+    const step = RuntimeState.PROMOTION_MIN_INTERVAL_MS;
+    // Two samples are not enough; the third promotes.
+    try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, clear));
+    t += step;
+    try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, clear));
+    t += step;
+    try std.testing.expectEqual(@as(?SystemState, SystemState.recovering), rs.reconcileLifecycle(t, clear));
+    try std.testing.expectEqual(SystemState.recovering, rs.system_state);
+    t += step;
+    try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, clear));
+    t += step;
+    try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, clear));
+    t += step;
+    try std.testing.expectEqual(@as(?SystemState, SystemState.running), rs.reconcileLifecycle(t, clear));
+    try std.testing.expectEqual(SystemState.running, rs.system_state);
+}
+
+test "READY-PROMOTION: a failure inside the hysteresis window resets the streak" {
+    var rs = RuntimeState{};
+    rs.registerSubsystem(.zig, "zig", "5.0.0", "");
+    rs.subsystemStarted(.zig, 1);
+    rs.system_state = .degraded;
+    const clear = RuntimeState.LifecycleFacts{ .pipeline_ready = true, .bridge_ready = true };
+    var t: i64 = 1_000;
+    _ = rs.reconcileLifecycle(t, clear);
+    t += RuntimeState.PROMOTION_MIN_INTERVAL_MS;
+    _ = rs.reconcileLifecycle(t, clear);
+    // One bad sample between them, then the streak must start again from zero.
+    t += RuntimeState.PROMOTION_MIN_INTERVAL_MS;
+    const bad = RuntimeState.LifecycleFacts{ .pipeline_ready = false, .bridge_ready = true };
+    try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, bad));
+    try std.testing.expectEqual(SystemState.degraded, rs.system_state);
+    t += RuntimeState.PROMOTION_MIN_INTERVAL_MS;
+    try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, clear));
+    try std.testing.expectEqual(SystemState.degraded, rs.system_state);
+}
+
+test "READY-PROMOTION: data loss above budget blocks promotion even with every worker ready" {
+    var rs = RuntimeState{};
+    rs.registerSubsystem(.zig, "zig", "5.0.0", "");
+    rs.subsystemStarted(.zig, 1);
+    rs.system_state = .degraded;
+    const lossy = RuntimeState.LifecycleFacts{
+        .pipeline_ready = true,
+        .pipeline_failed = false,
+        .bridge_ready = true,
+        .data_loss_observed = true,
+    };
+    var t: i64 = 1_000;
+    var i: usize = 0;
+    while (i < 10) : (i += 1) {
+        try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, lossy));
+        t += RuntimeState.PROMOTION_MIN_INTERVAL_MS;
+    }
+    try std.testing.expectEqual(SystemState.degraded, rs.system_state);
+}
+
+test "READY-PROMOTION: a fast poll cannot accumulate samples" {
+    var rs = RuntimeState{};
+    rs.registerSubsystem(.zig, "zig", "5.0.0", "");
+    rs.subsystemStarted(.zig, 1);
+    rs.system_state = .degraded;
+    const clear = RuntimeState.LifecycleFacts{ .pipeline_ready = true, .bridge_ready = true };
+    var t: i64 = 1_000;
+    var i: usize = 0;
+    // 20 samples 100 ms apart are 2 s of evidence, not 3 x 5 s.
+    while (i < 20) : (i += 1) {
+        _ = rs.reconcileLifecycle(t, clear);
+        t += 100;
+    }
+    try std.testing.expectEqual(SystemState.degraded, rs.system_state);
+}
+
+test "READY-PROMOTION: losing a required fact demotes RUNNING immediately" {
+    var rs = RuntimeState{};
+    rs.registerSubsystem(.zig, "zig", "5.0.0", "");
+    rs.subsystemStarted(.zig, 1);
+    rs.system_state = .running;
+    const bad = RuntimeState.LifecycleFacts{ .pipeline_ready = true, .bridge_ready = false };
+    try std.testing.expectEqual(@as(?SystemState, SystemState.degraded), rs.reconcileLifecycle(1_000, bad));
     try std.testing.expectEqual(SystemState.degraded, rs.system_state);
 }

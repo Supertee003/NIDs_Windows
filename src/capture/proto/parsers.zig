@@ -30,17 +30,38 @@ pub const DnsQuery = struct {
 
 pub fn parseDns(buf: []const u8, name_out: []u8) ?DnsQuery {
     if (buf.len < @sizeOf(DnsHeader)) return null;
-    const hdr: *const DnsHeader = @ptrCast(@alignCast(buf.ptr));
-    const flags = std.mem.readInt(u16, std.mem.asBytes(&hdr.flags), .big);
+    // Byte reads only: packet buffers carry no alignment guarantee and
+    // @alignCast on an odd address would be UB (x86 tolerates it silently).
+    const flags = std.mem.readInt(u16, buf[2..4], .big);
     const is_response = (flags & 0x8000) != 0;
-    const qdcount = std.mem.readInt(u16, std.mem.asBytes(&hdr.qdcount), .big);
+    const qdcount = std.mem.readInt(u16, buf[4..6], .big);
     if (qdcount == 0) return null;
+    const ancount = std.mem.readInt(u16, buf[8..10], .big);
     var off: usize = @sizeOf(DnsHeader);
+    // DNS-PARSE-109: DNS name compression (RFC 1035 §4.1.4). A length
+    // octet with the top two bits set is a 14-bit pointer into the
+    // message. Hops are bounded (pointer loops fail closed); the
+    // qtype/qclass live after the pointer BYTES, not after the target
+    // name, so the first jump site is remembered.
+    var pointer_count: usize = 0;
+    const MAX_POINTERS: usize = 10;
+    var after_pointer: ?usize = null;
     var name_len: usize = 0;
     while (off < buf.len) {
         const label_len = buf[off];
         off += 1;
         if (label_len == 0) break;
+        if (label_len >= 0xC0) {
+            if (pointer_count >= MAX_POINTERS) return null;
+            if (off >= buf.len) return null;
+            const pointer: usize = (@as(usize, label_len & 0x3F) << 8) | buf[off];
+            off += 1;
+            if (after_pointer == null) after_pointer = off;
+            if (pointer >= buf.len) return null;
+            off = pointer;
+            pointer_count += 1;
+            continue;
+        }
         if (off + label_len > buf.len) return null;
         if (name_len > 0 and name_len < name_out.len) {
             name_out[name_len] = '.';
@@ -51,15 +72,16 @@ pub fn parseDns(buf: []const u8, name_out: []u8) ?DnsQuery {
         name_len += label_len;
         off += label_len;
     }
-    if (off + 4 > buf.len) return null;
-    const qtype = std.mem.readInt(u16, buf[off..][0..2], .big);
-    const qclass = std.mem.readInt(u16, buf[off + 2 ..][0..2], .big);
+    const tail = after_pointer orelse off;
+    if (tail + 4 > buf.len) return null;
+    const qtype = std.mem.readInt(u16, buf[tail..][0..2], .big);
+    const qclass = std.mem.readInt(u16, buf[tail + 2 ..][0..2], .big);
     return .{
         .name = name_out[0..name_len],
         .qtype = qtype,
         .qclass = qclass,
         .is_response = is_response,
-        .answers = std.mem.readInt(u16, std.mem.asBytes(&hdr.ancount), .big),
+        .answers = ancount,
     };
 }
 
@@ -97,7 +119,12 @@ pub fn parseHttpRequest(buf: []const u8) ?HttpRequest {
     const ver = it.next() orelse return null;
     if (it.next() != null) return null; // malformed
 
-    // Look for Host: and User-Agent: in headers
+    // Look for Host: and User-Agent: in headers.
+    // HTTP-UNBOUND-108 verdict: NO truncation cap. The loop provably
+    // terminates (each iteration consumes past one '\n', input-bounded)
+    // and allocates nothing (slices into buf), so a header COUNT cap
+    // would buy nothing while opening an evasion blind spot (Host:
+    // past the cap silently missed). Full visibility, linear cost.
     var host: ?[]const u8 = null;
     var ua: ?[]const u8 = null;
     var rest = buf[eol + 1 ..];
@@ -356,4 +383,109 @@ test "Kerberos AS-REQ/AS-REP detection" {
     try std.testing.expect(isKerberosAsReq(&asreq));
     try std.testing.expect(isKerberosAsRep(&asrep));
     try std.testing.expect(!isKerberosAsReq(&asrep));
+}
+
+test "parseDns compression pointer" {
+    // DNS packet with compression pointer (0xC0 0x0C points to offset 12)
+    var pkt: [50]u8 = undefined;
+    @memset(&pkt, 0);
+    // Header: id=0x1234, flags=0x0100, qdcount=1
+    pkt[0] = 0x12; pkt[1] = 0x34;
+    pkt[2] = 0x01; pkt[3] = 0x00;
+    pkt[4] = 0x00; pkt[5] = 0x01;
+    // qname at offset 12: "example.com" = 7example3com0
+    pkt[12] = 7; @memcpy(pkt[13..20], "example");
+    pkt[20] = 3; @memcpy(pkt[21..24], "com"); pkt[24] = 0;
+    // qtype=1 (A), qclass=1 (IN)
+    pkt[25] = 0x00; pkt[26] = 0x01;
+    pkt[27] = 0x00; pkt[28] = 0x01;
+    var name_buf: [64]u8 = undefined;
+    const q1 = parseDns(pkt[0..29], &name_buf).?;
+    try std.testing.expectEqualStrings("example.com", q1.name);
+    try std.testing.expect(q1.is_response == false);
+
+    // Compressed qname: pointer FIRST (offset 12 -> name at offset 20).
+    // qtype/qclass live after the pointer BYTES (offset 14), not after
+    // the target name -- this pins the after_pointer tail logic, and a
+    // nonzero ancount pins propagation into answers.
+    // (The old layout put the pointer in a second question the parser
+    // never visits -- it parsed qname #1 only, so it pinned nothing.)
+    var pkt2: [40]u8 = undefined;
+    @memset(&pkt2, 0);
+    pkt2[0] = 0x12; pkt2[1] = 0x34; // id
+    pkt2[2] = 0x01; pkt2[3] = 0x00; // flags
+    pkt2[4] = 0x00; pkt2[5] = 0x01; // qdcount=1
+    pkt2[8] = 0x00; pkt2[9] = 0x03; // ancount=3 (must surface as answers)
+    pkt2[12] = 0xC0; pkt2[13] = 0x14; // pointer to offset 20
+    pkt2[14] = 0x00; pkt2[15] = 0x01; // qtype=A (after pointer bytes)
+    pkt2[16] = 0x00; pkt2[17] = 0x01; // qclass=IN
+    // target name at offset 20: "example.com"
+    pkt2[20] = 7; @memcpy(pkt2[21..28], "example");
+    pkt2[28] = 3; @memcpy(pkt2[29..32], "com"); pkt2[32] = 0;
+    var name_buf2: [64]u8 = undefined;
+    const q2 = parseDns(pkt2[0..33], &name_buf2).?;
+    try std.testing.expectEqualStrings("example.com", q2.name);
+    try std.testing.expectEqual(@as(u16, 1), q2.qtype);
+    try std.testing.expectEqual(@as(u16, 1), q2.qclass);
+    try std.testing.expectEqual(@as(u16, 3), q2.answers);
+}
+
+test "parseDns pointer loop fails closed" {
+    // qname at 12 points to itself: hop bound (MAX_POINTERS) must trip
+    // and parsing must return null, never spin.
+    var pkt: [20]u8 = undefined;
+    @memset(&pkt, 0);
+    pkt[0] = 0x12; pkt[1] = 0x34;
+    pkt[2] = 0x01; pkt[3] = 0x00;
+    pkt[4] = 0x00; pkt[5] = 0x01; // qdcount=1
+    pkt[12] = 0xC0; pkt[13] = 0x0C; // pointer to offset 12 (self)
+    pkt[14] = 0x00; pkt[15] = 0x01;
+    pkt[16] = 0x00; pkt[17] = 0x01;
+    var name_buf: [64]u8 = undefined;
+    try std.testing.expect(parseDns(pkt[0..18], &name_buf) == null);
+}
+
+test "parseDns out-of-bounds pointer fails closed" {
+    // pointer past end of message must return null, never over-read.
+    var pkt: [20]u8 = undefined;
+    @memset(&pkt, 0);
+    pkt[0] = 0x12; pkt[1] = 0x34;
+    pkt[2] = 0x01; pkt[3] = 0x00;
+    pkt[4] = 0x00; pkt[5] = 0x01; // qdcount=1
+    pkt[12] = 0xC0; pkt[13] = 0xFF; // pointer to offset 255 (past end)
+    pkt[14] = 0x00; pkt[15] = 0x01;
+    pkt[16] = 0x00; pkt[17] = 0x01;
+    var name_buf: [64]u8 = undefined;
+    try std.testing.expect(parseDns(pkt[0..18], &name_buf) == null);
+}
+
+test "parseHttpRequest no header cap" {
+    // HTTP-UNBOUND-108 pin: Host:/User-Agent: past 100+ filler headers
+    // MUST still be found. A header COUNT cap would silently miss them
+    // (evasion blind spot); the scan stays input-bounded and zero-copy.
+    var buf = std.heap.page_allocator.alloc(u8, 4096) catch unreachable;
+    defer std.heap.page_allocator.free(buf);
+    const base = "GET / HTTP/1.1\r\n";
+    var pos: usize = 0;
+    @memcpy(buf[0..base.len], base);
+    pos += base.len;
+    var i: usize = 0;
+    while (i < 105) : (i += 1) {
+        var hdr_buf: [64]u8 = undefined;
+        const written = std.fmt.bufPrint(&hdr_buf, "X-Header-{d}: value\r\n", .{i}) catch unreachable;
+        @memcpy(buf[pos..pos+written.len], written);
+        pos += written.len;
+    }
+    const host_hdr = "Host: deep.example.com\r\n";
+    @memcpy(buf[pos..pos+host_hdr.len], host_hdr);
+    pos += host_hdr.len;
+    const ua_hdr = "User-Agent: probe/1.0\r\n";
+    @memcpy(buf[pos..pos+ua_hdr.len], ua_hdr);
+    pos += ua_hdr.len;
+    @memcpy(buf[pos..pos+2], "\r\n");
+    pos += 2;
+    const r = parseHttpRequest(buf[0..pos]).?;
+    try std.testing.expectEqual(HttpMethod.GET, r.method);
+    try std.testing.expectEqualStrings("deep.example.com", r.host.?);
+    try std.testing.expectEqualStrings("probe/1.0", r.user_agent.?);
 }

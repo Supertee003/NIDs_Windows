@@ -15,6 +15,7 @@ const event = @import("../contract/event.zig");
 const diag = @import("../core/diagnostics.zig");
 const pep = @import("pep_bindings.zig");
 const policy = @import("policy_ir.zig");
+const runtime_state = @import("../pipeline/runtime_state.zig");
 
 // ============================================================================
 // FederationBackend — escalation to peer nodes
@@ -95,27 +96,60 @@ pub const ActionDispatcher = struct {
 
     /// Receipt-aware dispatch path. The legacy dispatch API intentionally
     /// remains unconfirmed because it has no receipt argument. This path is
-    /// the only one allowed to emit BLOCKED_CONFIRMED.
+    /// the only one allowed to emit a confirmed block or quarantine. Returns
+    /// true only when a verified receipt proved the host effect (BE-EVI-097:
+    /// the evidence-log projection gates its enforced claim on this).
     pub fn dispatchWithReceipt(
         ev: *const event.IpcEvent,
         p: policy.Policy,
         decision: pep.PepDecision,
         enforcer: *pep.PepEnforcer,
         receipt: ?pep.PepEnforcementReceipt,
-    ) void {
+    ) bool {
         if (decision == .block) {
+            // QUAR-RCPT-094: the receipt must name the SAME decision being
+            // confirmed — a quarantine receipt can never confirm a block.
             if (receipt) |r| {
-                if (enforcer.verifyEnforcementReceipt(ev, r)) {
+                if (r.decision == .block and enforcer.verifyEnforcementReceipt(ev, r)) {
                     var confirmed = ev.*;
                     confirmed.kind = .action_block;
                     confirmed.fate = .blocked;
                     diag.info("action=BLOCKED_CONFIRMED rule={d} policy_id={d} filter_id={d}", .{ ev.rule_id, p.id, r.filter_id });
+                    // FE-DEF-095a: daemon-owned confirmed-block input. Only
+                    // this receipt-verified path increments; the legacy
+                    // dispatch() below stays unconfirmed by design.
+                    _ = runtime_state.g_confirmed_blocks.fetchAdd(1, .monotonic);
                     _ = ForensicBackend.write(&confirmed);
-                    return;
+                    return true;
+                }
+            }
+        }
+        // QUAR-RCPT-094: receipt-verified quarantine path. Mirrors the block
+        // branch exactly (same-decision guard, tuple-matched read-back,
+        // daemon-owned counter, forensic projection) but emits
+        // action_quarantine/quarantined instead of action_block/blocked.
+        // QUAR-RCPT-112: the Rust PEP executes quarantine through the same
+        // flow-block primitive and returns DECISION_QUARANTINE with a
+        // filter_id, so the receipt is verifiable exactly like a block.
+        if (decision == .quarantine) {
+            if (receipt) |r| {
+                if (r.decision == .quarantine and enforcer.verifyEnforcementReceipt(ev, r)) {
+                    var confirmed = ev.*;
+                    confirmed.kind = .action_quarantine;
+                    confirmed.fate = .quarantined;
+                    // RB013-LOG: name the PEP confirmation explicitly so the
+                    // persisted diagnostic stream carries the receipt-verified
+                    // host effect, not just the pipeline status string.
+                    diag.info("pep=quarantine confirmed=true filter_id={d}", .{r.filter_id});
+                    diag.info("action=QUARANTINED_CONFIRMED rule={d} policy_id={d} filter_id={d}", .{ ev.rule_id, p.id, r.filter_id });
+                    _ = runtime_state.g_confirmed_quarantines.fetchAdd(1, .monotonic);
+                    _ = ForensicBackend.write(&confirmed);
+                    return true;
                 }
             }
         }
         dispatch(ev, p, decision);
+        return false;
     }
 };
 
@@ -182,6 +216,51 @@ test "ActionDispatcher dispatch escalate path" {
         .ttl_sec = 0,
     };
     ActionDispatcher.dispatch(&ev, p, .escalate);
+}
+
+test "QUAR-RCPT-094: confirmed-quarantine kind value is frozen at 65" {
+    // Additive-only contract: existing kind numbers never move (forensic
+    // readers may map them); quarantine takes the next free action value.
+    try std.testing.expectEqual(@as(u8, 65), @intFromEnum(event.EventKind.action_quarantine));
+}
+
+test "QUAR-RCPT-094: quarantine without receipt stays best-effort" {
+    var ev = event.IpcEvent.init(.packet_captured);
+    const p = policy.Policy{
+        .id = 6,
+        .name = "quarantine_noreceipt",
+        .condition = .{ .clauses = &[_]policy.Clause{} },
+        .action = .quarantine,
+        .severity = .critical,
+        .ttl_sec = 0,
+    };
+    var enforcer = pep.PepEnforcer{ .available = false };
+    // No receipt: legacy path, returns false, never touches the
+    // confirmed-quarantine counter.
+    const before = runtime_state.g_confirmed_quarantines.load(.acquire);
+    try std.testing.expect(!ActionDispatcher.dispatchWithReceipt(&ev, p, .quarantine, &enforcer, null));
+    try std.testing.expectEqual(before, runtime_state.g_confirmed_quarantines.load(.acquire));
+    // Bogus receipt (zero filter): fails closed, counter untouched.
+    const bogus = pep.PepEnforcementReceipt{
+        .decision = .quarantine,
+        .reason = 0,
+        .quota_remaining = 0,
+        .signed_by = 0,
+        .filter_id = 0,
+    };
+    try std.testing.expect(!ActionDispatcher.dispatchWithReceipt(&ev, p, .quarantine, &enforcer, bogus));
+    try std.testing.expectEqual(before, runtime_state.g_confirmed_quarantines.load(.acquire));
+    // Cross-decision proof rejected: a BLOCK receipt can never confirm
+    // a quarantine decision (same-decision guard).
+    const cross = pep.PepEnforcementReceipt{
+        .decision = .block,
+        .reason = 0,
+        .quota_remaining = 0,
+        .signed_by = 0,
+        .filter_id = 9,
+    };
+    try std.testing.expect(!ActionDispatcher.dispatchWithReceipt(&ev, p, .quarantine, &enforcer, cross));
+    try std.testing.expectEqual(before, runtime_state.g_confirmed_quarantines.load(.acquire));
 }
 
 test "ActionDispatcher multiple dispatches do not interfere" {

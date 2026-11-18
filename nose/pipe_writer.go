@@ -8,7 +8,9 @@
 //
 // Frame protocol (shared with core/nose_pipe_reader.zig):
 //
-//	u32 LE length (109) followed by the raw wire bytes.
+//	u32 LE length (109 v1, 133 v2, or 165..1189 v3) followed by raw wire bytes.
+//	v1/v2 are metadata-only compatibility frames; v3 carries bounded payload
+//	and capture provenance (PAYLOAD-ENVELOPE-V3-001).
 //
 // Reconnection is automatic: if core is not up yet, the writer retries
 // with backoff and drops frames until the reader connects (NIDS must
@@ -73,8 +75,8 @@ func (c *pipeConn) close() {
 	}
 }
 
-// NewFrameWriter creates a writer that delivers 109-byte frames to the
-// named pipe used by the Zig core.
+// NewFrameWriter creates a writer that delivers length-prefixed canonical
+// frames (109-byte v1, 133-byte v2) to the named pipe used by the Zig core.
 func NewFrameWriter(pipePath string) *FrameWriter {
 	if pipePath == "" {
 		pipePath = nosePipeName
@@ -110,15 +112,42 @@ func dialPipe(path string) *pipeConn {
 }
 
 // Send encodes a CanonicalEvent and writes one length-prefixed frame.
-// It returns true only when the complete frame was delivered. Live capture
-// remains non-blocking and may ignore false; deterministic observe injection
-// uses the result to perform bounded retries without changing live semantics.
+// Version-dispatched: IPv6 events go out as 133-byte v2 frames, everything
+// else stays frozen v1. It returns true only when the complete frame was
+// delivered. Live capture remains non-blocking and may ignore false;
+// deterministic observe injection uses the result to perform bounded
+// retries without changing live semantics.
 func (w *FrameWriter) Send(ev *CanonicalEvent) bool {
-	wire, serr := ev.Serialize()
+	var wire []byte
+	if ev.IsV6() {
+		v2, serr := ev.SerializeV2()
+		if serr != nil {
+			return false
+		}
+		wire = v2[:]
+	} else {
+		v1, serr := ev.Serialize()
+		if serr != nil {
+			return false
+		}
+		wire = v1[:]
+	}
+	return w.sendWire(wire, ev.EventID)
+}
+
+// SendWithPayload emits one v3 frame: the frozen v2 base + provenance/
+// payload envelope + bounded captured bytes. It returns false on envelope
+// validation failure or delivery failure; callers must never treat a
+// rejected capture as delivered.
+func (w *FrameWriter) SendWithPayload(ev *CanonicalEvent, env V3Envelope, payload []byte) bool {
+	wire, serr := ev.SerializeV3(env, payload)
 	if serr != nil {
 		return false
 	}
+	return w.sendWire(wire, ev.EventID)
+}
 
+func (w *FrameWriter) sendWire(wire []byte, eventID uint64) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -131,15 +160,15 @@ func (w *FrameWriter) Send(ev *CanonicalEvent) bool {
 		return false
 	}
 
-	var frame [4 + EventWireSize]byte
+	var frame [4 + EventV3MaxWireSize]byte
 	ple := uint32(len(wire))
 	frame[0] = byte(ple)
 	frame[1] = byte(ple >> 8)
 	frame[2] = byte(ple >> 16)
 	frame[3] = byte(ple >> 24)
-	copy(frame[4:], wire[:])
+	copy(frame[4:], wire)
 
-	werr := w.conn.writeAll(frame[:])
+	werr := w.conn.writeAll(frame[:4+len(wire)])
 	if werr != nil {
 		w.dropped++
 		w.conn.close()
@@ -148,7 +177,7 @@ func (w *FrameWriter) Send(ev *CanonicalEvent) bool {
 	}
 	w.sent++
 	if w.sent == 1 {
-		fmt.Fprintf(os.Stderr, "[NOSE PIPE] first canonical frame sent: %d bytes event_id=%d\n", len(frame), ev.EventID)
+		fmt.Fprintf(os.Stderr, "[NOSE PIPE] first canonical frame sent: %d bytes event_id=%d\n", len(frame), eventID)
 	}
 	return true
 }

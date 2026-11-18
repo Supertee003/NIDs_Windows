@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "46b93dc",
-  "build_date": "2026-09-24T12:09:38.945754+00:00",
+  "source_commit": "f4cde3c",
+  "build_date": "2026-10-23T00:00:00.000000+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "46b93dc",
+      "commit": "419e9f5",
       "source": "src/main.zig",
       "classification": "CANONICAL"
     },
@@ -38,7 +38,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "46b93dc",
+      "commit": "ee1010e",
       "source": "rust-src/lib.rs",
       "classification": "CANONICAL"
     },
@@ -49,7 +49,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "46b93dc",
+      "commit": "daf9088",
       "source": "src/windows/aegis_wfp.c",
       "classification": "CANONICAL"
     },
@@ -60,7 +60,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "46b93dc",
+      "commit": "97bb4a1",
       "source": "src/windows/etw_native.c",
       "classification": "CANONICAL"
     },
@@ -71,7 +71,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "46b93dc",
+      "commit": "bca337e",
       "source": "src/windows/fim_native.c",
       "classification": "CANONICAL"
     },
@@ -82,7 +82,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "go-nose-build-test",
-      "commit": "46b93dc",
+      "commit": "a38f414",
       "source": "nose/main.go",
       "classification": "CANONICAL"
     },
@@ -93,7 +93,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-aggregator-build-test",
-      "commit": "46b93dc",
+      "commit": "a38f414",
       "source": "go/aggregator/main.go",
       "classification": "SUPPORT"
     },
@@ -104,7 +104,7 @@
       "type": "library",
       "required": false,
       "ci_job": "shield-build",
-      "commit": "46b93dc",
+      "commit": "0b36002",
       "source": "shield/src/lib.rs",
       "classification": "SUPPORT"
     },
@@ -115,7 +115,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "46b93dc",
+      "commit": "557b4ce",
       "source": "tools/aegisctl.py",
       "classification": "CANONICAL"
     },
@@ -126,7 +126,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "46b93dc",
+      "commit": "4dc9c09",
       "source": "tools/installer.py"
     },
     {
@@ -136,7 +136,7 @@
       "type": "toolchain",
       "required": true,
       "ci_job": "ts-policy-build",
-      "commit": "46b93dc",
+      "commit": "557b4ce",
       "source": "ts_policy/"
     },
     {
@@ -146,7 +146,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "46b93dc",
+      "commit": "de574b6",
       "source": "brain/"
     }
   ],
@@ -198,50 +198,50 @@
   "artifacts": [
     {
       "path": ".github/workflows/ci.yml",
-      "size": 8067,
-      "sha256": "68f891ce320ea2a1a41398404fa495d559bf036646aea0f2f59f6f32a7904649",
+      "size": 13742,
+      "sha256": "3c21cdec8803543b617b8acea39ee690c8ad550a8d7136e12d883174168a3972",
       "language": "yaml"
     },
     {
       "path": ".github/workflows/host-regression.yml",
-      "size": 5761,
-      "sha256": "b4220e74fd81783bd075f40b524b7d6f92c0a6c93a4bd484688066a726a865f1",
+      "size": 6204,
+      "sha256": "f17e6c97ae8fafb10b7126c61b24818650af76926bb3d18cb7bc009c126051e3",
       "language": "yaml"
     },
     {
       "path": ".gitignore",
-      "size": 1419,
-      "sha256": "392c18f372e4bbf86fb1d77c7b5275f81400cbb170438c7a33904ca50a1ad87a",
+      "size": 2877,
+      "sha256": "e95e5b0c57ed561e45731281f143e885f7f13b995c85bfb0076a299ed3cf0b3e",
       "language": "data"
     },
     {
       "path": "CMakeLists.txt",
-      "size": 1935,
-      "sha256": "cbdcace9a190a974e8615638fd292da24264d08b3df487129c1b268cdbc4f270",
+      "size": 2476,
+      "sha256": "c961c326b1410e0730f29c1a024bebfe9972a0c06c7f8173f3d033ae27e5ac23",
       "language": "data"
     },
     {
       "path": "Cargo.toml",
-      "size": 1057,
-      "sha256": "2442a9b972e9b3409880795b787aebb694a0d488eae1eb99fd203d00de7aa881",
+      "size": 1305,
+      "sha256": "4d48993d200ad8961445e788e6034505d5b1bdc58bf6c9a8721c059834657f30",
       "language": "data"
     },
     {
       "path": "ROADMAP.md",
-      "size": 6304,
-      "sha256": "f519aedcdd6be5ce93589f6d72a79aa50a51ad49bf50302866c600911fba5ea6",
+      "size": 6404,
+      "sha256": "64db8472cf72ed128e6553290cba66de1d2c78f534653192fe78e9568c51cc36",
       "language": "data"
     },
     {
       "path": "brain/__init__.py",
-      "size": 32,
-      "sha256": "dc22c672a8f153a56567126234f2fb243a977c2bdc08dd8b46abed735dcd99d2",
+      "size": 29,
+      "sha256": "0e613667807182b42bc4d328921e16f196e2cfd9d608720db7f8fbc2afc3ccb4",
       "language": "python/cython"
     },
     {
       "path": "brain/acceptance_gates.py",
-      "size": 1748,
-      "sha256": "6d21209a3d8549c9b531f012a2a9e00c3799bac919960be41a0217dec894bab4",
+      "size": 1854,
+      "sha256": "aa54d5f16ad87f5d2b061a22650555180059c3f8e1b6eb8a3df980623b4d787b",
       "language": "python/cython"
     },
     {
@@ -258,45 +258,15 @@
     },
     {
       "path": "brain/aegis_brain_cython/bridge.py",
-      "size": 5081,
-      "sha256": "82d373e112762d0b3602f19d26f6a9849dc05de7613665d417c8b912aa31d4e0",
+      "size": 8189,
+      "sha256": "1805379cc88dd07682b97737df204dbc93e9877d1779cadf9a47acff96b298e8",
       "language": "python/cython"
-    },
-    {
-      "path": "brain/aegis_brain_cython/build/lib.win-amd64-cpython-314/aegis_brain_cython/fast_scan.cp314-win_amd64.pyd",
-      "size": 57856,
-      "sha256": "ff265410d4cf80613f8d146b85b4ef94f3df0e05f8259658cb0cc33e4d0d501f",
-      "language": "data"
-    },
-    {
-      "path": "brain/aegis_brain_cython/build/temp.win-amd64-cpython-314/Release/NIDs_Windows/brain/aegis_brain_cython/fast_scan.cp314-win_amd64.exp",
-      "size": 821,
-      "sha256": "d65299edf7fafea5c1127919d7f6c1bb069c0c1e5aba7001d7919bd89d592a4a",
-      "language": "data"
-    },
-    {
-      "path": "brain/aegis_brain_cython/build/temp.win-amd64-cpython-314/Release/NIDs_Windows/brain/aegis_brain_cython/fast_scan.cp314-win_amd64.lib",
-      "size": 2048,
-      "sha256": "c4704be8dbb3444c32581f67ac2b14ba91237655a7859e02b111ad9eef6d6e76",
-      "language": "data"
-    },
-    {
-      "path": "brain/aegis_brain_cython/build/temp.win-amd64-cpython-314/Release/NIDs_Windows/brain/aegis_brain_cython/fast_scan.obj",
-      "size": 601884,
-      "sha256": "ffecd360e288540a4b3c44b82a19f1549cd388300dc98f2b2f92d92242f3ff90",
-      "language": "data"
     },
     {
       "path": "brain/aegis_brain_cython/fast_scan.c",
       "size": 468223,
       "sha256": "83c7e930bd528c4984f47786ffa83530295ae5cb662cabb61442ba24d6a2ffab",
       "language": "c/c++"
-    },
-    {
-      "path": "brain/aegis_brain_cython/fast_scan.cp314-win_amd64.pyd",
-      "size": 57856,
-      "sha256": "ff265410d4cf80613f8d146b85b4ef94f3df0e05f8259658cb0cc33e4d0d501f",
-      "language": "data"
     },
     {
       "path": "brain/aegis_brain_cython/fast_scan.pyx",
@@ -317,9 +287,15 @@
       "language": "python/cython"
     },
     {
+      "path": "brain/canonical_event.py",
+      "size": 12601,
+      "sha256": "8c529a3aa2d6f9ace44435c21f9427d6858c449fc223b94bfbf52085b6ea5745",
+      "language": "python/cython"
+    },
+    {
       "path": "brain/core_routing.py",
-      "size": 1840,
-      "sha256": "47676674267bd7d3f71a145780c15c6cff94006e65cadefae1803bd09b9e0c7c",
+      "size": 1946,
+      "sha256": "4d7df49d0928466133dba3a7af691d20cf9f4da1ebde407e7d36c76bf716e0e1",
       "language": "python/cython"
     },
     {
@@ -335,18 +311,6 @@
       "language": "python/cython"
     },
     {
-      "path": "brain/cython/aegis_hotspot.c",
-      "size": 1196879,
-      "sha256": "dd01bef88eec7f3ecd02daa7b71b3d62e11a591eec71cbcd84a558945e3d6dfe",
-      "language": "c/c++"
-    },
-    {
-      "path": "brain/cython/aegis_hotspot.cp314-win_amd64.pyd",
-      "size": 156160,
-      "sha256": "4d8ae3dbf4b8163623d529b9f1371a45f27d239b6156d0a408ec93590b07b1b5",
-      "language": "data"
-    },
-    {
       "path": "brain/cython/aegis_hotspot.pxd",
       "size": 1434,
       "sha256": "ac1dadcd689bda3b22b8114144217465fadb39c2b0d65ab3c7399ff905c3babc",
@@ -359,75 +323,27 @@
       "language": "python/cython"
     },
     {
-      "path": "brain/cython/build/lib.win-amd64-cpython-314/aegis_hotspot.cp314-win_amd64.pyd",
-      "size": 156160,
-      "sha256": "4d8ae3dbf4b8163623d529b9f1371a45f27d239b6156d0a408ec93590b07b1b5",
-      "language": "data"
-    },
-    {
-      "path": "brain/cython/build/lib.win-amd64-cpython-314/cython_regex_scan.cp314-win_amd64.pyd",
-      "size": 53760,
-      "sha256": "57d25a45f7fbe02f5eb68ca7044134a42e8dca11def1a12834d3e6e03190a6c1",
-      "language": "data"
-    },
-    {
-      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/aegis_hotspot.cp314-win_amd64.exp",
-      "size": 791,
-      "sha256": "96af74ccc9bb7a2ee3063ba018dec24e01c073624d76ffb7896dc2e9be8000df",
-      "language": "data"
-    },
-    {
-      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/aegis_hotspot.cp314-win_amd64.lib",
-      "size": 2120,
-      "sha256": "05d187ec575c9bdbee6d8556a09de26bd7e0bb4c1b1e2c93f13d55d7b99e98cf",
-      "language": "data"
-    },
-    {
-      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/aegis_hotspot.obj",
-      "size": 1126966,
-      "sha256": "269132daf0f82422fe34d2151f6e585e45fa2cc09aa7186a278e69d4ed2100ba",
-      "language": "data"
-    },
-    {
-      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/cython_regex_scan.cp314-win_amd64.exp",
-      "size": 811,
-      "sha256": "20854e9a8aee795395b8ecd008c19438baa237e0d8c6dcc6400f32f483925b69",
-      "language": "data"
-    },
-    {
-      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/cython_regex_scan.cp314-win_amd64.lib",
-      "size": 2192,
-      "sha256": "1c7bb69f0a5bea30f20a303bca5edad7f5ade16551c7898eff97c2575a1ca42e",
-      "language": "data"
-    },
-    {
-      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/cython_regex_scan.obj",
-      "size": 541022,
-      "sha256": "cacc56f46170b45fef8f60b4b6af9f71e1513ad602cb79cda86651534ff8e92f",
-      "language": "data"
-    },
-    {
-      "path": "brain/cython/cython_regex_scan.c",
-      "size": 411804,
-      "sha256": "21c63ba892d978c2e47fce8aaef7311909f38d450a646db1b3523ec29ee25c1d",
-      "language": "c/c++"
-    },
-    {
-      "path": "brain/cython/cython_regex_scan.cp314-win_amd64.pyd",
-      "size": 53760,
-      "sha256": "57d25a45f7fbe02f5eb68ca7044134a42e8dca11def1a12834d3e6e03190a6c1",
-      "language": "data"
+      "path": "brain/cython/bridge_ipc.pyx",
+      "size": 13512,
+      "sha256": "26b142286b207b961efec81e4cd87be06933032307ffe1264d3bed2577de7db1",
+      "language": "python/cython"
     },
     {
       "path": "brain/cython/cython_regex_scan.pyx",
-      "size": 5339,
-      "sha256": "4b986347463552138668292c10deef33a477cc839e3cb5d22c43e1295a02d193",
+      "size": 5367,
+      "sha256": "dc9f44516a770e6b1647f2a3cb0ec54554b0cd8e6439b66c852ac38fe85bbcdb",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/cython/sensor_pipe.pyx",
+      "size": 2419,
+      "sha256": "c6a2eac891739e07b8072f311915f1b57a02bc2fb53f921d2e83651b86a4cdac",
       "language": "python/cython"
     },
     {
       "path": "brain/cython/setup.py",
-      "size": 1781,
-      "sha256": "b551a6458f2b8cc9e2cc827aef7f3f7de824c137800ec693d4d893f018735bb1",
+      "size": 2472,
+      "sha256": "11d53e9dd0a13639aebc0be73e4f6d4e8dd1e4d1741a16775f056803f8303185",
       "language": "python/cython"
     },
     {
@@ -444,44 +360,62 @@
     },
     {
       "path": "brain/enforcement_pipeline.py",
-      "size": 2395,
-      "sha256": "2d056ee5b4d2374932929f05b453397fb59ca5c33e8e4f4fccd03dc35339d479",
+      "size": 2501,
+      "sha256": "bf0b1f4dbf6b2304dd7edde4eb81a3063c341b8bcbbdc51d9b9332224e00b3ee",
       "language": "python/cython"
     },
     {
       "path": "brain/enforcement_receipt.py",
-      "size": 2856,
-      "sha256": "14a5d3ab42c42084df054097f5e5ac979527d1922cbc53265d6a085ff711106d",
+      "size": 2962,
+      "sha256": "8c5eb4750b1116b7cff70cad909ab5cdca67ad49563f1af5ad7b14b69c849213",
       "language": "python/cython"
     },
     {
       "path": "brain/forensic_evidence.py",
-      "size": 3066,
-      "sha256": "a391bbf346a528b16dd0472d7af12b5a1e2585bf033e3daa7d69a72b838356b1",
+      "size": 3172,
+      "sha256": "9ec42a6800260ed4eca30eed3fe3662beef9cbae89b76754d9a97d623274783e",
       "language": "python/cython"
     },
     {
       "path": "brain/pep_receipt.py",
-      "size": 2714,
-      "sha256": "a1724779b3711eea49490be85ac67cdb213ea6741ca6f0cc5ca77d34e7c484dd",
+      "size": 2820,
+      "sha256": "f09afb49d775f53c539fb05fefb83d748885bbc442daab14fad10e7c46ccc8ea",
       "language": "python/cython"
     },
     {
       "path": "brain/pep_request.py",
-      "size": 2111,
-      "sha256": "3d94472e33e98cc33a0dc96632581c0778dd61180c969bd012ec4b4da97f9de2",
+      "size": 2217,
+      "sha256": "1f7e8d08880e3d43f568d67cf15182ab2cfd9635ab40e5d2af3ad8a86dcf4cba",
       "language": "python/cython"
     },
     {
       "path": "brain/policy_decision.py",
-      "size": 2336,
-      "sha256": "abaedbf40e417bbfdb0b94cf2cc699ce4b227abd2141bf032590284501024d82",
+      "size": 2442,
+      "sha256": "d9b1993acc2e679a6ee4c1a63ef447df812bc4ed12926d925ae10e64e5a66eeb",
       "language": "python/cython"
     },
     {
       "path": "brain/test_acceptance_gates.py",
       "size": 1498,
       "sha256": "63cc417c3056fec64df1e41751df5027d0ea32d6858271d3d9d5a23c585bfa6b",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/test_brain_envelope.py",
+      "size": 2158,
+      "sha256": "8047696a11e787872d365afbb455f291096d8e1ac697c1a2132230aa89252969",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/test_bridge_fallback.py",
+      "size": 1649,
+      "sha256": "44bfa02df8058e4b4eefe6579d65cdaa650242d4477eeeb13ccfb7602bbdda8f",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/test_canonical_event.py",
+      "size": 2309,
+      "sha256": "05b189aad4c2624da37b83ba511aa6cbdf68ba6c5d20f43d4facae98915df520",
       "language": "python/cython"
     },
     {
@@ -545,6 +479,12 @@
       "language": "python/cython"
     },
     {
+      "path": "brain/test_py_fallback_contract.py",
+      "size": 2532,
+      "sha256": "054060082e61e7d22224a0d978f45c6872e3c7eec66520fa29a927f5758e3b90",
+      "language": "python/cython"
+    },
+    {
       "path": "brain/test_tier_routing.py",
       "size": 1830,
       "sha256": "da36384ba86e4d262a7af09431c4d99ad2d9bc7058de7fd1679cbcc31a924547",
@@ -552,32 +492,32 @@
     },
     {
       "path": "brain/tier_routing.py",
-      "size": 1963,
-      "sha256": "2fc6f0a0552a925f74063c77c39daf098929a3ac8058431f05c8267d8b4e4aec",
+      "size": 2069,
+      "sha256": "7bd1df83d6b38dd031a09ee0a62ba3bd77415dbd2c976995e6cd006fbfee4955",
       "language": "python/cython"
     },
     {
       "path": "brain/windows_brain.py",
-      "size": 29375,
-      "sha256": "53290f1a3c9405d75dc5569bbb630136dbffd463018f9c1a043301a0e648be9a",
+      "size": 52776,
+      "sha256": "953600508d4e4cb51ebb9a4ea00470e9871e52e7f244b14f4c7d2f7a091d641b",
       "language": "python/cython"
     },
     {
       "path": "bridge/CMakeLists.txt",
-      "size": 4955,
-      "sha256": "5f721afca1ea254aeba38560dff1671f8e6f9d8529532e44633c2e3cb307ba6f",
+      "size": 5269,
+      "sha256": "5452a0b2a799c2c2b5bcf772b10933bda9d87bf3ec89179bbdd5fb1049b9c894",
       "language": "data"
     },
     {
       "path": "bridge/__init__.py",
-      "size": 32,
-      "sha256": "dc22c672a8f153a56567126234f2fb243a977c2bdc08dd8b46abed735dcd99d2",
+      "size": 29,
+      "sha256": "0e613667807182b42bc4d328921e16f196e2cfd9d608720db7f8fbc2afc3ccb4",
       "language": "python/cython"
     },
     {
       "path": "bridge/aegis_adapter.cpp",
-      "size": 15637,
-      "sha256": "0859d24049174f84dec1a74efa866974f80308824d1adddbebbcc3de0e2723ad",
+      "size": 16571,
+      "sha256": "be4195b5413e1ce3ae23f7fa93577e8c1654b5a9073dd6bd9c57ecd1b5feb130",
       "language": "c/c++"
     },
     {
@@ -588,38 +528,38 @@
     },
     {
       "path": "bridge/aegis_adapter_selftest_main.cpp",
-      "size": 1705,
-      "sha256": "347064af1b47f5b0350738a478b106ce0ce4edeedce93507f3b1c761ce3fe4f4",
+      "size": 2834,
+      "sha256": "8e88bd451ffb582a0e27de2956b0df80420ccc18559eb14cddb979cf286de05f",
       "language": "c/c++"
     },
     {
       "path": "bridge/aegis_bridge_ctypes.py",
-      "size": 12546,
-      "sha256": "26801bf70b964f1043976ab8806d4d1757ce414e0c6cf7d1d1b6f50e72c5b405",
+      "size": 15471,
+      "sha256": "f454d8e1b51462af8fb3e70d9590c5c2991c11b9a16084412c636c3529505e9b",
       "language": "python/cython"
     },
     {
       "path": "bridge/aegis_bridge_main.cpp",
-      "size": 15958,
-      "sha256": "fb5fbde2560cd0667686dfdf0db6f422fe822959ef936bf34b780002b19cb246",
+      "size": 15904,
+      "sha256": "03c57edfad3e74bc85563b678e0871b930a3019732235286e6b344d3341fea20",
       "language": "c/c++"
     },
     {
       "path": "bridge/aegis_bridge_test.cpp",
-      "size": 8106,
-      "sha256": "953a58f7d62d9aa5632ac0ceef4d686abcaf224eddd67f638669095768825e6a",
+      "size": 8382,
+      "sha256": "55c11c2c490ad3881ba0320098eb337145a143fcecfdc5b66a6363c0eed9d692",
       "language": "c/c++"
     },
     {
       "path": "bridge/aegis_ipc.cpp",
-      "size": 12329,
-      "sha256": "2d70fad37f3b5b38006628a2343dc894ce95aabfad470115c7bd36e2a6005f1d",
+      "size": 13112,
+      "sha256": "565d73d4ef6a94152ec3472bb873663b99a95fa30027fc6a4f84cf6616a1b181",
       "language": "c/c++"
     },
     {
       "path": "bridge/aegis_ipc.hpp",
-      "size": 14964,
-      "sha256": "03701105530b11fb035a18133439b0fdb3bb5cb2341bdf0f56110719fe89db9e",
+      "size": 15292,
+      "sha256": "12b2ede3091d7da1e9e9f00a4ee4e15e934f36aedba30d629142efe1dfe1dbe9",
       "language": "c/c++"
     },
     {
@@ -630,1028 +570,32 @@
     },
     {
       "path": "bridge/aegis_packet_parser.hpp",
-      "size": 15287,
-      "sha256": "03944a223a9b92b1886124f9528fdc303bd6e023965a442a7b4e18abe3c604da",
+      "size": 15311,
+      "sha256": "494a4405e8226377369fbd7ee36046b087902a5ad33d792ebd7942e83ac71725",
       "language": "c/c++"
     },
     {
       "path": "bridge/bridge_status.py",
-      "size": 1492,
-      "sha256": "3980ae21a686ebd71de1d1a2d11d0931f9dfb6588ab889871da3a2fa75088ff8",
+      "size": 1553,
+      "sha256": "5d4524addbfe2d14804b7a7679abd0053e81dc3d9a083498f1af9a5a87bb4491",
       "language": "python/cython"
     },
     {
-      "path": "bridge/build/ALL_BUILD.vcxproj",
-      "size": 41046,
-      "sha256": "850d98e024b62d6c25d437995bac6c88f8bb5758702acba5c722c8da626dbfc0",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/ALL_BUILD.vcxproj.filters",
-      "size": 269,
-      "sha256": "2e7009813941cd9b5f122ae4aa421228ffbc55e1d12916b32d7b515d4a44c14d",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeCache.txt",
-      "size": 13341,
-      "sha256": "77b1e9277be24def74a4ecdac48086897963f14a67d24651198114524d20b48b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CMakeCXXCompiler.cmake",
-      "size": 6450,
-      "sha256": "ef7833bc046dda27d50fd5fc9989143a6b0ccba5a26e7edddfa1981674e6b766",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CMakeDetermineCompilerABI_CXX.bin",
-      "size": 53248,
-      "sha256": "2ba5a3a68dc2ca8998a9868311257ca14b0d6045159c5498a8849ad3e348daae",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CMakeRCCompiler.cmake",
-      "size": 206,
-      "sha256": "b68683dd9730784a803ae7247aaa8ef68fc04f7ea7a6e1fa9c26b5c21e13207f",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CMakeSystem.cmake",
-      "size": 380,
-      "sha256": "382228689db77e6d5b86dce535b7750916864b0a91ca8de753882453cba082e8",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/CMakeCXXCompilerId.cpp",
-      "size": 29651,
-      "sha256": "5b0cbdb2a0d0a5b91a89026321eb0202fdecb22328eb5c668566ce5cb17e3cd2",
-      "language": "c/c++"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/CompilerIdCXX.exe",
-      "size": 15360,
-      "sha256": "f63945b6ea905a35fa1143fb5d500d4ee9eaa524709b3fdfddee75d48ab3a611",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/CompilerIdCXX.vcxproj",
-      "size": 2734,
-      "sha256": "cb994b049e04e43019a7d39b85c26d7dbc836fc25e0902ea6831b8f547c6ffff",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CMakeCXXCompilerId.obj",
-      "size": 2361,
-      "sha256": "2e54ba8867c8d0ea21fb8c0264f256ed207e4dbae6d6a01d234e8f5b569de024",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.exe.recipe",
-      "size": 310,
-      "sha256": "bfda5565d671336fb1e7101bf5da0baecd6c9e1dd0ad33f34e045c3cd70711a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/CL.command.1.tlog",
-      "size": 712,
-      "sha256": "450010cb9f2a552fd62f1167f93e67f961bf0f87c97cfa62b271b158b3e9a227",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/CL.read.1.tlog",
-      "size": 562,
-      "sha256": "2df7474de204d01bbd2eebaf4fd4bdf1005f1fb85b4447b261e469b0f962b652",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/CL.write.1.tlog",
-      "size": 352,
-      "sha256": "3eea1f5dd1808af0d09fb5e5fc87bef467f08099d567147a386f66bc09e746c7",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/Cl.items.tlog",
-      "size": 172,
-      "sha256": "0b752746a63c24068359451d820a93d68547d55e1866b3925b0f4058fef18bb7",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/CompilerIdCXX.lastbuildstate",
-      "size": 187,
-      "sha256": "87e96ddb809f5be00f19a10dbacbaeb7baff1193c13719430ea5146c3e33118e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/link.command.1.tlog",
-      "size": 1022,
-      "sha256": "58b8bd4e5e54ded3faae0d64a1b9f51b4de796e61c9f3ef5c0de7f1c3f7b9b9b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/link.read.1.tlog",
-      "size": 3412,
-      "sha256": "190345741e3189fad90fd0fc73f93bfd65b4171f4edfef79ed279806b25729d7",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/link.secondary.1.tlog",
-      "size": 90,
-      "sha256": "f7b42c694558bf0d491a83bd5dcfdf2be7ec164ad60712b3c000ab4e63726393",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/link.write.1.tlog",
-      "size": 342,
-      "sha256": "fdd673077a788b42bb303ecb297319d2d5ed6bc87c584c2094a615913626ef46",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/VCTargetsPath.txt",
-      "size": 83,
-      "sha256": "115ef5cd305f572e15857f9e2bcf81f33aa038a998515b523f9f4ba18724ca40",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/VCTargetsPath.vcxproj",
-      "size": 1224,
-      "sha256": "6e8ea0b2de012d5e3592dd47c859156b220482760a6b793e669ecc3d4bca133c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/VCTargetsPath/x64/Debug/VCTargetsPath.recipe",
-      "size": 302,
-      "sha256": "f23694cbc7bf04790ea6305f022eed9ad3c072db3f10d8eab400fd8f697f734a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/VCTargetsPath/x64/Debug/VCTargetsPath.tlog/VCTargetsPath.lastbuildstate",
-      "size": 173,
-      "sha256": "c0448eae84874b571c9910576c5e4255f2a605ad11c9d5d23c8c08cb58efd0a4",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/6402762c949b7d69a8d3d5c876f42feb/INSTALL_force.rule",
-      "size": 23,
-      "sha256": "e89029bfb6c343825eb2b14b36eba2816b374c0aca12de07804da30b2df309f3",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/6402762c949b7d69a8d3d5c876f42feb/generate.stamp.rule",
-      "size": 23,
-      "sha256": "e89029bfb6c343825eb2b14b36eba2816b374c0aca12de07804da30b2df309f3",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/CMakeConfigureLog.yaml",
-      "size": 81126,
-      "sha256": "62d2c57d6291ca2ae4903f69cbfe3220bf7c38a31c90409c20463dcceb72a4b3",
-      "language": "yaml"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/InstallScripts.json",
-      "size": 105,
-      "sha256": "2068b78f008ee8e262e42cf712fa5d638953bac90f0642ed88e1782907586520",
-      "language": "json"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/TargetDirectories.txt",
-      "size": 459,
-      "sha256": "a2850d69ca57aafe7d9377fec4e08caff2b9034f618f29e3a28b385a003afa9c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/cmake.check_cache",
-      "size": 85,
-      "sha256": "a26189e394421da57f45706a07713c5720acd200a41711b0c0c590c3c63371c4",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/generate.stamp",
-      "size": 54,
-      "sha256": "f148b18ce93d5771e980b1edad5c7a0fe84afb2388d7995f541a0eec4a4d8168",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/generate.stamp.depend",
-      "size": 7564,
-      "sha256": "886b37f7f845c83cae9e452827fce06760730cc956d274b0340cc4887fb2ae79",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/generate.stamp.list",
-      "size": 55,
-      "sha256": "820468458a0f9f01f0be40eaafc103624be3359a9044978c19149aadd76e70f6",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/INSTALL.vcxproj",
-      "size": 10327,
-      "sha256": "cab19a4b752604908367c964be709f8cddf7849359641e20fd2caf9330d23c65",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/INSTALL.vcxproj.filters",
-      "size": 506,
-      "sha256": "5641f85cc4187c3f2790b3784b1d1d1f5fbe45fa625d809bede52f2a46d8e285",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/ZERO_CHECK.vcxproj",
-      "size": 40348,
-      "sha256": "d6cc19aac370b0376e13e14cf53456e1b72ae81ea60ef8b57799d13de6515fb4",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/ZERO_CHECK.vcxproj.filters",
-      "size": 507,
-      "sha256": "97884b6e0469446c8eb03e97553cbe66ec9d6ef7ad70dd1f4bfc02719dcb896e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.dll.recipe",
-      "size": 389,
-      "sha256": "d43afb5060e02ce655d86a2ae13c90d1a3bdcaba4d0352133b2d8b0f8fe4d11e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.ilk",
-      "size": 679892,
-      "sha256": "f5468690a60c56e5287019905e672ae152d6d2124f36b73d03ab3f2867cff02a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.obj",
-      "size": 96529,
-      "sha256": "63535d35494de36506028aaec15d5b62e12a77f3a25c7e22b0c43d438af2c407",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/CL.command.1.tlog",
-      "size": 878,
-      "sha256": "96db615389fb37447ff865dbaf3467879a9eaaf40037ba28fe660c8356f55241",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/CL.read.1.tlog",
-      "size": 20058,
-      "sha256": "ca3c74901ed96ebfcbe7a9251f82d031be131491f6caecf441401efebad53807",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/CL.write.1.tlog",
-      "size": 360,
-      "sha256": "9c972ae29b8b472a9f0d856018e8a30a784f120427f3c3773d7423bb3eacd324",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/Cl.items.tlog",
-      "size": 112,
-      "sha256": "f6808ebe902be3a4a84e77c8ba5d4ff94a8bb8ff360867c3b14a9940329c3ab7",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/aegis_adapter.lastbuildstate",
-      "size": 156,
-      "sha256": "31894e3d7828aa49a6a06fc77804476113ccd08d3c8be58b99a0790ee005bf21",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/link.command.1.tlog",
-      "size": 1176,
-      "sha256": "e7a79c084e43ef1d2727d8ed8a6186900f02c4412ab234ecf6eaffbb62f204f1",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/link.read.1.tlog",
-      "size": 3164,
-      "sha256": "e1632e9e68874e540fa81ce01e84e0f8a0aabdf58cc461d2fdd76f9603d8357e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/link.secondary.1.tlog",
-      "size": 143,
-      "sha256": "75c0d9f49b987177196f24525e4a26c7ac5c8ab50471de8073c2e190a5c873a5",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/link.write.1.tlog",
-      "size": 308,
-      "sha256": "d49ec0e70096d8f9a75d5551aff66c882adce6a1dd92f8790f0ef58808a53ef6",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/vc143.pdb",
-      "size": 118784,
-      "sha256": "3f603812295509c6e628cb3959c708e2862d82db4f466ddec7da43a6304729de",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.vcxproj",
-      "size": 54172,
-      "sha256": "1f737bbe2944f9f7889ac0175862b65de38c4a1986bbddedcc956a42cf095bd0",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.vcxproj.filters",
-      "size": 550,
-      "sha256": "53d770c32a0a5ab5e23a8a7789e2d05f1640ba465d737a972c9bfd67fc37b751",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/CL.command.1.tlog",
-      "size": 1738,
-      "sha256": "6c638aaa4c3d4cf27d4b84a03805ff2719d73892ee2d3143277eb091642c30f1",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/CL.read.1.tlog",
-      "size": 24132,
-      "sha256": "1665dd4645ffb7bd49e605388e66e4b37dbb63fbaf055dd2b0b6297e76fc0825",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/CL.write.1.tlog",
-      "size": 1188,
-      "sha256": "379f3b8cdaed669ae1680396b6452363c8b3044abf651df171ee81f5a8bae729",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/Cl.items.tlog",
-      "size": 270,
-      "sha256": "6f089d99020b89a6889409e14400ce6d5563d47f9372a55f0f6fd65918f175f9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/aegis_adapter_selftest.lastbuildstate",
-      "size": 156,
-      "sha256": "31894e3d7828aa49a6a06fc77804476113ccd08d3c8be58b99a0790ee005bf21",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/link.command.1.tlog",
-      "size": 1612,
-      "sha256": "9ee29b3fb596b1bb03d67534b9d93ab6609fecc480bf9a3c0592a457190dce01",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/link.read.1.tlog",
-      "size": 3596,
-      "sha256": "3fe168638678802e0ce83565662863e2d822072f886f63d5861ef0e1b9caf2f9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/link.secondary.1.tlog",
-      "size": 264,
-      "sha256": "473929a224e81dc3395965336a0e99decbb43a4d281d1ffad5dbb51a7c132c43",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/link.write.1.tlog",
-      "size": 550,
-      "sha256": "5229548a2980bee041d61448c70a0ecb0aee545294dda08f5b3d23ad7769912e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_adapter.obj",
-      "size": 96545,
-      "sha256": "29541965fc135a7f52598d59d42b28b866c1ccdd595b4c0b086154ba2fbc8c99",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_adapter_selftest.exe.recipe",
-      "size": 398,
-      "sha256": "ff2bceb0dfcc2f1fae21e7dce07f571f00af54049042a01d7fa257452b80d822",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_adapter_selftest.ilk",
-      "size": 759794,
-      "sha256": "d9f22358ddfe34daae0e5cd4f3803e9d7852c90ae5c2598a9c5717a51359b9bf",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_adapter_selftest_main.obj",
-      "size": 13153,
-      "sha256": "490e0722eea9a1cfac4ec367d7579404aaf4ab5c3e4f9071b58ba8d1cf7ba0c9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/vc143.pdb",
-      "size": 118784,
-      "sha256": "707f0c99cc66db21538ab53096b6d1142f88300018df7c2d9d7516d7c69da6f0",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.vcxproj",
-      "size": 54200,
-      "sha256": "dad83bf7f40af145f71b9f4408ed4173fd244fd05ef676aefb2555cb81b4f90e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.vcxproj.filters",
-      "size": 684,
-      "sha256": "c17a531494fb68681bcaa0a323aaddbe78b5ba59c5d8c26e2a301cbe1fc1175c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.exe.recipe",
-      "size": 388,
-      "sha256": "ea04aaff75bb224d0c14178cec8b6a3ff72ff02e9653aed7a658730245d3802e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.ilk",
-      "size": 869158,
-      "sha256": "b829cff65e1e562c3f648691f297320510a34b1c6c8e250ba1a72eee67eaeade",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/CL.command.1.tlog",
-      "size": 2426,
-      "sha256": "caeab19a7ac7bd8b1e483f983af24bd3185f1eafec1373f3adf21495f3e80d7b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/CL.read.1.tlog",
-      "size": 55754,
-      "sha256": "895cc0c23560e4548cae12b2fc1aa30491e6c5a351db649cec2b09a455178784",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/CL.write.1.tlog",
-      "size": 1476,
-      "sha256": "02b404093e031582fb7c2b80be078b2f2e76db6b75b515feb925e3fb14e62f10",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/Cl.items.tlog",
-      "size": 345,
-      "sha256": "be870a479e3210985c2212ef25dae2e895628c3846b2e6474cb6bc43faad9cf3",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/aegis_bridge.lastbuildstate",
-      "size": 156,
-      "sha256": "31894e3d7828aa49a6a06fc77804476113ccd08d3c8be58b99a0790ee005bf21",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/link.command.1.tlog",
-      "size": 1624,
-      "sha256": "55eeae437ebb762cdc54c50e7dd7201d762d71fa290148ac25d989e9bdf185a4",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/link.read.1.tlog",
-      "size": 3956,
-      "sha256": "d0756ba03376f0cd65a14ee6c1a79ea7aaa2c3267a891806fd0ae62607c2395a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/link.secondary.1.tlog",
-      "size": 286,
-      "sha256": "210c2647d7913946b3272811eb3571c160434c13b36588b3edd6144d7f6dc2ed",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/link.write.1.tlog",
-      "size": 594,
-      "sha256": "5d9a68eda15409041f493fbe507ca30da6338212434c1d427275ca50b6497e71",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge_main.obj",
-      "size": 114581,
-      "sha256": "32c2892afa505cc7c36834691585ea7e5679a583b1a486a492a4624203a6c7bd",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_ipc.obj",
-      "size": 72979,
-      "sha256": "2c5543380747f6b9714254306be5d6c0f9da49c5406e9dd3e81a1c82d6eab700",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_packet_parser.obj",
-      "size": 28965,
-      "sha256": "629ca2ced376c3816f052acfcb748590bbbc9b39a6c866e169e4bfb6c9710e4a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/vc143.pdb",
-      "size": 208896,
-      "sha256": "a742b213ed7e442e6a69cda5740504eb6ee5dbb3695a820ae264c7f1af867683",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.vcxproj",
-      "size": 54091,
-      "sha256": "7bc3de849d32982702fc868e5973d5ce73b7c462f27f6b0cd581ab1a7f143fcc",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.vcxproj.filters",
-      "size": 796,
-      "sha256": "1618b9032b8009dcf9731e0104f9e1ed41c3a25796fa2a5e66ea35186f62afa2",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/CL.command.1.tlog",
-      "size": 2486,
-      "sha256": "6eb07f3aa91c407d9734bd7dd95aee648d4e5f66d38940de76fddb4e4854e47b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/CL.read.1.tlog",
-      "size": 29126,
-      "sha256": "db139d7f1bd22160ab4f8f19e56ffc9738a278d646155b5892ea16807dc73a25",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/CL.write.1.tlog",
-      "size": 1546,
-      "sha256": "bbfad67b3af9ef3d7980a22dd12907ce34947cd7e2cba493e6a1fe73ba51f85c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/Cl.items.tlog",
-      "size": 360,
-      "sha256": "2b2d8ba8d3fd858c4840d1fe3627b738c977034215bc2e94377344179948b8b1",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/aegis_bridge_test.lastbuildstate",
-      "size": 156,
-      "sha256": "31894e3d7828aa49a6a06fc77804476113ccd08d3c8be58b99a0790ee005bf21",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/link.command.1.tlog",
-      "size": 1734,
-      "sha256": "15cb1b6177418d9739be644b3902f8bb35d8a730326b8d0ca7d642f8722e38a6",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/link.read.1.tlog",
-      "size": 3816,
-      "sha256": "e694347aa83043a28baf59f33d35cac78ea22eb86b70df6157993f56c69991fc",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/link.secondary.1.tlog",
-      "size": 311,
-      "sha256": "5db0028e5246ec04a3ef60d2aac9376e0c3d57c3db519738b142c6369574044c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/link.write.1.tlog",
-      "size": 644,
-      "sha256": "d1ad8c909c37abeac233bef3d97b2f8d8d4fc916d7cefd2d8fdca46d71051379",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_bridge_test.exe.recipe",
-      "size": 393,
-      "sha256": "8325cf5041cc1e30b6c5b2a7b3e306001b8610349df2f49b2e92b89e80657461",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_bridge_test.ilk",
-      "size": 771417,
-      "sha256": "8ec72378194b5dad9dd16050be372ad0727630225ac8096ac0e17d4f6d773cc0",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_bridge_test.obj",
-      "size": 37110,
-      "sha256": "f3ded7580f5159a1157fccfb3c3dab0323eb359e399c5fb46e73af4eefe4c238",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_ipc.obj",
-      "size": 72987,
-      "sha256": "edbdee5978df895c7b61028bba77fb3571de2a72879e5ac46cff4da05d664d6a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_packet_parser.obj",
-      "size": 28973,
-      "sha256": "006ecb9f20351989bb4511e55253f1fd6e60a173ba22b55d7c33512bf5c83086",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/vc143.pdb",
-      "size": 126976,
-      "sha256": "e697ba856c2438cf255af186fbadba584d0476d5ac8ee95907d1852fefd2c0ef",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.vcxproj",
-      "size": 54176,
-      "sha256": "0fbc41bdd62f5164dfa0d765c8bc7e231d0d72f1010d863b4cda0b701f1fd378",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.vcxproj.filters",
-      "size": 796,
-      "sha256": "4b8ca470249ca73c1d385f5bb0a534dba55fb90f94a7bd27813d4b2afcce106e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.dll.recipe",
-      "size": 385,
-      "sha256": "67770b4a16e7eb1d1bb6063a30aba7b21742a14fa0c3ff978b758072341f46b6",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.ilk",
-      "size": 690363,
-      "sha256": "0337a09d972463fdcd32dfc1b07d4a7cd9cc761b007403654ac00a25ca4f6518",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.obj",
-      "size": 72971,
-      "sha256": "aac196e882a25e919b289bdb4d031a207626ea783ccce334c116ad559f631773",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/CL.command.1.tlog",
-      "size": 1714,
-      "sha256": "d2ade260a7efa66acb319a9f9316f66dcea970259adb12eb7e686607eda166a2",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/CL.read.1.tlog",
-      "size": 23640,
-      "sha256": "20c588fb919d5637768f17b4916b764589d3a260fef1c19378bbc93314aee5db",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/CL.write.1.tlog",
-      "size": 986,
-      "sha256": "2c53e3a372af11485c16ab9356f74bbdfd2969acb6ecc9598ce796c1c516a1da",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/Cl.items.tlog",
-      "size": 220,
-      "sha256": "25b3b3c8309d8af087eeea2accc07c97b00a245f3de40d8191e9effe1d2400aa",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/aegis_ipc.lastbuildstate",
-      "size": 156,
-      "sha256": "31894e3d7828aa49a6a06fc77804476113ccd08d3c8be58b99a0790ee005bf21",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/link.command.1.tlog",
-      "size": 1340,
-      "sha256": "c3cfcf21699065d391f071a43e74313a28053b1a3c820a3231d5d57d01bb7e87",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/link.read.1.tlog",
-      "size": 3418,
-      "sha256": "868023b410a5ac473338b7d30a65f759d5a35bcd7c7c1ee946d9fd20f5382c9b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/link.secondary.1.tlog",
-      "size": 200,
-      "sha256": "c25230759872b6a674170f0e4df15cd58568833c2fa34a4bfde422c84ec7f17e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/link.write.1.tlog",
-      "size": 422,
-      "sha256": "cec6a84243cdbda67a71a17935c6d174b37acc15e49ebee5d0062c13b890574e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_packet_parser.obj",
-      "size": 28957,
-      "sha256": "c5e9b5cf986eaf353b67bc87e102b1566ab332a0ee7148ee3d007fd2e01b62af",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/vc143.pdb",
-      "size": 126976,
-      "sha256": "b67ca268955d881a2dc7133900810c796feefce38fb4b2202f03c01361c8a915",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.dll.recipe",
-      "size": 387,
-      "sha256": "233602c9e796fa8d3aa35d600e21879bc2b91bc573d05cd9943fd95d77c1efa6",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.obj",
-      "size": 31012,
-      "sha256": "e117ffadba9045510351e029acd28c21ef2732ca77319edbffe636d864df90bc",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/CL.command.1.tlog",
-      "size": 1734,
-      "sha256": "a5e30c258470dc89fdba21a9f6284412b9f27e829a71a8440d44ab09484aa045",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/CL.read.1.tlog",
-      "size": 36854,
-      "sha256": "dcb70cc8243a8cc7bc7bcb77eb1d4a374c0532bc01fdcbf94f2dc854557c5a77",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/CL.write.1.tlog",
-      "size": 458,
-      "sha256": "8f9d4d244a89bacf159fde4b8dad79b81659ea905dfcf025359d0169658ffcc6",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/Cl.items.tlog",
-      "size": 224,
-      "sha256": "2de7937f9178932f9055e0d61dd7e4a8dd1a20838f2e5b362e6cc34561144822",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/aegis_ipc.lastbuildstate",
-      "size": 158,
-      "sha256": "25dbab9c2a137997d68c48eebd98adf89bfe4805807d534c81ec2139161af14a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/link.command.1.tlog",
-      "size": 1266,
-      "sha256": "f2249a52afbe749cec0940f36eabd002aa0f2b3ca17ae12a72f8746bd6b1828c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/link.read.1.tlog",
-      "size": 3540,
-      "sha256": "d8b4f46a18689da9fe6b94b92eb32f2f2a27af2f5bc95b1232c98fbebc2c9a7a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/link.secondary.1.tlog",
-      "size": 211,
-      "sha256": "0f0cc2f74854928c7569ae4cece31d6b28a6688beb5305fa01b24a87569a0a5c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/link.write.1.tlog",
-      "size": 358,
-      "sha256": "532cd4f8cafcfc27fd435e20f3a81c6d83be6f13bea1641566efa1fc7d628cf5",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_packet_parser.obj",
-      "size": 9895,
-      "sha256": "77f4d3f68f1ee7953192be01438bef7b1c127f63d8132ccd9b0c6e90938a25fc",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.vcxproj",
-      "size": 54143,
-      "sha256": "90df4ce617db5a58ebc9db569565d5e4decde601395d17468fe219120cbc54ce",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.vcxproj.filters",
-      "size": 672,
-      "sha256": "70875c29081e6d915a28aa06916f6001d7e16aeb4a7caced6e1631eee827bbd4",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc_bridge.sln",
-      "size": 8177,
-      "sha256": "c1622e63210e5c02f4201d1a06112ef8a56629f7351feb90939c8fc94fbd19af",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/cmake_install.cmake",
-      "size": 6592,
-      "sha256": "5f32e154cf4877c3512bacdcfd3314ffd66a6ef90c9cf9079ee4c2b52503aa96",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ALL_BUILD/ALL_BUILD.recipe",
-      "size": 942,
-      "sha256": "26c4487a5eba2811991dd5147d0e98de6ec787a1914f5853a72095b8aa9b791f",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ALL_BUILD/ALL_BUILD.tlog/ALL_BUILD.lastbuildstate",
-      "size": 156,
-      "sha256": "31894e3d7828aa49a6a06fc77804476113ccd08d3c8be58b99a0790ee005bf21",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ALL_BUILD/ALL_BUILD.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ALL_BUILD/ALL_BUILD.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ALL_BUILD/ALL_BUILD.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ZERO_CHECK/ZERO_CHECK.recipe",
-      "size": 282,
-      "sha256": "069e97f7185c9bd643d645976912090fb420b1f8539f012b88ac4f75939f58af",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ZERO_CHECK/ZERO_CHECK.tlog/CustomBuild.command.1.tlog",
-      "size": 483,
-      "sha256": "6e12041133ba6e4e483fac8d5e28e71f8179ec304fe13a88b11bb07184c80ac5",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ZERO_CHECK/ZERO_CHECK.tlog/CustomBuild.read.1.tlog",
-      "size": 7603,
-      "sha256": "3bfd050d66e377cd6982c6e42f67b9037c07a9e2cfb4023039317bbacffdac32",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ZERO_CHECK/ZERO_CHECK.tlog/CustomBuild.write.1.tlog",
-      "size": 149,
-      "sha256": "3b653afb93861946488c5e2f09c8a74d596c8a04c60cbb467827d58b347f103c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ZERO_CHECK/ZERO_CHECK.tlog/ZERO_CHECK.lastbuildstate",
-      "size": 156,
-      "sha256": "31894e3d7828aa49a6a06fc77804476113ccd08d3c8be58b99a0790ee005bf21",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Release/ZERO_CHECK/ZERO_CHECK.recipe",
-      "size": 284,
-      "sha256": "df6c31384103fd5f8c6cf711937e6977f5598c22ef2a2ccaec2e6aea3b8218fa",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Release/ZERO_CHECK/ZERO_CHECK.tlog/CustomBuild.command.1.tlog",
-      "size": 483,
-      "sha256": "6e12041133ba6e4e483fac8d5e28e71f8179ec304fe13a88b11bb07184c80ac5",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Release/ZERO_CHECK/ZERO_CHECK.tlog/CustomBuild.read.1.tlog",
-      "size": 7603,
-      "sha256": "3bfd050d66e377cd6982c6e42f67b9037c07a9e2cfb4023039317bbacffdac32",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Release/ZERO_CHECK/ZERO_CHECK.tlog/CustomBuild.write.1.tlog",
-      "size": 149,
-      "sha256": "3b653afb93861946488c5e2f09c8a74d596c8a04c60cbb467827d58b347f103c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Release/ZERO_CHECK/ZERO_CHECK.tlog/ZERO_CHECK.lastbuildstate",
-      "size": 158,
-      "sha256": "25dbab9c2a137997d68c48eebd98adf89bfe4805807d534c81ec2139161af14a",
-      "language": "data"
-    },
-    {
       "path": "build.zig",
-      "size": 9077,
-      "sha256": "4a541bd731cb0f69474880e378579c7409e9daf8c6894ae11bcda51483617465",
+      "size": 15272,
+      "sha256": "f73e63705039cd77642ee0953de593b48c0d8f7ce04c31219a6f6c305ac79b32",
       "language": "zig"
     },
     {
       "path": "ci_coverage.json",
-      "size": 3132,
-      "sha256": "9603672013afaef31b74cf715f1caa565ac24440c59bc203bf46dbda314e94e3",
+      "size": 5647,
+      "sha256": "962e16eae3f8b95ced9fa8d39a46f7f94f445eb247c85bd69a1c5e1f1c042a29",
       "language": "json"
     },
     {
       "path": "config/Rules.json",
-      "size": 8174,
-      "sha256": "ab7bd297281ea19a56ff6da421668d8c561d1784ee19892301235ff87e51a3a7",
+      "size": 8731,
+      "sha256": "858c4946ab6817ebad9bebb2c8effdefdeeea0a70d89846216e4a0a15f5da727",
       "language": "json"
     },
     {
@@ -1661,21 +605,165 @@
       "language": "json"
     },
     {
+      "path": "configs/Rules.json",
+      "size": 8731,
+      "sha256": "858c4946ab6817ebad9bebb2c8effdefdeeea0a70d89846216e4a0a15f5da727",
+      "language": "json"
+    },
+    {
+      "path": "configs/Rules.json.before-reload-test",
+      "size": 7950,
+      "sha256": "b847829c4e9a38c9864f3f5050b44f2bb5aa4c3949b92b091f01c3748fcd1239",
+      "language": "data"
+    },
+    {
+      "path": "configs/aegis.conf",
+      "size": 740,
+      "sha256": "634f9b4fb85162ed9cce7c7e9a01ce4453c082444766bdebd8b1f0bc82385729",
+      "language": "data"
+    },
+    {
+      "path": "configs/canary_tests.json",
+      "size": 5476,
+      "sha256": "183efa9d2eba31ff848a75a33ef4e1ecb4871a4196dd67e7bd39c6aa6f29f77b",
+      "language": "json"
+    },
+    {
+      "path": "configs/cluster.example.json",
+      "size": 186,
+      "sha256": "067a1150b5fcd65e89e931a57b02d7057430eaf34b1acee660c750baf1704e53",
+      "language": "json"
+    },
+    {
+      "path": "configs/policies.json",
+      "size": 3367,
+      "sha256": "b7224fa01572a637336af6629d2a63c44fd9c53854dfd401d6264e5249ca3a4e",
+      "language": "json"
+    },
+    {
+      "path": "configs/policy_trust.example.json",
+      "size": 154,
+      "sha256": "77907f3177f8f1a2459d811ade8f86e76972f5051f2a3a1b7a1c867c78dc534a",
+      "language": "json"
+    },
+    {
+      "path": "configs/runtime.json",
+      "size": 1414,
+      "sha256": "8e13c2cb99960ca4c3966675a1acc3a5dffea8ba28efa00f4e3bb7c0d4cbe5fd",
+      "language": "json"
+    },
+    {
+      "path": "configs/schema.json",
+      "size": 3903,
+      "sha256": "d0bfb8b09f79ba91fab3b94c2ee095faff5393e1239a30457b9c1b33ffd59747",
+      "language": "json"
+    },
+    {
+      "path": "configs/siem_config.json",
+      "size": 3076,
+      "sha256": "c94cb2db8c642f9568920089bc2de9ed9cabccc3d42c75a905ef07f365a5d13a",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/cluster_config.json",
+      "size": 2173,
+      "sha256": "a415fda1e86d04dd365ef95dd80108b5d9d577f609e4e9a08396a03c38491a80",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/etw_realtime_config.json",
+      "size": 2148,
+      "sha256": "e737499d78b7066432ced0911af2473a777c5c93b2d1ebd60ee7f1157b315b67",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/federation_bench_config.json",
+      "size": 2470,
+      "sha256": "5155d45d32089c5d172914656f72cab4b99fa98f048476a8534784a9ab50959d",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/federation_config.json",
+      "size": 2423,
+      "sha256": "bec464f05022dec3c2fe25ae05a2cc6060d2ecc8b3456dab6ef89f005a947a76",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/federation_tcp_config.json",
+      "size": 1979,
+      "sha256": "0a400c81c1d015b484d2cbe2113881859d838616621aa2dd8da8a29b92435c08",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/federation_tls_config.json",
+      "size": 1010,
+      "sha256": "f0d7d6a5e248d86d34ae1e8cd1e5b4cfadb2be2da66684b2cc13d2525a7bd341",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/host_correlator_config.json",
+      "size": 4095,
+      "sha256": "167e3aea0d4f4764157549959a43eaa29807d6ca86ddf9e7704cab7efbfa8c97",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/host_telemetry_config.json",
+      "size": 488,
+      "sha256": "12a2d014925ff31884178031415adf4d0b6884f1fe45c3bb6eedb6b90de12a70",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/host_telemetry_detectors_config.json",
+      "size": 2336,
+      "sha256": "960518dd0bf04d09dc0cb78f3dfdb0518e516fd942be7a1f2af9f56684566b6f",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/host_telemetry_mock_config.json",
+      "size": 2023,
+      "sha256": "8b773ea7020d2d9f71c998daf7ebc68f81fd8710477977fe7f87455c2334192d",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/host_telemetry_scenarios_config.json",
+      "size": 3049,
+      "sha256": "4bfe27742f8aadc8b32493323fdd847778fb312fb85c971c247d7439d01787bf",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/injection_detector_config.json",
+      "size": 1251,
+      "sha256": "2881c30eb3ce6b7e4f94760db8f56761723ccd72e139b135502077994bfad042",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/integration_test_config.json",
+      "size": 1977,
+      "sha256": "4fa64eede804fae072731b56ce9b30b08ef40ff0b88c072f4d12483591b30c3f",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/perf_benchmark_config.json",
+      "size": 2373,
+      "sha256": "20081abf87b4ee67d8c78f143608dc998824f9b2a13e0bfcf6737995c7936b68",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/registry_trie_config.json",
+      "size": 1376,
+      "sha256": "c89d9060ef1e2a4f7534e76438afbb2c5b666e2928ab7137041a74247287d555",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/windows_adapters_config.json",
+      "size": 2350,
+      "sha256": "f42d54e0f412d5c7b60e86510b2cddd98b3753932eeefc26757c53e0596a6690",
+      "language": "json"
+    },
+    {
       "path": "go/aggregator/README.md",
-      "size": 2313,
-      "sha256": "238de21560629718012d4ddb8628149b17bf17840ec70d507e4517a7b038690e",
-      "language": "data"
-    },
-    {
-      "path": "go/aggregator/aegis-aggregator.exe",
-      "size": 8941568,
-      "sha256": "48882a20a339c1b3fd10bf12029f2fa2dbcbc402836a296434a6df45e81cd690",
-      "language": "data"
-    },
-    {
-      "path": "go/aggregator/aggregator.exe",
-      "size": 8941568,
-      "sha256": "c7b0d2904838a85f78d65fd7a3d98e6d88bde57403830fb7dd63caf03e6fec5c",
+      "size": 2337,
+      "sha256": "47138006684f7ba207f0665633224354d7c3e58c903915c896f1e2ff58fc63a7",
       "language": "data"
     },
     {
@@ -1692,8 +780,14 @@
     },
     {
       "path": "go/aggregator/collector.go",
-      "size": 4389,
-      "sha256": "3aeeac97faf996147353d41e4f5cc6d5e7c3f7ad325ef2adee5e9feedad92ca8",
+      "size": 5203,
+      "sha256": "10ef43e2f4016fd03a631e3450a838df71ebff788268310b3c01b292a6a4c1db",
+      "language": "go"
+    },
+    {
+      "path": "go/aggregator/console_main.go",
+      "size": 1193,
+      "sha256": "23a132b6f4ea00ea9280e388e5e124001aad7b65e29d2d7db554062d797266d7",
       "language": "go"
     },
     {
@@ -1722,15 +816,213 @@
     },
     {
       "path": "go/aggregator/main.go",
-      "size": 11476,
-      "sha256": "8379edf547c82c4b219174562cd1ae364aa41c8b22a617cfc4855f55a277e761",
+      "size": 9103,
+      "sha256": "a7d2bb5053000a584e961abf72531ed1834b77366974a158b8f8120e2122b670",
+      "language": "go"
+    },
+    {
+      "path": "go/aggregator/main_test.go",
+      "size": 11231,
+      "sha256": "226a98e394f876c22a19b536737d4bd80757e6190514a9de290ec4be92987cd4",
+      "language": "go"
+    },
+    {
+      "path": "go/aggregator/server_runtime.go",
+      "size": 3100,
+      "sha256": "68e85fad1657c4b5e91749f5e9d1176fb78d6dba56e11d9211a18cb3015845c9",
+      "language": "go"
+    },
+    {
+      "path": "go/aggregator/service_main.go",
+      "size": 2323,
+      "sha256": "a1817047978a16b8ddde104270b05545b3f4ccfd7733ddbc2965bab3253cd69e",
+      "language": "go"
+    },
+    {
+      "path": "go/aggregator/uuid_util.go",
+      "size": 319,
+      "sha256": "12c9f0aaf20025cacd7383c30466264eb6b4bb9006c553d707732a68256870f1",
       "language": "go"
     },
     {
       "path": "installer/aegis.nsi",
-      "size": 5084,
-      "sha256": "7a2c70ba4d54486101b528dfb1d4c1e19437f6daf3ce078aca1d2975086e55c5",
+      "size": 5439,
+      "sha256": "26f76a7e40cc162125390865cc2b0d6dd014f8f3f858bca96c4c4861e5583fc5",
       "language": "script"
+    },
+    {
+      "path": "nose/README_DEPLOY.txt",
+      "size": 2189,
+      "sha256": "9e8d066be46df71c961c41e67c0332bae1e14995314c3fc8907ecedacd64b244",
+      "language": "data"
+    },
+    {
+      "path": "nose/canonical.go",
+      "size": 25852,
+      "sha256": "3bc0dd7da16ada6489b56b5b132b0d8261a04740e5715a0bf32abe9376d724e4",
+      "language": "go"
+    },
+    {
+      "path": "nose/canonical_test.go",
+      "size": 17985,
+      "sha256": "761075cdd074f8ef6786f7d429190675e40c459ada41f22da75e32954d1daa8b",
+      "language": "go"
+    },
+    {
+      "path": "nose/capture.go",
+      "size": 17332,
+      "sha256": "2b9a2e53c11e1408f4ea535cefba7527a510e06a8d294e3b94cc6951d7c014cb",
+      "language": "go"
+    },
+    {
+      "path": "nose/capture_hermetic_test.go",
+      "size": 4923,
+      "sha256": "b6d4a8baa808a2c7c24b36b1e668cc67380cb65e50aa345af22872d5de3b3e18",
+      "language": "go"
+    },
+    {
+      "path": "nose/capture_pipe_test.go",
+      "size": 4823,
+      "sha256": "5a329213f4151ccc9335c43fed6e86be543d9e66e3f88ed021930972b71a3f38",
+      "language": "go"
+    },
+    {
+      "path": "nose/cleanup_nose_mouth.bat",
+      "size": 6467,
+      "sha256": "75ad9974abe5b9232675c0502db6e4c17a50623a5030820be56e19e90b93a0da",
+      "language": "script"
+    },
+    {
+      "path": "nose/collectors.go",
+      "size": 17082,
+      "sha256": "c171260d6225c4247363fca28ffe2754d462590c5719b835677273a531ff83e9",
+      "language": "go"
+    },
+    {
+      "path": "nose/collectors_test.go",
+      "size": 7248,
+      "sha256": "8e5055c5cd98b1c32328b407ef657f231b93141e837105707aff919e46f49e3c",
+      "language": "go"
+    },
+    {
+      "path": "nose/go.mod",
+      "size": 976,
+      "sha256": "f43675874d20a20e9871e69504b3c36610e90d1c52bdb397d849f6bea41ede30",
+      "language": "data"
+    },
+    {
+      "path": "nose/go.sum",
+      "size": 5073,
+      "sha256": "d595574160afbc66b90b9ae792406297214d4675bbd5290ebdc02103ed58cf72",
+      "language": "data"
+    },
+    {
+      "path": "nose/golden_path_ffi.go",
+      "size": 13370,
+      "sha256": "60cfd664fc71edfebd011dfad54aa3899a4240b0641113480da27ae764dc1a1e",
+      "language": "go"
+    },
+    {
+      "path": "nose/golden_path_ffi_test.go",
+      "size": 2414,
+      "sha256": "738f510d8987db801475eb71bdf4b8fe90082eddcef95ff53bece782130b2721",
+      "language": "go"
+    },
+    {
+      "path": "nose/headless_test.go",
+      "size": 3864,
+      "sha256": "31f3cbe4343041946ee8160af91d9db5c6a085a183be1e313ef874ca67565b5d",
+      "language": "go"
+    },
+    {
+      "path": "nose/inject.go",
+      "size": 2115,
+      "sha256": "641c4b235906bf571528204871dd5487c3a78980ee0196bfe839a5f94e114764",
+      "language": "go"
+    },
+    {
+      "path": "nose/main.go",
+      "size": 9722,
+      "sha256": "fb8b0d680a4370859295e3164d4177504459d0dfe395b1a08714228fd6e82852",
+      "language": "go"
+    },
+    {
+      "path": "nose/main_test.go",
+      "size": 1062,
+      "sha256": "15fac318042c6847ce997b4461a5d4dc364553a74305716d695b80295c0a513c",
+      "language": "go"
+    },
+    {
+      "path": "nose/model.go",
+      "size": 17455,
+      "sha256": "b97cecf8c5986dfa458a5a0a9603e4fc9299ba6856414d3f6c4c1117870a6955",
+      "language": "go"
+    },
+    {
+      "path": "nose/payload_v3_test.go",
+      "size": 10583,
+      "sha256": "aaa4f59959df28a19074bb4bfb9199eeb064d11b9c4734450b21c46b9a272f88",
+      "language": "go"
+    },
+    {
+      "path": "nose/pipe_writer.go",
+      "size": 5423,
+      "sha256": "1241cb1b05fcc11c5706d9360063e8a25ca71c07b139a8f075287cbdf1a00a80",
+      "language": "go"
+    },
+    {
+      "path": "nose/pipe_writer_test.go",
+      "size": 675,
+      "sha256": "2a9f9fce6419e4368524dd6d355d5e3f54078dc5a5b4dd839c307980bb92ec96",
+      "language": "go"
+    },
+    {
+      "path": "nose/run_nose.bat",
+      "size": 1274,
+      "sha256": "b901c8611ddaf05a128ed6ef51e2b3cbd9db72cfc46fc62e0d12c66d554dcf4a",
+      "language": "script"
+    },
+    {
+      "path": "nose/styles.go",
+      "size": 6355,
+      "sha256": "1555b103916c9e1dbdbae7bc01f194be69dc7114a97310cd69c33de7d56d03ab",
+      "language": "go"
+    },
+    {
+      "path": "nose/talkers_live.go",
+      "size": 8260,
+      "sha256": "c2cfc1f8a4c0576153fe253a7a15905b98949285d4a8bbbecb719552aa711967",
+      "language": "go"
+    },
+    {
+      "path": "nose/talkers_live_test.go",
+      "size": 1888,
+      "sha256": "cf38d1c7e0dfcbe347487561ca4f538551586cc82cd1ec747f32570c1364f97d",
+      "language": "go"
+    },
+    {
+      "path": "nose/traffic_sys_other.go",
+      "size": 327,
+      "sha256": "537cc96ecbbd31eafef81aa756dbbedda48a9ffe58251c9b5450f55c18e030d5",
+      "language": "go"
+    },
+    {
+      "path": "nose/traffic_sys_windows.go",
+      "size": 7249,
+      "sha256": "917e779e137dc29c1fd55c009e267a06d35cc846a9bbd1cfaa638810ef71e7e8",
+      "language": "go"
+    },
+    {
+      "path": "nose/traffic_sys_windows_test.go",
+      "size": 1025,
+      "sha256": "bb006131899c7c4d5bdcfec9e3f90dc414fb619535ab57f4011ef1b3aaf9542d",
+      "language": "go"
+    },
+    {
+      "path": "nose/verdict_authority_test.go",
+      "size": 3657,
+      "sha256": "832b901430237b3975c9460770394be29dae5161577e53babba0d00d7e7ee282",
+      "language": "go"
     },
     {
       "path": "requirements.txt",
@@ -1740,15 +1032,33 @@
     },
     {
       "path": "runtime_manifest.json",
-      "size": 17724,
-      "sha256": "da1ba639c60cd2c08f651b00ad4856e32e437e2efe8f744ffde57d6c5ce8742b",
+      "size": 23219,
+      "sha256": "9e4b093c19ead7b3069d3014cf88dce4a3e5d59babc50f847d35168005e484b1",
       "language": "json"
     },
     {
+      "path": "rust-src/bin/aegis_keygen.rs",
+      "size": 11600,
+      "sha256": "41a323a7bc91d0cdcdde4feff01110b4d3c3ae732a7b4806d5c96fac23ece8bd",
+      "language": "rust"
+    },
+    {
+      "path": "rust-src/lib.rs",
+      "size": 106371,
+      "sha256": "50262d7e3fb0e9f839ef5599f81b151ef7952a04e543f9aef6897687c871d89f",
+      "language": "rust"
+    },
+    {
       "path": "scripts/Dashboard.py",
-      "size": 4752,
-      "sha256": "8205b570a962e1dff4e94dbfbf8419e456c193678c26157d10d4dff10e984a2a",
+      "size": 11425,
+      "sha256": "89359d1a78b6d0cb0d1f8319d772903152bc0a2a60f5367cf02016c4f0b7f9b9",
       "language": "python/cython"
+    },
+    {
+      "path": "scripts/_probe_nose_proc.ps1",
+      "size": 627,
+      "sha256": "072118bd21d439343cd291ab9ccc4e55b794ccc5f183fd3ea2e68b76d33a7bf5",
+      "language": "script"
     },
     {
       "path": "scripts/add_web_evidence.py",
@@ -1764,8 +1074,8 @@
     },
     {
       "path": "scripts/aegis.ps1",
-      "size": 4141,
-      "sha256": "f2fb4fc5d51ddad652e5bdc0aa4aeb6d2e127a97255e08a493e2979ec64b75d3",
+      "size": 4472,
+      "sha256": "81fe6386d23e726ed7bbe345f2ec335c73f2fb96998ee56813ffe057219b5d1e",
       "language": "script"
     },
     {
@@ -1776,32 +1086,32 @@
     },
     {
       "path": "scripts/aegis_api.py",
-      "size": 5381,
-      "sha256": "6e859df269debf3c983e12688768a035cafce832a06477849a5f8ed26491b746",
+      "size": 5517,
+      "sha256": "bb52c4fa4b91b52112e1920e36aa3a1025262b8ab8e36bdc946b5b6051d5e4b5",
       "language": "python/cython"
     },
     {
       "path": "scripts/aegis_block.py",
-      "size": 4428,
-      "sha256": "b1644eb8d48378144e887896b8e0e1ec8199e460bb70e3aa49967e644dbf5fb1",
+      "size": 4114,
+      "sha256": "1a2104f0d329801b0dfc99f6f8767f9c2e33f3f704263030556b651b6252a4be",
       "language": "python/cython"
     },
     {
       "path": "scripts/aegis_console.py",
-      "size": 62005,
-      "sha256": "a225f4ace5214d54bbc7c9a2f1876fb7c87fe29c88aafdb43ce6f671230f1768",
+      "size": 66449,
+      "sha256": "6d2e0391456d751c2bb47ec05cd50ed7f71ecd8177b0985ebda0245daa1c36dd",
       "language": "python/cython"
     },
     {
       "path": "scripts/aegis_console_pro.py",
-      "size": 9859,
-      "sha256": "83544de73c5d08248a8eaeae0884c2c64ae091da82474bed1921eb03036b3092",
+      "size": 12100,
+      "sha256": "dde25d629856775e5254ad050a5f1e83f65edce395c2f0539fe39c8bc637e3be",
       "language": "python/cython"
     },
     {
       "path": "scripts/aegis_daemon.py",
-      "size": 34233,
-      "sha256": "9b5b2f86a953957733cf53538dd23035696d9d7a330f0a27bed6967e39864e8b",
+      "size": 34230,
+      "sha256": "4aca77148f335f67ace6915c1c7669eba37cc109a5d0d2beaa9973f4973f6c43",
       "language": "python/cython"
     },
     {
@@ -1812,26 +1122,32 @@
     },
     {
       "path": "scripts/aegis_event_gen.py",
-      "size": 8950,
-      "sha256": "b6813f285a65d9c5f20176af0252fcb18972eae600ddda21fedd517753188d4b",
+      "size": 9167,
+      "sha256": "3f249cb3a807e438414b47f3f9793200802e7be65a78cee0fab430770e23b682",
       "language": "python/cython"
     },
     {
       "path": "scripts/aegis_graph.py",
-      "size": 2820,
-      "sha256": "1f89f153973cc681570cad6ad064374987c3b469f27899a24f26bd6baf24433a",
+      "size": 6359,
+      "sha256": "2f31f195926aff291bd7b1a5f88b5c5a77ca48f46b0d777c1d3c9e34e83784ff",
       "language": "python/cython"
     },
     {
       "path": "scripts/aegis_metrics.py",
-      "size": 7082,
-      "sha256": "fc01b368af5a56c02624287a2f58eb9ac4867d288cff71e33a6ee79d5bffe354",
+      "size": 7648,
+      "sha256": "f4666079a7409e035697f87b4a0e1a35d49bed7010be4d25469996ccb641a067",
       "language": "python/cython"
     },
     {
       "path": "scripts/aegis_notifier.py",
-      "size": 7571,
-      "sha256": "c058c10b0cabf9fead40ad0afe66c6d59ee4cd0c1a21cf66e3cc1441fa339721",
+      "size": 8455,
+      "sha256": "fe42ed6154c8c4fe869881af0fb989554c546a0c121c9097b5353b835c9f8c16",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/aegis_open.py",
+      "size": 38294,
+      "sha256": "6f290b49a02a5028eb3f51781840c4b22728712cf53ec6a5ffec15eb8640efbe",
       "language": "python/cython"
     },
     {
@@ -1842,38 +1158,50 @@
     },
     {
       "path": "scripts/aegis_status.bat",
-      "size": 1046,
-      "sha256": "52e70a8d5c3ae842d7e2083122d340d5334e62fb7d7d5bfe51a0b4c54884d57f",
+      "size": 1245,
+      "sha256": "b3e67d109c91b475684f0a23b082b0e91c9f45b13f892074f4b09b99f9c1ec6b",
       "language": "script"
     },
     {
       "path": "scripts/aegis_status.py",
-      "size": 6750,
-      "sha256": "c7b58609d1b4459d7b6c48ab48561b4257bebbd79d89838ae2029766bca41a52",
+      "size": 6796,
+      "sha256": "e38bed5715688f5c68e8e83b72f03f580bb3cec63a1458fe9f0fd36d6e739650",
       "language": "python/cython"
     },
     {
       "path": "scripts/aegis_unblock.py",
-      "size": 3254,
-      "sha256": "ce9ea0d09e9e317e2e8283779dc019cac86c73957a370fe6a62865370becec9f",
+      "size": 3312,
+      "sha256": "885a9106c40c1f773431c3a21ccadcb1d8067a482797a8a3114edee895e11eea",
       "language": "python/cython"
     },
     {
       "path": "scripts/analyze_existing.py",
-      "size": 1695,
-      "sha256": "75ad7a4845bbc657e9d0f2e90179bc3cf53e72e9bd27989809b564ef2d49e674",
+      "size": 1836,
+      "sha256": "6f6b4ec8bf90591c4b9fbfdee1db899b3d69c8ee28b753199a85201be87f5b74",
       "language": "python/cython"
     },
     {
       "path": "scripts/analyze_vectors.py",
-      "size": 3330,
-      "sha256": "d4940e97f254d730db76957a06d1a956770c7e06c81d2e8ccfbce150dc43aadf",
+      "size": 1703,
+      "sha256": "d11693f6909ecd9b9d9393203a6c442dbdab4927d8673382369d964849813bd1",
       "language": "python/cython"
     },
     {
+      "path": "scripts/attack_demo.py",
+      "size": 5182,
+      "sha256": "bf591f1fffbb3e0b2c3acd6a04e64b5e73b4ef838cd94f554b272e2c7ab96902",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/boot-sequence.ps1",
+      "size": 5531,
+      "sha256": "265aeabbb8ff450e02579be3df58b6f3e19ec900a0378407a667fd0085b68850",
+      "language": "script"
+    },
+    {
       "path": "scripts/build_all.bat",
-      "size": 5685,
-      "sha256": "56449e1f572941d8e81fb28d4c57b4c746eb22745222ce94dcf176b10d5203df",
+      "size": 8820,
+      "sha256": "d656b41e7f81c7fd510d061c09ba4ea243c4c5fde4253fb2b6c7ba2073fa6b1f",
       "language": "script"
     },
     {
@@ -1884,32 +1212,38 @@
     },
     {
       "path": "scripts/build_drivers.bat",
-      "size": 10876,
-      "sha256": "9e88a6e317a3e8d43add81b99763b4b5cbbb321aa212caf252f5b50497f48326",
+      "size": 10989,
+      "sha256": "a38b7e71596f7c7c7678d20d832047c1eecda457e2398bd0443f3b20d1caeb0e",
       "language": "script"
     },
     {
       "path": "scripts/build_wfp_user_bridge.ps1",
-      "size": 3231,
-      "sha256": "399022da298625fc38d16bc3b86c10df974539c7656936f53526145f65edcbf4",
+      "size": 4136,
+      "sha256": "48e770c03dc32678122eb15d5be1c33a9d779b4f6f39698e01ce3c1e67762385",
+      "language": "script"
+    },
+    {
+      "path": "scripts/c1_e5_sidecar_proof.ps1",
+      "size": 42922,
+      "sha256": "2c99c9e0451bc0c06755ea07e8868b902cfdb6cbfa748c8072b4766dda0953c0",
       "language": "script"
     },
     {
       "path": "scripts/check_brain.py",
-      "size": 354,
-      "sha256": "30099a11f4b912507b31f2ea42fb6838f0d52ad88976cb61f4c3b127c827eeba",
+      "size": 418,
+      "sha256": "7c39488a47302e742ab671f5b4f4074e1a781b6860597a267eae01ee2a5de822",
       "language": "python/cython"
     },
     {
       "path": "scripts/check_evidence.py",
-      "size": 445,
-      "sha256": "f2c9c0dc787a9b339b20a47076e670fe99e9ba27f149f0b0fe10627c3ad281c4",
+      "size": 707,
+      "sha256": "3baba78359a19ab83597116c3c8967c9390eff5be12bb444963778101823f3cb",
       "language": "python/cython"
     },
     {
       "path": "scripts/check_summary.py",
-      "size": 379,
-      "sha256": "6471bd6be14a28f1e0f2e1faa3ab321af60b57f2c210b7db047afa0696855673",
+      "size": 5631,
+      "sha256": "0750d0c9e7cc0f2906785f2db27f7ec8bc16fc12ceac6ab5735f30a3d8b38d26",
       "language": "python/cython"
     },
     {
@@ -1920,8 +1254,14 @@
     },
     {
       "path": "scripts/clean_aegis.bat",
-      "size": 12279,
-      "sha256": "a8de234d960b575336dccd3bfa8a97ea4701f1032b8f2d386777caeb5739bf67",
+      "size": 12656,
+      "sha256": "08792493f78c056a702a6c3ca5edf2eaebe30b4a2f8bcf559b4a03b9d73b94cc",
+      "language": "script"
+    },
+    {
+      "path": "scripts/cleanup_stale_aegis_firewall.ps1",
+      "size": 3226,
+      "sha256": "e70bd73af583f4618802b71306ec435091f876a09438ed373127939e007e601d",
       "language": "script"
     },
     {
@@ -1929,6 +1269,12 @@
       "size": 9031,
       "sha256": "554c55cd5ca2313f331fc3ec7184bb872d90e852ce46837cefcff011f0e11a5f",
       "language": "python/cython"
+    },
+    {
+      "path": "scripts/deploy_wfp_driver_20261024.ps1",
+      "size": 11722,
+      "sha256": "83884d01c4fe01791376038d367dedc2c7b6a01146460e48d2ae5f81ef22379e",
+      "language": "script"
     },
     {
       "path": "scripts/diag_aegis_dirs.bat",
@@ -1949,9 +1295,159 @@
       "language": "python/cython"
     },
     {
-      "path": "scripts/etw_runtime_probe.ps1",
-      "size": 1574,
-      "sha256": "ea9a05a2e12beb647711c329660dbd28463b36e58ce8a00a38f3e419ebb49fa6",
+      "path": "scripts/e5-clean-host.ps1",
+      "size": 7199,
+      "sha256": "5b3a25a3c8106ca7c66ef255ddfa148fb6a940d39e9107593e6e3e942ac0a4ef",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5-o2-remote-sink.json",
+      "size": 409,
+      "sha256": "1f5064d33880f2a1c547e0de710a7014ce77271c583a38208653993f2d71710a",
+      "language": "json"
+    },
+    {
+      "path": "scripts/e5_arbiter_handback.ps1",
+      "size": 2874,
+      "sha256": "52ac30c12f5c793c0ed6e235a0512b5caa52a201957031f8e1ad2ac1c4db854e",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_arbiter_redeploy.ps1",
+      "size": 3426,
+      "sha256": "4ab1fd88dfbe2ab44ed5c1447794f5bd74181c89067b546d6e6fc345fc8b3480",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_arbiter_swap_test.ps1",
+      "size": 3062,
+      "sha256": "2096100d11dac02dc5e34b55548002c59ec8b0f6edabf67081f9bd5803825f1f",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_arbiter_swap_verified.ps1",
+      "size": 6665,
+      "sha256": "d88b443cfb822b3644a5381637c2842d999676c6ae525542d19baad5b1891061",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_cdb_repro.ps1",
+      "size": 2355,
+      "sha256": "86d36336cb8e16fe6aaf8b1871e037370c7125e4a26a7799965f62457448afac",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_cdb_repro2.ps1",
+      "size": 2427,
+      "sha256": "864d7d6ebe2c624e5e1498a5e2f64a7fd4057c0ed517bf300925f7bcf3dad25a",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_deploy_abi_set.ps1",
+      "size": 4431,
+      "sha256": "1008455c96419a312dba1ff38b10f7bc27eb05b74f57d80dcf4b4b3c01ee748a",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_driver_swap.ps1",
+      "size": 2827,
+      "sha256": "af202e7964f41b5d26a87c0ae01bbd536de4c6a4a14f6693f1d1b2c30aa8f328",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_driver_swap_resume.ps1",
+      "size": 4364,
+      "sha256": "bbaa40a4320e2cdddd90f412ae4410948d8c09c36f6d640a996a7ef199c61917",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_eventlog_probe.ps1",
+      "size": 1032,
+      "sha256": "691b2df8f3b8e78f4d192130a73e7160e9112f142a91dce743b9a786ba5b949a",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_localdumps_repro.ps1",
+      "size": 2784,
+      "sha256": "4df61cef1a35d42193388ed706e96c0956a2b159427465bfdde5821a931b60ef",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_nose_parent_probe.ps1",
+      "size": 1740,
+      "sha256": "65a87c840e212c9005a3c63a0008bad47b6041f94caeecdc498957f410593733",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_o2_deploy_candidate.ps1",
+      "size": 7655,
+      "sha256": "2808ffaa6399813b58705730c914d841516a2a9aa88eebbc61bf458429e07f36",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_o2_direction_verified.ps1",
+      "size": 16369,
+      "sha256": "bca7e35adefebc0cf0760219b697651c1a7b0e49f6fa739ef90a70392a8f8628",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_o2_exit_diagnostic.ps1",
+      "size": 13756,
+      "sha256": "22f13661feab8279261abca18073a3150bd4734924c73e74d6b9b5b68697d2bf",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_o2_functional_proof.ps1",
+      "size": 6830,
+      "sha256": "17bd29eaaabca689debd19970df788cec893d80d941e9d7dd8a3350730f4277c",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_o2_payload_offset_proof.ps1",
+      "size": 11336,
+      "sha256": "1470b1ed755ccfbbcc2b30f8240a9b4202ad4c77db1ed76c18af12b4f4cdda98",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_o2_remote_tcp_sink.ps1",
+      "size": 2982,
+      "sha256": "796f35d0f5376603f538c94e84b70c39c831e2a386b2055dd9fffc526aa0dfb0",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_o2_rollback_candidate.ps1",
+      "size": 3876,
+      "sha256": "bbbe48aeb9dffb18bf407737a1dd4039a9c53b5714ebc364aa93e137df7d3882",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_outbound_probe.py",
+      "size": 5978,
+      "sha256": "0787f0c41c3e4815bd0c5646e16165b97d75f067e4cc94d3b3cc26f114bbdcb5",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/e5_pe_export_diff.py",
+      "size": 4033,
+      "sha256": "6ae9b0a0f82cad1c1841e9717d17345af494718e05b27f956d8be0e7994cc6b9",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/e5_repro_crash.ps1",
+      "size": 2053,
+      "sha256": "ab1f3957c45314561870dbac291195d422529f27d4e7aaacf150c687037be1e9",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_rollback_daemon.ps1",
+      "size": 972,
+      "sha256": "dc80552feae7a383ce39624ac633c5cdb5ca41337bfc1bf4f6d9e23728e4c6b6",
+      "language": "script"
+    },
+    {
+      "path": "scripts/e5_wer_dump.ps1",
+      "size": 2254,
+      "sha256": "c0b023ee571bc474e2b43a62f090f7cccc4a92df0988f32cccbddc476e96cecb",
       "language": "script"
     },
     {
@@ -1961,21 +1457,9 @@
       "language": "python/cython"
     },
     {
-      "path": "scripts/fix_console.py",
-      "size": 3795,
-      "sha256": "8742bb6470dd7ccc7e00d953c06bfc340d70bd01f8a6d10485a69135df8a8bec",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/fix_console2.py",
-      "size": 3398,
-      "sha256": "2b950915562ff9258cf019a7f4f5ab928c8809f898a028f2c04838fd3cf65457",
-      "language": "python/cython"
-    },
-    {
       "path": "scripts/generate_detection_fixture_manifest.py",
-      "size": 4578,
-      "sha256": "412c2c6ec3921f618889012e985867da438ed0f29f537b4ac3e19cb388ad9708",
+      "size": 5162,
+      "sha256": "e23ee0ec37aa03f471d4b1ff2f794d22e7bfdc409ab3db269cba2aaf367415a3",
       "language": "python/cython"
     },
     {
@@ -1985,27 +1469,27 @@
       "language": "python/cython"
     },
     {
-      "path": "scripts/generate_rule_policy_mapping_draft.py",
-      "size": 4179,
-      "sha256": "c9413d17ac0e445df2e0316a554e1ac72e06ced992a40fb4a6bda6208ac951d8",
+      "path": "scripts/generate_rule_qualification_matrix.py",
+      "size": 6483,
+      "sha256": "f387bbd813f58d740844accb31c0839930ff120dbafff36db767187f4efb0554",
       "language": "python/cython"
     },
     {
-      "path": "scripts/generate_rule_qualification_matrix.py",
-      "size": 6491,
-      "sha256": "c0f9a0f78d7c6bc7bde1efe45b0fc08dc9960298a4057d2cd606f58924930a91",
-      "language": "python/cython"
+      "path": "scripts/install-boot-task.ps1",
+      "size": 3922,
+      "sha256": "080830d6cd1db83bf45d9d570e463224ca539437b4b1af2ee1e2934d44188b22",
+      "language": "script"
     },
     {
       "path": "scripts/install_aegis.ps1",
-      "size": 2363,
-      "sha256": "1672a1e6a532516746aef82d37fc54bc2c823c7b1488d43fa0c6afaa12da801e",
+      "size": 7923,
+      "sha256": "b13f648d4cd863bb4c7be8815d9f7eab6afcc7fdc462a8195599d32f9e33e5f2",
       "language": "script"
     },
     {
       "path": "scripts/install_drivers.bat",
-      "size": 8330,
-      "sha256": "3e873f2baefa705f6b79654e651e18e3247b049a80ac989d8a38279b785d8f4d",
+      "size": 8338,
+      "sha256": "49dc2ac8cf0bc8dffd142070fff564c2822b5e4abcd044e8820eadd5fd6f7cc8",
       "language": "script"
     },
     {
@@ -2021,6 +1505,18 @@
       "language": "data"
     },
     {
+      "path": "scripts/minifilter_service.ps1",
+      "size": 9278,
+      "sha256": "ce1f1b7daa3908d709404a1647e2d67ce62e3c5f7e08baebde809c24d853356e",
+      "language": "script"
+    },
+    {
+      "path": "scripts/minifilter_sign.ps1",
+      "size": 7544,
+      "sha256": "e75746319194490a133fe2ccd9a590db62bdd00cb59ef4e4fe42e4610ad043f5",
+      "language": "script"
+    },
+    {
       "path": "scripts/ml_train.py",
       "size": 13019,
       "sha256": "66939ceef3726f99460af54ce7427edb834964a1b8c5a037c4262c84a5043ab6",
@@ -2028,8 +1524,8 @@
     },
     {
       "path": "scripts/package_release.ps1",
-      "size": 3134,
-      "sha256": "5a3987577fd03738e1c2de24801faae4d9fbad578cc949caca5b94953deecbd4",
+      "size": 5116,
+      "sha256": "9215326f137a6122813357ecea094bf76751123d16aec9f42ba2a26a6e0fe6e6",
       "language": "script"
     },
     {
@@ -2046,8 +1542,8 @@
     },
     {
       "path": "scripts/pre_attack_readiness_scan.py",
-      "size": 5688,
-      "sha256": "ebfc3e284a38607109273e708646d3c574484babbdbae859bbc4fe50e903decb",
+      "size": 5859,
+      "sha256": "d1d2e44bfa5c53807d4e24d15fb8e01e904742f6c88a9adf94d6d24c819a7a08",
       "language": "python/cython"
     },
     {
@@ -2057,15 +1553,27 @@
       "language": "python/cython"
     },
     {
+      "path": "scripts/project2_runtime_gate.ps1",
+      "size": 4502,
+      "sha256": "1175570fc208e7e931a129d0e1e1516d80b7b703a8ced7995360b01dc0f310bf",
+      "language": "script"
+    },
+    {
+      "path": "scripts/rb021_current_source_preflight.ps1",
+      "size": 7641,
+      "sha256": "ed2f048dbf3f4fade9c68cf80a7aed7f097126ce2fe37b68788144352d27025c",
+      "language": "script"
+    },
+    {
       "path": "scripts/read_vectors.py",
-      "size": 656,
-      "sha256": "0e694e02d99a59dff7e175ade58ece0d63530a4fc4c462d4a18db20f48e3ea19",
+      "size": 664,
+      "sha256": "7ab5a412f27c0bde6add2c88df32d102ec0c3eed6a1216dc046637817aa15c7a",
       "language": "python/cython"
     },
     {
       "path": "scripts/release_package.ps1",
-      "size": 6732,
-      "sha256": "768c3e262a98cf66d910235d13bec647714359ac7fe60be65eb137cf0efda7eb",
+      "size": 1151,
+      "sha256": "ceb58cb8568dc2cc1d4186bf96987950d6146787b00a3db5dabc18ce1c858326",
       "language": "script"
     },
     {
@@ -2075,9 +1583,15 @@
       "language": "script"
     },
     {
+      "path": "scripts/run_22rules_kit.py",
+      "size": 4651,
+      "sha256": "8c6c59266b0e449c70ec37f5ab998dccc593563d59bf0904599120a1c94bc9d3",
+      "language": "python/cython"
+    },
+    {
       "path": "scripts/run_aegis.bat",
-      "size": 29507,
-      "sha256": "d521b3e33647f16393aafacea85f087675b6bfe2fc1f2d5d114624a7a71c0191",
+      "size": 5878,
+      "sha256": "79b4fa262c73645ab930936a9fbc5d914c270c5b375b9ab3b4c93b3762ff2b1a",
       "language": "script"
     },
     {
@@ -2123,33 +1637,21 @@
       "language": "script"
     },
     {
+      "path": "scripts/run_g2_dupfilter_proof.ps1",
+      "size": 7332,
+      "sha256": "4c18d9348d33c7de4dd92a53d6b7c0ed2e2dae0a5c6223156289bb6785eca982",
+      "language": "script"
+    },
+    {
       "path": "scripts/run_host_production_preflight.ps1",
       "size": 5283,
       "sha256": "0360ddf533b8e9d320f8cdb3d750399de68bac9f90db836ee7471e6fa215311d",
       "language": "script"
     },
     {
-      "path": "scripts/run_l7_hostonly_observe_only.ps1",
-      "size": 5267,
-      "sha256": "f08512355d040fde91e6e54a1e295c9439a8d93d676eb885c999b6e95b9bc161",
-      "language": "script"
-    },
-    {
       "path": "scripts/run_lifecycle_recovery_proof.ps1",
-      "size": 8891,
-      "sha256": "1940fca3655121049c7f2c7554f4f132aae7e12ddf63f90dd430d67aa8c73944",
-      "language": "script"
-    },
-    {
-      "path": "scripts/run_milestone_1_2.ps1",
-      "size": 8295,
-      "sha256": "455f6c89b9884236a1ba139fc46c631282a5b9c9f822e13a632166554db849b9",
-      "language": "script"
-    },
-    {
-      "path": "scripts/run_native_verification.ps1",
-      "size": 1508,
-      "sha256": "e15aaa194b3a0ed46f1905bd4c5b87195c938d0f9433374573cf98680c1047c7",
+      "size": 9000,
+      "sha256": "50bc6c841cd3eac09e0eb8c9157b114be0d7c8fb1d234b76f285ea24004f7ab3",
       "language": "script"
     },
     {
@@ -2160,8 +1662,8 @@
     },
     {
       "path": "scripts/run_phase8_lab_scenarios.py",
-      "size": 16264,
-      "sha256": "d60aafc371a3ab39ab5daf255d6acebaf97ad54edf50b92d698b01bed237ec15",
+      "size": 16704,
+      "sha256": "7861da0d3efa2068a9d45f61d6f6ff84902eda2182209b3c4d72841547471e26",
       "language": "python/cython"
     },
     {
@@ -2178,8 +1680,8 @@
     },
     {
       "path": "scripts/run_rule_matching_observe_only.py",
-      "size": 2647,
-      "sha256": "ef8197b02f55c896d248dc4ba89844d97b14837aab603a52365de83efb18baff",
+      "size": 2663,
+      "sha256": "bfc056bf5f9937a42b8323046a72ebbc21140d62aa6c7bf869aab9ab8e3285bb",
       "language": "python/cython"
     },
     {
@@ -2196,8 +1698,8 @@
     },
     {
       "path": "scripts/run_synthetic_detection_adapters.py",
-      "size": 4783,
-      "sha256": "0a4005fafe087797c8c233a07c0be0c518bd8fffa2af101af6b8cd6656e50e70",
+      "size": 4821,
+      "sha256": "ee8479657962643d9389dc95505c7b8095d2fb938a24825c19b0ec3bbf978e41",
       "language": "python/cython"
     },
     {
@@ -2208,20 +1710,20 @@
     },
     {
       "path": "scripts/run_wfp_hostonly_observe_only.ps1",
-      "size": 1410,
-      "sha256": "4fcd188193afe6b5e10ec6aa98a1ef5d3eeeb9b5a5cb575264580d6ca95a683c",
+      "size": 2210,
+      "sha256": "39858992900f6e0bc65f957e2e8d592caa7bf30748342fa05979ee159e543355",
       "language": "script"
     },
     {
       "path": "scripts/run_wfp_l4_observe_only_proof.ps1",
-      "size": 12671,
-      "sha256": "d135cd240c642f5b355f85abd7d27954d20b5bef3f7971f787da70af84b6b32f",
+      "size": 13324,
+      "sha256": "9b9b2079656455f3d7601b1bdd90db003fee974827bbc915b32a7f8167fe5002",
       "language": "script"
     },
     {
       "path": "scripts/run_wfp_phase10_preflight.ps1",
-      "size": 3508,
-      "sha256": "6243b125308b97dd5b58352125b00acfb741981bbb5fd54cc33a7232a461802e",
+      "size": 3904,
+      "sha256": "f4d12cfa62c92885766dc0ff9ba691404d9c2ba37e7c5360565fa3fbc8b979df",
       "language": "script"
     },
     {
@@ -2231,9 +1733,15 @@
       "language": "script"
     },
     {
+      "path": "scripts/sign_wfp_driver_20261024.ps1",
+      "size": 2707,
+      "sha256": "a35b2595637861b9cd7e0cc0c10e9bc3c34072e4e8fceee234dde6ee3bdb7aa4",
+      "language": "script"
+    },
+    {
       "path": "scripts/stop_aegis.bat",
-      "size": 1769,
-      "sha256": "f8666d7b7df55b35a15ba5f074b5819f18b76bf6676601bea4306d92cda2f1e0",
+      "size": 766,
+      "sha256": "4d8e3b6b276cdb5f1e025cd6c06868e67fade6435a5d7307379e3f389d9572ef",
       "language": "script"
     },
     {
@@ -2250,8 +1758,8 @@
     },
     {
       "path": "scripts/tests/aegis_nose_test.py",
-      "size": 12794,
-      "sha256": "90158f8bdc5e5bf879c01b480771e1059e7cee70a51e0f7118e8dc5a576c8ee9",
+      "size": 12791,
+      "sha256": "a39ad1b0eea69bdef517aaf04bf730a011ef83dd8f2c1bfa17ce4d3f112859d9",
       "language": "python/cython"
     },
     {
@@ -2261,21 +1769,15 @@
       "language": "python/cython"
     },
     {
-      "path": "scripts/update_console.py",
-      "size": 9748,
-      "sha256": "0444fc19adaea7ce832a3d89cec3524b999fa8ce9c001627d7907fb9d219abac",
-      "language": "python/cython"
-    },
-    {
       "path": "scripts/validate_detection_fixture_manifest.py",
-      "size": 2470,
-      "sha256": "2dbacec0a29c7e8a9cdd3704ea05a872466ebcdb47e06cf2f2d17e3c96fc47e2",
+      "size": 2620,
+      "sha256": "0fd53881249b5be126417b48d7fba0b5cf1650568416c40f63fce1cfa38515c5",
       "language": "python/cython"
     },
     {
       "path": "scripts/validate_operator_cli.py",
-      "size": 827,
-      "sha256": "d894fd8953d4731630e0c43f81a6d9197c02d638f4d1d449591c165fc8db4105",
+      "size": 1103,
+      "sha256": "71e29e3129f59370572248dc570c93a8aefbf2767ca2c7aa754db21624b4a348",
       "language": "python/cython"
     },
     {
@@ -2286,15 +1788,27 @@
     },
     {
       "path": "scripts/verify_release.ps1",
-      "size": 5100,
-      "sha256": "919991226dda527dc25a4ecdb870b3f14996fd0e13404025143f7b9cc91ed4d8",
+      "size": 5546,
+      "sha256": "2eb1b24696c71d152ed0ccd0b01f3457569e29707051f1bc8a4f416b583b41ae",
+      "language": "script"
+    },
+    {
+      "path": "scripts/wdk_build_minifilter.ps1",
+      "size": 8831,
+      "sha256": "7437528f9f60cd654d70c17d600f9dde25a46ac739cc707f2a45fd7341af7abb",
       "language": "script"
     },
     {
       "path": "scripts/wdk_build_production.ps1",
-      "size": 13015,
-      "sha256": "94a92420ce2938ad71d225aefde427e286fce5173a4a3b23b807fff1c59494f3",
+      "size": 13296,
+      "sha256": "3bd5b2d8d5454031f6017fe580b775ff04ef205bb5206ae1ca2eab17ce8aa27e",
       "language": "script"
+    },
+    {
+      "path": "scripts/wfp_s6_cleanup.py",
+      "size": 3748,
+      "sha256": "4e4a150064b4b801ce226b726e3ecda1410f16349847e981e0e97a79e21c7658",
+      "language": "python/cython"
     },
     {
       "path": "scripts/wfp_service.ps1",
@@ -2309,16 +1823,16 @@
       "language": "script"
     },
     {
+      "path": "scripts/wfp_stale_evidence.ps1",
+      "size": 8628,
+      "sha256": "408209074666940d5ebfd8bbd29e0967d75b317b4e11d4897f3a1f165932c394",
+      "language": "script"
+    },
+    {
       "path": "scripts/windows_host_verification.py",
       "size": 6346,
       "sha256": "9760ee0514497dd0d2d6835063de8a319251944d17d8ea11be3cfceb63872f4a",
       "language": "python/cython"
-    },
-    {
-      "path": "shield/Cargo.lock",
-      "size": 156,
-      "sha256": "437fe0e1f6624569c72ca969bc5f648604f6b96bfb43845d7034e7604e57e234",
-      "language": "data"
     },
     {
       "path": "shield/Cargo.toml",
@@ -2328,26 +1842,1826 @@
     },
     {
       "path": "shield/src/lib.rs",
-      "size": 1612,
-      "sha256": "d3d74bf0c3ae8029a1cd2a7f6c247f43362b56bc05f56296335e800fe26f6457",
+      "size": 2352,
+      "sha256": "ce574f0209009f0f920a588782201f254f8ae3b267983ddcf67f2294a77dd2b9",
       "language": "rust"
     },
     {
-      "path": "shield/src/pep.rs",
-      "size": 1291,
-      "sha256": "4f7c828efb7ddda57a24faf782286e1e19172ed433c098f3c698d3ea6da3ffee",
+      "path": "shield/src/screen.rs",
+      "size": 1014,
+      "sha256": "e887ec615b688d1bfb6a9eb979bcada324d32b18f758929e120edd8d354c3292",
       "language": "rust"
+    },
+    {
+      "path": "src/all_tests.zig",
+      "size": 11717,
+      "sha256": "db67c1680dc2a734f3c09f92d5f1de38908e2ade0b2e8b3464349b66f12d26a1",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/flow_engine.zig",
+      "size": 32104,
+      "sha256": "0d4abdc6146d012ef9a0edcbd0c6c5d092ef839b9272a9b85b9ecde917d4b801",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/flow_table.zig",
+      "size": 15820,
+      "sha256": "9a68500b0f2e112c55a1af1ad2017ff4eae5c6613c829aa2ce690245efa64a43",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/flow_types.zig",
+      "size": 949,
+      "sha256": "5131f7ebc0208584b5a4e92a834f26772dad705f4dc955a828f23013c0c6d290",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/l7_classifier.zig",
+      "size": 3351,
+      "sha256": "2bb87b6b240b97be38824f581f5211923b613c23551cada9b788954f46a7203c",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/minifilter_reader.zig",
+      "size": 24920,
+      "sha256": "be6a8e3b0326dab89adaf6c4a6f5d35028a4a1375b6409a2ed98ab4d68280e3b",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/nose_contract.zig",
+      "size": 12007,
+      "sha256": "1d04714db969d140e9ca17c7af81061b87d671bf4543ad7ea912845e1ba21288",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/nose_pipe_reader.zig",
+      "size": 22760,
+      "sha256": "a3a7ca1d57fe3e16e31ceb34e9c0cc030d477fb8c2732292d2807b3ced0006eb",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/npcap_adapter.zig",
+      "size": 26191,
+      "sha256": "8f9296b55c784aeae5e41b3adbea8c9ee566bf9ca248243e765fb65e5950a608",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/npcap_capture.zig",
+      "size": 67937,
+      "sha256": "e5b7980eee661d81c423569df46bb8e8cbb499303ab26f46d6aa6eb6357da44b",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/npcap_test_live.zig",
+      "size": 19862,
+      "sha256": "71b3a87d7869f0d4b1cc2afb3f2b361fe2689e56e945f1423605164f36814887",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/packet_decoder.zig",
+      "size": 8747,
+      "sha256": "45f5e55f300d3ca571b8e7cfc7c7fc311e48fbd4224cc9014bc68b74c3337613",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/pipe_monitor.zig",
+      "size": 13443,
+      "sha256": "ce35c031e438454ad8b24ed6c5d0d9a05aaef1b81cabecb2cdaa716ec1a71f74",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/proto/l7_payload.zig",
+      "size": 3183,
+      "sha256": "2cc86a6c0dfe0da6b4d53e3530614f7b20dac72f9f195f68aace11df887435f6",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/proto/parsers.zig",
+      "size": 18625,
+      "sha256": "876237582fef852988e01fe09cc0b12d4e64feaf6c93aa7158684e18b8c5c0ce",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/source_arbiter.zig",
+      "size": 11284,
+      "sha256": "3386dde21cc25598623c1cb439b0c3434ea6be2f9ae6ab4586f43b6427cbe462",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/stream_reassembly.zig",
+      "size": 7044,
+      "sha256": "830dff97e44765193586b6a00377681c91819e7553307fe73ad48e114b9d8c4b",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/wfp_telemetry.zig",
+      "size": 23949,
+      "sha256": "32766c8cd8c51243a165614d479614de2ca56899daddb75bc9d19c2c8e5bcd97",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/windows_capture.zig",
+      "size": 11376,
+      "sha256": "72ea384cfb98437110596c5c825da267fb85e63fa167247917c1f9b3e51d1690",
+      "language": "zig"
+    },
+    {
+      "path": "src/compile_only_imports.zig",
+      "size": 362,
+      "sha256": "1814457aea03f05ee1c76642439a879d996e905e09e45797234f8e829c073bcb",
+      "language": "zig"
+    },
+    {
+      "path": "src/contract/abi_manifest.zig",
+      "size": 1496,
+      "sha256": "f75ce253b207893abd3f832d82308ae9b5deb3e59c3ab8a151cdfceee32648f4",
+      "language": "zig"
+    },
+    {
+      "path": "src/contract/canonical_event.zig",
+      "size": 71609,
+      "sha256": "6ba929fb06b8b7723d13583f5a88db2b9328afa2531854dfa7705e3506bf5101",
+      "language": "zig"
+    },
+    {
+      "path": "src/contract/event.zig",
+      "size": 8817,
+      "sha256": "22794066ea8a7c80e162443d1f67cdbc1eb626fe5d1d76d21582326c95584682",
+      "language": "zig"
+    },
+    {
+      "path": "src/contract/event_fabric.zig",
+      "size": 14754,
+      "sha256": "74f6dd79127bd07f7d12c5f2ae945528998f220e5823b6c0b3a72915c2823dc2",
+      "language": "zig"
+    },
+    {
+      "path": "src/contract/event_queue.zig",
+      "size": 7292,
+      "sha256": "3e96f688ab95dc38479d44e7571e038f2f10466354d57eb200c778dba43a34d9",
+      "language": "zig"
+    },
+    {
+      "path": "src/contract/runtime_manifest.zig",
+      "size": 7009,
+      "sha256": "f727dffded3dab110a3e2d658446b7714797fdfbd3f5f6914caa784a3d4dea68",
+      "language": "zig"
+    },
+    {
+      "path": "src/contract/runtime_spine.zig",
+      "size": 27685,
+      "sha256": "bbcb84853eac708df998b065ec1322d97b8576ceb2ee48dd1a6768f45cf3c41b",
+      "language": "zig"
+    },
+    {
+      "path": "src/contract/wire_event.zig",
+      "size": 17462,
+      "sha256": "b01b33c873038ba64ba3ddc5aaa66748c53ba6c9e6c1beeacc909385e71dafba",
+      "language": "zig"
+    },
+    {
+      "path": "src/control.zig",
+      "size": 447,
+      "sha256": "f6ff9adba4e23170bbb48798c11c0bc78bb1888245457c60a1edb9d40ed76e87",
+      "language": "zig"
+    },
+    {
+      "path": "src/control/audit.zig",
+      "size": 4181,
+      "sha256": "71b8e556a8d947f4b0081a2c252e8a6906957446dd7536b5618a9d93e79eb63e",
+      "language": "zig"
+    },
+    {
+      "path": "src/control/authorization.zig",
+      "size": 3659,
+      "sha256": "82cd62f2e487537521f8c1df7e13ea9fe7e2234274cc506e7a3c7203eed9740d",
+      "language": "zig"
+    },
+    {
+      "path": "src/control/defcon.zig",
+      "size": 4126,
+      "sha256": "90d2980d18dce74820362dfb3c3bce28f656ca018e5e6691e8b8e45ed6b2bf25",
+      "language": "zig"
+    },
+    {
+      "path": "src/control/handler_registry.zig",
+      "size": 165568,
+      "sha256": "fccdf7496307c0c36f0eb4696ab815b0a6526f689b6b409b66875c3925a109ae",
+      "language": "zig"
+    },
+    {
+      "path": "src/control/protocol.zig",
+      "size": 23407,
+      "sha256": "6fcc6f34621be968b5a511d3a873dc6395740cd3a58af4c344e812b8313c75fa",
+      "language": "zig"
+    },
+    {
+      "path": "src/control/state_machine.zig",
+      "size": 35414,
+      "sha256": "08d0d409741fdeb35957dc186ca3073a8cffeee52888cec4692bdc9baafde8b9",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/authority_review.zig",
+      "size": 7989,
+      "sha256": "50f8fc955d386ce1fa32001b6d2f008cb960d0db011824582ac9434a1755a7cf",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/brain_engine.zig",
+      "size": 22813,
+      "sha256": "df3613724861dc7b82fbaa6f5df1e5a13e759ca3dd05bebd9c53c3b89f822c3c",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/bridge_init.zig",
+      "size": 28134,
+      "sha256": "1303dc14ffda6087f18992ab983d71ef8044e202108cf9b239f2d272d0539e0b",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/canary_progression.zig",
+      "size": 19395,
+      "sha256": "5a6510636765a4f076d077ab40a9ba48c52b053b243c004c3445f33879a5c715",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/compliance_reporter.zig",
+      "size": 32907,
+      "sha256": "fc4df294d361dceef4355101b416576be761a63d9ed7c703701e19f9d8faebd9",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/concurrency_harden.zig",
+      "size": 20439,
+      "sha256": "07fedf7e65103023664adb9ef21ab82533416b940dfd6bbda13c544fe394954d",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/contract_freeze.zig",
+      "size": 22404,
+      "sha256": "bf69c71e2e6a433f11d4a9302657e45c6fa096e1d37139ea5d81b06b3c1c7f16",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/diagnostics.zig",
+      "size": 16837,
+      "sha256": "06525c389cc2b09897aeff04bdc4a07b9d2043daebc7a6789e9d8dbba7ed29c0",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/e2e_harness.zig",
+      "size": 23144,
+      "sha256": "553151ecbba5f9bf3b2ac56a7e67d4240b731bdd298c5deea7e062b990faf42c",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/fabric_accounting.zig",
+      "size": 27079,
+      "sha256": "f512659afed7443da9b608d9063f5465678764c2e05db998cc9ab13f3d87b3c0",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/integration_test.zig",
+      "size": 27630,
+      "sha256": "ab9ed048eee23a130699212181569a39586ff2dbb9e75435fb0703edb636414a",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/legacy_removal.zig",
+      "size": 8485,
+      "sha256": "eb35ef424b21cceea66a00ff157a6e9269dfe3e3505c23a1f7541b835dbb08e3",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/memory_pool.zig",
+      "size": 10043,
+      "sha256": "ecb37b1112f03a80efafd13153d1f78a4de9b9504e53f57f73653a585379d152",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/nids_analyze.zig",
+      "size": 104176,
+      "sha256": "895e51855c1384bcb1a2a71d47b3c887b430c514dbcb3113463e16b63e157639",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/nids_capture.zig",
+      "size": 15960,
+      "sha256": "f70288c108bba0cbe9e122bc9ee491c53200daf720ec31d088028f4d49c81ae8",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/nids_main.zig",
+      "size": 19119,
+      "sha256": "e8769ef1a68a85cf9fab8ff152a84251f8e1f4e0d497daefb9c89bbb52c0ba6d",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/perf_benchmark.zig",
+      "size": 29138,
+      "sha256": "e641380b447b07fc842a16720112cbc3cdc21dbbea53f4872c326bc1c76ac5b7",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/performance_harness.zig",
+      "size": 25934,
+      "sha256": "0a243d7a1fa1898e3b766f5f472faefd67fb52c18d7f87ba08b51a7bb610ee7c",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/priority_queue.zig",
+      "size": 9643,
+      "sha256": "0630a24c7054670f984737144dd7378b0312cadbc35e41366e391fe7052b3a4b",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/real_ips_path.zig",
+      "size": 13096,
+      "sha256": "787523d9fd290ba7a6569452583a4f1b3a49178226a2d72bb1fa38341e373270",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/runtime_paths.zig",
+      "size": 4600,
+      "sha256": "f4a3b69735345384e6276031017a479a23314a0a7a7108206848d4884b8a5c0c",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/rust_pep.zig",
+      "size": 22985,
+      "sha256": "a1de48716d40a0a2216d0f2498d18b61588d2f0f1e94171b9f13bd59172dbbc3",
+      "language": "zig"
+    },
+    {
+      "path": "src/daemon.zig",
+      "size": 52373,
+      "sha256": "f933c45ca0c55a065d355120053c65f291156798eccbb8644b23c39102f2a284",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/anomaly_detector.zig",
+      "size": 7998,
+      "sha256": "e8fa4ff36ef2118ffdf25549823083bbe062d16da70c920092cef4d60b1888f0",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/correlation_engine.zig",
+      "size": 26805,
+      "sha256": "64c648efa2dfec060767e9087f86f011aaba403b43c561be0a4e88763c63fd95",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/correlator.zig",
+      "size": 14870,
+      "sha256": "a914a89ffedce00faf6c7d655918edfedb848661dd4329f3a18293ba48d6f5a0",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/detection_engine.zig",
+      "size": 21046,
+      "sha256": "9ed871026e70aa1e8ada277a2cb46cc18371c6adf5604b35beb0d6f527fb5870",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/detection_interface.zig",
+      "size": 11903,
+      "sha256": "05be95f1a575f6236cce9dba2096120a921b4d0cc9db5c8261c692cec0b0ae0a",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/detection_result.zig",
+      "size": 944,
+      "sha256": "62fc174b14687512c4532a27f185d9e9f023eeaae8d875fa22ee58b5a0576542",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/injection_detector.zig",
+      "size": 36205,
+      "sha256": "8ec2acdd829f118543ca0fe5a3ee604eaaefe24e990d79ac6f75a139456195de",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/ml_detector.zig",
+      "size": 41129,
+      "sha256": "eea78c4e70d454c3fee8a1f36807fda4d48d6f5e4c42f5574036656820fd498c",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/proto_anomaly.zig",
+      "size": 6761,
+      "sha256": "e922c225670c73d18b3abf5d6586073a4207f8e7c28914e717e9ef5c72c7d36e",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/rag_engine.zig",
+      "size": 23964,
+      "sha256": "e238ceb3c9149ee7db1a7a5bfaf65a13e2963f6d295c110541555f33d5ec0670",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/rag_intelligence.zig",
+      "size": 11825,
+      "sha256": "b1368c7885be5dbc583f9219f216776b09722c0c0ac11b13345067c17a2b3038",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/signature_engine.zig",
+      "size": 12574,
+      "sha256": "b002d88fe73766787d662f5980837ae1122ba175b233c67a432dc5e117e9322c",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/threat_intel.zig",
+      "size": 13772,
+      "sha256": "a39235c0d6a6ee41140ff4c62e3fb2612825deaace3a0a63328ac9a9ffa71ad5",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/threat_tracker.zig",
+      "size": 28953,
+      "sha256": "59356b5685b1231a96e93d69d96509175a3b0672c4ec11328a76e778d3343162",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/verdict_aggregator.zig",
+      "size": 9608,
+      "sha256": "567f42c236fbd3f135e6a3287f8061886a4bf9e30dbc8efddde8fc84a6ddc606",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/aggregator.zig",
+      "size": 4295,
+      "sha256": "fb1ecfa2406a49d819ccb601eefde1bc6368ca6f11336521b4871faf18047ec3",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/cluster_coord.zig",
+      "size": 55479,
+      "sha256": "e60056b387032613ed83692943661e0ca6589b3b51416e73eed99aa7f05014db",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/cluster_uplink.zig",
+      "size": 19257,
+      "sha256": "0a41c507f5526d1862f3ced9926ba75258f3f609967464adab1b5ed127b490a0",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/federation.zig",
+      "size": 14546,
+      "sha256": "0d7490149a8e2d84a016406787e1e2a920754b85e47372526ce1d3cf7d857770",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/federation_bench.zig",
+      "size": 35776,
+      "sha256": "896877bbc3602fe6ee39b9475860e118696188c836b600902a91dd4735866e05",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/federation_codec.zig",
+      "size": 57138,
+      "sha256": "85692acf3c224b87aed0a7f4215ff313181a72d9905544f6d6f8418be3df1a59",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/federation_rust_tls.zig",
+      "size": 11195,
+      "sha256": "05f4ab1782db3ac5f17cc3b182f9a4b9220d2018f676c921e96b58698215298b",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/federation_tcp.zig",
+      "size": 43558,
+      "sha256": "1884d70255f3040142b986ead11efd5f0f5b1daee3c991c8f6c5a76d4a916982",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/node_registry.zig",
+      "size": 12638,
+      "sha256": "a74487af8fe2799fea2e0c8f2c451643225403476e18f8a56940e9c036794f69",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/abi_contract.zig",
+      "size": 17937,
+      "sha256": "9666d32cd79db136a17bbf783568743e22715aed48591a97b02bdd2b2274f621",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/crc32_slicing.zig",
+      "size": 4331,
+      "sha256": "dff50a145537bdb122df64913f34318ebc80f2836f803ea0ee01398c17b5abe0",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/decision_trace.zig",
+      "size": 13466,
+      "sha256": "9bc48e44f50f68efbdef93509cf7d5893cc5615ad63dd70a76e338d2c0321fc7",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/evidence_record.zig",
+      "size": 11609,
+      "sha256": "af9dcf8d28fca91c40dc7e7c885620a96996fedf836e08e880fc4d774bf56be8",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/forensic_log.zig",
+      "size": 25964,
+      "sha256": "860c87e965ff84137333311ffaa0c8bbca485e889a327adfc4974c4149bb8e9e",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/forensic_pipeline.zig",
+      "size": 54386,
+      "sha256": "22b6b23cbfe085f7dd396787c48b77d73395c1729511ba9fa6a0fa72d19810b6",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/forensics_engine.zig",
+      "size": 14893,
+      "sha256": "0277d0800fb2e1d5267ebd3113d42cdbb0187729d64ae02addc4413ad5f448e2",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/ids_evidence_receipt.zig",
+      "size": 4797,
+      "sha256": "087d03b2e7ffcae6823bcf72cb6f890d73c213587e30cdc90edab0395eb08785",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/installer.zig",
+      "size": 22526,
+      "sha256": "b196370d850899cc68a20f4d0e688f98cabd695053841270df3529ff08d1acc2",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/integration_contract.zig",
+      "size": 28830,
+      "sha256": "577e93980c27c274242e335c74f7b9796224770a39576dd8e6be8368341eac3f",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/policy_contract.zig",
+      "size": 13235,
+      "sha256": "222f8a902d8794a4386ede828a617edeca943e0719f433a6b11338f0526f81f5",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/provenance.zig",
+      "size": 14305,
+      "sha256": "c939c60f81e3f5cfea42d94c593269c85a4b0a31065b6d97c73509bde9ec3ae7",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/python_contract.zig",
+      "size": 6952,
+      "sha256": "af61df82c6e1409102351c008fa54a587d54bd2f4483b445805d2dc9d97401d8",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/release_gate.zig",
+      "size": 15554,
+      "sha256": "b9151d23c63cdb9f0c9704e516f4e9a7c7e0aab88618a8b6202b6bf3710e09e0",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/release_manifest.zig",
+      "size": 13813,
+      "sha256": "aafeaa95f0300dc2bd470d7ec8550142f241adb20c2750f89b6267e65bd1168e",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/replay_contract.zig",
+      "size": 1347,
+      "sha256": "b483d2ea504f3783cd912893b4df33f68a88c7ac97e1ae16058ad40fd7c872cc",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/replay_engine.zig",
+      "size": 23537,
+      "sha256": "197baea9b454f2e38d31bd93b62127a51c028930887d9632d34cd4cc1da17c78",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/replay_integrity.zig",
+      "size": 9275,
+      "sha256": "98af70e5fedc7d3140ffd9797db087852507419419a03e6d430ec9e9877146a0",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/replay_verifier.zig",
+      "size": 12937,
+      "sha256": "bf86f212bd67da3d87f85cc71bc3782e73d0c8d9ee0bd2d0295b32cef258f0f1",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/replayable_security.zig",
+      "size": 11155,
+      "sha256": "efe70fd349d7df12ff5ea3cb48135d86225ff2a14cb243f00119592528a91c3a",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/siem_forwarder.zig",
+      "size": 52566,
+      "sha256": "4817e3390b5b97ad529cc6be7b639837436faddf9ae485c4cd56446a80f1e61a",
+      "language": "zig"
+    },
+    {
+      "path": "src/fuzz_entry.zig",
+      "size": 213,
+      "sha256": "9fdaf6a49b19eb770de982d49fa2fee220b3e8125891d01e4dae4281a62ac566",
+      "language": "zig"
+    },
+    {
+      "path": "src/integration_test_main.zig",
+      "size": 366,
+      "sha256": "93e96bf00fe6309332e61289b3551b9d40fdeec15a5c847943faffc26207ff64",
+      "language": "zig"
+    },
+    {
+      "path": "src/lab/scenario_contract.zig",
+      "size": 1276,
+      "sha256": "0421140e5f934732e80076960d5c8cbf9fccc6d6766af6a85de69422b5909532",
+      "language": "zig"
+    },
+    {
+      "path": "src/main.zig",
+      "size": 5222,
+      "sha256": "7491f95068a9fcf4d3868be161a706ebbd2dbd4f3f3233f78230e469d5c1d590",
+      "language": "zig"
+    },
+    {
+      "path": "src/operator/recovery_contract.zig",
+      "size": 1327,
+      "sha256": "68d3e5725e0d857eaef5b44acf44946fc4bd5dd149f9d422e6a077949ce468e5",
+      "language": "zig"
+    },
+    {
+      "path": "src/out_of_unit_tests.zig",
+      "size": 3687,
+      "sha256": "c319819d77dcf7b42bb7ad792022f692ef85b41552a9e0b14a0cdee2844f5b6d",
+      "language": "zig"
+    },
+    {
+      "path": "src/perf_bench_main.zig",
+      "size": 351,
+      "sha256": "7e1d9fd8ec58d5903d4bf4f28ed10847e9f7ef235c4d3870db4375571506ea1c",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/data_plane_contract.zig",
+      "size": 3315,
+      "sha256": "0a82f3ac46c47ba2c11af3e54d277a07d994ff199698e94339e3a0e88ceb1943",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/event_processor.zig",
+      "size": 63451,
+      "sha256": "01291dd61872a52ddb0e4e0ea8d63d901c0f63db876f5fb2839d140b82daab8c",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/event_queue.zig",
+      "size": 60346,
+      "sha256": "b264120b0ed02a0b3f4fcfcfe88976b28799e643fca0152b3d944457e9540c30",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/fim_dedup.zig",
+      "size": 8074,
+      "sha256": "4bcc1e8b693aedb8fe1115ffa6b21191585258a6a7a7cbf559c36741b7694ee0",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/l4_matcher.zig",
+      "size": 22032,
+      "sha256": "84e4662e44906f16e8048f1299f46b053a194f1ee00d29afda64e6ca47fff1f3",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/packet_callback.zig",
+      "size": 10953,
+      "sha256": "03b4995bf1080eb73bfbbb472fc703bd2862102540239ef07a6d3acb62e53a8d",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/rule_loader.zig",
+      "size": 34431,
+      "sha256": "250316120da03d8a4f80bc3996699c1c0893d60bc37255d638477c08fc1b93c3",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/runtime_state.zig",
+      "size": 24944,
+      "sha256": "cc0ff85cc2f76cc26ce118a7988843d7b8f6e25451a583072c7bbb1423b255c0",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/telemetry_threads.zig",
+      "size": 52915,
+      "sha256": "0de8b0054f5cd9eb75d57e71a9d6e7e3acc5386cde74a1fc1923a1b59f030392",
+      "language": "zig"
+    },
+    {
+      "path": "src/platform/win32_pipe.zig",
+      "size": 14407,
+      "sha256": "b6904bec4c3809d5d9aebdadbad3c07d95bf2e86327f224f094411f96608606a",
+      "language": "zig"
+    },
+    {
+      "path": "src/platform/win32_service.zig",
+      "size": 5508,
+      "sha256": "55a45bf9a02bfba4e5ba87e04bed530965f12418b8bd24dfe8d8e0b13d9e917d",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/action_dispatcher.zig",
+      "size": 11931,
+      "sha256": "9876a07fc994a89aa07d2121d8b30a3a0757a3913482eae4a48818bbc7b67495",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/control_ipc.zig",
+      "size": 18309,
+      "sha256": "aeb81bd148cb7d99505a387341f9c1428530a3c06e631c1ee5d4c1f5cda24466",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/dispatcher.zig",
+      "size": 35934,
+      "sha256": "35b070a73abea99e810584fdedee453007c54731bfd1c15181641b6272f0512c",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/dispatcher_phase_b.zig",
+      "size": 25068,
+      "sha256": "84bbebb3db4fe74f640f7945670ff412a8773e000bf92a353b5719288ce8ed70",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/enforcement_receipt.zig",
+      "size": 6380,
+      "sha256": "e36689e91a0fc54cfce2500dce2bd6a0d83aa0ffeb59c1c85ac5a0c72de2e568",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/pep_bindings.zig",
+      "size": 38803,
+      "sha256": "147c72c8a9eec7438d4dbe568816f5bb6b649f34f9b8dfa30c85dfa73eee83df",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/policy_contract.zig",
+      "size": 18380,
+      "sha256": "6cae896db3c4e2c8b74f14bfdbabbe11a06c4863bb415cee780711ebf6c986aa",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/policy_engine.zig",
+      "size": 16979,
+      "sha256": "4affe0c31479a219a7237508d8046da25b162817043bfe372314dea35beb5174",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/policy_ir.zig",
+      "size": 52840,
+      "sha256": "e6407defe278977d97317b942daf2915f3cb56ad97dc6114d1c74fa23a46ab18",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/policy_plane.zig",
+      "size": 41298,
+      "sha256": "3f3685a0b3e53910ac612f15ad19e191188c8f51348185e99e9319e56a1f0518",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/policy_signing.zig",
+      "size": 57127,
+      "sha256": "53ded06beb870b2095f67b66815991df9400d12cc4a9bd86555c01b8f16783db",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/rule_action.zig",
+      "size": 7735,
+      "sha256": "8e5216cbed864c37236578f4fdf2fe183d0ea293fe4b6807a4d6d8c0ea57a42e",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/shadow_decision.zig",
+      "size": 9139,
+      "sha256": "3181b1f000cf86b6d34b8466b50f9f240075c79aa3c27ee16356e249271508f5",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/shield_screen.zig",
+      "size": 8458,
+      "sha256": "3d9ea822f86069782a843e6fba3c1856f6ce6eece33d55e0706602a0d7a7ee69",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/tier3_state.zig",
+      "size": 8721,
+      "sha256": "eba1873d712878364b3b0bb0f1c94a708777200b2c4d29c716f89120d46df69b",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/trust_store.zig",
+      "size": 6539,
+      "sha256": "58eb186c1314c79e1a10c1c1cb327fcad22b2ec4f0fbd388699c147bd1503aa8",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/wfp_ioctl.zig",
+      "size": 11940,
+      "sha256": "33618d8ace78c5be3b036447854272e9d714c0226b47ed1b1404aa3ab5362b82",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/wfp_production.zig",
+      "size": 983,
+      "sha256": "a9493cad202527f1cd0fa8f73ff8cc37894b7214dbaa1a9f32a8256f0211e9c2",
+      "language": "zig"
+    },
+    {
+      "path": "src/release/artifact_contract.zig",
+      "size": 1746,
+      "sha256": "73c8b54305fb9271e30c96dd2e347f39770f7320318439b5467e8a17f6f6e0a4",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/fault_injection.zig",
+      "size": 23268,
+      "sha256": "41968bb3a893a3716794a45c33a65afafbbc7eaa83c3c95e9bf74e5a6029d71a",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/fault_matrix.zig",
+      "size": 18576,
+      "sha256": "81f562efe6d9a18b12cbd2837daa152d89d204a3750c58720f99e6c8693762d9",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/latency_histogram.zig",
+      "size": 6061,
+      "sha256": "62cb09302d1005ef26916f58ad397ca028afbfb9f5aa1cac632ab74784213b50",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/lifecycle.zig",
+      "size": 23383,
+      "sha256": "3946fcfb1c593487f0b0b3463b4d27e13fa19ff91ec34e347a2e1238e7ac9237",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/monotonic_clock.zig",
+      "size": 3632,
+      "sha256": "8565471dea05309a9dc708dd110a2d7fc437f70949f1c99fe64f688e91f6fa67",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/release_engineering.zig",
+      "size": 17185,
+      "sha256": "0a7516fa9dc809ddfaa493f87c4baffb516df33adca9592d037da95a66c78b5f",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/release_provenance.zig",
+      "size": 14866,
+      "sha256": "120c859bd1d7c1ae189dc1ac7d30dbe8c6f4c1d8b70c333abd49a11b8673698d",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/reliability.zig",
+      "size": 23478,
+      "sha256": "8f0970b130fc875e59370b80b46ba32a34e45733aecba215a62390071a00dc98",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/security_check.zig",
+      "size": 12938,
+      "sha256": "47fdf95c3bb0b2b7cf5e5dfd4e4fc681d99357c469c6ad3061ba2be0eb8a77aa",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/watchdog.zig",
+      "size": 7869,
+      "sha256": "2915877f4c02df616414d30db10d359c9fc5286729f0a28d8a769d4d1af571f0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/capture/flow_table.zig",
+      "size": 242,
+      "sha256": "f25ed3f922df916e60b3fb64e4e13ea4cf133a4f620e386f59bd72ef2d12ddcf",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/capture/npcap_adapter.zig",
+      "size": 251,
+      "sha256": "c25acb4a1f3e2f2dc70d8d75c633d970a55399205ba3720a2a7eb3ee3d07c856",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/capture/packet_decoder.zig",
+      "size": 254,
+      "sha256": "a320e3af7633fc00cc795d01477b434fc3f499009d838446a9f114f621ec6038",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/capture/proto/parsers.zig",
+      "size": 245,
+      "sha256": "24d605323b707ad992d43d24cfef687cea3c9a6d63b19874437b7e5f69117854",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/capture/stream_reassembly.zig",
+      "size": 263,
+      "sha256": "2b00aacd5bed985a89c4b52523373e12af98f4cf6e3f90b911bcdd9be1bae3f0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/cluster_cli.zig",
+      "size": 13277,
+      "sha256": "ddd1885f8f7cee3a870104e904aab5ea9a1a7a31a07f3da36eb9338dcb66e430",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/etw_realtime_cli.zig",
+      "size": 5987,
+      "sha256": "607093a86ae2b9f44653cdbcf21b152f3700216b4cf1a9baca66f0d7395b2fca",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/federation_bench_cli.zig",
+      "size": 5856,
+      "sha256": "25fff9f4f36878b85c1176eb10d4394b024ebcfb1ebe97cf6f1e8a85d7147423",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/federation_cli.zig",
+      "size": 11602,
+      "sha256": "d1c2dd7610901fa92a4e2735eab3a00391a77627932766230d3f73f8e11382ea",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/federation_tcp_cli.zig",
+      "size": 12958,
+      "sha256": "f71d96eee95dd1a642cb9e4a2cc231771bcec4f0b93a227c5f950149be0c95b0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/host_telemetry_cli.zig",
+      "size": 13480,
+      "sha256": "2c8e83fd686eaf688c5cff964dc1821eb1c5630a0fe599d11a9a469c411a617e",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/host_telemetry_detectors_cli.zig",
+      "size": 13253,
+      "sha256": "0f08fb4a3d76e2c08c0c2978c25949222afb1e160f34003722a7f08a4b33a82b",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/host_telemetry_mock_cli.zig",
+      "size": 12376,
+      "sha256": "e4ace64495d544775b4e38eec90802803a2aef91fd123b488920dbc83f8c7536",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/host_telemetry_scenarios_cli.zig",
+      "size": 12050,
+      "sha256": "f56eb6e58623780cf3b1cb8dd3f4cd264f6a28d82c566737b9a1ab2546d91c6b",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/injection_detector_cli.zig",
+      "size": 5184,
+      "sha256": "b244e3dbcc36e9e7fc6885380f74427b09cb74780154874b84f622bd29e822b4",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/integration_test_cli.zig",
+      "size": 4324,
+      "sha256": "c24aa73b88abe17caa01f30484c5124febcc15a48e225acdccf53510b254c70c",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/ml_test_cli.zig",
+      "size": 10814,
+      "sha256": "c70029d7c11afcc4272b2ce1134c6727c40204a5a9f43848d9625fc3e189ef98",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/nose_pipe_e2e_cli.zig",
+      "size": 2327,
+      "sha256": "8d71b00e0d921e6d5ef5d970d2ec294ae5bd04016168974f91dc0e185227d5cb",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/perf_benchmark_cli.zig",
+      "size": 7154,
+      "sha256": "d84e76a0b38cb15a161c2413bdc97d4548b608f7073a562b9ca5552e62b181b4",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/registry_trie_cli.zig",
+      "size": 11256,
+      "sha256": "3a6b3d38e5bac53ce7573826b13bb4062c5497af69aeffc4846e3ca63318271f",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/windows_adapters_cli.zig",
+      "size": 7808,
+      "sha256": "7d7f3ac6eaa31afd7f41e67afd7014e3eb253e364a5bc01305ed5bb4c6fa108e",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli_imports.zig",
+      "size": 929,
+      "sha256": "741833b2629e9f465a16e9679c355d28c5a8a9cd575324946713f3f81782462d",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/contract/event.zig",
+      "size": 229,
+      "sha256": "095f907b25bd8f2d71fc7007affbe9b2ae0939ae607627a1f202a109bb2af2e6",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/contract/runtime_manifest.zig",
+      "size": 262,
+      "sha256": "6d39b19e5dd0b106250e6fb189ce43125361f41d6677e0340a6a8c5ad39e8766",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/core/bisect_a.zig",
+      "size": 657,
+      "sha256": "41f34c09e6e424a6f19199ee30fdfd6d5ec2fab19ee0cdfee173ff0b05a42130",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/core/bisect_b.zig",
+      "size": 1449,
+      "sha256": "621cfa78e714aeb7612fe6624d8ec0a5bf3d9d98dee78dc425d804c51caa91e3",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/core/core_configs.zig",
+      "size": 3068,
+      "sha256": "80a690f70294f898d11ac8ed169d6ada2a21b8467b85d0af3c0b79fbd1af5394",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/core/core_modules.zig",
+      "size": 649,
+      "sha256": "55c092b7e685499639786da0d7cd325eb2c581670fd28ba30b572f86ae55b89a",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/core/diagnostics.zig",
+      "size": 239,
+      "sha256": "439289eb0239f06e3b6fc59f05d4ad97f7241c552c9ea376de344c7d87a9f320",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/core/memory_pool.zig",
+      "size": 239,
+      "sha256": "5df0a42055560891cc4b2cce6481dff17a34339262cde6583ad40f8952501d96",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/detection/anomaly_detector.zig",
+      "size": 264,
+      "sha256": "30239225653aaa6ff1acd0cf3bec083be9035a21b5d40037f16dc55e7338f339",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/detection/correlator.zig",
+      "size": 246,
+      "sha256": "263b89aaeaaf1851664a8b7a99255115d1b0e094e7ab67f9d73e04cf03308d23",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/detection/proto_anomaly.zig",
+      "size": 255,
+      "sha256": "eb338b43abe0f77b18e480c2880b88131377ee5a941fd39e522787592b58144c",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/detection/signature_engine.zig",
+      "size": 264,
+      "sha256": "e66c71823ee331e27e62d1b20e35722556a2239cf2036d9874df3f4da373365e",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/detection/threat_tracker.zig",
+      "size": 258,
+      "sha256": "70ae5c84bee27af7a4fbaebeb4193902112f7c653c98b86574c1921cf21131fc",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/federation/aggregator.zig",
+      "size": 248,
+      "sha256": "72e9821faaca7a5ff3760d085f8ff7ec42c6ec14a151b994ced41dffd347c956",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/federation/cluster_coord.zig",
+      "size": 257,
+      "sha256": "44d7bfde65caa5819f513885cfa5ceb34915eae59563e06b0b0b851c2c7cd553",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/federation/federation_rust_tls.zig",
+      "size": 272,
+      "sha256": "098fc2c0422e4168ecf5a57b4fa69ebf04437292ad6d3bb9cfc01ad4734e9a05",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/federation/federation_tcp.zig",
+      "size": 257,
+      "sha256": "089128df10b8e34521337be549d35f182115e723e896d2560cd06c4082ba6313",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/federation/node_registry.zig",
+      "size": 257,
+      "sha256": "362d603ed36c60f4ee4bec165be60bee20f67c8248e4ce9c1b02944f518f6bb9",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/abi_contract.zig",
+      "size": 247,
+      "sha256": "9dc84cb75cb72ae197152524b084e6fc4b3de1f984c24feed69e23d2aee4e129",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/decision_trace.zig",
+      "size": 253,
+      "sha256": "96768b034d317ba0f10662bb47554554137d7c8d0e9872a9253845c1e326a163",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/evidence_record.zig",
+      "size": 256,
+      "sha256": "416fac778661df8ba9becc7d42159ab15fc91945bf4e1e5c1980735d9ef41374",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/forensic_pipeline.zig",
+      "size": 265,
+      "sha256": "69736a14ea5a3f495915da4f736271174bb5cc0f7dd46ebb4ecde15a0d7eb74f",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/installer.zig",
+      "size": 238,
+      "sha256": "0ec9b5fccb5d4f90942f450c0a70e0a37b49382922f4372ea867b7c7ebede82c",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/integration_contract.zig",
+      "size": 271,
+      "sha256": "91cd099776ea8c29f71b0e0a4e4cb29eefd8b8e8a26fc124c289b49af1062deb",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/policy_contract.zig",
+      "size": 256,
+      "sha256": "d8475db841610210cd0bfd8ee036e66cac075df2e3d23580e31cb9d0416e57e0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/provenance.zig",
+      "size": 241,
+      "sha256": "091edb9950938eb88713c283824d2210fdddcb22d00d2822d8446bd578f77e8a",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/python_contract.zig",
+      "size": 256,
+      "sha256": "e3402b0acbca2b610ade124244960ea7acfe36b8463507e71a461265fbd7e754",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/release_gate.zig",
+      "size": 247,
+      "sha256": "0d1147cbc3a1eaccf398de06c1b1fdfc750a4a6a96a05e8858009608dcd41db3",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/release_manifest.zig",
+      "size": 259,
+      "sha256": "ad6af2f7a828bd500db60835f59c97d0b2f2d056b58b0d0cbc0b505886d68e6c",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/replay_engine.zig",
+      "size": 253,
+      "sha256": "abede1a76c5a80ff2a4fb6fa5fead64c09077cedd7006b7ee70186d09d5ea9f3",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/replay_integrity.zig",
+      "size": 259,
+      "sha256": "2120d1b130c229fcbe2dd5ac448ff232b958709c4d2fcdec7cce5faeb61c1ae6",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/replay_verifier.zig",
+      "size": 256,
+      "sha256": "42e1fce5516f9af6d98590ad59aa6ebf98f6c9fcba8cff1af6e6a60da6adb51d",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/siem_forwarder.zig",
+      "size": 253,
+      "sha256": "4fcfbb717db4098dbb8b721ce03ef29573ccc4e441c7c674c72c7029fb637369",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/test_fault.zig",
+      "size": 6788,
+      "sha256": "661e9fdfe93d521037af3cebf9c99324703b82331665984a66066364c0383042",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/test_integration.zig",
+      "size": 13616,
+      "sha256": "57115574ee3ac44e6ae933da64308257e7eca2c5a21966603c94863d24166e0b",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/test_release.zig",
+      "size": 6069,
+      "sha256": "a03451dd14882fcc654b9ff53348ccfdb49427b425f5a00698661d16db07a082",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/test_unit.zig",
+      "size": 5703,
+      "sha256": "db3daab9cf6561c04613c8aaa06743901bc8266e94e1b0fede104c5d89d2ec3d",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/fuzz_main.zig",
+      "size": 1356,
+      "sha256": "883596e17bfce24e2d6b2cc6d1bde745f9aaa446ec51e5d5b78d41312a1e1092",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/brain_integration.zig",
+      "size": 5053,
+      "sha256": "090be22713bcc95df6b9a287b441e0038b39e8cd13411fd56811ffe3aea56eed",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/concurrency_harden_integration.zig",
+      "size": 3158,
+      "sha256": "b30d951e3ee381b86d874d1f7920da30aa25eb998dd699385d7058d17daca084",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/correlation_integration.zig",
+      "size": 5809,
+      "sha256": "967f7388640bccc9bc5fbe5e47aeaed43a25fcd9dfa045dc02756c7805a1be9d",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/detection_integration.zig",
+      "size": 3496,
+      "sha256": "77790f77849df67ea2667a71c98a0ed15b79ab16ac8bc6719317e6dbf88d87ea",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/e2e_harness_integration.zig",
+      "size": 8011,
+      "sha256": "63dc6c3a154ca17580fe31cad852ea676aa6b3d75f501f9aa782002e60de0ce2",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/fault_injection_integration.zig",
+      "size": 4167,
+      "sha256": "270e04d8b296ca13ea7ae04517dd0277a9c4cd7e704be77b6c03ea9e9aeb1b53",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/flow_integration.zig",
+      "size": 5924,
+      "sha256": "8b6afd1634f8bfc7c78ecd76a6f10cd0bfb42bb678a3efc9a5ffe2114a236cdb",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/forensics_integration.zig",
+      "size": 6450,
+      "sha256": "963e5f1f8b6e31a84667bdd06857cb5308df0b1b43dcc1ec566900c0c536d2fb",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/golden_path_e3.zig",
+      "size": 11911,
+      "sha256": "43bdd3cdd58fc7a80d653cfe4382a9946888318fa8d854d5e0e59048b4012c52",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/hids_integration.zig",
+      "size": 5797,
+      "sha256": "a20d7c53c176f57e614842b1f62de9f223f8fe10060ad4c189823451f52762d0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/ips_canary_integration.zig",
+      "size": 9525,
+      "sha256": "3046f6193c752a2c7cd1ba5c74936b6afe59bb77e6728a179c572054f7c4f9bd",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/ips_simulation_integration.zig",
+      "size": 4900,
+      "sha256": "3cc9af4a505f5ec9da16957a5919ec916ad8fe83317e71d7b4bcf6613e93dd7f",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/nose_integration.zig",
+      "size": 4085,
+      "sha256": "4248c31097ccc492b46b72b03a1ba1c756c05624d6dd5ea3bf0e4d897b32c987",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/performance_integration.zig",
+      "size": 7015,
+      "sha256": "43f02210661f5e8cb017d73432f51f84958e939cd443588997cea0bc821a79bd",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/policy_integration.zig",
+      "size": 5328,
+      "sha256": "2cd4fc9b23c9338c94c4d102f34c11cce6c49f3c0e667020c067736d5e4ed945",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/policy_plane_integration.zig",
+      "size": 4042,
+      "sha256": "9b9eee42901ee07cefbca62b55503981f971ca0a00581c63244cb7bffd7af62c",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/rag_integration.zig",
+      "size": 5363,
+      "sha256": "8e5ca8af697f24fffe65ff8786950013b994211eb25c47bbce1ed45ab258665a",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/release_engineering_integration.zig",
+      "size": 3712,
+      "sha256": "601ea1296856ef3eda4c2d4c0f984736510bba63bf88cd7bda861b63fc7dc662",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/replay_integration.zig",
+      "size": 8035,
+      "sha256": "8543d8dcc3fdd74a4e0c3e9a8627777c299c73514a60d9f0fb34508a70ca4933",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/rust_pep_integration.zig",
+      "size": 4375,
+      "sha256": "473574e4a69f35f48e7dd73a577908b0a190a477a92aa7359c1b5220b0dcfcf9",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/threat_intel_integration.zig",
+      "size": 4236,
+      "sha256": "aae86471b4de7e17cb6341185779596221e8d21ac6d7e6f3126243968a7b6e03",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/xdr_harden_integration.zig",
+      "size": 6680,
+      "sha256": "c3b27b9b55bfd8474f91660c81c39a74a62117123214d9f3d4743ec28621107d",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/pipeline/l7_join_test.zig",
+      "size": 3934,
+      "sha256": "be5d7bcbd45d9c218c926764a54bc62242493a12d9df9c9863459ed7e96c8de9",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/policy/action_dispatcher.zig",
+      "size": 261,
+      "sha256": "568e91074ce104fdbcbf45076ef65892ef181fea5183d9c31db566a7f0c6e4f8",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/policy/pep_bindings.zig",
+      "size": 246,
+      "sha256": "b00e4b447298e3c6fee7e941bfe6a9243ed2eca769dd06fdc075a1583b34a6f3",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/policy/policy_ir.zig",
+      "size": 237,
+      "sha256": "63c320ccfb09521dc2d8173d533718edb65b72f79b93f9ed1c2c5474c30787bb",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/policy/policy_signing.zig",
+      "size": 249,
+      "sha256": "560c0801f88e6731856a5b91dc2d80837454c18c13bb1acd1012b7d1e4bf9ee3",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/policy/trust_store.zig",
+      "size": 243,
+      "sha256": "3737fa6cb9db6132e94d549c9434a09a09612625b286dc2f0b3001135bfcb2bb",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/policy/ts_ir_loader.zig",
+      "size": 2544,
+      "sha256": "6a2ac79c3510a80c7a027ca322333ab713f00f33bcd86c83f58d2610fd31e47e",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/audit_trail_proof.zig",
+      "size": 34924,
+      "sha256": "031c4376b4d1dea12f8a394394d5742f14e977bbbb29cc803eabc2cb6065d00e",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/brain_proof.zig",
+      "size": 15051,
+      "sha256": "1e0096b3c89098235ea8f066986aa6a7e924529effa6c8b478114a4378de57e5",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/compliance_proof.zig",
+      "size": 28172,
+      "sha256": "c894e3bcfdb76d317aa15d827c799a8af942e219cce6468163113619c5548362",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/config_reload_proof.zig",
+      "size": 40930,
+      "sha256": "8eb4f7106a42450dabd1c9ffdf35ca782d563cecd3f16be68815a6635dde4d51",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/correlation_proof.zig",
+      "size": 14491,
+      "sha256": "bc81d37cb75d50ce7d626aa7016cdb884580790a6a1b63672870455ab681d4c6",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/detection_fabric_proof.zig",
+      "size": 19518,
+      "sha256": "3a0489f4bfd3e01fee33b934d3103238720300e73825da4efc3519c5b8849bc4",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/documentation_proof.zig",
+      "size": 26897,
+      "sha256": "8e4c0715d804c9bef7e906605b6d00ab7b6113f42d529d3044f01fb1c98018a1",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/final_integration_proof.zig",
+      "size": 28452,
+      "sha256": "38e3f67b9e960d1ef2f4b44979f4e4c5e76e80d1a70cf9cfc0224b6129fb78a1",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/flow_state_proof.zig",
+      "size": 21562,
+      "sha256": "63467567c7e5e77e7e80c1f7978cf8e7fd789f854c2b85457e8760bd9f1a63f0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/forensic_replay_proof.zig",
+      "size": 44802,
+      "sha256": "8e1ea52f7e54c2ed3a1400d3087f1f5750e35c891a6ecf3a8964ca3019dd2f18",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/health_monitoring_proof.zig",
+      "size": 37274,
+      "sha256": "6a51c9034f771677ccc85a68e3dfef048aee4ac7ccdfef4d461f9305aa0666b0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/intelligence_proof.zig",
+      "size": 13104,
+      "sha256": "d1bc7ffd277e7bd95ef7180f528dae25d6d7071377f2c2bfc0db16b7ac993ea0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/pep_enforcement_proof.zig",
+      "size": 43179,
+      "sha256": "502f3d476dc81eb7ef0cca117b0e580716a7284e5df74716b762012d64a67b4a",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/performance_tuning_proof.zig",
+      "size": 33092,
+      "sha256": "b55257385ff21f4f2876385201d1334ed8fd278f636f950353434a8fe526febf",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/policy_plane_proof.zig",
+      "size": 29025,
+      "sha256": "85e6a261cc4c8d16e227627e528538d37eb31da11690a8a9453b8b092b20c98e",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/siem_integration_proof.zig",
+      "size": 29246,
+      "sha256": "5ba455d4d4cfe21d8610e596bec9218a06d15eb9b2ca2bde338432c4a65fc05a",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/telemetry_export_proof.zig",
+      "size": 34194,
+      "sha256": "e8ec0429644e66a2006a59bfe96e690977817295c71077446abbba6d17fa8efd",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/reliability/fault_injection.zig",
+      "size": 265,
+      "sha256": "927026cfe52eff413d746f60326f559eef0d274399e8d8289a765537153bdafb",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/reliability/latency_histogram.zig",
+      "size": 271,
+      "sha256": "baab42d81a7ef090e9e6383402f3c218904ba72bc7f46a91e58c36ff1e2cb36f",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/reliability/monotonic_clock.zig",
+      "size": 1882,
+      "sha256": "d7be1f94760b28ccbe7de38072453cf688253069f36d13116d65a1706ebcb138",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/reliability/security_check.zig",
+      "size": 262,
+      "sha256": "dcf27bfc85ebdaf8d3024c168c13a486ad7cabcee77cdd2f433c11179727a4f2",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/reliability/watchdog.zig",
+      "size": 244,
+      "sha256": "08438e182fc771e73de0e042f42f400445edbd9a0d64d0610456f519378d8254",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/stubs/etw_helper_stub.c",
+      "size": 797,
+      "sha256": "48ef09d4d3b91821697b9448ce8e855ee5e97390950230232ac5bb9ae546d1fe",
+      "language": "c/c++"
+    },
+    {
+      "path": "src/tests/stubs/fim_helper_stub.c",
+      "size": 674,
+      "sha256": "b6af83ed83d0d48691fb4e54e5b3bf6ab69ceb1fcb01c161497956ea8b8b044a",
+      "language": "c/c++"
+    },
+    {
+      "path": "src/tests/windows/etw_realtime.zig",
+      "size": 248,
+      "sha256": "5cb3f88358ab3f012994c1adffa5ce272284948a687be27e81916c15d2731ae1",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/windows/fim.zig",
+      "size": 221,
+      "sha256": "ece54410aeba71c535b88c5a8c39d2c0696497e4f5118bc6e3af2884ab2cc0d1",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/windows/host_net.zig",
+      "size": 1260,
+      "sha256": "dc80fbffe02c1fff2c06cf1e1afec7ae5cef1f0fe46e0246a7e1fcb8158072d9",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/windows/host_telemetry.zig",
+      "size": 254,
+      "sha256": "afd565cdfdd909f8b7d431895efeb3d80579424b3d2f854c046c264a55afb57d",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/windows/injection_detector.zig",
+      "size": 266,
+      "sha256": "5388d70f856578c602c8371e57e9612542d3ea29e8eb46b3aec162de278051dc",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/windows/registry_monitor.zig",
+      "size": 260,
+      "sha256": "c75d33f5b35493f3f95ad7c8e1cca6d84c655977df6fd1899e68ca1cb70ac06f",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/xdr/xdr_engine.zig",
+      "size": 234,
+      "sha256": "5ce37eb39777630cee4c90a403ee0443a9c7ad123463bf42411f90da7c8764fc",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/adapter_contract.zig",
+      "size": 1491,
+      "sha256": "cdc36fa306592eca3a464dd7e7671a94c9c5b5fb546e88811068d88a3f61f0ae",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/aegis_wfp.c",
+      "size": 2620,
+      "sha256": "f2e1aa73352c8a5bae7179a1080ccab7a30249b6f3ecfc92a7ba6f97648474f6",
+      "language": "c/c++"
+    },
+    {
+      "path": "src/windows/cpp_adapter.zig",
+      "size": 8796,
+      "sha256": "20b2a87a12b6c610d5a80c316630da218f2562ab59f770b5005d4ff15077ba75",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/etw_native.c",
+      "size": 20416,
+      "sha256": "35fb8ad2eba4d310cff6ba67b25c3e819fd7a9481e621ae81912a0239e02d4dc",
+      "language": "c/c++"
+    },
+    {
+      "path": "src/windows/etw_realtime.zig",
+      "size": 46971,
+      "sha256": "b27b8ec67be0ede277f57b68189ea859001541c31abeaa9d8e0fcc394c2f8b22",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/fim.zig",
+      "size": 14277,
+      "sha256": "afc7c9f8054b0c4d6c20be2abe42cd1c6fd54ff0d229188722c058b78f27b8a5",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/fim_native.c",
+      "size": 10599,
+      "sha256": "a17b5af2784c12de5ab44a62b5cac1872784db549acbca4dad5f4a36d39be7de",
+      "language": "c/c++"
+    },
+    {
+      "path": "src/windows/hids_engine.zig",
+      "size": 30519,
+      "sha256": "93c835ad9fad4027d7225de5fcbe1e17fd71a3cad85e1fa43a3496a8c24b401a",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/hids_process_monitor.zig",
+      "size": 2311,
+      "sha256": "8c9ac1cce445e709b18d386db72edcc258234ce2cf3605069576323211ca242f",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/host_net.zig",
+      "size": 31059,
+      "sha256": "af21229a38419de331c2dcfcf39745b479f451576638d4720a7559daee777e9d",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/host_telemetry.zig",
+      "size": 65829,
+      "sha256": "b12c3a6d201f4a4200cb31e2574b749bd58ef61c5827a3aacdcd5805d058ad5e",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/host_telemetry_detectors.zig",
+      "size": 39036,
+      "sha256": "68c5960a8f2c3a14f911be17365e46d16d40ce35d4aa9cea5ea9ea246b625abf",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/host_telemetry_mock.zig",
+      "size": 35566,
+      "sha256": "6686e960727da03e61f433dd3554b366b106bd05a762b09942d448725ad960ce",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/host_telemetry_scenarios.zig",
+      "size": 29772,
+      "sha256": "3ac29c81f5782d3dd140c45f852b3810217c4152252447e3cf1de8b86f089dc9",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/injection_detector.zig",
+      "size": 8005,
+      "sha256": "e44df032f1c8f69433bc7fbb9f20515dc7e74b7098a66f8a2101d56875d3d68c",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/ips_canary.zig",
+      "size": 30574,
+      "sha256": "e649a4624aebdfbe7e4d08719d996c811d972ab9183651715af39ded19adde0c",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/ips_canary_order.zig",
+      "size": 15836,
+      "sha256": "fa2e0420fdece20b3ba96f8d9c2e37d37216334e058d4eb2bb4560d4be98a06d",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/ips_simulation.zig",
+      "size": 23055,
+      "sha256": "b5e9e70e7a6eafd081ad839491188570fa5231be0dd591e8b08bc4f253162b8b",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/registry_monitor.zig",
+      "size": 17393,
+      "sha256": "db9ec4225463c5f9676ea4e6a2b60abd0a434e4b857f7f78caecca3d9af42be7",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/registry_trie.zig",
+      "size": 27339,
+      "sha256": "5ac2439c19f40e8bffce56f59d1d624ad54c582b6badfb6f734f238f5209f002",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/wfp_ioctl.c",
+      "size": 10028,
+      "sha256": "07d4e0a0be595c98635d650c2c1b8f933ce998526b0a4d1300646046d2b293e3",
+      "language": "c/c++"
+    },
+    {
+      "path": "src/windows/win32_io.zig",
+      "size": 5946,
+      "sha256": "59ccc6672c0e6f9e731f3aeb184ecbd68538d3101eb75bfc3cfe6655df723b8c",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/windows_adapters.zig",
+      "size": 35093,
+      "sha256": "7a0d084829ec9a42ee12ac823ad138ea164ecb9e575792ed90ef884c4ab723b6",
+      "language": "zig"
+    },
+    {
+      "path": "src/xdr/xdr_correlator.zig",
+      "size": 12351,
+      "sha256": "9a5b92bafe4db4d46af8448a41537992388519358175297fa4710ca3118e6344",
+      "language": "zig"
+    },
+    {
+      "path": "src/xdr/xdr_engine.zig",
+      "size": 6148,
+      "sha256": "b1695f9f4efe0a32b753e96e1c31295cb3eefe8a5ec631e6cb5b2e7338d620ae",
+      "language": "zig"
+    },
+    {
+      "path": "src/xdr/xdr_evidence_flow.zig",
+      "size": 25365,
+      "sha256": "3fc4d826ad610c2d6187b9165c408d9681615b01ba9ca6b46c55e4955ac85d27",
+      "language": "zig"
+    },
+    {
+      "path": "src/xdr/xdr_harden.zig",
+      "size": 22730,
+      "sha256": "97ebabd562018ef083de5324f3ac90210c6bbb0e905eea559458ec7717ed58fb",
+      "language": "zig"
+    },
+    {
+      "path": "src/xdr/xdr_incident_fabric.zig",
+      "size": 13971,
+      "sha256": "8abced4aa99bd971202fb3d26adb2f5251d13a5810f088042ea2ef9f3271ed0a",
+      "language": "zig"
+    },
+    {
+      "path": "src/xdr/xdr_incident_graph.zig",
+      "size": 27374,
+      "sha256": "731816b38ce77d2c4b07523f1d7fe5fb2722241dc7167c903bd883b16d1e967c",
+      "language": "zig"
+    },
+    {
+      "path": "src/xdr/xdr_runtime.zig",
+      "size": 35718,
+      "sha256": "3fb3b02df12c86417fe8820d26ddc709e089d15e4f65d41ce54b3ca5da7dea28",
+      "language": "zig"
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 42867,
-      "sha256": "54cbd9c5fbd4ad733764625b8d399594952a7ab195012484ceb68f0d6bf98706",
+      "size": 116996,
+      "sha256": "37afa0ad90c9176b80947e7183833a064b50953e393b16dda3768bf64ce92e08",
       "language": "python/cython"
     },
     {
       "path": "tools/aegisctl/__init__.py",
-      "size": 1027,
-      "sha256": "1c90cdc1f388281d2e90a4df65aeb378139c84334e8aef9752f3f04268cc1cf4",
+      "size": 1156,
+      "sha256": "d44f39d9899e181beabb0054b28bdf8f0a2c1df50b7d088c663b3e4d20b29109",
       "language": "python/cython"
     },
     {
@@ -2358,122 +3672,44 @@
     },
     {
       "path": "tools/aegisctl/api/control_api.py",
-      "size": 33315,
-      "sha256": "fb324645d1083f31d67550fb53e2d5825a13a0c2f66c627a0dfd83928faadb4a",
+      "size": 66130,
+      "sha256": "a83c5700d8d76ff82417852bd2546d4ec6c00eaaeca483506320f4a9b23c3cc3",
       "language": "python/cython"
     },
     {
       "path": "tools/aegisctl/client.py",
-      "size": 6920,
-      "sha256": "e19b6b21069cb70b4e3461ee0056505a433e0aed06e62b2b99ab1d440b65af30",
+      "size": 7639,
+      "sha256": "0f0ecda8454ca64853d31213a932e11b6fb91eae5f6b0ec4e11261b039148456",
       "language": "python/cython"
     },
     {
-      "path": "tools/aegisctl/commands/__init__.py",
-      "size": 1002,
-      "sha256": "c5bf692af6c5083d9101c8f87d87ebea60bbba28b0ea17b3a83f4ec5ae263309",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/alerts.py",
-      "size": 2796,
-      "sha256": "fa5452b7a4314dd3bc1db82f1cf662167517d10742324cb24585f8b2a43e0295",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/api.py",
-      "size": 1255,
-      "sha256": "c45ae3b99bb9acf671a9011af033da9917a29ba6e6b147e1f79c519211ca826f",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/backup.py",
-      "size": 585,
-      "sha256": "95d5956d93f226f14a5e025867bff66527d8945d41e9a1f18f0e21530345d4da",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/canary.py",
-      "size": 2746,
-      "sha256": "236f12c0589ce2434e871142b977ecda31ac18bd405bffbe1a8032d503c3e759",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/console.py",
-      "size": 12167,
-      "sha256": "a256c7cfdadd5abfb53aaf4d6e19a33f4373fb723013c3e88f739e6b3d728999",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/dashboard.py",
-      "size": 2157,
-      "sha256": "901d451d2b0c670f16e90c8ae32dfd84698e8ed484f55c178204ba679c663c39",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/events.py",
-      "size": 1473,
-      "sha256": "35d5645993d8e4f0b37ab413dedd968a67c1f9de7a5166cc1bcb886539abc6ae",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/forensic.py",
-      "size": 1715,
-      "sha256": "33cdad418ffa77b7a142210af30e3ce6c46b2cbe3d2aaf2f2e7835927e5b2d6d",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/intelligence.py",
-      "size": 2112,
-      "sha256": "3423e5d6562d99171c6103a014fbbd74e7cb6024537ae354c28f5f24b390d8ac",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/logs.py",
-      "size": 828,
-      "sha256": "741488949634bedd28806b072d31f595b0a3061563eead299c35ec9b2eaa1b0f",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/network.py",
-      "size": 7929,
-      "sha256": "827d562bcbc5ac9d85412fc74e46816d3cf0a51d1b1c7800fec558f0314222f3",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/policy.py",
-      "size": 2959,
-      "sha256": "f101b8acfd76ab092310cb47be0b93779143c58947b95ff01231e211c9dd5a2b",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/rules.py",
-      "size": 5065,
-      "sha256": "ae17fa5e1b55631e05a1624211bf343ef747818ccb1d0e7f6a0affa71ddffb70",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/simulate.py",
-      "size": 2397,
-      "sha256": "795384d7d5db3cdeffaa83cd841bf0bb55b6f643a68dc1c0096fef08951e9bda",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/status.py",
-      "size": 6753,
-      "sha256": "0b420b1fe37b9d310af571de0a726f1d7f0691a7c957cc56552c9cbd0223513f",
+      "path": "tools/aegisctl/components.py",
+      "size": 9275,
+      "sha256": "87233d6baf8aa12420391d1afe8170af1760c05cfdc302ca7492953d8461d2e9",
       "language": "python/cython"
     },
     {
       "path": "tools/aegisctl/config.py",
-      "size": 2203,
-      "sha256": "89147fc5e8d3f88d8df63500a9d90085faf38ed2be8577c4e133eeef596efb52",
+      "size": 3146,
+      "sha256": "9de68f7f1a8dd27814abfd3de87c3b93a8bc1875d60ad68ae08270e9e327217d",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/aegisctl/console.py",
+      "size": 10828,
+      "sha256": "8bad215e55f16f720db4cf297176af320313cfa1bac44ef0916c8645e8bf6f5f",
       "language": "python/cython"
     },
     {
       "path": "tools/aegisctl/contracts.py",
-      "size": 4585,
-      "sha256": "e2bef55adf46ecbbdc669e29318bb772f59024eff600bbdcb911f4fa3d76583a",
+      "size": 5974,
+      "sha256": "2ee0845c424393168eca622d9e90a9ec07ddd1f26c11ba75c62749b961c009e9",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/aegisctl/graph.py",
+      "size": 6560,
+      "sha256": "033224535f8d4281a09ef1e7b9684e8c5833d31cfa3348b59ee2160f3d32bf04",
       "language": "python/cython"
     },
     {
@@ -2484,14 +3720,26 @@
     },
     {
       "path": "tools/aegisctl/web_dashboard/app.py",
-      "size": 5845,
-      "sha256": "e6d6347a0cbbf13be6e6dca064017ef2e835f0804fccb3df5406ccf90e7226bc",
+      "size": 50512,
+      "sha256": "730516720acae9b8b2facf7602e59a6ea049139f48a0dd39bb7071a494845392",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/audit_kernel_runtime.py",
+      "size": 16287,
+      "sha256": "30b2bf5da9b2dd5c6fbb0a44582f379ae009f5e4a6a4f96b72a70489c4c9bc09",
       "language": "python/cython"
     },
     {
       "path": "tools/backup_recovery.py",
       "size": 7423,
       "sha256": "517bd3cc560e9338ff478295dacd6297f76010a70e535e84397f7e1b24862920",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/capture_select.py",
+      "size": 18433,
+      "sha256": "304f1919cccc07fe7c7d7d7ca212a7f136c0c0a35b675e9b72f6fc3ee9566f0e",
       "language": "python/cython"
     },
     {
@@ -2502,32 +3750,50 @@
     },
     {
       "path": "tools/config_validator.py",
-      "size": 4315,
-      "sha256": "a549f8fd787421f26210e7ffd6b036c19f4be2c045adb21f553bf0b5dd0db815",
+      "size": 5226,
+      "sha256": "4ba861e274026db3919fc80d9ae30857cee38a6ac2a3c1ac8b0480715f326a65",
       "language": "python/cython"
     },
     {
       "path": "tools/create_manifest.py",
-      "size": 14233,
-      "sha256": "c8e3db6a7692aa5b047f450db43cd6ed5aaeb5180719bc8aca230d19248fff7c",
+      "size": 21922,
+      "sha256": "066408bd4c631ab84c00ed628d1590164c832682afeeff95504510c9cc72a4a3",
       "language": "python/cython"
     },
     {
       "path": "tools/deploy_windows.py",
-      "size": 5398,
-      "sha256": "3d83e54365ed4772434f97f657536f68520b5da40f3ff92a62697c9e72e0349d",
+      "size": 5402,
+      "sha256": "358a4efc1df1e4475631cdb2aeaf7804fce4e4693fd633b75109380b15fec2ed",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/etw_provider_probe.c",
+      "size": 3760,
+      "sha256": "fe4283edafc0803d59b4e89f368ede12cd98ba858f5ce7b53d9aa71c7757b1e8",
+      "language": "c/c++"
+    },
+    {
+      "path": "tools/evidence_debt.py",
+      "size": 3363,
+      "sha256": "2804c5f65996a9fb6a6c6ab4c896f1172afc3ac7bc25900610ef1f97fb1e552a",
       "language": "python/cython"
     },
     {
       "path": "tools/final_audit.py",
-      "size": 17358,
-      "sha256": "90544a1eb25f42ad3e40d06285f2e96d8969c32f5d7cae753aab66b796c83622",
+      "size": 45527,
+      "sha256": "e8e8a8d49ceb8c0d87960510a9c63bcdefb05340a8117b98d7737125ab9ceb91",
       "language": "python/cython"
     },
     {
       "path": "tools/final_regression.py",
       "size": 10048,
       "sha256": "0ae03f2bee0efadd274f38559a52beffb0aff9d18735c770c87670ca92b8e83d",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/fresh_deploy.py",
+      "size": 5215,
+      "sha256": "e5d14fba06505bdcf4545091d62fbd24804c2cf36e86b3350639cb942f73b4f9",
       "language": "python/cython"
     },
     {
@@ -2538,8 +3804,20 @@
     },
     {
       "path": "tools/golden_path_evidence.py",
-      "size": 11959,
-      "sha256": "59b97461c66e251d3f56a980367309d24e2c0580ea95368ea61226dc43992bf4",
+      "size": 12412,
+      "sha256": "9892fcd5b7934da945e6e5407eb9f4f86690f4bc62d93a7ea2b7232a715f0415",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/host_preflight.py",
+      "size": 11902,
+      "sha256": "748e19d5dc3e61370324b7afe3ab6157bfe261837b8f8033cf2cd08cbdb7cf85",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/host_soak_check.py",
+      "size": 16260,
+      "sha256": "b7780ce94aed254bcc642c2c70e0fc37d98b9e9d0c8efebf89490ea8a2aea8ed",
       "language": "python/cython"
     },
     {
@@ -2550,44 +3828,242 @@
     },
     {
       "path": "tools/installer.py",
-      "size": 3804,
-      "sha256": "ec370642f17b708f7d5d172fc54fb7f635b99dcd3eff1d4fc4a1a48bdd1d9750",
+      "size": 27671,
+      "sha256": "6c1c01c6d645e6729ef0b807f2738abc64bdeef767f53b886ba88075b6cfd229",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/lab_attack_window.py",
+      "size": 24475,
+      "sha256": "5215048ed327088d2a093c1ddc76f9f382a46e2046ad89a91ea2f37112023ed2",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/Dashboard.py.before-unified-snapshot",
+      "size": 8603,
+      "sha256": "b893c7344178b03a69d352dddb261ab95ed35150d8bb159cc7300a62c3fef28e",
+      "language": "data"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/__init__.py",
+      "size": 1578,
+      "sha256": "c6300bea71ce7f75a4e0253062dc77746d50d3d1e0327dc763f6bf7f2435227a",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/alerts.py",
+      "size": 3370,
+      "sha256": "eeb094a2b07036d9baebcf46115baeb92de321deeaf71845b1f38701e3f84638",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/api.py",
+      "size": 1826,
+      "sha256": "d7741b825730d0959c88dbca5cff117cd379e3e18331683b89818f26537e8f59",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/backup.py",
+      "size": 1159,
+      "sha256": "b6e3c10ac86275d109824edcffcdc2b17c7bf47d84286a90195283e98e3d88f6",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/canary.py",
+      "size": 3320,
+      "sha256": "4c3984c85c819703c8811dc5cc17f117d8de40e609384ce87bd2b171d84576d1",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/console.py",
+      "size": 12742,
+      "sha256": "3f189967fc9256e06396b0f0ee60b8cfc0069614b5b119a064b5275afb5f97e0",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/dashboard.py",
+      "size": 2734,
+      "sha256": "66957ced6c49423736267413516f5a49d3b466fdd4af5523f25024693ee4be78",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/events.py",
+      "size": 2047,
+      "sha256": "47d5dc5f768dc82d7f0fcf01674c4dae54df2bd2203924d4601a10a32bcc792c",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/forensic.py",
+      "size": 2291,
+      "sha256": "87c4b0df56ff0237e790e1fd35f64b75b8f2eae981e1e4c5e50bf606b88bae84",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/intelligence.py",
+      "size": 2692,
+      "sha256": "d9ab2396740a5b3c1b9f33b3a9d4dbc3902f76a759f4f122ec4fd38254449898",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/logs.py",
+      "size": 1400,
+      "sha256": "0618d1e9787f0a15253ead6c58ade2f1e1b4c91f4aaecfb676b975ef5197fcc5",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/network.py",
+      "size": 8504,
+      "sha256": "2022abf6618780d604cee290b13d600582dd8e3a147db74e320ca4a32c294928",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/policy.py",
+      "size": 3533,
+      "sha256": "0cd9ebfc9dc3e29d2978d9e3ba943442a872f2706eb748f9f3d0710c0d30147c",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/rules.py",
+      "size": 5638,
+      "sha256": "130e6f5a5431939fc04f910a31f0d8eba4ef3d9016a2326d2e9efcd84c8e3b49",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/simulate.py",
+      "size": 2973,
+      "sha256": "14b9f6eaf71847ebb203c765d040630cf1c6c3b724b3f0b1776e52075cd3f084",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/status.py",
+      "size": 7327,
+      "sha256": "7538af58d25f1eacfa6de1570f6bd8b453bb696ffb754bb8cc69e601dc86762c",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/aegisctl_lifecycle_quarantined.py",
-      "size": 8978,
-      "sha256": "38f727298ac1156fcee4bd566133be4305b9d68525412478a0d0aca5271779f3",
+      "size": 9546,
+      "sha256": "3fd4cfca301942b5f2ab107e7c45ca504e6daeeac87829e5973e7c876422903d",
       "language": "python/cython"
     },
     {
       "path": "tools/legacy/backup_recovery.py",
-      "size": 5563,
-      "sha256": "462869b19b2436a3898c97e23adf95cc3a2192f56f44cc9c1071f818cb8bc7dd",
+      "size": 6116,
+      "sha256": "90257cb534ca30cc55adaf865c64be2af783829a513c9821c0b07ce3f6de0115",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/fix_component_labels_v2.py",
+      "size": 1962,
+      "sha256": "c4913d3192ef1216c70351320a9cf37a23cbaac92542e5d1188db5e8a0ef8783",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/fix_console.py",
+      "size": 4346,
+      "sha256": "0b8d5ee14a7690a50ccea713ac5bb5a2436e451534f3f4294e73c13f913bc0c8",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/fix_console2.py",
+      "size": 3948,
+      "sha256": "5460458c01cb052f963581173119979a5c759f95ef936bf380d6442688fcdecd",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/fix_forensics_parser.py",
+      "size": 2233,
+      "sha256": "0a7b1032e0a831aa8b98da96ae3d3e09aead43de053286bfdc9df58f9143d9a5",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/patch_forensics_cli.py",
+      "size": 3071,
+      "sha256": "3b3b3ff87184a884aa616ebb2a489f9c814cb0e885c5d64ee6176acaa5fc6b05",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/patch_forensics_list.zig.py",
+      "size": 4682,
+      "sha256": "1e795be0ce7b93266d3be395e587826a5218d55ff8ed328849bf095c9554afc1",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/patch_graph_daemon.py",
+      "size": 5790,
+      "sha256": "f1638796cef4eceaf6023df67a8f2913365aaf2edbf914a3522a246d4c443524",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/patch_graph_watch.py",
+      "size": 6158,
+      "sha256": "55e942de2da6d16267202f4a5fb958097248224955b9d9e79274a7d5ad2eebad",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/rust_shield_orphan_quarantined/Cargo.toml",
+      "size": 147,
+      "sha256": "95529172e50a3bc9d76033aeec28d78cfc5e505e539cf307ac012ded7e5cda2e",
+      "language": "data"
+    },
+    {
+      "path": "tools/legacy/rust_shield_orphan_quarantined/src/lib.rs",
+      "size": 1993,
+      "sha256": "25457cff45fad53ebb51139589e30fb807e6b3ae468968337177a951b745fb6e",
+      "language": "rust"
+    },
+    {
+      "path": "tools/legacy/rust_shield_orphan_quarantined/src/main.rs",
+      "size": 1553,
+      "sha256": "59ec14f276fbe003b10a93af081a43d86f73779a70c1a47ce561c95cd0031078",
+      "language": "rust"
+    },
+    {
+      "path": "tools/legacy/rust_shield_orphan_quarantined/src/pep.rs",
+      "size": 1795,
+      "sha256": "bd20c84c35dd9c8b5fb8dc22c29501fea660166246f1b300bd663aaf3c87fad5",
+      "language": "rust"
+    },
+    {
+      "path": "tools/legacy/update_auth.py",
+      "size": 1401,
+      "sha256": "da1aac7b2b0dc2fa5d2536601ca97ba0ee2daa4cd0af704a04920e318f095840",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/update_console.py",
+      "size": 10300,
+      "sha256": "2f90261288fa5c55a8bcef049ea3337fe084ae4863508357ed28efece0a22f5c",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/update_health_cmd.py",
+      "size": 2942,
+      "sha256": "46eacad85f91824d402f2281226f2bd6437a3a3571f2829bc5a115f637626bcb",
       "language": "python/cython"
     },
     {
       "path": "tools/probe_control_pipe.py",
-      "size": 2010,
-      "sha256": "37847ce23518b4b07043365bb904276cb99133de5e49394e8ffe603f7a52c930",
+      "size": 2906,
+      "sha256": "a1e17d824314fa619b6e6589aef663959fd9fd931f8a45e97cb2529a5510f399",
       "language": "python/cython"
     },
     {
       "path": "tools/rebuild_truth.py",
-      "size": 3736,
-      "sha256": "f04fd7c61459c5267301910fa72586585a7db220e7fa1d1486f46abc7c8bf0e8",
+      "size": 8040,
+      "sha256": "e725924d5df936faa3dd10e718fa5e9582b058bebe6bef0b0c5b705c3cfde83f",
       "language": "python/cython"
     },
     {
       "path": "tools/release_candidate.py",
-      "size": 10448,
-      "sha256": "4abe12dd3264ed9bcd7b511308a607d81514c3fbaf48cbe27516bc7b66accb1b",
+      "size": 11986,
+      "sha256": "9561824c0f50bd30761710a4030a00bf2831eda264d9f481cc735f82f58d055e",
       "language": "python/cython"
     },
     {
       "path": "tools/release_engineering.py",
-      "size": 18301,
-      "sha256": "1d7357a95e31b45d67890c7202e1f8815d465c15dbbfcb34aefce151983e559b",
+      "size": 28678,
+      "sha256": "2812da818b6497c230d5de0ecbe6f7ab55a80f2755a6726d5d92d4c4c5801b0a",
       "language": "python/cython"
     },
     {
@@ -2597,21 +4073,63 @@
       "language": "script"
     },
     {
-      "path": "tools/truth.py",
-      "size": 6710,
-      "sha256": "8ce741b07f2fe457084be5b97698dafc8fcafc5b209d642afaa95abae1cf65e8",
+      "path": "tools/service_watchdog.py",
+      "size": 2197,
+      "sha256": "e8848ac8f63c7fd462c2a502f1776b82249f26793caa37b209f69bbb1a4fc118",
       "language": "python/cython"
     },
     {
-      "path": "tools/update_health_cmd.py",
-      "size": 2319,
-      "sha256": "8f5b030d5dd67a5819e18666c152f2191ad16ce68ff30a95b9954fda93c7bbe6",
+      "path": "tools/sign_release.py",
+      "size": 8498,
+      "sha256": "21fd42ed2eb4493d5a961bfdade18a732efe1299bafd315567a537f566259408",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/soak_rate.py",
+      "size": 9811,
+      "sha256": "1875fb24511016ebade1c34cc180da862e9a7540367dade9caafaebffd41e619",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/stage_helpers.py",
+      "size": 6474,
+      "sha256": "d338814060be0f5a5f3d9d502f24f1ed9a0b215c67cabe2aac676cd89def7518",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/stix_export.py",
+      "size": 12438,
+      "sha256": "2c2c8e80b0ab6703664a0a1775a005b08a2e3a33690f3bd981f3a5c5086d6f41",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/taxii_push.py",
+      "size": 7839,
+      "sha256": "87dc4aafc066bdddaba4b0a49e8a4f65c7e1852a1fe5ea38a5a53dd00ae80762",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/truth.py",
+      "size": 12402,
+      "sha256": "4ded8b0d7f7eafec2bcaffe07572c474d73f06211527821eec77695ffd0c46c1",
       "language": "python/cython"
     },
     {
       "path": "tools/upgrade_rollback.py",
       "size": 8482,
       "sha256": "c150249e746a040f96443416a1c8f1d54d6bbdf99e0678260e81eadbd4a18791",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/verify_release_digest.py",
+      "size": 4092,
+      "sha256": "60caa33a712a6db3ee8e676ef0d4fa32f83352a6903d86a4657b712abfa9144e",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/wfp_filter_audit.py",
+      "size": 4253,
+      "sha256": "332f6755e44b3a357b422560f035b8d4a3d8084cd44a4d2a723aa1fa9d198d1a",
       "language": "python/cython"
     },
     {
@@ -2622,50 +4140,80 @@
     },
     {
       "path": "ts_policy/package.json",
-      "size": 1046,
-      "sha256": "3d56bcd9bad47dc464fe7383fc5989e3669281dd8ad5e0576e9e5192f56ca587",
+      "size": 1091,
+      "sha256": "47cd985e0137f43ee561dbb983fecbe2bc42d643987956ed227469209fcd9ddc",
       "language": "json"
     },
     {
       "path": "ts_policy/src/compiler.ts",
-      "size": 15769,
-      "sha256": "57877830e9f37e182727ce68f65c6dfecb27b857a10fdd18a9bec48b3e81af04",
+      "size": 15935,
+      "sha256": "6db33dbc9735a6b92a9a405c6e9d422b177582bad405a2bcace7804c4b399101",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/src/ed25519.ts",
+      "size": 4270,
+      "sha256": "88c8ed7a2a9008076b0d850cd6f0ede2d096282a3384b8388932e2ae6679b162",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/src/exporter.ts",
+      "size": 2179,
+      "sha256": "e532e38c26efb9095f08c8d4c3cdfa178e5f8ff74d89bda9cff740e077c1c04c",
       "language": "typescript"
     },
     {
       "path": "ts_policy/src/index.ts",
-      "size": 772,
-      "sha256": "3c8568ba38fafbc4f00d9d0489bc08462da1845cefa4377a034c53d27c7320a2",
+      "size": 1126,
+      "sha256": "dd8e43989d388c54c35911de36dc9f5c84de0f78683dad30de45cc09d335e252",
       "language": "typescript"
     },
     {
       "path": "ts_policy/src/seal.ts",
-      "size": 6725,
-      "sha256": "4513a7a240e7964e71e4de9ed9d33e3639ace8413e76aee7aa759644855f8ed9",
+      "size": 6821,
+      "sha256": "c5536c9295c73a97ffa0307044be055ebe20d4a56ed72d1c77bf7164d247d8e3",
       "language": "typescript"
     },
     {
       "path": "ts_policy/src/types.ts",
-      "size": 12993,
-      "sha256": "9f4c7625b0b91e73958fed84457e4f6cca340dc26e210d46b213bcf71bb8958f",
+      "size": 13189,
+      "sha256": "4d1c12589a35ebeb5d7d8343d7cab81d482723b02c1cdc03c9521fb67a07a5b8",
       "language": "typescript"
     },
     {
       "path": "ts_policy/tests/compiler.test.ts",
-      "size": 8719,
-      "sha256": "7cd67b24e0f7c78363583abe9092066966c194b48f7400914f6d9185e612ff55",
+      "size": 8703,
+      "sha256": "2ba1694f75bf6613a942681cc4c94159475aad7fc06510b1749869a6039e8b69",
       "language": "typescript"
     },
     {
       "path": "ts_policy/tests/cross_language_contract.test.ts",
-      "size": 7741,
-      "sha256": "164d11b401bb977e3b60a35126d0d3d8c12464a2802a917d9bad9e5119ebfe7e",
+      "size": 7801,
+      "sha256": "33ae57c4fe174404c25db5daf3328eb73a1dda313bf52ea2264fdb0e88759e2f",
       "language": "typescript"
     },
     {
+      "path": "ts_policy/tests/ed25519.test.ts",
+      "size": 3708,
+      "sha256": "9b91fccecfc3d05fd29cba090f3e743f940d9062d267f35fe6b0aca49f700b46",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/tests/exporter.test.ts",
+      "size": 3980,
+      "sha256": "34a74e66bdecff978035c4a0fa27963216e1f6a5cbc26e90ae86a691c1625e23",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/tests/fixtures/policy_ir_002.json",
+      "size": 715,
+      "sha256": "19ea752b9201c3f4155b17359d1d461325e8ae6a02ab2d1a98370896aa21774a",
+      "language": "json"
+    },
+    {
       "path": "ts_policy/tests/no_enforcement.test.ts",
-      "size": 7877,
-      "sha256": "f37aeb0db1cc49b5e8fba24816555b8c9fa51c008c2e26d4954915bd11335cda",
+      "size": 8150,
+      "sha256": "6572fe13795b2299bd093c8d1163718c1d4b8ba149cfdc071d7ef72f1b6fdcd9",
       "language": "typescript"
     },
     {

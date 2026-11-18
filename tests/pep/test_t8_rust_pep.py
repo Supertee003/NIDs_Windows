@@ -86,7 +86,7 @@ def _scan_for_enforcement(path: Path) -> list[tuple[int, str]]:
 
 def test_authority_invariants_mark_rust_pep_as_final() -> None:
     """runtime_manifest.json's authority_invariants must declare Rust PEP
-    as the final security authority."""
+    as the detection-only policy evaluation authority (no host effect)."""
     import json
     manifest = json.loads((REPO_ROOT / "runtime_manifest.json").read_text(encoding="utf-8"))
     invariants = manifest.get("authority_invariants", [])
@@ -96,7 +96,7 @@ def test_authority_invariants_mark_rust_pep_as_final() -> None:
 
 
 def test_manifest_lists_rust_src_as_real_enforcement() -> None:
-    """The canonical Rust crate is the enforcement authority."""
+    """The canonical Rust crate is the detection-only policy evaluation authority."""
     import json
     manifest = json.loads((REPO_ROOT / "runtime_manifest.json").read_text(encoding="utf-8"))
     pep = manifest["canonical_entrypoints"]["rust_pep_tier3"]
@@ -237,10 +237,18 @@ def test_flow_request_uses_policy_action_block_not_response_decision() -> None:
 
 
 def test_wfp_flow_response_contract_is_complete() -> None:
-    """User and kernel paths must return the packed response and byte count."""
+    """User and kernel paths must return the packed response and byte count.
+
+    G2-VERIFY-DIR-001 made the proof filter direction-aware: outbound
+    connects use ALE_AUTH_CONNECT_V4 with a remote-port condition, inbound
+    accepts use ALE_AUTH_RECV_ACCEPT_V4 with a local-port condition. Pin the
+    conditional layerKey rather than the pre-direction literal, so neither
+    layer can silently disappear from the driver contract.
+    """
     user = (REPO_ROOT / "src" / "windows" / "wfp_ioctl.c").read_text(encoding="utf-8")
     kernel = (REPO_ROOT / "drivers" / "wfp_callout" / "aegis_wfp.c").read_text(encoding="utf-8")
     assert "sizeof(AEGIS_WFP_FLOW_RESPONSE) == 12" in user
     assert "response->provider_status == 0" in user
-    assert "filter.layerKey = FWPM_LAYER_ALE_AUTH_CONNECT_V4;" in kernel
+    assert "filter.layerKey = inbound ? FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4" in kernel
+    assert ": FWPM_LAYER_ALE_AUTH_CONNECT_V4;" in kernel
     assert "Irp->IoStatus.Information = sizeof(*response);" in kernel

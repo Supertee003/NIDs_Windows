@@ -1,0 +1,32 @@
+{
+  "schema": "aegis.rule22-single.v1",
+  "rule_id": "R3004",
+  "name": "Meterpreter Named Pipe",
+  "layer": "L2_PIPE",
+  "severity": "Critical",
+  "action": "Drop",
+  "patterns": {
+    "fast_pattern": "METER_PIPE",
+    "match_pattern": "meterpreter",
+    "regex_pattern": "meterpreter|METER_PIPE|\\\\pipe\\\\meterpreter"
+  },
+  "fixture": {
+    "fixture_id": "FX-21-R3004",
+    "source": "synthetic_pipe_event",
+    "marker": "METER_PIPE",
+    "synthetic_signal": "METER_PIPE meterpreter C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "regex_match": true
+  },
+  "expected_observe_only": {
+    "host_effect": "none",
+    "wfp_block": false,
+    "enforcement_receipt": false,
+    "forensic_record": true,
+    "canonical_event": true
+  },
+  "prevention_gate": "closed",
+  "vm_steps": [
+    "run_pipe_runtime_observe_only_proof.ps1 on the VM",
+    "verify: pipe event + name match, canonical event, forensic record"
+  ]
+}

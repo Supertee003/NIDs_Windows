@@ -19,6 +19,8 @@ import sys
 import unittest
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 AEGISCTL = REPO_ROOT / "tools" / "aegisctl.py"
 
@@ -108,6 +110,145 @@ class TestAegisctlStatusCommand(unittest.TestCase):
             f"expected running or connection error, got: stdout={stdout!r} stderr={stderr!r}"
         )
 
+    def test_status_shows_traffic_gauges(self):
+        # CLI-SHOW-158: operator-visible packets/flows lines.
+        rc, stdout, stderr = _run_aegisctl("status")
+        self.assertEqual(rc, 0, f"status should exit 0, got {rc}; stderr={stderr}")
+        self.assertIn("Packets captured:", stdout)
+        self.assertIn("Flows active:", stdout)
+
+    def test_status_json_carries_traffic_gauges(self):
+        # CLI-SHOW-158: machine-readable status exposes the gauges even
+        # against pre-slice daemons (absent reads as 0).
+        import json as _json
+        rc, stdout, stderr = _run_aegisctl("status", "--json")
+        self.assertEqual(rc, 0, f"status --json should exit 0, got {rc}; stderr={stderr}")
+        document = _json.loads(stdout)
+        self.assertIn("packets_captured", document["health"])
+        self.assertIn("flows_active", document["health"])
+
+    def test_status_json_carries_host_effect_posture(self):
+        # EVT-179: host-effect honesty is observable, not claimed.
+        # status --json carries host_effect_posture with filesystem
+        # observations only; blocking truth stays with `enforce status`
+        # (prevention_gate), never with file presence.
+        import json as _json
+        import os as _os
+        rc, stdout, stderr = _run_aegisctl("status", "--json")
+        self.assertEqual(rc, 0, f"status --json should exit 0, got {rc}; stderr={stderr}")
+        document = _json.loads(stdout)
+        posture = document.get("host_effect_posture")
+        self.assertIsInstance(posture, dict)
+        for key in ("installed_driver_present", "deploy_bundle_root",
+                    "legacy_bundle_root", "legacy_scope_note"):
+            self.assertIn(key, posture)
+        sysroot = _os.environ.get("SystemRoot", r"C:\Windows")
+        self.assertEqual(posture["installed_driver_present"],
+                         _os.path.exists(_os.path.join(
+                             sysroot, "System32", "drivers", "aegis_wfp.sys")))
+        self.assertEqual(posture["deploy_bundle_root"],
+                         _os.path.exists(r"C:\Program Files\AEGIS NIDS"))
+        self.assertEqual(posture["legacy_bundle_root"],
+                         _os.path.exists(r"C:\Program Files\AEGIS"))
+        self.assertIn("pre-rename bundle", posture["legacy_scope_note"])
+        self.assertIn("6.5", posture["legacy_scope_note"])
+
+    def test_status_text_shows_host_posture_lines(self):
+        # EVT-179: operator-visible posture lines, same source as --json.
+        rc, stdout, stderr = _run_aegisctl("status")
+        self.assertEqual(rc, 0, f"status should exit 0, got {rc}; stderr={stderr}")
+        self.assertIn("Driver present:", stdout)
+        self.assertIn("Deploy bundle root:", stdout)
+        self.assertIn("Legacy bundle root:", stdout)
+
+
+class TestAegisctlDashboardCommand(unittest.TestCase):
+    """`aegisctl dashboard` one-shot must answer like `components`."""
+
+    def test_oneshot_dashboard_probes_deep(self):
+        # EVT-180: the one-shot render uses the deep concept probes, so a
+        # live brain reads RUNNING here exactly as in `aegisctl
+        # components`. The watch/iterations loop keeps the fast path
+        # (cheap polling); only the single render pays for probes.
+        rc, stdout, stderr = _run_aegisctl("dashboard")
+        self.assertEqual(rc, 0, f"dashboard should exit 0, got {rc}; stderr={stderr}")
+        brain_lines = [l for l in stdout.splitlines() if "AEGIS Brain" in l]
+        self.assertTrue(brain_lines, "dashboard must list AEGIS Brain")
+        self.assertNotIn("UNKNOWN", brain_lines[0],
+                         f"one-shot dashboard must probe deep: {brain_lines[0]!r}")
+
+    def test_dashboard_wiring_pins_depth_by_mode(self):
+        # Static wiring: one-shot passes deep_components=True; the poll
+        # loop uses the default (fast path). Guards a silent revert to
+        # all-shallow.
+        import pathlib as _pl
+        src = (_pl.Path(__file__).resolve().parents[2]
+               / "tools" / "aegisctl.py").read_text(encoding="utf-8")
+        self.assertIn("def _render_dashboard_once(deep_components", src)
+        self.assertIn("_render_dashboard_once(deep_components=True)", src)
+
+    @pytest.mark.host_live
+    def test_incidents_list_reports_counters(self):
+        # EVT-207: the command every Kali hint points at must exist and
+        # report the daemon's counters (quiet reads zero, never an error).
+        import json as _json
+        rc, stdout, stderr = _run_aegisctl("incidents", "list", "--json")
+        self.assertEqual(rc, 0, f"incidents list should exit 0, got {rc}; stderr={stderr}")
+        document = _json.loads(stdout)
+        for key in ("incidents_total", "incidents_open", "detections",
+                    "policies_matched", "correlations"):
+            self.assertIn(key, document)
+        rc, stdout, stderr = _run_aegisctl("incidents", "list")
+        self.assertEqual(rc, 0, f"incidents list should exit 0, got {rc}; stderr={stderr}")
+        self.assertIn("Incidents open:", stdout)
+
+    def test_dashboard_shows_detections_section(self):
+        # EVT-207: the one-shot frame carries the same detection counters
+        # as `incidents list` (or a labeled unavailable line, never silence).
+        # Generous timeout: one-shot deep probes + several pipe round-trips
+        # can exceed 10s under full-suite load; the command itself is fine.
+        rc, stdout, stderr = _run_aegisctl("dashboard", timeout=60)
+        self.assertEqual(rc, 0, f"dashboard should exit 0, got {rc}; stderr={stderr}")
+        self.assertIn("DETECTIONS:", stdout)
+        self.assertTrue(
+            "Incidents open:" in stdout or "unavailable" in stdout,
+            f"DETECTIONS section must report or admit: {stdout[-500:]!r}"
+        )
+
+    @pytest.mark.host_live
+    def test_incidents_top_groups_rules(self):
+        # EVT-208: ring-derived top-rules view shares the alerts scan core.
+        # Quiet hosts print the labeled empty line; firing hosts print rows.
+        import json as _json
+        rc, stdout, stderr = _run_aegisctl("incidents", "top", "--json", timeout=60)
+        self.assertEqual(rc, 0, f"incidents top should exit 0, got {rc}; stderr={stderr}")
+        document = _json.loads(stdout)
+        self.assertIn("groups", document)
+        self.assertEqual(document.get("source"), "ring")
+        rc, stdout, stderr = _run_aegisctl("incidents", "top", timeout=60)
+        self.assertEqual(rc, 0, f"incidents top should exit 0, got {rc}; stderr={stderr}")
+        self.assertTrue(
+            "TOP FIRING RULES" in stdout or "No firing rules" in stdout,
+            f"unexpected output: {stdout[-300:]!r}"
+        )
+
+    def test_brain_reports_counters_and_inbox(self):
+        # EVT-208: Tier-2 visibility = liveness counters + labeled inbox
+        # tail (offers received, never claimed as verdicts).
+        import json as _json
+        rc, stdout, stderr = _run_aegisctl("brain", "--count", "2", "--json")
+        self.assertEqual(rc, 0, f"brain should exit 0, got {rc}; stderr={stderr}")
+        document = _json.loads(stdout)
+        self.assertIn("health", document)
+        self.assertIn("inbox", document)
+        self.assertLessEqual(document.get("inbox_returned", 99), 2)
+        rc, stdout, stderr = _run_aegisctl("brain", "--count", "2")
+        self.assertEqual(rc, 0, f"brain should exit 0, got {rc}; stderr={stderr}")
+        self.assertTrue(
+            "Brain:" in stdout and ("Inbox" in stdout),
+            f"unexpected output: {stdout[-300:]!r}"
+        )
+
 
 class TestAegisctlHealthCommand(unittest.TestCase):
     """`aegisctl health` must probe runtime health via pipe."""
@@ -143,6 +284,101 @@ class TestAegisctlDiagnoseCommand(unittest.TestCase):
         self.assertIn("Repo root:", stdout)
         self.assertIn("Python:", stdout)
         self.assertIn("Platform:", stdout)
+
+    def test_diagnose_reports_endpoint_ownership(self):
+        # ORPHAN-154: the report names owned endpoints and never stops
+        # anything; on this host the brain channel is expected clear.
+        rc, stdout, stderr = _run_aegisctl("diagnose")
+        self.assertEqual(rc, 0, f"diagnose should exit 0, got {rc}; stderr={stderr}")
+        self.assertIn("ENDPOINT OWNERSHIP", stdout)
+        self.assertIn("brain channel", stdout)
+        self.assertIn("control pipe", stdout)
+
+
+class TestOrphanDetection(unittest.TestCase):
+    """GAP-010: foreign listeners on owned UDP channels must be reported,
+    never acted on. Windows-only (netstat/wmic scans)."""
+
+    def test_ephemeral_squatter_is_foreign(self):
+        if sys.platform != "win32":
+            self.skipTest("netstat scan is Windows-only")
+        import socket
+        from tools.aegisctl.api import control_api
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+            findings = None
+            for _ in range(3):
+                findings = control_api.detect_foreign_udp_listener(
+                    port, ("windows_brain.py",))
+                if findings and findings[0].get("pid") is not None:
+                    break
+                import time
+                time.sleep(0.5)
+            self.assertTrue(findings)
+            self.assertEqual(findings[0]["status"], "FOREIGN")
+            self.assertEqual(findings[0]["port"], port)
+        finally:
+            sock.close()
+
+    def test_clear_port_reports_no_listener(self):
+        if sys.platform != "win32":
+            self.skipTest("netstat scan is Windows-only")
+        import socket
+        from tools.aegisctl.api import control_api
+        probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            probe.bind(("127.0.0.1", 0))
+            free = probe.getsockname()[1]
+        except OSError:
+            self.skipTest("no ephemeral UDP port available")
+            return
+        finally:
+            probe.close()
+        findings = control_api.detect_foreign_udp_listener(free, ("windows_brain.py",))
+        for found in findings:
+            self.assertIn(found["status"], ("CLEAR", "FOREIGN"))
+            if found["status"] == "CLEAR":
+                self.assertIsNone(found["pid"])
+
+    def test_invisible_owner_needs_its_own_reply_to_be_owned(self):
+        # RB-017: the supervisor runs the brain as SYSTEM in session 0, where an
+        # unelevated caller cannot read its command line. That must not read as
+        # FOREIGN on its own, and it must not read as OWNED without evidence
+        # either: only the listener's own schema-correct reply promotes it.
+        from unittest.mock import patch
+        from tools.aegisctl.api import control_api
+        with patch.object(control_api, "_udp_listener_pids", return_value=[4242]),              patch.object(control_api, "_process_identity", return_value=("pythonw.exe", "")):
+            unresolved = control_api.detect_foreign_udp_listener(
+                control_api.BRAIN_UDP_PORT, ("windows_brain.py",))
+            self.assertEqual(unresolved[0]["status"], "FOREIGN")
+
+            denied = control_api.detect_foreign_udp_listener(
+                control_api.BRAIN_UDP_PORT, ("windows_brain.py",), lambda _pid: False)
+            self.assertEqual(denied[0]["status"], "FOREIGN")
+
+            confirmed = control_api.detect_foreign_udp_listener(
+                control_api.BRAIN_UDP_PORT, ("windows_brain.py",), lambda pid: pid == 4242)
+            self.assertEqual(confirmed[0]["status"], "OWNED")
+            self.assertIn("corroborated", confirmed[0]["detail"])
+
+    def test_owned_markers_recognize_expected_owner(self):
+        if sys.platform != "win32":
+            self.skipTest("netstat scan is Windows-only")
+        import socket
+        from tools.aegisctl.api import control_api
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+            findings = control_api.detect_foreign_udp_listener(port, ("python",))
+            if not findings or findings[0].get("pid") is None:
+                self.skipTest("own command line not visible to wmic here")
+            # This test process runs under python.exe, so the marker matches.
+            self.assertEqual(findings[0]["status"], "OWNED")
+        finally:
+            sock.close()
 
 
 class TestAegisctlStartStopErrors(unittest.TestCase):
@@ -192,6 +428,287 @@ class TestAegisctlExitCodes(unittest.TestCase):
     def test_bad_command_returns_2(self):
         rc, _, _ = _run_aegisctl("nonexistent-command")
         self.assertEqual(rc, 2, f"bad command should exit 2, got {rc}")
+
+
+class TestAegisctlBridgeDiagnostic(unittest.TestCase):
+    """`aegisctl bridge` answers RB-017 step 3 honestly (EVT-154).
+
+    The old stub always reported bridge_diagnostic_not_connected. The new
+    command synthesizes host-local truth (UDP :9999 listener owner).
+    Live-shape test is state-tolerant: it pins the document contract,
+    not whether the brain happens to be up right now.
+    """
+
+    def test_bridge_json_is_a_shaped_document(self):
+        rc, stdout, _ = _run_aegisctl("bridge", "--json")
+        self.assertIn(rc, (0, 1, 2), f"bridge exit must be 0/1/2, got {rc}")
+        try:
+            doc = __import__("json").loads(stdout)
+        except Exception as exc:
+            self.fail(f"bridge --json must parse: {exc}\n{stdout[:300]}")
+        for key in ("command", "port", "available", "listener",
+                    "owner_is_brain", "secret_posture", "note"):
+            self.assertIn(key, doc, f"bridge doc missing {key}")
+        self.assertEqual(doc["command"], "bridge")
+        self.assertEqual(doc["port"], 9999)
+        if doc["listener"] is not None:
+            self.assertIn("pid", doc["listener"])
+            self.assertIsInstance(doc["owner_is_brain"], bool)
+            if doc["owner_is_brain"] is True:
+                self.assertEqual(rc, 0)
+                self.assertTrue(doc["available"])
+
+    def test_bridge_human_output_names_the_owner(self):
+        rc, stdout, _ = _run_aegisctl("bridge")
+        self.assertIn(rc, (0, 1, 2), f"bridge exit must be 0/1/2, got {rc}")
+        self.assertIn("9999", stdout)
+        self.assertIn("owner_is_brain", stdout)
+
+
+class TestBridgeDiagnosticLogic(unittest.TestCase):
+    """Deterministic doc-logic pins (mocked probes, no system touch)."""
+
+    def test_doc_branches(self):
+        from unittest.mock import patch
+        from tools.aegisctl.api import control_api
+        base = {"listener": None}
+        with patch.object(control_api, "udp_listener_owner", return_value=None), \
+             patch.object(control_api, "query_control", return_value={}):
+            doc = control_api.bridge_diagnostic()
+            self.assertFalse(doc["available"])
+            self.assertIsNone(doc["listener"])
+            self.assertIsNone(doc["owner_is_brain"])
+        with patch.object(control_api, "udp_listener_owner",
+                          return_value=(1234, "python", "C:\\x\\windows_brain.py")), \
+             patch.object(control_api, "query_control", return_value={}):
+            doc = control_api.bridge_diagnostic()
+            self.assertTrue(doc["available"])
+            self.assertTrue(doc["owner_is_brain"])
+            self.assertEqual(doc["listener"]["pid"], 1234)
+        with patch.object(control_api, "udp_listener_owner",
+                          return_value=(999, "other", "C:\\x\\other.exe")), \
+             patch.object(control_api, "query_control", return_value={}):
+            doc = control_api.bridge_diagnostic()
+            self.assertFalse(doc["owner_is_brain"])
+            self.assertFalse(doc["available"])
+        with patch.object(control_api, "udp_listener_owner",
+                          return_value=(999, "python", None)), \
+             patch.object(control_api, "query_control", return_value={}):
+            doc = control_api.bridge_diagnostic()
+            self.assertIsNone(doc["owner_is_brain"])
+            self.assertIn("unknown", (doc.get("reason", "") + doc.get("note", "")).lower())
+
+    def test_doc_secret_posture_branches(self):
+        # EVT-156: posture comes from the listener's own HEALTH reply
+        # (on/off only); timeout/garbage stays unknown, never fabricated.
+        from unittest.mock import patch
+        from tools.aegisctl.api import control_api
+        owner = (1234, "python", "C:\\x\\windows_brain.py")
+        with patch.object(control_api, "udp_listener_owner", return_value=owner), \
+             patch.object(control_api, "_udp_health", return_value={"auth": "on", "pid": 1234}), \
+             patch.object(control_api, "query_control", return_value={}):
+            doc = control_api.bridge_diagnostic()
+            self.assertEqual(doc["secret_posture"], "on")
+            self.assertTrue(doc["available"])
+        with patch.object(control_api, "udp_listener_owner", return_value=owner), \
+             patch.object(control_api, "_udp_health", return_value={"auth": "off", "pid": 1234}), \
+             patch.object(control_api, "query_control", return_value={}):
+            self.assertEqual(control_api.bridge_diagnostic()["secret_posture"], "off")
+        with patch.object(control_api, "udp_listener_owner", return_value=owner), \
+             patch.object(control_api, "_udp_health", return_value=None), \
+             patch.object(control_api, "query_control", return_value={}):
+            self.assertEqual(control_api.bridge_diagnostic()["secret_posture"], "unknown")
+        with patch.object(control_api, "udp_listener_owner", return_value=owner), \
+             patch.object(control_api, "_udp_health", return_value={"auth": "maybe"}), \
+             patch.object(control_api, "query_control", return_value={}):
+            self.assertEqual(control_api.bridge_diagnostic()["secret_posture"], "unknown")
+
+    def test_doc_pid_corroboration_when_cmdline_unreadable(self):
+        # Command line unreadable (None) but a schema-correct HEALTH reply
+        # from the listener pid itself corroborates identity.
+        from unittest.mock import patch
+        from tools.aegisctl.api import control_api
+        with patch.object(control_api, "udp_listener_owner",
+                          return_value=(999, "python", None)), \
+             patch.object(control_api, "_udp_health",
+                          return_value={"auth": "off", "pid": 999}), \
+             patch.object(control_api, "query_control", return_value={}):
+            doc = control_api.bridge_diagnostic()
+            self.assertTrue(doc["owner_is_brain"])
+            self.assertTrue(doc["available"])
+            self.assertEqual(doc["secret_posture"], "off")
+
+
+class TestAegisctlComponents(unittest.TestCase):
+    """`aegisctl components` shows the five as concepts (EVT-162)."""
+
+    def test_components_json_shape(self):
+        import json as _json
+        rc, stdout, stderr = _run_aegisctl("components", "--json", timeout=60)
+        self.assertEqual(rc, 0, f"components --json exit 0, got {rc}; {stderr[-300:]}")
+        doc = _json.loads(stdout)
+        self.assertEqual(doc["command"], "components")
+        rows = {r["id"]: r for r in doc["components"]}
+        self.assertEqual(sorted(rows), ["brain", "bridge", "core", "mouth", "nose"])
+        for rid, row in rows.items():
+            for key in ("name", "language", "role", "version",
+                        "entrypoint", "status", "detail"):
+                self.assertIn(key, row, (rid, key))
+            self.assertIn(row["status"], ("running", "stopped", "degraded", "unknown"))
+
+    def test_components_human_names_all_five(self):
+        rc, stdout, stderr = _run_aegisctl("components", timeout=60)
+        self.assertEqual(rc, 0, f"components exit 0, got {rc}; {stderr[-300:]}")
+        for name in ("AEGIS Core", "AEGIS Brain", "AEGIS Nose",
+                     "AEGIS Mouth", "AEGIS Bridge"):
+            self.assertIn(name, stdout)
+        for lang in ("Zig", "Python", "Go", "Rust", "C++"):
+            self.assertIn(lang, stdout)
+
+
+class TestAegisctlConsoleGraph(unittest.TestCase):
+    """EVT-165: reborn console + receipt-aware graph (subprocess, live)."""
+
+    def test_console_once_rules_is_deterministic(self):
+        # Read-only catalog view: no daemon, no elevation, always exit 0.
+        rc, stdout, stderr = _run_aegisctl(
+            "console", "--once", "--choice", "7", timeout=60)
+        self.assertEqual(rc, 0, f"console rules exit 0, got {rc}; {stderr[-300:]}")
+        self.assertIn("Detection catalog", stdout)
+
+    def test_console_once_invalid_choice_lists_keys(self):
+        rc, stdout, _ = _run_aegisctl(
+            "console", "--once", "--choice", "bogus", timeout=60)
+        self.assertEqual(rc, 2)
+        self.assertIn("0", stdout)
+
+    def test_console_blocks_mutation_for_operator(self):
+        rc, stdout, _ = _run_aegisctl(
+            "console", "--once", "--choice", "1", timeout=60)
+        self.assertEqual(rc, 1)
+        self.assertIn("BLOCKED", stdout)
+
+    def test_graph_builds_to_tmp(self):
+        import tempfile
+        import os
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "g.html")
+            rc, stdout, stderr = _run_aegisctl(
+                "graph", "--out", out, "--limit", "50", timeout=120)
+            self.assertEqual(rc, 0, f"graph exit 0, got {rc}; {stderr[-300:]}")
+            self.assertIn("Threat graph", stdout)
+            self.assertTrue(os.path.isfile(out))
+
+
+class TestAegisctlIptest(unittest.TestCase):
+    """EVT-167: bounded latency probe instead of the stub (live)."""
+
+    @pytest.mark.host_live
+    def test_iptest_reports_bounded_sample(self):
+        import json as _json
+        rc, stdout, stderr = _run_aegisctl("iptest", "--rounds", "3", "--json", timeout=60)
+        self.assertEqual(rc, 0, f"iptest exit 0, got {rc}; {stderr[-300:]}")
+        doc = _json.loads(stdout)
+        self.assertEqual(doc["rounds"], 3)
+        self.assertFalse(doc["capped"])
+        self.assertEqual(doc["ok"] + doc["failed"], 3)
+        if doc["ok"]:
+            self.assertLessEqual(doc["p50_ms"], doc["p99_ms"])
+
+
+class TestForensicSearchContracts(unittest.TestCase):
+    """EVT-175: search misuse degrades to guidance, never a traceback."""
+
+    def test_text_source_value_explains_ordinal(self):
+        import json as _json
+        rc, stdout, stderr = _run_aegisctl(
+            "forensic", "search", "--field", "source", "--value", "1.2.3.4",
+            timeout=60)
+        combined = stdout + stderr
+        self.assertEqual(rc, 2, f"expected exit 2, got {rc}")
+        self.assertNotIn("Traceback", combined)
+        body = _json.loads(combined.strip().splitlines()[-1])
+        self.assertEqual(body.get("reason"), "source_must_be_a_numeric_ordinal")
+
+    def test_unknown_field_names_valid_filters(self):
+        rc, stdout, stderr = _run_aegisctl(
+            "forensic", "search", "--field", "bogus", "--value", "x",
+            timeout=60)
+        self.assertEqual(rc, 2)
+        self.assertIn("source_or_payload_prefix", stdout + stderr)
+
+    @pytest.mark.host_live
+    def test_rule_field_accepts_catalog_id_shape(self):
+        # Live shape only (the daemon filter it addresses deploys
+        # separately): catalog id accepted, JSON parses, no traceback.
+        import json as _json
+        rc, stdout, stderr = _run_aegisctl(
+            "forensic", "search", "--field", "rule", "--value", "R9059",
+            timeout=90)
+        combined = stdout + stderr
+        self.assertNotIn("Traceback", combined)
+        self.assertEqual(rc, 0, f"rule search must not fail, got {rc}")
+        doc = _json.loads(stdout)
+        self.assertIn("records_matched", doc)
+
+    def test_source_accepts_the_frozen_name(self):
+        # Two numbering spaces coexist: the queue reports detection_brain (13)
+        # while the forensic writer stores canonical python_brain (5). Searching
+        # the wrong number returns zero records, which reads exactly like
+        # missing evidence, so the frozen name is accepted explicitly.
+        rc, stdout, stderr = _run_aegisctl(
+            "forensic", "search", "--field", "source", "--value", "python_brain",
+            timeout=90)
+        combined = stdout + stderr
+        self.assertNotIn("source_must_be_a_numeric_ordinal", combined)
+        self.assertNotIn("Traceback", combined)
+        self.assertIn(rc, (0, 1), f"name search must not be a usage error, got {rc}")
+
+    def test_frozen_source_table_matches_the_wire_contract(self):
+        # The CLI fallback table is only safe while it equals the frozen
+        # ordinals in brain/canonical_event.py (which pin the Zig contract).
+        import ast
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "brain_canonical_for_sources", REPO_ROOT / "brain" / "canonical_event.py")
+        brain = importlib.util.module_from_spec(spec)
+        sys.modules["brain_canonical_for_sources"] = brain  # dataclasses need it registered
+        spec.loader.exec_module(brain)
+        tree = ast.parse((REPO_ROOT / "tools" / "aegisctl.py").read_text(encoding="utf-8"))
+        table = None
+        for node in tree.body:
+            if (isinstance(node, ast.Assign)
+                    and getattr(node.targets[0], "id", None) == "FROZEN_SOURCE_ORDINALS"):
+                table = ast.literal_eval(node.value)
+        self.assertIsNotNone(table, "FROZEN_SOURCE_ORDINALS not found in aegisctl.py")
+        self.assertEqual(table, brain.SOURCE)
+
+
+class TestRulesWriteRefusedGracefully(unittest.TestCase):
+    """EVT-174: unwritable Rules.json must read as a message, not a traceback."""
+
+    def test_mutate_rules_reports_oserror(self):
+        import importlib.util
+        import types
+        from unittest.mock import patch
+        sys.path.insert(0, str(REPO_ROOT / "tools"))
+        path = REPO_ROOT / "tools" / "aegisctl.py"
+        spec = importlib.util.spec_from_file_location("aegisctl_under_test", path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["aegisctl_under_test"] = module
+        spec.loader.exec_module(module)
+        args = types.SimpleNamespace(
+            id="R1", rule_json=None, name="n", category="c", layer=None,
+            severity="Low", action="Alert", match_pattern="x",
+            regex_pattern=None)
+        with patch.object(module, "load_rules", return_value={"nids_rules": []}), \
+             patch.object(module, "_save_rules", side_effect=OSError("denied")), \
+             patch("builtins.print") as pr:
+            rc = module._mutate_rules(args, "add")
+        self.assertEqual(rc, 1)
+        printed = " ".join(str(c.args[0]) for c in pr.call_args_list)
+        self.assertIn("elevation", printed)
+        self.assertNotIn("Traceback", printed)
 
 
 if __name__ == "__main__":

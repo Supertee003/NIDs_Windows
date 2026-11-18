@@ -61,6 +61,22 @@ typedef struct {
 } AegisPepResponse;
 ```
 
+### PepAssessmentResponse (16 bytes)
+```c
+typedef struct {
+    uint8_t  decision;               // PepDecision assessment
+    uint32_t reason;                 // assessment reason code
+    uint8_t  host_effect_confirmed;  // MUST always be 0
+    uint8_t  reserved[7];            // MUST always be zero
+} AegisPepAssessmentResponse;
+```
+
+`PepAssessmentResponse` is evidence-only. It contains no filter identifier,
+quota mutation, provider receipt, or authorization state. A `block` or
+`quarantine` decision in this response means `would_block`/`would_quarantine`
+for evidence and operator explanation; it does not mean that host traffic was
+changed.
+
 ## FFI Functions
 
 ```c
@@ -74,6 +90,14 @@ void aegis_pep_shutdown(void);
 int aegis_pep_enforce(
     const AegisPepRequest* req,
     AegisPepResponse* resp
+);
+
+// Evaluate policy for evidence only. Never opens/calls a WFP adapter and never
+// consumes quota or approval state. host_effect_confirmed and reserved bytes
+// are always zero.
+int aegis_pep_assess(
+    const AegisPepRequest* req,
+    AegisPepAssessmentResponse* resp
 );
 
 // Query remaining rate-limit quota for an IP
@@ -97,11 +121,35 @@ int aegis_pep_unblock_filter(
     uint64_t request_id
 );
 
-// Query WFP filter state into a 20-byte PepFilterState
+// Query WFP filter state into a 20-byte PepFilterState.
+// Legacy entry point: outbound layer only (direction 0).
 int aegis_pep_query_filter(uint64_t filter_id, void* out_state);
 
-// Provider readiness probe (1 = WFP provider reachable)
+// Direction-aware query (0 = outbound, 1 = inbound). The provider must
+// attest the named WFP layer; an older bridge without this export fails
+// closed. Unknown direction values return -3.
+int aegis_pep_query_filter_dir(
+    uint64_t filter_id,
+    uint8_t direction,
+    void* out_state
+);
+
+// Provider readiness probe (1 = WFP provider reachable). EVT-212: attests
+// through the cached sole-owner adapter (adopts/reuses its single device
+// handle); it never opens a second handle, and the handle is released
+// cleanly whenever the adapter is dropped (closed before module unload).
 int aegis_pep_provider_ready(void);
+
+// Read-only kernel flow telemetry (EVT-211): 5-tuple ring records via the
+// cached provider adapter handle. NEVER enforcement -- no block, no policy
+// decision, no receipt. Returns 0 with *bytes_read set (0 = idle ring),
+// -1 when no provider copy supports the read surface, -3 invalid args.
+// Callers label -1 as absence; it must never render as a zero-row reading.
+int aegis_pep_read_events(
+    uint8_t* out_buf,
+    uint32_t buf_size,
+    uint32_t* bytes_read
+);
 ```
 
 ## Authorization Flow
@@ -135,6 +183,7 @@ Action Dispatcher (block via WFP, quarantine, escalate, etc.)
 
 - PepRequest is 64 bytes (extern struct, no padding)
 - PepResponse is 24 bytes (extern struct: decision + reason + quota + signed_by + filter_id)
+- PepAssessmentResponse is 16 bytes; host_effect_confirmed is always zero and reserved bytes are zero
 - PepContext is 24 bytes; PepFilterState is 20 bytes (packed)
 - Rust PEP is the ONLY final enforcement authority
 - No component may bypass PEP for privileged actions

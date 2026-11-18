@@ -1,23 +1,28 @@
 """AEGIS NIDS client for communicating with the Zig daemon.
 
-SECURITY (P1): Transport is explicit — no automatic fallback.
-  - Named Pipe = canonical transport (Windows ACL protected)
-  - TCP = optional diagnostic transport (requires --transport=tcp)
-  - Automatic fallback is REMOVED because it silently changes the security boundary
-
-The caller must explicitly choose the transport. If pipe is unavailable,
-the command fails with a clear error instead of silently using TCP.
+SECURITY (P1/T1-NET-019): the named pipe is the ONLY control transport.
+A previous TCP client branch was removed: the daemon never listens on TCP,
+so the branch could only ever talk to a stranger on localhost:5117 with no
+authentication, and privileged commands (block/unblock/reload/shutdown)
+would have crossed that boundary. Pipe uses Windows ACL protection.
 """
 from __future__ import annotations
 
 import json
 import os
-import socket
 import sys
 import time
 from typing import Any, Dict, Optional
 
 from .config import DEFAULT_HOST, DEFAULT_PORT, DEFAULT_NAMED_PIPE
+
+# One request yields exactly one JSON document. The daemon writes that document
+# in chunks, so it must be accumulated across message-bounded reads until it
+# parses; a fixed-size single read loses the remainder to ERROR_MORE_DATA and
+# can misreport a valid large response as a transport failure.
+_MAX_RESPONSE_READS = 256
+_MAX_RESPONSE_BYTES = 8 * 1024 * 1024
+ERROR_MORE_DATA = 234
 
 
 class AegisCtlError(Exception):
@@ -30,16 +35,13 @@ class TransportError(AegisCtlError):
 
 
 class AegisClient:
-    """Control plane client with explicit transport selection.
+    """Control plane client. Named pipe only.
 
-    Transport policy (P1):
-      - pipe: Named pipe only. Fails if pipe unavailable. (default)
-      - tcp:  TCP only. Fails if TCP unavailable. (requires explicit opt-in)
-      - auto: DEPRECATED. Do not use. Fails with error.
-
-    Why no fallback: Automatic pipe→TCP fallback silently changes the security
-    boundary. Named pipe uses Windows ACL (SYSTEM-only). TCP is unauthenticated
-    on localhost:5117. An operator must know which boundary they're using.
+    Transport policy (P1/T1-NET-019):
+      - pipe: Named pipe only. Fails if pipe unavailable. (default, only)
+      - tcp/auto: REMOVED. The daemon never listens on TCP; a TCP branch
+        could only reach an unauthenticated stranger on localhost, so any
+        such request is refused here instead of sent.
     """
 
     def __init__(
@@ -62,18 +64,17 @@ class AegisClient:
             TransportError: if the selected transport fails.
             AegisCtlError: if the command itself fails.
         """
-        if self.transport == "auto":
+        if self.transport in ("auto", "tcp"):
             raise AegisCtlError(
-                "transport='auto' is deprecated and removed. "
-                "Use transport='pipe' (default) or transport='tcp' (explicit)."
+                f"transport={self.transport!r} is removed. The daemon exposes "
+                "the Windows-ACL named pipe only; there is no authenticated "
+                "TCP control channel. Use transport='pipe'."
             )
 
         start = time.monotonic()
         try:
             if self.transport == "pipe":
                 result = self._send_pipe(command, payload)
-            elif self.transport == "tcp":
-                result = self._send_tcp(command, payload)
             else:
                 raise AegisCtlError(f"unknown transport: {self.transport!r}")
         except AegisCtlError:
@@ -116,8 +117,37 @@ class AegisClient:
                 raise last_error or RuntimeError("named pipe remained busy")
             req = json.dumps({"command": command, "payload": payload or {}}).encode("utf-8")
             win32file.WriteFile(handle, req)
-            _, resp = win32file.ReadFile(handle, 65536)
-            return json.loads(resp.decode("utf-8"))
+            # Size every read to the bytes left in the current message and
+            # accumulate until the document parses. PeekNamedPipe's third field
+            # is exactly lpBytesLeftThisMessage, so no read is ever short.
+            chunks: list[bytes] = []
+            total = 0
+            raw = b""
+            for _ in range(_MAX_RESPONSE_READS):
+                _, _, message_bytes = win32pipe.PeekNamedPipe(handle, 0)
+                read_size = max(int(message_bytes or 0), 1)
+                try:
+                    _, chunk = win32file.ReadFile(handle, read_size)
+                except Exception as exc:
+                    if getattr(exc, "winerror", None) == ERROR_MORE_DATA:
+                        continue
+                    raise
+                chunk = bytes(chunk)
+                if not chunk:
+                    continue
+                chunks.append(chunk)
+                total += len(chunk)
+                if total > _MAX_RESPONSE_BYTES:
+                    raise TransportError("control response exceeded the client read budget")
+                raw = b"".join(chunks)
+                try:
+                    json.loads(raw.decode("utf-8"))
+                    break
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    pass
+            else:
+                raise TransportError("control response never terminated as one JSON document")
+            return json.loads(raw.decode("utf-8"))
         except Exception as e:
             raise TransportError(f"named pipe error: {e}")
         finally:
@@ -126,22 +156,6 @@ class AegisClient:
                     win32file.CloseHandle(handle)
                 except Exception:
                     pass
-
-    def _send_tcp(self, command: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        try:
-            with socket.create_connection((self.host, self.port), timeout=self.timeout) as s:
-                req = json.dumps({"command": command, "payload": payload or {}}).encode("utf-8")
-                s.sendall(req)
-                chunks = []
-                while True:
-                    data = s.recv(65536)
-                    if not data:
-                        break
-                    chunks.append(data)
-                resp = b"".join(chunks)
-                return json.loads(resp.decode("utf-8"))
-        except (ConnectionRefusedError, socket.timeout, OSError) as e:
-            raise TransportError(f"TCP connection error: {e}")
 
     def _audit_entry(self, command: str, transport: str, elapsed_ms: float, ok: bool) -> None:
         self._audit_log.append({

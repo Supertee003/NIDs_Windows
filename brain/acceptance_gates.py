@@ -1,4 +1,5 @@
 """Explicit gates for Phase 8–10; no gate infers readiness from artifacts alone."""
+# SEAM-STATUS: not wired to the production entrypoint (brain/windows_brain.py); exercised by brain tests.
 from __future__ import annotations
 
 from typing import Any, Mapping

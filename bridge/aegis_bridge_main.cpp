@@ -24,7 +24,9 @@
 #include <thread>
 
 #ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #else
 #include <unistd.h>
@@ -203,22 +205,20 @@ int main(int argc, char* argv[]) {
     SetConsoleCP(65001);
 #endif
 
-    // ====== Banner (64-char wide, ANSI colored) ======
     const char* RST = "\x1b[0m";
     const char* BLD = "\x1b[1m";
     const char* CYN = "\x1b[96m";
     const char* GRN = "\x1b[92m";
-    const char* YEL = "\x1b[93m";
     const char* DIM = "\x1b[2m";
 
     fprintf(stdout, "\n");
     fprintf(stdout, "%s╔════════════════════════════════════════════════════════════╗%s\n", CYN, RST);
-    fprintf(stdout, "%s║%s %sAEGIS NIDS — IPC Bridge (C++)%s %sv2.0%s                %s║%s\n", CYN, RST, BLD, RST, DIM, RST, CYN, RST);
+    fprintf(stdout, "%s║%s %sAEGIS NIDS — IPC Bridge (C++)%s %s v2.0 %s                %s║%s\n", CYN, RST, BLD, RST, DIM, RST, CYN, RST);
     fprintf(stdout, "%s║%s %sMulti-Language Hybrid Architecture — Event Queue Hub%s  %s║%s\n", CYN, RST, DIM, RST, CYN, RST);
     fprintf(stdout, "%s╠════════════════════════════════════════════════════════════╣%s\n", CYN, RST);
     fprintf(stdout, "%s║%s %sZig Core%s · %sPython Brain%s · %sRust Shield%s · %sGo Nose%s  %s║%s\n", CYN, RST, GRN, RST, GRN, RST, GRN, RST, GRN, RST, CYN, RST);
-    fprintf(stdout, "%s╚════════════════════════════════════════════════════════════╝%s\n", CYN, RST);
-    fprintf(stdout, "\n");
+    fprintf(stdout, "%s╚═════════════════════════════════════════════════════════════╝%s\n", CYN, RST);
+
 
     // ====== Initialize Bridge ======
     g_start_ms = now_monotonic_ms();
@@ -240,7 +240,7 @@ int main(int argc, char* argv[]) {
             event.event_type = Aegis::Bridge::kNetworkEvent;
             event.source_ip = 0xC0A80101 + i;  // 192.168.1.x
             event.dest_ip = 0x0A000101;         // 10.0.1.1
-            event.source_port = 12345 + i;
+            event.source_port = static_cast<uint16_t>(12345 + i);
             event.dest_port = 80;
             event.protocol = 6;  // TCP
             event.tier_result = 1;  // Tier-1

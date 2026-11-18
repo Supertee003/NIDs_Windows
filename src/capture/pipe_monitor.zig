@@ -81,26 +81,35 @@ const PIPE_SEARCH_PATH = [_:0]u16{ '\\', '\\', '.', '\\', 'p', 'i', 'p', 'e', '\
 var g_total_scans: u32 = 0;
 var g_suspicious_found: u32 = 0;
 
-/// Check if a pipe name matches any suspicious pattern (case-insensitive)
+/// Check if a pipe name matches any suspicious pattern (case-insensitive).
+/// PIPE-SUB-043: substring (contains) semantics. The previous prefix-only
+/// check missed real tooling that embeds the marker mid-name
+/// (e.g. "evil_psexec_123"), while every prefix hit is also a substring
+/// hit, so no existing detection is lost. A match only emits an
+/// observation (severity warning) — enforcement stays downstream.
 fn isSuspiciousPipe(name: []const u16) ?[]const u8 {
     // Convert to lowercase ASCII for matching
     for (SUSPICIOUS_PIPE_PATTERNS) |pattern| {
         if (name.len < pattern.len) continue;
-        var match = true;
-        for (0..pattern.len) |i| {
-            const wc = name[i];
-            if (wc < 128) {
-                const ch_lower = std.ascii.toLower(@as(u8, @intCast(wc)));
-                if (ch_lower != std.ascii.toLower(pattern[i])) {
+        var start: usize = 0;
+        while (start + pattern.len <= name.len) : (start += 1) {
+            var match = true;
+            for (0..pattern.len) |i| {
+                const wc = name[start + i];
+                if (wc < 128) {
+                    const ch_lower = std.ascii.toLower(@as(u8, @intCast(wc)));
+                    if (ch_lower != std.ascii.toLower(pattern[i])) {
+                        match = false;
+                        break;
+                    }
+                } else {
+                    // Non-ASCII fails this alignment only; keep scanning.
                     match = false;
                     break;
                 }
-            } else {
-                match = false;
-                break;
             }
+            if (match) return pattern;
         }
-        if (match) return pattern;
     }
     return null;
 }
@@ -278,6 +287,27 @@ test "isSuspiciousPipe handles non-ASCII characters gracefully" {
     const pipe_name = [_]u16{ 0x4E2D, 0x6587, 0x7BA1, 0x9053 }; // Chinese chars
     const result = isSuspiciousPipe(&pipe_name);
     try std.testing.expect(result == null);
+}
+
+test "isSuspiciousPipe detects markers embedded mid-name" {
+    // PIPE-SUB-043: prefix-only matching missed "evil_psexec_123".
+    const pipe_name = [_]u16{ 'e', 'v', 'i', 'l', '_', 'p', 's', 'e', 'x', 'e', 'c', '_', '1', '2', '3' };
+    const result = isSuspiciousPipe(&pipe_name);
+    try std.testing.expect(result != null);
+    try std.testing.expect(std.mem.eql(u8, result.?, "psexec"));
+}
+
+test "isSuspiciousPipe detects marker after non-ASCII prefix" {
+    // Non-ASCII fails only its own alignment; scanning continues past it.
+    const pipe_name = [_]u16{ 0x4E2D, 'm', 's', 'f', 'x' };
+    const result = isSuspiciousPipe(&pipe_name);
+    try std.testing.expect(result != null);
+    try std.testing.expect(std.mem.eql(u8, result.?, "MSF"));
+}
+
+test "isSuspiciousPipe still rejects near-miss names" {
+    const pipe_name = [_]u16{ 's', 'q', 'l', 'm', 's', 'e', 'x', 'e' };
+    try std.testing.expect(isSuspiciousPipe(&pipe_name) == null);
 }
 
 test "encodePipeName creates bounded ASCII payload" {

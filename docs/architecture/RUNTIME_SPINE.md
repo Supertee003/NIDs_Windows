@@ -142,12 +142,12 @@ processEvent()
 - **Authority**: `core/policy_engine.zig`
 - **Rule**: Decides, does NOT execute. Produces EnforcementPlan for Rust PEP.
 
-### 10. Rust PEP (ENFORCE)
+### 10. Rust PEP (EVIDENCE)
 - **Language**: Rust
 - **Input**: EnforcementPlan (validated: policy, version, signature, target, action, authorization, expiry)
-- **Output**: EnforcementResult (7 statuses)
-- **Authority**: `shield/` (Rust)
-- **Rule**: Final enforcement authority. No bypass.
+- **Output**: Detection evidence (BLOCK/QUARANTINE -> ESCALATE reason 8), never a host effect
+- **Authority**: `rust-src/` (Rust)
+- **Rule**: Detection-only. The legacy host-effect path is retired; no bypass.
 
 ### 11. Forensics (REMEMBER)
 - **Language**: Zig

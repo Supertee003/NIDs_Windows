@@ -312,6 +312,14 @@ def main() -> int:
         action="store_true",
         help="attempt a read-only daemon health probe (default: off, for determinism)",
     )
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="redirect the JSON/MD result stamps (default: analysis/ tracked "
+             "files; test runners must pass a tmp path so tests never rewrite "
+             "tracked tree state)",
+    )
     args = parser.parse_args()
 
     validation = validate_manifest()
@@ -353,7 +361,10 @@ def main() -> int:
         "validation": validation,
         "results": results,
     }
-    OUT_JSON.write_text(json.dumps(output, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    out_json = args.out or OUT_JSON
+    out_md = out_json.with_suffix(".md") if args.out else OUT_MD
+    out_json.parent.mkdir(parents=True, exist_ok=True)
+    out_json.write_text(json.dumps(output, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     lines = [
         "# Phase 8 — Controlled Attack Lab Results",
@@ -391,7 +402,7 @@ def main() -> int:
         "proves the host effect. No block is claimed.",
         "",
     ]
-    OUT_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    out_md.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     bundle = write_evidence_bundle(run_id, output, doc["topology"], daemon_before, daemon_after)
 

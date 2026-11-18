@@ -732,6 +732,13 @@ test "checkThresholds evaluates all benchmarks" {
 
     // All should pass on a reasonable host (ops_per_sec > threshold)
     for (thresholds.items) |t| {
+        if (!t.passed) {
+            // PERF-FLAKE-086: on a loaded host any single benchmark can
+            // dip below its floor intermittently. The gate stays strict,
+            // but a failure now names the benchmark and its margin so
+            // the next triage has data instead of a bare assertion line.
+            std.debug.print("PERF-FLAKE threshold miss: {s} actual={d:.1} floor={d:.1}\n", .{ t.name, t.actual, t.threshold });
+        }
         try std.testing.expect(t.passed);
     }
 }

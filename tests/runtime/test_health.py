@@ -75,6 +75,10 @@ class TestRuntimeProbeLookup(unittest.TestCase):
 REQUIRED_FIELDS = ("component", "state", "pid", "uptime_ms", "last_event_ms",
                    "counters", "deps")
 REQUIRED_COUNTERS = ("in_events", "out_events", "errors", "dropped")
+# STEP-43 (CTRL-HEALTH-115): daemon also emits packets_captured (canonical
+# nose submissions) and flows_active (live flow-table gauge). Optional here
+# so older payloads still validate; when present they must be sane.
+OPTIONAL_INT_FIELDS = ("packets_captured", "flows_active")
 
 
 def validate_health_response(resp: dict[str, Any]) -> None:
@@ -105,6 +109,11 @@ def validate_health_response(resp: dict[str, Any]) -> None:
             raise AssertionError(f"dep entry missing name/state: {dep!r}")
         if dep["state"] not in VALID_STATES:
             raise AssertionError(f"dep state {dep['state']!r} invalid")
+    for field in OPTIONAL_INT_FIELDS:
+        if field in resp:
+            if not isinstance(resp[field], int) or resp[field] < 0:
+                raise AssertionError(f"{field} must be non-negative int, "
+                                     f"got {resp[field]!r}")
 
 
 class TestHealthSchemaValidator(unittest.TestCase):
@@ -178,6 +187,19 @@ class TestHealthSchemaValidator(unittest.TestCase):
         with self.assertRaises(AssertionError):
             validate_health_response(r)
 
+    def test_daemon_metric_keys_accepted_when_present(self):
+        # CTRL-HEALTH-115: live daemon payloads carry packets_captured /
+        # flows_active alongside counters; all three must validate together.
+        r = self._good()
+        r["packets_captured"] = 900
+        r["flows_active"] = 5
+        validate_health_response(r)
+
+    def test_negative_daemon_metric_rejected(self):
+        r = self._good(); r["packets_captured"] = 10; r["flows_active"] = -1
+        with self.assertRaises(AssertionError):
+            validate_health_response(r)
+
 
 class TestHealthSampleJsonFromContract(unittest.TestCase):
     """The exact JSON example in RUNTIME_CONTRACT.md §4.1 must pass the
@@ -235,10 +257,82 @@ class TestControlApiHealthPayload(unittest.TestCase):
         self.assertTrue(payload["tier3"]["ready"])
         self.assertTrue(payload["tier3"]["dependency_ready"])
         self.assertFalse(payload["tier3"]["provider_ready"])
+        self.assertFalse(payload["tier3"]["provider_capable"])
         self.assertFalse(payload["tier3"]["host_effect_capable"])
         self.assertTrue(payload["rust_shield"]["pep_ready"])
         self.assertFalse(payload["rust_shield"]["provider_ready"])
+        self.assertFalse(payload["rust_shield"]["provider_capable"])
         self.assertFalse(payload["rust_shield"]["host_effect_capable"])
+        self.assertEqual(payload["state"], "DEGRADED")
+        self.assertTrue(payload["degraded"])
+
+    def test_provider_ready_never_projects_production_host_effect(self):
+        daemon_health = {
+            "component": "core",
+            "state": "RUNNING",
+            "runtime_state": "RUNNING",
+            "pid": 4321,
+            "uptime_ms": 100,
+            "last_event_ms": 0,
+            "capabilities": {"wfp": True},
+            "subsystems": [
+                {"name": "rust_pep", "state": "RUNNING", "pid": 4321},
+                {"name": "tier3", "state": "RUNNING", "pid": 4321},
+            ],
+            "workers": {
+                "pipeline_ready": True,
+                "sensor_ready": True,
+                "nose_ready": True,
+                "etw_ready": True,
+                "fim_ready": True,
+                "registry_ready": True,
+                "failure_mask": 0,
+            },
+            "data_plane": {},
+        }
+        with patch.object(control_api, "_query_daemon_retry", return_value=daemon_health), \
+             patch.object(control_api, "get_all_status", return_value=[]), \
+             patch.object(control_api, "compute_health_state", return_value=("RUNNING", False)):
+            payload = control_api.get_health_payload()
+
+        self.assertTrue(payload["tier3"]["provider_ready"])
+        self.assertTrue(payload["tier3"]["provider_capable"])
+        self.assertFalse(payload["tier3"]["host_effect_capable"])
+        self.assertTrue(payload["rust_pep"]["provider_ready"])
+        self.assertTrue(payload["rust_pep"]["provider_capable"])
+        self.assertFalse(payload["rust_pep"]["host_effect_capable"])
+
+    def test_degraded_daemon_health_cannot_be_promoted_by_running_runtime_state(self):
+        daemon_health = {
+            "component": "core",
+            "state": "DEGRADED",
+            "runtime_state": "RUNNING",
+            "degraded": True,
+            "pid": 4321,
+            "uptime_ms": 100,
+            "last_event_ms": 0,
+            "capabilities": {"wfp": True},
+            "subsystems": [
+                {"name": "rust_pep", "state": "RUNNING", "pid": 4321},
+                {"name": "tier3", "state": "RUNNING", "pid": 4321},
+            ],
+            "workers": {
+                "pipeline_ready": True,
+                "sensor_ready": True,
+                "nose_ready": True,
+                "etw_ready": True,
+                "fim_ready": True,
+                "registry_ready": True,
+                "failure_mask": 0,
+            },
+            "data_plane": {},
+            "data_integrity": {"queue_dropped_total": 1},
+        }
+        with patch.object(control_api, "_query_daemon_retry", return_value=daemon_health), \
+             patch.object(control_api, "get_all_status", return_value=[]), \
+             patch.object(control_api, "compute_health_state", return_value=("RUNNING", False)):
+            payload = control_api.get_health_payload()
+
         self.assertEqual(payload["state"], "DEGRADED")
         self.assertTrue(payload["degraded"])
 
@@ -261,7 +355,8 @@ class TestControlApiHealthPayload(unittest.TestCase):
         self.assertEqual(payload["subsystems"]["zig"]["pid"], 101)
 
     def test_payload_exposes_tier3_and_counters(self):
-        with patch.object(control_api, "get_all_status", return_value=[]), \
+        with patch.object(control_api, "_query_daemon_retry", return_value=None), \
+             patch.object(control_api, "get_all_status", return_value=[]), \
              patch.object(control_api, "compute_health_state", return_value=("FAILED", True)):
             payload = control_api.get_health_payload()
 
@@ -283,6 +378,212 @@ class TestControlApiHealthPayload(unittest.TestCase):
         self.assertFalse(payload["runtime_available"])
         self.assertEqual(payload["tier3"]["state"], "UNAVAILABLE")
         self.assertIn("daemon unavailable", payload["availability_error"])
+
+    def _daemon_with(self, **overrides):
+        base = {
+            "component": "core",
+            "state": "RUNNING",
+            "runtime_state": "RUNNING",
+            "pid": 4321,
+            "uptime_ms": 100,
+            "last_event_ms": 7,
+            "capabilities": {"wfp": False},
+            "subsystems": [],
+            "workers": {"failure_mask": 0},
+            "data_plane": {
+                "nose_frames_read": 10,
+                "nose_frames_submitted": 9,
+                "nose_pipe_errors": 1,
+                "nose_frames_dropped": 2,
+            },
+        }
+        base.update(overrides)
+        return base
+
+    def _payload_for(self, daemon_health):
+        with patch.object(control_api, "_query_daemon_retry", return_value=daemon_health), \
+             patch.object(control_api, "get_all_status", return_value=[]), \
+             patch.object(control_api, "compute_health_state", return_value=("RUNNING", False)):
+            return control_api.get_health_payload()
+
+    def test_daemon_counters_used_verbatim_when_present(self):
+        # CTRL-SHIM-150: fresh daemons own the 4.1 shape; prefer it.
+        payload = self._payload_for(self._daemon_with(counters={
+            "in_events": 100, "out_events": 90, "errors": 3, "dropped": 12,
+        }))
+        self.assertEqual(payload["counters"], {
+            "in_events": 100, "out_events": 90, "errors": 3, "dropped": 12,
+        })
+
+    def test_data_integrity_counters_are_forwarded_from_daemon(self):
+        integrity = {
+            "queue_dropped_total": 7,
+            "nose_frames_rejected": 2,
+            "nose_frames_dropped": 3,
+            "nose_pipe_errors": 4,
+            "minifilter_ring_dropped": 5,
+            "minifilter_pipeline_dropped": 6,
+        }
+        payload = self._payload_for(self._daemon_with(data_integrity=integrity))
+        self.assertEqual(payload["data_integrity"], integrity)
+
+    def test_data_integrity_absence_and_malformed_counters_are_honest(self):
+        legacy = self._payload_for(self._daemon_with())
+        self.assertEqual(legacy["data_integrity"], {})
+
+        malformed = self._payload_for(self._daemon_with(data_integrity={
+            "queue_dropped_total": True,
+            "nose_frames_rejected": -1,
+            "nose_frames_dropped": "3",
+            "nose_pipe_errors": 0,
+            "minifilter_ring_dropped": 2,
+            "unknown": 99,
+        }))
+        self.assertEqual(malformed["data_integrity"], {
+            "nose_pipe_errors": 0,
+            "minifilter_ring_dropped": 2,
+        })
+
+    def test_counters_synthesized_when_daemon_lacks_them(self):
+        # Pre-slice daemons carry no counters: fall back to data_plane.
+        payload = self._payload_for(self._daemon_with())
+        self.assertEqual(payload["counters"], {
+            "in_events": 10, "out_events": 9, "errors": 1, "dropped": 2,
+        })
+
+    def test_malformed_daemon_counters_fall_back_whole(self):
+        # Never merge per-field: a half-present object falls back entirely.
+        for bad in ({"in_events": -1, "out_events": 9, "errors": 1, "dropped": 2},
+                    {"in_events": "10", "out_events": 9, "errors": 1, "dropped": 2},
+                    {"in_events": True, "out_events": 9, "errors": 1, "dropped": 2},
+                    {"in_events": 10}):
+            payload = self._payload_for(self._daemon_with(counters=bad))
+            self.assertEqual(payload["counters"], {
+                "in_events": 10, "out_events": 9, "errors": 1, "dropped": 2,
+            }, bad)
+
+
+class TestEndpointOwnershipInHealth(unittest.TestCase):
+    """GAP-010 second half: orphan findings surface in health (cached)."""
+
+    def setUp(self):
+        control_api._reset_endpoint_ownership_cache()
+
+    def tearDown(self):
+        control_api._reset_endpoint_ownership_cache()
+
+    def _payload_for(self, census):
+        daemon_health = {
+            "component": "core",
+            "state": "RUNNING",
+            "runtime_state": "RUNNING",
+            "pid": 4321,
+            "uptime_ms": 100,
+            "last_event_ms": 7,
+            "capabilities": {"wfp": False},
+            "subsystems": [],
+            "workers": {"failure_mask": 0},
+            "data_plane": {},
+        }
+        with patch.object(control_api, "_query_daemon_retry", return_value=daemon_health), \
+             patch.object(control_api, "get_all_status", return_value=[]), \
+             patch.object(control_api, "compute_health_state", return_value=("RUNNING", False)), \
+             patch.object(control_api, "diagnose_endpoint_ownership", return_value=census):
+            return control_api.get_health_payload()
+
+    def test_foreign_finding_surfaces_in_health(self):
+        census = {"findings": [
+            {"endpoint": "brain channel", "port": 9999, "pid": 4242,
+             "status": "FOREIGN", "detail": "orphan"},
+        ], "foreign_count": 1}
+        payload = self._payload_for(census)
+        self.assertEqual(payload["endpoint_ownership"]["status"], "FOREIGN")
+        self.assertEqual(payload["endpoint_ownership"]["foreign_count"], 1)
+        self.assertEqual(len(payload["endpoint_ownership"]["findings"]), 1)
+
+    def test_clear_census_surfaces_as_clear(self):
+        census = {"findings": [
+            {"endpoint": "brain channel", "port": 9999, "pid": None,
+             "status": "CLEAR", "detail": "no listener"},
+        ], "foreign_count": 0}
+        payload = self._payload_for(census)
+        self.assertEqual(payload["endpoint_ownership"]["status"], "CLEAR")
+        self.assertEqual(payload["endpoint_ownership"]["foreign_count"], 0)
+
+    def test_unknown_does_not_outrank_clear_but_bows_to_foreign(self):
+        self.assertEqual(control_api.summarize_endpoint_ownership(
+            {"findings": [{"endpoint": "brain channel", "status": "UNKNOWN"}],
+             "foreign_count": 0})["status"], "UNKNOWN")
+        self.assertEqual(control_api.summarize_endpoint_ownership(
+            {"findings": [{"endpoint": "brain channel", "status": "UNKNOWN"},
+                           {"endpoint": "brain channel", "status": "FOREIGN"}],
+             "foreign_count": 1})["status"], "FOREIGN")
+        self.assertEqual(control_api.summarize_endpoint_ownership(
+            {"findings": [], "foreign_count": 0})["status"], "CLEAR")
+
+    def test_census_is_cached_within_ttl(self):
+        calls = []
+        fake = {"findings": [], "foreign_count": 0}
+
+        def fake_census():
+            calls.append(1)
+            return fake
+
+        with patch.object(control_api, "diagnose_endpoint_ownership",
+                          side_effect=fake_census):
+            control_api.get_endpoint_ownership_cached()
+            control_api.get_endpoint_ownership_cached()
+            self.assertEqual(len(calls), 1)
+            control_api._reset_endpoint_ownership_cache()
+            control_api.get_endpoint_ownership_cached()
+            self.assertEqual(len(calls), 2)
+
+
+class TestTrafficGaugesInHealth(unittest.TestCase):
+    """CLI-SHOW-158: daemon traffic gauges ride the health payload."""
+
+    def setUp(self):
+        control_api._reset_endpoint_ownership_cache()
+
+    def tearDown(self):
+        control_api._reset_endpoint_ownership_cache()
+
+    def _payload_for(self, daemon_health):
+        with patch.object(control_api, "_query_daemon_retry", return_value=daemon_health), \
+             patch.object(control_api, "get_all_status", return_value=[]), \
+             patch.object(control_api, "compute_health_state", return_value=("RUNNING", False)), \
+             patch.object(control_api, "diagnose_endpoint_ownership",
+                          return_value={"findings": [], "foreign_count": 0}):
+            return control_api.get_health_payload()
+
+    def _daemon_with(self, **overrides):
+        base = {
+            "component": "core",
+            "state": "RUNNING",
+            "runtime_state": "RUNNING",
+            "pid": 4321,
+            "uptime_ms": 100,
+            "last_event_ms": 7,
+            "capabilities": {"wfp": False},
+            "subsystems": [],
+            "workers": {"failure_mask": 0},
+            "data_plane": {},
+        }
+        base.update(overrides)
+        return base
+
+    def test_daemon_gauges_forwarded_verbatim(self):
+        payload = self._payload_for(self._daemon_with(
+            packets_captured=424242, flows_active=7))
+        self.assertEqual(payload["packets_captured"], 424242)
+        self.assertEqual(payload["flows_active"], 7)
+
+    def test_missing_gauges_read_as_zero(self):
+        # Pre-slice daemons carry no such keys; downstream .get(key, 0)
+        # convention is preserved here.
+        payload = self._payload_for(self._daemon_with())
+        self.assertEqual(payload["packets_captured"], 0)
+        self.assertEqual(payload["flows_active"], 0)
 
 
 if __name__ == "__main__":

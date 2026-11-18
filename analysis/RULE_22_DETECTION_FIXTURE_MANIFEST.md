@@ -1,8 +1,8 @@
-# Rules 22 Detection Fixture Manifest
+# Rules 23 Detection Fixture Manifest
 
 > Synthetic observe-only fixtures only. These markers are not attack execution and are not sent to the network, filesystem, process launcher, or enforcement path.
 
-- Fixtures: **22**
+- Fixtures: **23**
 - Execution mode: `synthetic_observe_only`
 - Global prevention gate: **closed**
 
@@ -30,6 +30,7 @@
 | `FX-20-R3003` | `R3003` | `L2_PIPE` | `synthetic_pipe_event` | `ANON_PIPE` | `Alert` | `none` | `READY_FOR_SENSOR_ADAPTER` |
 | `FX-21-R3004` | `R3004` | `L2_PIPE` | `synthetic_pipe_event` | `METER_PIPE` | `Drop` | `none` | `READY_FOR_SENSOR_ADAPTER` |
 | `FX-22-R3005` | `R3005` | `L2_PIPE` | `synthetic_pipe_event` | `ATEXEC_PIPE` | `Block` | `none` | `READY_FOR_SENSOR_ADAPTER` |
+| `FX-23-R0089` | `R0089` | `L7` | `synthetic_payload_event` | `RFI_INCLUDE` | `Block` | `none` | `READY_FOR_SENSOR_ADAPTER` |
 
 ## Per-fixture acceptance
 

@@ -1,0 +1,59 @@
+{
+  "measured_at": "2026-11-10T02:58Z",
+  "workload": "create+delete of 64-byte files in a temp dir, all through the deployed daemon on the live host",
+  "runs": [
+    {
+      "kind": "burst",
+      "workers": 1,
+      "duration_s": 8.4,
+      "file_ops_per_s": 4765,
+      "events_pushed": 111800,
+      "events_dropped": 0,
+      "drop_ratio_pct": 0.0,
+      "depth_peak": 3842,
+      "raw": "analysis/current-head/d3-burst-idle-reference-20261109.json"
+    },
+    {
+      "kind": "burst",
+      "workers": 4,
+      "duration_s": 19.75,
+      "file_ops_per_s": 10127,
+      "events_pushed": 663778,
+      "events_dropped": 4795,
+      "drop_ratio_pct": 0.72,
+      "depth_peak": 12347,
+      "raw": "analysis/current-head/d3-burst-attribution-20261109.json"
+    },
+    {
+      "kind": "sustained",
+      "workers": 2,
+      "duration_s": 120.0,
+      "file_ops_per_s": 3553,
+      "events_pushed": 2570718,
+      "events_dropped": 0,
+      "drop_ratio_pct": 0.0,
+      "depth_peak": 4207,
+      "raw": "console transcript only (the script's result file was overwritten by the next run)"
+    },
+    {
+      "kind": "sustained",
+      "workers": 4,
+      "duration_s": 60.0,
+      "file_ops_per_s": 5566,
+      "events_pushed": 1984044,
+      "events_dropped": 5470,
+      "drop_ratio_pct": 0.2757,
+      "depth_peak": 11299,
+      "raw": "analysis/current-head/d3-sustained-5566ops-20261109.json"
+    }
+  ],
+  "attribution": {
+    "all_drops_source": "capture_etw",
+    "all_drops_kind": "fim_change",
+    "all_drops_counter": "source_quota_shed",
+    "reserved_tail_shed": 0,
+    "peer_lane": "capture_fim pushed the same churn with 0 drops in every run"
+  },
+  "knee": "between 3553 and 5566 sustained file-ops/s on this host; a 4765 ops/s burst of 8.4 s did not drop",
+  "caveat": "file-ops/s is the workload rate, not an event rate; each op produces ~2 sensor records (ETW + minifilter)"
+}

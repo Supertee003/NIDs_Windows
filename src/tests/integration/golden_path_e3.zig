@@ -1,84 +1,78 @@
 //! golden_path_e3.zig — E3 Evidence: Data Plane Golden Path Integration
 //!
-//! Proves the full pipeline flow:
-//!   CanonicalEvent → nose_contract → event_processor → flow → detection
-//!   → correlation → incident → policy → PEP → action → forensic
+//! Proves the full pipeline flow across real component boundaries (not mocks):
+//!   CanonicalEvent → nose_contract → policy → detection → forensic
+//!   → tier-3 gate → PEP guard → end-to-end record
 //!
-//! Evidence level: E3 (component integration — multiple components verified
-//! working together at their real boundaries, not mocks).
+//! Evidence level: E3 (component integration).
+//!
+//! SCOPE-103 repair: this harness had never been compiled since the policy /
+//! detection / forensic APIs were reshaped, so all eight scenario bodies were
+//! dead. They are rewritten against the current modules; the scenario intent
+//! of each test is unchanged, and no assertion was weakened to make it pass.
 
 const std = @import("std");
 
-// ── Component imports (real modules, not mocks) ─────────────────
 const canonical = @import("../../contract/canonical_event.zig");
+const event = @import("../../contract/event.zig");
 const nose = @import("../../capture/nose_contract.zig");
 const policy_ir = @import("../../policy/policy_ir.zig");
 const pep = @import("../../policy/pep_bindings.zig");
-const dispatcher = @import("../../policy/action_dispatcher.zig");
 const tier3 = @import("../../policy/tier3_state.zig");
 const forensic = @import("../../forensic/forensic_pipeline.zig");
 const threat_tracker = @import("../../detection/threat_tracker.zig");
-const correlation = @import("../../detection/correlation_engine.zig");
 
-// ── E3-001: CanonicalEvent → nose_contract submit/pop round-trip ─
-// Proves: Go nose wire format → Zig nose contract queue
+// ── E3-001: CanonicalEvent → nose_contract submit/pop round-trip ────────────
+// Proves: nose wire format → Zig nose contract queue preserves identity.
 
 test "E3-001: CanonicalEvent → nose_contract round-trip" {
-    // Init the event fabric (nose contract)
     if (nose.isFabricInitialized()) nose.shutdownFabric(std.testing.allocator);
-    nose.initFabric(std.testing.allocator, .{ .capacity_per_priority = 64 }) catch {};
+    try nose.initFabric(std.testing.allocator, .{ .capacity_per_priority = 64 });
     defer nose.shutdownFabric(std.testing.allocator);
 
-    // Create a canonical event (simulates what Go nose produces)
-    var event = canonical.create(.zig_core);
-    event.event_id = 0x12345678;
-    event.event_type = .match_signature;
-    event.source_ip = 0xC0A80164; // 192.168.1.100
-    event.dest_ip = 0xC0A80101; // 192.168.1.1
-    event.source_port = 443;
-    event.dest_port = 8080;
-    event.protocol = 6; // TCP
-    event.severity = 3; // high
+    var ev = canonical.create(.zig_core);
+    ev.event_id = 0x12345678;
+    ev.event_type = .match_;
+    ev.source_ip = 0xC0A80164; // 192.168.1.100
+    ev.dest_ip = 0xC0A80101; // 192.168.1.1
+    ev.source_port = 443;
+    ev.dest_port = 8080;
+    ev.protocol = 6; // TCP
+    ev.severity = 3;
 
-    // Submit to nose contract (IPC boundary)
-    const result = nose.submitEvent(event);
-    try std.testing.expect(result == .accepted);
+    try std.testing.expectEqual(nose.SubmitResult.accepted, nose.submitEvent(ev));
 
-    // Pop from nose contract (pipeline boundary)
     const popped = nose.popEvent() orelse {
         try std.testing.expect(false);
         return;
     };
 
-    // Verify the event survived the round-trip intact
     try std.testing.expectEqual(@as(u64, 0x12345678), popped.event_id);
-    try std.testing.expectEqual(canonical.SourceKind.zig_core, popped.source);
+    try std.testing.expectEqual(canonical.EventSource.zig_core, popped.source);
     try std.testing.expectEqual(@as(u32, 0xC0A80164), popped.source_ip);
     try std.testing.expectEqual(@as(u32, 0xC0A80101), popped.dest_ip);
     try std.testing.expectEqual(@as(u16, 443), popped.source_port);
     try std.testing.expectEqual(@as(u16, 8080), popped.dest_port);
     try std.testing.expectEqual(@as(u8, 6), popped.protocol);
     try std.testing.expectEqual(@as(u8, 3), popped.severity);
+    try std.testing.expectEqual(canonical.EventType.match_, popped.event_type);
 }
 
-// ── E3-002: Multiple events → nose_contract → ordering preserved ─
-// Proves: batch submission preserves FIFO ordering through queue
+// ── E3-002: batch → nose_contract preserves FIFO order ─────────────────────
 
 test "E3-002: Batch events → nose_contract preserves FIFO order" {
     if (nose.isFabricInitialized()) nose.shutdownFabric(std.testing.allocator);
-    nose.initFabric(std.testing.allocator, .{ .capacity_per_priority = 64 }) catch {};
+    try nose.initFabric(std.testing.allocator, .{ .capacity_per_priority = 64 });
     defer nose.shutdownFabric(std.testing.allocator);
 
-    // Submit 8 events with sequential IDs
     var i: u64 = 0;
     while (i < 8) : (i += 1) {
-        var event = canonical.create(.zig_core);
-        event.event_id = 1000 + i;
-        event.source_ip = 0x0A000001 +% @as(u32, @intCast(i));
-        _ = nose.submitEvent(event);
+        var ev = canonical.create(.zig_core);
+        ev.event_id = 1000 + i;
+        ev.source_ip = 0x0A000001 +% @as(u32, @intCast(i));
+        _ = nose.submitEvent(ev);
     }
 
-    // Pop and verify FIFO order
     i = 0;
     while (i < 8) : (i += 1) {
         const popped = nose.popEvent() orelse {
@@ -88,252 +82,221 @@ test "E3-002: Batch events → nose_contract preserves FIFO order" {
         try std.testing.expectEqual(@as(u64, 1000 + i), popped.event_id);
     }
 
-    // Queue should be empty
     try std.testing.expect(nose.popEvent() == null);
 }
 
-// ── E3-003: nose_contract → policy_ir evaluate ─
-// Proves: event can be evaluated against a real policy
+// ── E3-003: policy_ir JSON load → evaluate on a real event ─────────────────
 
-test "E3-003: Event → policy_ir evaluate produces action" {
-    // Create a policy that matches high-severity TCP events
-    var buf: [4096]u8 = undefined;
-    var fbs = std.io.fixedBufferStream(&buf);
-    const writer = fbs.writer();
+test "E3-003: Policy JSON → evaluate produces the intended action" {
+    const json =
+        \\{"policies":[{
+        \\  "id": 1,
+        \\  "name": "block_high_sev_tcp",
+        \\  "action": "block",
+        \\  "severity": "critical",
+        \\  "ttl_sec": 3600,
+        \\  "condition": {"clauses": [
+        \\    {"predicates": [
+        \\      {"field": "severity", "op": "gte", "value_int": 5},
+        \\      {"field": "protocol", "op": "eq", "value_int": 6}
+        \\    ]}
+        \\  ]}
+        \\}]}
+    ;
 
-    // Write a simple policy: if severity >= 3 AND protocol == 6, then block
-    try writer.writeAll(
-        \\{
-        \\  "policies": [{
-        \\    "id": 1,
-        \\    "name": "block_high_sev_tcp",
-        \\    "action": "block",
-        \\    "conditions": [
-        \\      {"field": "severity", "op": ">=", "value": "3"},
-        \\      {"field": "protocol", "op": "==", "value": "6"}
-        \\    ]
-        \\  }]
-        \\}
-    );
+    var loaded = policy_ir.loadPolicySetFromJson(std.testing.allocator, json);
+    defer loaded.deinit();
+    try std.testing.expectEqual(@as(u32, 1), loaded.report.loaded);
+    try std.testing.expectEqual(@as(u32, 0), loaded.report.rejected);
 
-    // Parse the policy
-    const input = fbs.getWritten();
-    var parsed = std.json.parseFromSlice(std.json.Value, std.testing.allocator, input, .{}) catch {
-        // If JSON parsing isn't supported in this build, skip gracefully
-        return;
-    };
-    defer parsed.deinit();
+    var matching = event.IpcEvent.init(.signature_match);
+    matching.severity = .critical;
+    matching.protocol = 6;
 
-    const policy_set = policy_ir.PolicySet.fromJson(parsed.value) catch {
-        return;
-    };
-
-    // Create a matching event
-    var event = canonical.create(.zig_core);
-    event.severity = 4; // critical
-    event.protocol = 6; // TCP
-
-    // Evaluate
-    const decision = policy_set.evaluate(&event);
-    try std.testing.expect(decision != null);
-    if (decision) |d| {
-        try std.testing.expect(d.action == .block);
+    const hit = loaded.ps.evaluate(.{ .ev = &matching });
+    try std.testing.expect(hit != null);
+    if (hit) |p| {
+        try std.testing.expectEqual(policy_ir.Action.block, p.action);
+        try std.testing.expectEqualStrings("block_high_sev_tcp", p.name);
     }
+
+    // A non-matching event must not select the policy (no fail-open match).
+    var non_matching = event.IpcEvent.init(.signature_match);
+    non_matching.severity = .info;
+    non_matching.protocol = 17;
+    try std.testing.expect(loaded.ps.evaluate(.{ .ev = &non_matching }) == null);
 }
 
-// ── E3-004: detection → threat_tracker → incident creation ─
-// Proves: detection triggers incident when threshold crossed
+// ── E3-004: repeated flow threats → incident at the score threshold ────────
 
-test "E3-004: Detection → threat_tracker creates incident" {
+test "E3-004: Detection evidence → threat_tracker creates an incident" {
     var tt = threat_tracker.ThreatTracker.init(std.testing.allocator);
     defer tt.deinit();
 
-    // Simulate multiple threats from the same source
     const src_ip: u32 = 0xC0A80164;
+    var incident: ?*threat_tracker.Incident = null;
     var i: u32 = 0;
     while (i < 5) : (i += 1) {
-        const threat = threat_tracker.FlowThreat{
-            .flow_id = i,
-            .src_ip = src_ip,
-            .dst_ip = 0xC0A80101,
-            .src_port = 12345 + i,
-            .dst_port = 80,
-            .severity = .high,
-            .confidence = 90,
-            .rule_id = 42,
-        };
-        tt.observeFlowThreat(threat);
+        var ev = event.IpcEvent.init(.signature_match);
+        ev.event_id = 1000 + i;
+        ev.flow_id = 42;
+        ev.src_ip = src_ip;
+        ev.dst_ip = 0xC0A80101;
+        ev.src_port = 12345;
+        ev.dst_port = 80;
+        ev.protocol = 6;
+        ev.rule_id = 42;
+        ev.severity = .critical;
+        // 5 × 30 = 150 ≥ the 100-point escalation threshold.
+        if (try tt.observeFlowThreat(&ev, 30)) |inc| incident = inc;
     }
 
-    // Verify incident was created
-    const incidents = tt.getActiveIncidents();
-    try std.testing.expect(incidents.len > 0);
-
-    // Verify incident attributes
-    const inc = incidents[0];
-    try std.testing.expectEqual(src_ip, inc.src_ip);
-    try std.testing.expect(inc.severity == .high or inc.severity == .critical);
-}
-
-// ── E3-005: forensic ring → append → read → hash chain ─
-// Proves: forensic records maintain hash chain integrity
-
-test "E3-005: Forensic ring append → read → hash chain intact" {
-    var ring = forensic.ForensicRing.init(std.testing.allocator, 64) catch {
+    const inc = incident orelse {
+        try std.testing.expect(false);
         return;
     };
-    defer ring.deinit();
+    try std.testing.expectEqual(@as(u64, 42), inc.flow_id);
+    try std.testing.expect(inc.score >= 100);
 
-    // Append 5 records
+    const open = tt.openIncidents();
+    try std.testing.expect(open.len >= 1);
+    try std.testing.expectEqual(src_ip, std.mem.readInt(u32, inc.src_ip[0..4], .little));
+}
+
+// ── E3-005: forensic ring append → read → hash chain intact ────────────────
+
+test "E3-005: Forensic ring append → read → hash chain intact" {
+    const slots = 8;
+    var ring = try forensic.ForensicRing.initMemory(std.testing.allocator, slots * forensic.RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+
     var i: u32 = 0;
     while (i < 5) : (i += 1) {
-        var record = forensic.ForensicRecord.default();
-        record.event_id = 1000 + i;
-        record.timestamp_ms = 1000000 + @as(i64, @intCast(i)) * 1000;
-        record.src_ip = 0xC0A80101;
-        record.dst_ip = 0xC0A80164;
-        record.action = .block;
-        ring.append(&record) catch {
-            return;
-        };
+        var ev = event.IpcEvent.init(.signature_match);
+        ev.event_id = 1000 + i;
+        ev.rule_id = 42;
+        ev.severity = .warning;
+        const ordinal = ring.append(&ev, "golden-path", 0xA0 + i, 1, @intFromEnum(pep.PepDecision.allow), 4);
+        try std.testing.expectEqual(@as(u64, i + 1), ordinal);
     }
 
-    // Read all records back
-    var read_count: u32 = 0;
-    var prev_hash: [32]u8 = [_]u8{0} ** 32;
+    var prev_hash: [forensic.HASH_BYTES]u8 = [_]u8{0} ** forensic.HASH_BYTES;
     i = 0;
     while (i < 5) : (i += 1) {
-        const record = ring.readRecord(i) orelse {
+        const record = ring.readRecord(i, std.testing.allocator) orelse {
             try std.testing.expect(false);
             return;
         };
         defer std.testing.allocator.free(record);
 
-        // Verify event_id matches
-        const parsed = forensic.parseRecordHeader(record);
-        try std.testing.expectEqual(@as(u64, 1000 + i), parsed.event_id);
-
-        // Verify hash chain: each record's prev_hash should match the previous record's hash
+        const hdr = std.mem.bytesToValue(forensic.RecordHeader, record[0..@sizeOf(forensic.RecordHeader)]);
+        try std.testing.expectEqual(@as(u64, 1000 + i), hdr.ev_id);
+        try std.testing.expectEqual(@as(u32, 42), hdr.rule_id);
+        try std.testing.expectEqual(@as(u64, i), hdr.record_seq);
+        // Hash chain: every record commits to its predecessor.
         if (i > 0) {
-            try std.testing.expectEqualSlices(u8, &prev_hash, &parsed.prev_record_hash);
+            try std.testing.expectEqualSlices(u8, &prev_hash, &hdr.prev_hash);
         }
-        prev_hash = parsed.record_hash;
-        read_count += 1;
+        prev_hash = hdr.current_hash;
     }
-
-    try std.testing.expectEqual(@as(u32, 5), read_count);
 }
 
-// ── E3-006: tier3_state → enforcement gate ─
-// Proves: Tier-3 state correctly gates enforcement
+// ── E3-006: Tier-3 state gates enforcement (fail-closed) ───────────────────
 
 test "E3-006: Tier-3 state gates enforcement correctly" {
-    // Start in absent state (PEP unavailable)
-    tier3.g_tier3.state = .absent;
+    var sub = tier3.Tier3Subsystem{};
 
-    // Enforcement should NOT be allowed
-    try std.testing.expect(!tier3.g_tier3.isEnforcementAllowed());
+    sub.state = .absent;
+    try std.testing.expect(!sub.canEnforce());
+    try std.testing.expect(!sub.canEnforcePrivileged());
 
-    // Transition to ready
-    tier3.g_tier3.state = .ready;
+    sub.state = .ready;
+    try std.testing.expect(sub.canEnforce());
+    try std.testing.expect(sub.canEnforcePrivileged());
 
-    // Enforcement should be allowed
-    try std.testing.expect(tier3.g_tier3.isEnforcementAllowed());
+    sub.state = .failed;
+    try std.testing.expect(!sub.canEnforce());
+    try std.testing.expect(!sub.canEnforcePrivileged());
 
-    // Transition to failed
-    tier3.g_tier3.state = .failed;
-
-    // Enforcement should NOT be allowed
-    try std.testing.expect(!tier3.g_tier3.isEnforcementAllowed());
+    sub.state = .degraded;
+    try std.testing.expect(!sub.canEnforce());
 }
 
-// ── E3-007: pep_bindings → detection-only mode ─
-// Proves: PEP returns .allow when unavailable (fail-closed)
+// ── E3-007: unavailable PEP escalates — it is never an allow ───────────────
 
-test "E3-007: PEP detection-only mode returns allow" {
-    // When PEP is unavailable, enforce() should return .allow
-    // (detection continues, no privileged enforcement)
-    var event = canonical.create(.zig_core);
-    event.severity = 5;
-    event.source_ip = 0xC0A80164;
-    event.dest_ip = 0xC0A80101;
+test "E3-007: PEP unavailable escalates instead of allowing" {
+    var ev = event.IpcEvent.init(.signature_match);
+    ev.severity = .critical;
+    ev.src_ip = 0xC0A80164;
+    ev.dst_ip = 0xC0A80101;
 
-    // Create a dummy policy
-    var policy = policy_ir.Policy{
+    const policy = policy_ir.Policy{
         .id = 1,
         .name = "test",
+        .condition = .{ .clauses = &.{} },
         .action = .block,
-        .conditions = &.{},
+        .severity = .critical,
+        .ttl_sec = 60,
+        .trusted = false,
     };
 
-    // enforce() checks PEP availability internally
-    // If PEP is unavailable, it returns .allow (fail-closed for enforcement)
-    const decision = pep.PepEnforcer.enforce(&event, &policy, 0, 0xFFFFFFFF, 1);
-    // The exact result depends on PEP availability, but the call should not crash
-    _ = decision;
+    var enforcer = pep.PepEnforcer{ .available = false };
+    // gate_open=false is the production posture: no host-mutating action may
+    // cross the provider boundary. The decision must be a degraded escalation,
+    // never an allow that could be mistaken for authorization.
+    const decision = enforcer.enforce(&ev, policy, 0, 0, 1, false);
+    try std.testing.expectEqual(pep.PepDecision.escalate, decision);
+
+    // A trusted policy with the gate still closed must not enforce either.
+    var trusted = policy;
+    trusted.trusted = true;
+    try std.testing.expectEqual(pep.PepDecision.escalate, enforcer.enforce(&ev, trusted, 0, 0, 2, false));
 }
 
-// ── E3-008: Full golden path — event → pipeline → forensic ─
-// Proves: event flows through the entire pipeline and produces forensic record
+// ── E3-008: full golden path — event → queue → forensic record ─────────────
 
-test "E3-008: Full golden path — event → detection → forensic record" {
-    // This is the definitive E3 test: a single event flows through
-    // every stage of the pipeline and produces a forensic record.
-
-    // 1. Create canonical event
-    var event = canonical.create(.zig_core);
-    event.event_id = 99999;
-    event.source_ip = 0x0A000001;
-    event.dest_ip = 0x0A000002;
-    event.source_port = 31337;
-    event.dest_port = 80;
-    event.protocol = 6;
-    event.severity = 5;
-    event.event_type = .match_signature;
-
-    // 2. Submit to nose contract (IPC boundary)
+test "E3-008: Full golden path — event → queue → forensic record" {
     if (nose.isFabricInitialized()) nose.shutdownFabric(std.testing.allocator);
-    nose.initFabric(std.testing.allocator, .{ .capacity_per_priority = 64 }) catch {};
+    try nose.initFabric(std.testing.allocator, .{ .capacity_per_priority = 64 });
     defer nose.shutdownFabric(std.testing.allocator);
 
-    const submit_result = nose.submitEvent(event);
-    try std.testing.expect(submit_result == .accepted);
+    var ev = canonical.create(.zig_core);
+    ev.event_id = 99999;
+    ev.source_ip = 0x0A000001;
+    ev.dest_ip = 0x0A000002;
+    ev.source_port = 31337;
+    ev.dest_port = 80;
+    ev.protocol = 6;
+    ev.severity = 5;
+    ev.event_type = .match_;
 
-    // 3. Pop from pipeline (pipeline boundary)
+    try std.testing.expectEqual(nose.SubmitResult.accepted, nose.submitEvent(ev));
+
     const popped = nose.popEvent() orelse {
         try std.testing.expect(false);
         return;
     };
     try std.testing.expectEqual(@as(u64, 99999), popped.event_id);
-
-    // 4. Verify detection attributes survived
     try std.testing.expectEqual(@as(u32, 0x0A000001), popped.source_ip);
     try std.testing.expectEqual(@as(u8, 5), popped.severity);
 
-    // 5. Forensic ring should be writable
-    var ring = forensic.ForensicRing.init(std.testing.allocator, 16) catch {
-        return;
-    };
-    defer ring.deinit();
+    var ring = try forensic.ForensicRing.initMemory(std.testing.allocator, 4 * forensic.RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
 
-    var record = forensic.ForensicRecord.default();
-    record.event_id = popped.event_id;
-    record.src_ip = popped.source_ip;
-    record.dst_ip = popped.dest_ip;
-    record.action = .block;
-    ring.append(&record) catch {
-        return;
-    };
+    var legacy = event.IpcEvent.init(.signature_match);
+    legacy.event_id = popped.event_id;
+    legacy.src_ip = popped.source_ip;
+    legacy.dst_ip = popped.dest_ip;
+    legacy.severity = .warning;
+    _ = ring.append(&legacy, "golden-path-e3", 1, 1, @intFromEnum(pep.PepDecision.allow), popped.severity);
 
-    // 6. Read forensic record back
-    const read_record = ring.readRecord(0) orelse {
+    const record = ring.readRecord(0, std.testing.allocator) orelse {
         try std.testing.expect(false);
         return;
     };
-    defer std.testing.allocator.free(read_record);
+    defer std.testing.allocator.free(record);
 
-    const parsed = forensic.parseRecordHeader(read_record);
-    try std.testing.expectEqual(@as(u64, 99999), parsed.event_id);
-
-    // Golden path complete: event → queue → forensic record with hash chain
+    const hdr = std.mem.bytesToValue(forensic.RecordHeader, record[0..@sizeOf(forensic.RecordHeader)]);
+    try std.testing.expectEqual(@as(u64, 99999), hdr.ev_id);
+    try std.testing.expectEqual(@as(u32, 0), hdr.rule_id);
 }

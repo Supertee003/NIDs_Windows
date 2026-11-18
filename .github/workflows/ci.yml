@@ -2,9 +2,12 @@ name: AEGIS CI
 
 on:
   push:
-    branches: [main, develop, release/*]
+    # `codex/**` is the delivery branch: without it the only branch that ever
+    # carries shippable work never ran CI, so "green CI" was a claim about
+    # main, not about the commit being released.
+    branches: [main, develop, release/*, "codex/**", "fix/**"]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, "codex/**"]
   workflow_dispatch:
 
 env:
@@ -103,11 +106,50 @@ jobs:
       - name: Test shield
         run: cargo test --release --manifest-path shield/Cargo.toml
 
+  # CI-GAPS: operator-side Rust tools had no build gate at all. SUPPORT
+  # classification: reported on every run, never gates canonical health.
+  mouth-build-test:
+    name: Mouth Build & Test (SUPPORT operator monitor)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: mouth
+      - name: Test mouth
+        run: cargo test --manifest-path mouth/Cargo.toml
+      - name: Build mouth (release)
+        run: cargo build --release --manifest-path mouth/Cargo.toml
+
+  dashboard-build-test:
+    name: Dashboard Build & Test (SUPPORT egui console)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: aegis_dashboard
+      - name: Test dashboard
+        run: cargo test --manifest-path aegis_dashboard/Cargo.toml
+      - name: Build dashboard (release)
+        run: cargo build --release --manifest-path aegis_dashboard/Cargo.toml
+
   python-tests:
     name: Python Control Plane Tests
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # ADR-0008 provenance needs real history: on a depth-1 clone the
+          # tip becomes a graft root, so `git log -1 -- <SOURCE_PATHS>` reports
+          # the tip and tools/truth.py verify fails every records-only commit.
+          fetch-depth: 0
       # Line-ending truth lives in .gitattributes (`* text eol=lf`). CI must
       # verify the checkout, never mutate it — a job that rewrites tracked
       # files can hide drift instead of reporting it.
@@ -118,7 +160,7 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt networkx pyvis
       - name: Build Cython extensions
         run: |
           cd brain/cython
@@ -127,8 +169,64 @@ jobs:
       # recorded digests drift, the build-manifest verify gate below FAILS.
       - name: Verify build manifest provenance (drift gate)
         run: python tools/release_engineering.py --verify
+      # CI-GATE-107: machine-map truth stamps must carry the build source
+      # commit (ADR-0008). A records-only commit does not invalidate them; a
+      # source/build change or a dirty source tree fails here, same as the
+      # pre-commit check.
+      - name: Verify machine-map truth stamps (source-commit gate)
+        run: python tools/truth.py verify
+      - name: Build native helper DLLs (fallback candidate)
+        # tests/tools/test_no_shadow_dll.py probes build/Release/aegis_wfp_user.dll;
+        # before this step that file only existed on developer machines.
+        run: |
+          cmake -B build -S .
+          cmake --build build --config Release
+      - name: Stage native helper DLLs for packaging tests
+        # tools/installer.py intentionally fails closed when zig-out/bin is
+        # missing or older than build/Release. Keep the test input contract
+        # explicit instead of weakening the packaging guard.
+        run: python tools/stage_helpers.py --stage
       - name: Run tests
-        run: python -m pytest tests/ -v --ignore=tests/test_e2e.py
+        # host_live tests need the running control daemon/brain and are
+        # exercised on the operator host (E5), not on a bare hosted runner.
+        run: python -m pytest tests/ -v --ignore=tests/test_e2e.py -m "not host_live"
+
+  # CI-GAPS (2026-10-19): the Tier-2 brain suite (brain/test_*.py) ran
+  # nowhere in CI -- pytest's target was tests/ only, so a broken brain
+  # module could pass every gate. Brain is CANONICAL (Tier-2 analytics).
+  brain-tests:
+    name: Brain Tests (Tier-2 analytics, CANONICAL)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Run brain suite
+        run: python -m pytest brain/ -q
+
+  # CI-GAPS: the accelerator the production host ships (brain/aegis_brain_cython
+  # -> fast_scan.cp3xx-win_amd64.pyd) was never built or tested in CI; only the
+  # pure-Python fallback ran, so a rotted .pyx (the BRAIN-FASTPATH-FIX class)
+  # could not be caught before deploy.
+  cython-build-test:
+    name: Cython Accelerator Build & Test (Tier-2 fast path)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Build the accelerator
+        run: |
+          cd brain/aegis_brain_cython
+          python setup.py build_ext --inplace
+      - name: Accelerator unit suite (compiled module present)
+        run: python -m pytest brain/aegis_brain_cython/test_fast_scan.py -q
+      - name: Case-2 pre-filter pin (accelerated configuration)
+        run: python -m pytest tests/brain/test_cython_prefilter.py -q
 
   security-scan:
     name: Security Scan
@@ -136,7 +234,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run Trivy filesystem scan
-        uses: aquasecurity/trivy-action@master
+        # CI-GATE-107: pinned (never @master — a moving supply-chain ref).
+        # Non-blocking by decision (exit-code 0): failing the pipeline on
+        # upstream CVEs without a triage SLA would brick every PR. Findings
+        # are human-triaged; flipping to exit-code 1 needs that SLA first.
+        # CI-GAPS review (2026-10-19): decision re-checked and kept — no
+        # triage SLA exists yet; findings stay advisory. Revisit with the SLA.
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -195,6 +299,21 @@ jobs:
       - name: Run TS policy tests
         run: cd ts_policy && npm run test:all
 
+  # CI-GAPS: WDK driver sources (WFP callout + minifilter). Manual-only:
+  # a hosted WDK run has not yet been observed green, and PRs must not carry
+  # an unverified red signal. Trigger from the Actions tab (workflow_dispatch).
+  # Operator build path stays scripts/build_drivers.bat; the verification gate
+  # is the DEPLOY-120 install drill (E5). Not in ci-matrix needs; non-gating.
+  drivers-wdk-build:
+    name: Kernel Drivers Build (WDK, manual)
+    runs-on: windows-latest
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build drivers (WDK)
+        shell: cmd
+        run: scripts\build_drivers.bat
+
   # REQUIRED FINAL GATE. `if: always()` guarantees this job is never skipped
   # when an upstream job fails; the results check below treats
   # failure / skipped / cancelled as FAIL for every required project, so a
@@ -204,6 +323,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [zig-build-test, rust-pep-build, shield-build, c-native-build,
             python-tests, go-nose-build-test,
+            brain-tests, cython-build-test,
             ts-policy-build, security-scan]
     if: ${{ always() }}
     steps:
@@ -229,6 +349,8 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/tags/v') && success() }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install NSIS
+        run: choco install nsis -y
       - name: Build installer
         run: python tools/installer.py --package --output aegis_setup.exe
       - name: Generate SBOM

@@ -33,8 +33,25 @@ static constexpr size_t   WIRE_MAX_PAYLOAD    = 65536;
 
 static constexpr uint32_t EVENT_MAGIC         = 0x41454731u; // "AEG1"
 static constexpr uint16_t EVENT_VERSION       = 1;
-static constexpr size_t   WIRE_PAYLOAD_SIZE   = 109; // canonical event payload
+static constexpr size_t   WIRE_PAYLOAD_SIZE   = 109; // canonical event payload (v1, frozen)
 static constexpr size_t   WIRE_FRAME_SIZE     = WIRE_HEADER_SIZE + WIRE_PAYLOAD_SIZE; // 125
+
+// Wire v2 (T2-V6-022a, see shared/protocol/wire_v2.md): v1 109 bytes plus
+// a 24-byte tail (source bytes [4..16] then dest bytes [4..16], network
+// order). Bit2 keeps its meaning in both versions.
+static constexpr uint16_t EVENT_VERSION_V2    = 2;
+static constexpr size_t   V6_TAIL_SIZE        = 24;
+static constexpr size_t   WIRE_V2_PAYLOAD_SIZE = WIRE_PAYLOAD_SIZE + V6_TAIL_SIZE; // 133
+static constexpr size_t   WIRE_V2_FRAME_SIZE  = WIRE_HEADER_SIZE + WIRE_V2_PAYLOAD_SIZE; // 149
+static constexpr uint32_t CONTEXT_V6_TRUNCATED = (1u << 2);
+
+// Additive ContextFlags transport-metadata lane (RB-021-NOSE-FLAGS):
+// bits 16..23 = raw TCP flags byte (FIN=0x01 .. CWR=0x80), bit24 = valid.
+// The 109-byte v1 / 133-byte v2 wire layout is unchanged; existing
+// allocations (RAG bits 0..3, L7 bits 8..13) do not overlap.
+static constexpr uint32_t CONTEXT_TCP_FLAGS_SHIFT = 16;
+static constexpr uint32_t CONTEXT_TCP_FLAGS_MASK = (0xFFu << CONTEXT_TCP_FLAGS_SHIFT);
+static constexpr uint32_t CONTEXT_TCP_FLAGS_VALID = (1u << 24);
 
 enum class PayloadType : uint16_t {
     canonical_event = 0,
@@ -53,6 +70,14 @@ enum class EventSource : uint8_t {
     cpp_bridge      = 6,
     rust_shield     = 7,
     go_aggregator   = 8,
+    npcap_sensor    = 9,
+    host_telemetry  = 10,
+    ml_detector     = 11,
+    cluster_federation = 12,
+    process_sensor  = 13,
+    file_sensor     = 14,
+    registry_sensor = 15,
+    replay_sensor   = 16,
     external        = 255,
 };
 
@@ -118,6 +143,12 @@ struct CanonicalEvent {
     uint32_t context_flags;
 
     uint8_t reserved[16];
+
+    // Full IPv6 identity (wire v2 only). The u32 source_ip/dest_ip always
+    // carry first-4-bytes (bit2 set); these hold complete addresses in
+    // network order when a v2 frame was decoded, zeros otherwise.
+    uint8_t src_ipv6[16];
+    uint8_t dst_ipv6[16];
 };
 
 static_assert(sizeof(CanonicalEvent) >= 93, "CanonicalEvent must hold all fields");
@@ -325,6 +356,213 @@ inline bool aegis_wire_decode_event(const uint8_t* bytes, size_t bytes_len, Cano
     return true;
 }
 
+// --- v2 helpers (full IPv6 identity) ---
+
+// Big-endian u32 of the first 4 network-order bytes (Go derivation rule:
+// SourceIP == BigEndian.Uint32(addr[:4])).
+inline uint32_t v6_first4_be(const uint8_t addr[16]) {
+    return (static_cast<uint32_t>(addr[0]) << 24) |
+           (static_cast<uint32_t>(addr[1]) << 16) |
+           (static_cast<uint32_t>(addr[2]) << 8) |
+           static_cast<uint32_t>(addr[3]);
+}
+
+inline void v6_first4_write_be(uint32_t v, uint8_t out[16]) {
+    out[0] = (uint8_t)((v >> 24) & 0xFF);
+    out[1] = (uint8_t)((v >> 16) & 0xFF);
+    out[2] = (uint8_t)((v >> 8) & 0xFF);
+    out[3] = (uint8_t)(v & 0xFF);
+}
+
+// Encode CanonicalEvent into buf[0..133] (v1 prefix + v6 tail).
+// Returns 133 on success, 0 on failure. Requires bit2 + first-4 consistency.
+inline size_t aegis_wire_encode_event_v2(uint8_t* buf, size_t buf_len, const CanonicalEvent& e) {
+    if (buf_len < WIRE_V2_PAYLOAD_SIZE) return 0;
+    if ((e.context_flags & CONTEXT_V6_TRUNCATED) == 0) return 0;
+    if (v6_first4_be(e.src_ipv6) != e.source_ip) return 0;
+    if (v6_first4_be(e.dst_ipv6) != e.dest_ip) return 0;
+    size_t n = aegis_wire_encode_event(buf, buf_len, e);
+    if (n != WIRE_PAYLOAD_SIZE) return 0;
+    // Patch the version field (logical event stays v1-layout, version 1).
+    write_u16_le(buf + 4, EVENT_VERSION_V2);
+    ::memcpy(buf + WIRE_PAYLOAD_SIZE, e.src_ipv6 + 4, 12);
+    ::memcpy(buf + WIRE_PAYLOAD_SIZE + 12, e.dst_ipv6 + 4, 12);
+    return WIRE_V2_PAYLOAD_SIZE;
+}
+
+// Decode a v2 frame (133 bytes) with full-address reconstruction.
+// Returns true on success, false on any validation failure.
+inline bool aegis_wire_decode_event_v2(const uint8_t* bytes, size_t bytes_len, CanonicalEvent& out) {
+    if (bytes_len < WIRE_V2_PAYLOAD_SIZE) return false;
+    // Decode the v1 prefix with the frozen validator, then lift the
+    // version gate: decode_event demands schema 1.
+    uint8_t prefix[WIRE_PAYLOAD_SIZE];
+    ::memcpy(prefix, bytes, WIRE_PAYLOAD_SIZE);
+    write_u16_le(prefix + 4, EVENT_VERSION);
+    if (!aegis_wire_decode_event(prefix, WIRE_PAYLOAD_SIZE, out)) return false;
+    // Restore the as-read version, then reconstruct network-order addresses.
+    out.version = EVENT_VERSION_V2;
+    v6_first4_write_be(out.source_ip, out.src_ipv6);
+    ::memcpy(out.src_ipv6 + 4, bytes + WIRE_PAYLOAD_SIZE, 12);
+    v6_first4_write_be(out.dest_ip, out.dst_ipv6);
+    ::memcpy(out.dst_ipv6 + 4, bytes + WIRE_PAYLOAD_SIZE + 12, 12);
+    return true;
+}
+
+// --- v3 helpers (bounded payload + capture provenance) ---
+// v3 = v2 133-byte base (zero tail when bit2 is clear) + 32-byte envelope
+// + 0..1024 payload bytes. v1/v2 stay byte-identical metadata-only frames.
+static constexpr uint16_t EVENT_VERSION_V3 = 3;
+static constexpr size_t V3_BASE_SIZE = WIRE_V2_PAYLOAD_SIZE;
+static constexpr size_t V3_ENVELOPE_SIZE = 32;
+static constexpr size_t WIRE_V3_HEADER_SIZE = V3_BASE_SIZE + V3_ENVELOPE_SIZE; // 165
+static constexpr size_t V3_MAX_PAYLOAD = 1024;
+static constexpr size_t WIRE_V3_MAX_SIZE = WIRE_V3_HEADER_SIZE + V3_MAX_PAYLOAD; // 1189
+
+static constexpr uint8_t PAYLOAD_UNAVAILABLE = 0;
+static constexpr uint8_t PAYLOAD_COMPLETE = 1;
+static constexpr uint8_t PAYLOAD_TRUNCATED = 2;
+static constexpr uint8_t PAYLOAD_METADATA_ONLY = 3;
+static constexpr uint16_t V3_FLAG_PAYLOAD_PRESENT = (1u << 0);
+static constexpr uint16_t V3_FLAG_PROVENANCE_VALID = (1u << 1);
+
+struct V3Envelope {
+    uint16_t flags;
+    uint8_t completeness;
+    uint16_t payload_len;
+    uint16_t original_len;
+    uint32_t payload_crc32;
+    uint64_t capture_sequence;
+    uint32_t producer_epoch;
+    uint32_t producer_generation;
+    uint32_t interface_id;
+};
+
+inline bool aegis_v3_envelope_valid(const V3Envelope& env, const uint8_t* payload, size_t payload_len) {
+    if (payload_len > V3_MAX_PAYLOAD) return false;
+    if ((size_t)env.payload_len != payload_len) return false;
+    const bool present = (env.flags & V3_FLAG_PAYLOAD_PRESENT) != 0;
+    if (env.completeness == PAYLOAD_UNAVAILABLE || env.completeness == PAYLOAD_METADATA_ONLY) {
+        if (present || payload_len != 0 || env.payload_crc32 != 0) return false;
+        if (env.completeness == PAYLOAD_METADATA_ONLY && env.original_len != 0) return false;
+    } else if (env.completeness == PAYLOAD_COMPLETE) {
+        if (!present || payload_len == 0) return false;
+        if (env.original_len != env.payload_len) return false;
+        if (aegis_crc32(payload, payload_len) != env.payload_crc32) return false;
+    } else if (env.completeness == PAYLOAD_TRUNCATED) {
+        if (!present || payload_len == 0) return false;
+        if (env.original_len <= env.payload_len) return false;
+        if (aegis_crc32(payload, payload_len) != env.payload_crc32) return false;
+    } else {
+        return false;
+    }
+    if ((env.flags & V3_FLAG_PROVENANCE_VALID) == 0) {
+        if (env.capture_sequence != 0 || env.producer_epoch != 0 ||
+            env.producer_generation != 0 || env.interface_id != 0) return false;
+    }
+    return true;
+}
+
+// Encode a v3 frame into buf. Requires src/dst IPv6 iff bit2 is set.
+// Returns the frame length, or 0 on any validation failure.
+inline size_t aegis_wire_encode_event_v3(uint8_t* buf, size_t buf_len,
+                                         const CanonicalEvent& e,
+                                         const V3Envelope& env,
+                                         const uint8_t* payload, size_t payload_len) {
+    if (!aegis_v3_envelope_valid(env, payload, payload_len)) return 0;
+    const size_t total = WIRE_V3_HEADER_SIZE + payload_len;
+    if (buf_len < total) return 0;
+
+    if ((e.context_flags & CONTEXT_V6_TRUNCATED) != 0) {
+        if (aegis_wire_encode_event_v2(buf, buf_len, e) != WIRE_V2_PAYLOAD_SIZE) return 0;
+    } else {
+        if (aegis_wire_encode_event(buf, buf_len, e) != WIRE_PAYLOAD_SIZE) return 0;
+        ::memset(buf + WIRE_PAYLOAD_SIZE, 0, V6_TAIL_SIZE);
+    }
+    write_u16_le(buf + 4, EVENT_VERSION_V3);
+
+    const size_t off = V3_BASE_SIZE;
+    write_u16_le(buf + off + 0, env.flags);
+    buf[off + 2] = env.completeness;
+    buf[off + 3] = 0;
+    write_u16_le(buf + off + 4, env.payload_len);
+    write_u16_le(buf + off + 6, env.original_len);
+    write_u32_le(buf + off + 8, env.payload_crc32);
+    write_u64_le(buf + off + 12, env.capture_sequence);
+    write_u32_le(buf + off + 20, env.producer_epoch);
+    write_u32_le(buf + off + 24, env.producer_generation);
+    write_u32_le(buf + off + 28, env.interface_id);
+    if (payload_len > 0) ::memcpy(buf + WIRE_V3_HEADER_SIZE, payload, payload_len);
+    return total;
+}
+
+// Decode a strict v3 frame. `payload` aliases the input buffer.
+inline bool aegis_wire_decode_event_v3(const uint8_t* bytes, size_t bytes_len,
+                                       CanonicalEvent& out, V3Envelope& env,
+                                       const uint8_t** payload, size_t* payload_len) {
+    if (bytes_len < WIRE_V3_HEADER_SIZE) return false;
+    uint8_t prefix[WIRE_PAYLOAD_SIZE];
+    ::memcpy(prefix, bytes, WIRE_PAYLOAD_SIZE);
+    write_u16_le(prefix + 4, EVENT_VERSION);
+    if (!aegis_wire_decode_event(prefix, WIRE_PAYLOAD_SIZE, out)) return false;
+
+    const bool is_v6 = (out.context_flags & CONTEXT_V6_TRUNCATED) != 0;
+    if (is_v6) {
+        v6_first4_write_be(out.source_ip, out.src_ipv6);
+        ::memcpy(out.src_ipv6 + 4, bytes + WIRE_PAYLOAD_SIZE, 12);
+        v6_first4_write_be(out.dest_ip, out.dst_ipv6);
+        ::memcpy(out.dst_ipv6 + 4, bytes + WIRE_PAYLOAD_SIZE + 12, 12);
+    } else {
+        for (size_t i = WIRE_PAYLOAD_SIZE; i < V3_BASE_SIZE; ++i) {
+            if (bytes[i] != 0) return false;
+        }
+        ::memset(out.src_ipv6, 0, 16);
+        ::memset(out.dst_ipv6, 0, 16);
+    }
+
+    const size_t off = V3_BASE_SIZE;
+    // wire_v3.md: any non-zero reserved byte is rejected fail closed.
+    if (bytes[off + 3] != 0) return false;
+    env.flags = read_u16_le(bytes + off + 0);
+    env.completeness = bytes[off + 2];
+    env.payload_len = read_u16_le(bytes + off + 4);
+    env.original_len = read_u16_le(bytes + off + 6);
+    env.payload_crc32 = read_u32_le(bytes + off + 8);
+    env.capture_sequence = read_u64_le(bytes + off + 12);
+    env.producer_epoch = read_u32_le(bytes + off + 20);
+    env.producer_generation = read_u32_le(bytes + off + 24);
+    env.interface_id = read_u32_le(bytes + off + 28);
+    if ((size_t)env.payload_len > V3_MAX_PAYLOAD) return false;
+    if (bytes_len != WIRE_V3_HEADER_SIZE + (size_t)env.payload_len) return false;
+    *payload = bytes + WIRE_V3_HEADER_SIZE;
+    *payload_len = env.payload_len;
+    if (!aegis_v3_envelope_valid(env, *payload, *payload_len)) return false;
+    out.version = EVENT_VERSION_V3;
+    return true;
+}
+
+// Version-dispatched decode: 109-byte v1 (sidecars zeroed), 133-byte v2, or
+// a bounded v3 frame. For v3 the caller supplies envelope/payload outputs.
+inline bool aegis_wire_decode_event_dispatch(const uint8_t* bytes, size_t bytes_len, CanonicalEvent& out) {
+    if (bytes_len < WIRE_PAYLOAD_SIZE) return false;
+    uint16_t ver = (uint16_t)bytes[4] | ((uint16_t)bytes[5] << 8);
+    if (ver == EVENT_VERSION) {
+        bool ok = aegis_wire_decode_event(bytes, bytes_len, out);
+        if (!ok) return false;
+        ::memset(out.src_ipv6, 0, 16);
+        ::memset(out.dst_ipv6, 0, 16);
+        return true;
+    }
+    if (ver == EVENT_VERSION_V3) {
+        V3Envelope env;
+        const uint8_t* payload = nullptr;
+        size_t payload_len = 0;
+        return aegis_wire_decode_event_v3(bytes, bytes_len, out, env, &payload, &payload_len);
+    }
+    if (ver != EVENT_VERSION_V2) return false;
+    return aegis_wire_decode_event_v2(bytes, bytes_len, out);
+}
+
 // ============================================================
 // Full wire frame encode (header + canonical event payload)
 // ============================================================
@@ -362,15 +600,17 @@ inline bool aegis_wire_decode_frame(const uint8_t* buf, size_t buf_len, Canonica
     if (h.magic != WIRE_MAGIC) return false;
     if (h.version != WIRE_VERSION) return false;
     if (h.payload_type != static_cast<uint16_t>(PayloadType::canonical_event)) return false;
-    if (h.payload_length != WIRE_PAYLOAD_SIZE) return false;
+    if (h.payload_length != WIRE_PAYLOAD_SIZE && h.payload_length != WIRE_V2_PAYLOAD_SIZE) return false;
     if (buf_len < WIRE_HEADER_SIZE + h.payload_length) return false;
 
     // Verify CRC32.
     uint32_t computed_crc = aegis_crc32(buf + WIRE_HEADER_SIZE, h.payload_length);
     if (computed_crc != h.crc32) return false;
 
-    // Decode canonical event.
-    return aegis_wire_decode_event(buf + WIRE_HEADER_SIZE, h.payload_length, out);
+    // Decode canonical event (version-dispatched).
+    if (h.payload_length == WIRE_PAYLOAD_SIZE)
+        return aegis_wire_decode_event(buf + WIRE_HEADER_SIZE, h.payload_length, out);
+    return aegis_wire_decode_event_v2(buf + WIRE_HEADER_SIZE, h.payload_length, out);
 }
 
 } // namespace aegis

@@ -1,0 +1,32 @@
+{
+  "schema": "aegis.rule22-single.v1",
+  "rule_id": "R2003",
+  "name": "PowerShell Cradle Download",
+  "layer": "KERNEL_PROCESS",
+  "severity": "Critical",
+  "action": "Block",
+  "patterns": {
+    "fast_pattern": "PS_CRADLE",
+    "match_pattern": "IEX",
+    "regex_pattern": "IEX|DownloadString|DownloadFile|PS_CRADLE|Net\\.WebClient"
+  },
+  "fixture": {
+    "fixture_id": "FX-15-R2003",
+    "source": "synthetic_etw_process_event",
+    "marker": "PS_CRADLE",
+    "synthetic_signal": "PS_CRADLE IEX C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "regex_match": true
+  },
+  "expected_observe_only": {
+    "host_effect": "none",
+    "wfp_block": false,
+    "enforcement_receipt": false,
+    "forensic_record": true,
+    "canonical_event": true
+  },
+  "prevention_gate": "closed",
+  "vm_steps": [
+    "run_etw_runtime_observe_only_proof.ps1 on the VM",
+    "verify: ETW process event + pattern match, no process creation by test"
+  ]
+}

@@ -11,8 +11,7 @@ All block/allow/quarantine requests route through aegis_pep_enforce() FFI.
 Direct operating-system firewall calls or bridge mutation calls are NEVER permitted.
 
 Usage:
-    python tools/aegisctl.py status                    # pipe transport (default)
-    python tools/aegisctl.py --transport=tcp status    # explicit TCP
+    python tools/aegisctl.py status                    # pipe transport (Windows ACL protected)
     python tools/aegisctl.py rules list
     python tools/aegisctl.py alerts view
     python tools/aegisctl.py dashboard
@@ -23,16 +22,58 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import os
 import pkgutil
 import sys
 import time
 from pathlib import Path
 from typing import Dict, Callable
+from aegisctl.contracts import project_operator_state
 
 # Ensure tools/ is on the path
 TOOLS_DIR = Path(__file__).resolve().parent
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
+
+# Frozen canonical source ordinals, kept here only as a fallback so a forensic
+# query still works when the brain package is not importable. They MUST match
+# src/contract/canonical_event.zig and brain/canonical_event.py; a test pins
+# the parity (tests/runtime/test_aegisctl.py).
+FROZEN_SOURCE_ORDINALS = {
+    "zig_core": 0, "wfp_sensor": 1, "pipe_sensor": 2, "minifilter": 3,
+    "pipe_monitor": 4, "python_brain": 5, "cpp_bridge": 6,
+    "rust_shield": 7, "go_aggregator": 8, "npcap_sensor": 9,
+    "host_telemetry": 10, "ml_detector": 11, "cluster_federation": 12,
+    "process_sensor": 13, "file_sensor": 14, "registry_sensor": 15,
+    "replay_sensor": 16, "external": 255,
+}
+
+
+def resolve_source_ordinal(value: str):
+    """Map a source name (or a bare ordinal) to the canonical ordinal.
+
+    Two numbering spaces coexist: the queue reports `detection_brain` (13)
+    while the forensic writer stores the canonical `python_brain` (5). A
+    search on the wrong number returns zero records, which reads exactly like
+    missing evidence, so accept the frozen name and let the caller be explicit.
+    Returns None for anything that is neither an ordinal nor a known name.
+    """
+    text = str(value).strip()
+    try:
+        return int(text)
+    except (TypeError, ValueError):
+        pass
+    table = FROZEN_SOURCE_ORDINALS
+    try:
+        repo_root = TOOLS_DIR.parent
+        if str(repo_root) not in sys.path:
+            sys.path.append(str(repo_root))
+        from brain.canonical_event import SOURCE as canonical_source
+
+        table = canonical_source
+    except Exception:  # noqa: BLE001 (fallback table is the contract copy)
+        pass
+    return table.get(text.lower())
 
 # Import control API with ALL business logic
 # The control_api module is a subpackage of the aegisctl package.
@@ -51,8 +92,15 @@ try:
         get_active_rules,
         get_health_payload,
         query_control,
+        query_forensic_records,
         verify_authority_invariant,
+        diagnose_endpoint_ownership,
+        bridge_diagnostic,
+        brain_health,
+        pipe_latency_probe,
+        rule_id_to_u32,
     )
+    from aegisctl.components import components_status
     CONTROL_API_AVAILABLE = True
 except ImportError as e:
     # Fallback: try adding api to path
@@ -70,8 +118,15 @@ except ImportError as e:
             get_active_rules,
             get_health_payload,
             query_control,
+            query_forensic_records,
             verify_authority_invariant,
+            diagnose_endpoint_ownership,
+            bridge_diagnostic,
+            brain_health,
+            pipe_latency_probe,
+            rule_id_to_u32,
         )
+        from aegisctl.components import components_status
         CONTROL_API_AVAILABLE = True
     except ImportError:
         CONTROL_API_AVAILABLE = False
@@ -98,14 +153,114 @@ def cmd_status(args) -> int:
             }
             accepted = aliases.get(component, {component})
             statuses = [item for item in statuses if item[0] in accepted]
+            if not statuses:
+                # A named component that the daemon does not track as a
+                # subsystem is not necessarily down: bridge/brain/mouth
+                # live outside the daemon's worker list. Consult the
+                # concept registry (host-local, deep probes for this one
+                # component only) before reporting absence. Anything not
+                # a known concept stays NOT_REGISTERED.
+                concept = None
+                if component in ("bridge", "brain", "mouth"):
+                    try:
+                        found = [c for c in components_status(
+                            health if isinstance(health, dict) else {},
+                            deep=True, only={component})]
+                        concept = found[0] if found else None
+                    except Exception:
+                        concept = None
+                if concept is not None and concept.get("status") == "running":
+                    state = "RUNNING"
+                    if getattr(args, "json", False):
+                        print(json.dumps({
+                            "component": component,
+                            "subsystem_list": [],
+                            "available": True,
+                            "state": state,
+                            "source": "host-local",
+                            "detail": concept.get("detail", ""),
+                        }, sort_keys=True))
+                    else:
+                        print(f"\n  Component: {component}")
+                        print("  Subsystem list: (host-local, not a daemon subsystem)")
+                        print(f"  State: {state}")
+                        print(f"  Detail: {concept.get('detail', '')}")
+                    return 0
+                if concept is not None:
+                    state = str(concept.get("status", "unknown")).upper()
+                    if getattr(args, "json", False):
+                        print(json.dumps({
+                            "component": component,
+                            "subsystem_list": [],
+                            "available": False,
+                            "state": state,
+                            "source": "host-local",
+                            "detail": concept.get("detail", ""),
+                        }, sort_keys=True))
+                    else:
+                        print(f"\n  Component: {component}")
+                        print("  Subsystem list: (host-local, not a daemon subsystem)")
+                        print(f"  State: {state}")
+                        print(f"  Detail: {concept.get('detail', '')}")
+                    return 1
+                # A named component that the daemon does not know about is
+                # NOT running. Reporting the global daemon state here (with a
+                # 0/0 subsystem list) would claim a component exists when it
+                # does not.
+                if getattr(args, "json", False):
+                    print(json.dumps({
+                        "component": component,
+                        "subsystem_list": [],
+                        "available": False,
+                        "state": "NOT_REGISTERED",
+                        "reason": "component_not_registered_in_runtime",
+                    }, sort_keys=True))
+                else:
+                    print(f"\n  Component: {component}")
+                    print("  Subsystem list: (none registered)")
+                    print("  State: NOT_REGISTERED")
+                    print("  Reason: component_not_registered_in_runtime")
+                return 1
         running = sum(1 for _, r, _ in statuses if r)
         total = len(statuses)
+        host_posture = {
+            # Observable host-effect truth (non-elevated probes), populated
+            # live so `aegisctl status` never claims a kernel-overlay posture
+            # the operator cannot independently confirm. These are filesystem
+            # observations only: actual blocking is governed by
+            # daemon `enforce status` (prevention_gate), not file presence.
+            "installed_driver_present": os.path.exists(
+                os.path.join(os.environ.get("SystemRoot", r"C:\Windows"),
+                             "System32", "drivers", "aegis_wfp.sys")),
+            "deploy_bundle_root": os.path.exists(r"C:\Program Files\AEGIS NIDS"),
+            "legacy_bundle_root": os.path.exists(r"C:\Program Files\AEGIS"),
+            "legacy_scope_note": (
+                "`C:\\Program Files\\AEGIS` is the pre-rename bundle (v6-era "
+                "deploy 2026-09-16). It is out-of-scope for the current round "
+                "until the operator confirms legacy cleanup (plan §6.5)."
+            ),
+        }
         if getattr(args, "json", False):
-            print(json.dumps({"health": health, "subsystems": statuses}, sort_keys=True))
+            print(json.dumps({"health": health, "subsystems": statuses,
+                              "host_effect_posture": host_posture}, sort_keys=True))
             return 0
         print(f"\n  State: {health['state']}")
+        machine = health.get("state_machine_state") or health.get("runtime_state")
+        if machine:
+            print(f"  State machine: {machine}")
+        if health.get("state_machine_disagrees"):
+            print(
+                "  [!] state machine reports DEGRADED while every health-contract "
+                "fact is ready (CLI-STATE-001: the daemon never re-promotes the "
+                "lifecycle set at startup)"
+            )
         print(f"  Version: {health.get('version', 'unknown')}")
         print(f"  Uptime: {health.get('uptime_ms', 0)} ms")
+        print(f"  Packets captured: {health.get('packets_captured', 0)}")
+        print(f"  Flows active: {health.get('flows_active', 0)}")
+        print(f"  Driver present: {host_posture['installed_driver_present']}")
+        print(f"  Deploy bundle root: {host_posture['deploy_bundle_root']}")
+        print(f"  Legacy bundle root: {host_posture['legacy_bundle_root']}")
         print(f"  {running}/{total} subsystems running")
         for name, is_running, pid in statuses:
             if is_running:
@@ -216,6 +371,10 @@ def cmd_diagnose(args) -> int:
     print(f"  {payload.get('version', 'unknown')}")
     print("  RUNTIME STATUS")
     print(f"  State: {payload['state']}")
+    if payload.get("state_machine_state") or payload.get("runtime_state"):
+        print(f"  State machine: {payload.get('state_machine_state') or payload.get('runtime_state')}")
+    if payload.get("state_machine_disagrees"):
+        print("  [!] state machine disagrees with the health contract (CLI-STATE-001)")
     print(f"  Degraded: {payload.get('degraded', True)}")
     print("  SUBSYSTEM HEALTH")
     for name, status in payload.get("subsystems", {}).items():
@@ -236,10 +395,28 @@ def cmd_diagnose(args) -> int:
                 print(f"  [MASK] {ready}")
             elif name == "failure_reasons":
                 print(f"  [REASONS] {', '.join(ready) if ready else 'none'}")
+            elif name == "failed":
+                # EVT-218: `failed` is the aggregate boolean flag (the gate
+                # reads workers.get("failed", False)) -- not a worker slot.
+                # As a slot it rendered "[NOT READY] failed" on a healthy
+                # host (Degraded: False, MASK 0, REASONS none).
+                print(f"  [FAILED] {'yes' if ready else 'no'}")
             else:
                 print(f"  [{'READY' if ready else 'NOT READY'}] {name}")
     else:
         print("  [UNKNOWN] readiness fields unavailable")
+    print("  ENDPOINT OWNERSHIP")
+    ownership = diagnose_endpoint_ownership()
+    for finding in ownership["findings"]:
+        endpoint = finding.get("endpoint", "?")
+        status = finding.get("status", "?")
+        detail = finding.get("detail", "")
+        if finding.get("pid") is not None:
+            detail += " (pid %s)" % finding["pid"]
+        print(f"  [{status}] {endpoint}: {detail}")
+    if ownership["foreign_count"]:
+        print(f"  [ORPHAN?] {ownership['foreign_count']} foreign listener(s) "
+              "on owned endpoints — detection only, nothing was stopped")
     print("  Diagnostic report complete")
     return 0
 
@@ -259,6 +436,8 @@ def cmd_health(args) -> int:
             return 1 if getattr(args, "strict", False) and payload.get("degraded", True) else 0
         print(f"  State: {payload.get('state', 'UNKNOWN')}")
         print(f"  Degraded: {payload.get('degraded', True)}")
+        print(f"  Packets captured: {payload.get('packets_captured', 0)}")
+        print(f"  Flows active: {payload.get('flows_active', 0)}")
         print(f"\n  Health payload: {payload}")
         workers = payload.get("workers", {})
         if workers:
@@ -295,14 +474,18 @@ def _print_control_query(command: str, as_json: bool = True, payload: dict | Non
 
 def cmd_version(args) -> int:
     """Show component versions from the control-plane contract."""
+    # VER-TRUTH-032: every value mirrors its component's own source of truth:
+    # core/nose 5.0.0 (product line; nose/main.go AEGIS_NOSE_VERSION), pep
+    # 5.0.0 (Cargo package aegis_pep), brain 2.0.0 (windows_brain --version),
+    # shield 0.1.0 (shield/Cargo.toml), aggregator 0.1.0 (its --version).
     versions = {
         "core": "5.0.0",
-        "nose": "2.1.0",
-        "pep": "1.0.0",
-        "brain": "1.0.0",
+        "nose": "5.0.0",
+        "pep": "5.0.0",
+        "brain": "2.0.0",
         "shield": "0.1.0",
         "bridge": "1.0.0",
-        "aggregator": "1.0.0",
+        "aggregator": "0.1.0",
     }
     component = getattr(args, "component", None)
     print("Component        Version")
@@ -316,41 +499,345 @@ def cmd_metrics(args) -> int:
     return _print_control_query("metrics.snapshot", as_json=getattr(args, "json", True))
 
 
+def _format_queue_rows(response: dict) -> list[str]:
+    """Pure: render queue.stats buckets + pipeline stages as text rows."""
+    rows = [
+        f"queue {response.get('depth', '?')}/{response.get('queue_size', '?')} "
+        f"pushed={response.get('pushed_total', '?')} "
+        f"dropped={response.get('dropped_total', '?')} "
+        f"shed_overload={response.get('shed_overload', '?')}",
+    ]
+    for bucket in response.get("by_source", []) or []:
+        rows.append(
+            f"  src={bucket.get('name', '?')}({bucket.get('ordinal', '?')}) "
+            f"pushed={bucket.get('pushed', '?')} "
+            f"dropped={bucket.get('dropped', '?')}"
+        )
+    etw = response.get("etw") or {}
+    if etw:
+        dedupe = etw.get("name_create_deduped")
+        rows.append(
+            f"  etw start={etw.get('process_start', '?')} "
+            f"name={etw.get('file_name_create', '?')}+{etw.get('file_name_delete', '?')} "
+            f"write={etw.get('file_write', '?')} "
+            f"filtered={etw.get('file_write_filtered', '?')} "
+            f"reg={etw.get('reg_create', '?')}+{etw.get('reg_set', '?')} "
+            f"unmapped={etw.get('dropped_unmapped', '?')} "
+            f"predecode={etw.get('predecode_dropped', '?')} "
+            f"exempt={etw.get('shed_exempted', '?')}"
+            # #29: present only on daemons that dedupe; older ones render
+            # byte-identically otherwise.
+            + (f" dedupe={dedupe}" if dedupe is not None else "")
+        )
+    wfp = response.get("wfp") or {}
+    if wfp:
+        state = wfp.get("state", "?")
+        row = (
+            f"  wfp state={state} "
+            f"reads={wfp.get('reads', '?')} "
+            f"rows={wfp.get('rows', '?')} "
+            f"last_bytes={wfp.get('last_bytes', '?')}"
+        )
+        # PHASE-6: which acquisition source owns network ingress. Older
+        # daemons omit these fields; rendering stays byte-identical then.
+        if wfp.get("mode"):
+            row += f" mode={wfp['mode']}"
+            if wfp.get("reason") and wfp["reason"] != "none":
+                row += f" reason={wfp['reason']}"
+            if wfp.get("shadow_rows"):
+                row += f" shadow={wfp['shadow_rows']}"
+        if state == "unavailable":
+            row += " (kernel flow rows absent until provider returns)"
+        elif state == "unknown":
+            row += " (telemetry loop has not reported)"
+        elif wfp.get("kernel_owned"):
+            row += " (kernel owns network ingress; Npcap not delivering)"
+        rows.append(row)
+    mf = response.get("minifilter") or {}
+    if mf:
+        state = mf.get("state", "?")
+        row = (
+            f"  minifilter state={state} "
+            f"reads={mf.get('reads', '?')} "
+            f"rows={mf.get('rows', '?')} "
+            f"last_bytes={mf.get('last_bytes', '?')} "
+            f"dropped={mf.get('dropped', '?')}"
+        )
+        if state == "unavailable":
+            row += " (kernel file/process rows absent until driver loads)"
+        elif state == "unknown":
+            row += " (reader loop has not reported)"
+        rows.append(row)
+    for stage in response.get("pipeline", []) or []:
+        rows.append(
+            f"  stage={stage.get('stage', '?')} count={stage.get('count', '?')} "
+            f"p50={stage.get('p50_ns', '?')}ns p95={stage.get('p95_ns', '?')}ns "
+            f"max={stage.get('max_ns', '?')}ns"
+        )
+    return rows
+
+
+def cmd_queue(args) -> int:
+    """Show pipeline queue ingress per source plus latency snapshot (GAP-015).
+
+    Thin over the queue.stats control command; the daemon owns every number.
+    """
+    if not CONTROL_API_AVAILABLE:
+        return _unavailable("queue", "control_api_unavailable")
+    try:
+        response = query_control("queue.stats")
+    except Exception:
+        response = None
+    if not response:
+        return _unavailable("queue", "control_daemon_query_failed")
+    if bool(getattr(args, "json", False)):
+        print(json.dumps(response, sort_keys=True))
+        return 0
+    for row in _format_queue_rows(response):
+        print(row)
+    return 0
+
+
 def cmd_federation(args) -> int:
     """Show federation cluster status (read-only, runtime federation.status)."""
     return _print_control_query("federation.status", as_json=getattr(args, "json", True))
 
 
+def cmd_xdr(args) -> int:
+    """Advisory XDR evidence views (read-only; never a host action)."""
+    sub = getattr(args, "xdr_command", None) or "list"
+    if sub == "verify":
+        limit = max(1, min(int(getattr(args, "limit", 8)), 64))
+        return _print_control_query(
+            "xdr.verify", as_json=getattr(args, "json", True), payload={"limit": limit}
+        )
+    return _print_control_query("xdr.list", as_json=getattr(args, "json", True))
+
+
 def cmd_snapshot(args) -> int:
-    """Emit one JSON snapshot for dashboards and automation."""
-    import json as _json
+    """Emit one authoritative daemon snapshot for dashboards and automation."""
     if not CONTROL_API_AVAILABLE:
-        print(_json.dumps({"available": False, "reason": "control_api_unavailable"}, sort_keys=True))
+        print(json.dumps({
+            "available": False,
+            "reason": "control_api_unavailable",
+        }, sort_keys=True))
         return 4
+
     try:
         health = get_health_payload()
         metrics = query_control("metrics.snapshot")
         forensic = query_control("forensics.verify")
+        enforcement = query_control("enforcement.status")
     except Exception as exc:
-        print(_json.dumps({"available": False, "reason": "control_query_exception", "error": str(exc)}, sort_keys=True))
+        print(json.dumps({
+            "available": False,
+            "reason": "control_query_exception",
+            "error": str(exc),
+        }, sort_keys=True))
         return 3
-    if metrics is None or forensic is None:
-        print(_json.dumps({"available": False, "reason": "control_query_failed", "health": health}, sort_keys=True))
+
+    if any(value is None for value in (
+        health, metrics, forensic, enforcement
+    )):
+        print(json.dumps({
+            "available": False,
+            "reason": "control_query_failed",
+            "health": health,
+            "metrics": metrics,
+            "forensic": forensic,
+            "enforcement": enforcement,
+        }, sort_keys=True))
         return 3
-    print(_json.dumps({"available": True, "health": health, "metrics": metrics, "forensic": forensic}, sort_keys=True))
+
+    enforcement = dict(enforcement)
+    enforcement.setdefault("host_effect_confirmed", False)
+
+    try:
+        authority_held = bool(verify_authority_invariant())
+    except Exception:
+        authority_held = False
+
+    gate = str(
+        enforcement.get("prevention_gate", "closed")
+    ).lower()
+
+    operator = project_operator_state(health, enforcement)
+    try:
+        # EVT-163: the five components as concepts for native dashboards.
+        # Fast path only (health-derived + path checks): the GUI polls this
+        # every 30s, so no process probes here -- see `aegisctl components`.
+        components = components_status(health if isinstance(health, dict) else {})
+    except Exception:
+        components = []
+    document = {
+        "available": True,
+        "health": health,
+        "metrics": metrics,
+        "forensic": forensic,
+        "enforcement": enforcement,
+        "components": components,
+        "authority": {
+            "canonical": health.get(
+                "canonical_enforcement_authority",
+                "rust_pep",
+            ),
+            "invariant": "HELD" if authority_held else "VIOLATED",
+        },
+        "operator": operator,
+        "presentation": {
+            "mode": (
+                "CONTRACT_VIOLATION"
+                if operator["contract_errors"]
+                else "CONTROLLED_ENFORCEMENT"
+                if gate == "open"
+                else "OBSERVE_ONLY"
+            ),
+            "host_effect": (
+                "CONFIRMED"
+                if enforcement.get("host_effect_confirmed") is True and not operator["contract_errors"]
+                else "NOT_PROVEN"
+            ),
+            "contract_errors": operator["contract_errors"],
+        },
+    }
+
+    print(json.dumps(document, sort_keys=True))
     return 0
 
 
 def cmd_forensics(args) -> int:
     if args.forensics_command == "verify":
         return _print_control_query("forensics.verify", as_json=getattr(args, "json", True))
-    command = "forensics.verify" if args.forensics_command == "verify" else "forensics.list"
+    limit = max(1, min(int(getattr(args, "limit", 100)), 1000))
+    if getattr(args, "all", False):
+        if not CONTROL_API_AVAILABLE:
+            print("\nControl API not available")
+            return 4
+        # `--all` follows the daemon's byte-budgeted page cursor so a large
+        # result set is complete instead of silently short.
+        document = query_forensic_records(
+            limit,
+            source=getattr(args, "source", None),
+            payload_prefix=getattr(args, "payload_prefix", None),
+            after=getattr(args, "after", None),
+        )
+        if document is None:
+            print("\nControl query failed: forensics.list", file=sys.stderr)
+            return 3
+        if document.get("truncated") is True:
+            # Report incompleteness on stderr; stdout stays the merged document.
+            print(json.dumps({
+                "command": "forensics.list",
+                "warning": "page_budget_exhausted",
+                "pages": document.get("pages"),
+                "next_after": document.get("next_after"),
+                "records_returned": document.get("records_returned"),
+            }, sort_keys=True), file=sys.stderr)
+        print(json.dumps(document, indent=2, sort_keys=True))
+        return 0
     payload = {}
+    payload["limit"] = limit
+    if getattr(args, "after", None) is not None:
+        payload["after"] = max(0, int(args.after))
     if getattr(args, "source", None) is not None:
-        payload["source"] = args.source
+        payload["source"] = int(args.source)
     if getattr(args, "payload_prefix", None):
         payload["payload_prefix"] = args.payload_prefix
-    return _print_control_query(command, as_json=getattr(args, "json", True), payload=payload or None)
+    result = _print_control_query("forensics.list", as_json=getattr(args, "json", True), payload=payload)
+    return result
+
+
+READINESS_WORKER_FLAGS = [
+    "pipeline_ready",
+    "sensor_ready",
+    "nose_ready",
+    "etw_ready",
+    "fim_ready",
+    "registry_ready",
+]
+
+
+def build_readiness(payload: dict) -> dict:
+    """Pure readiness gate: every refusal must name a cause.
+
+    READINESS-CAUSE-001: the gate used to be able to answer `ready: false` with
+    `failure_reasons: []` — a release gate that says no without saying why, which
+    an operator cannot act on and an auditor cannot check. The reason list is now
+    built from the same conditions the gate tests, and a final guard appends
+    `gate_closed_without_named_cause` if any future condition is added without a
+    reason. `degraded` is a boolean aggregated upstream from several sources, so
+    a true value with no attributable component is itself named rather than
+    silent.
+    """
+    workers = payload.get("workers") or {}
+    if not isinstance(workers, dict):
+        workers = {}
+    missing_workers = [name for name in READINESS_WORKER_FLAGS if workers.get(name) is not True]
+    missing = list(missing_workers)
+    state = str(payload.get("state") or "unknown").upper()
+    degraded = bool(payload.get("degraded", True))
+    # CLI-STATE-001: the control API keeps the fail-closed merge (a degraded
+    # lifecycle may not be promoted), but a lifecycle that contradicts a fully
+    # healthy health contract used to arrive here as a bare `degraded`. Name it
+    # so the refusal points at the state machine instead of at nothing.
+    state_machine_state = str(
+        payload.get("state_machine_state") or payload.get("runtime_state") or ""
+    ).upper()
+    state_machine_disagrees = bool(payload.get("state_machine_disagrees", False))
+    rules_loaded = int(payload.get("rules_loaded", 0) or 0)
+    policies_loaded = int(payload.get("policies_loaded", 0) or 0)
+    if rules_loaded <= 0:
+        missing.append("rules_loaded")
+    degraded_components = []
+    for name, status in (payload.get("subsystems") or {}).items():
+        if not isinstance(status, dict):
+            continue
+        if str(status.get("state", "")).upper() in {"DEGRADED", "FAILED", "STOPPED"}:
+            degraded_components.append({"name": name, "state": status.get("state"), "error": status.get("error")})
+    worker_gate = not missing_workers and not workers.get("failed", False)
+    overall_gate = state == "RUNNING" and not degraded and worker_gate and rules_loaded > 0
+
+    reasons = [str(r) for r in (workers.get("failure_reasons") or []) if str(r).strip()]
+    if state != "RUNNING":
+        reasons.append(f"state_{state.lower()}")
+    if workers.get("failed", False):
+        reasons.append("worker_failed")
+    reasons.extend(f"worker_{name}_not_ready" for name in missing_workers)
+    if rules_loaded <= 0:
+        reasons.append("rules_not_loaded")
+    if state_machine_disagrees:
+        reasons.append("state_machine_degraded_but_health_facts_ready")
+    reasons.extend(
+        f"{item['name']}_{str(item.get('error') or item.get('state', 'not_ready')).lower()}"
+        for item in degraded_components
+    )
+    # `degraded` is aggregated upstream from data loss, lifecycle and subsystem
+    # states. When it is true and none of the above explained it, say that
+    # instead of returning a bare refusal.
+    degradation_named = bool(degraded_components) or state_machine_disagrees or any(
+        r.startswith("worker_") or r in {"worker_failed", "rules_not_loaded"} for r in reasons
+    )
+    if degraded and not degradation_named:
+        reasons.append("degraded_without_named_component")
+    if not overall_gate and not reasons:
+        # Unreachable by construction today; it exists so that a future gate
+        # condition cannot reintroduce the silent refusal.
+        reasons.append("gate_closed_without_named_cause")
+
+    return {
+        "ready": overall_gate,
+        "state": state,
+        "degraded": degraded,
+        "worker_gate": worker_gate,
+        "overall_gate": overall_gate,
+        "missing": missing,
+        "rules_loaded": rules_loaded,
+        "policies_loaded": policies_loaded,
+        "degraded_components": degraded_components,
+        "failure_reasons": sorted(set(reasons)),
+        "state_machine_state": state_machine_state or None,
+        "state_machine_disagrees": state_machine_disagrees,
+    }
 
 
 def cmd_readiness(args) -> int:
@@ -359,34 +846,9 @@ def cmd_readiness(args) -> int:
         print(json.dumps({"ready": False, "reason": "control_api_unavailable"}, sort_keys=True))
         return 3
     payload = get_health_payload()
-    workers = payload.get("workers", {})
-    required = ["pipeline_ready", "sensor_ready", "nose_ready", "etw_ready", "fim_ready", "registry_ready"]
-    missing = [name for name in required if workers.get(name) is not True]
-    degraded_components = []
-    for name, status in (payload.get("subsystems") or {}).items():
-        if not isinstance(status, dict):
-            continue
-        if str(status.get("state", "")).upper() in {"DEGRADED", "FAILED", "STOPPED"}:
-            degraded_components.append({"name": name, "state": status.get("state"), "error": status.get("error")})
-    worker_gate = not missing and not workers.get("failed", False)
-    overall_gate = payload.get("state") == "RUNNING" and not payload.get("degraded", True) and worker_gate
-    reasons = list(workers.get("failure_reasons", []))
-    reasons.extend(
-        f"{item['name']}_{str(item.get('error') or item.get('state', 'not_ready')).lower()}"
-        for item in degraded_components
-    )
-    result = {
-        "ready": overall_gate,
-        "state": payload.get("state"),
-        "degraded": payload.get("degraded", True),
-        "worker_gate": worker_gate,
-        "overall_gate": overall_gate,
-        "missing": missing,
-        "degraded_components": degraded_components,
-        "failure_reasons": sorted(set(reasons)),
-    }
+    result = build_readiness(payload if isinstance(payload, dict) else {})
     print(json.dumps(result, indent=2 if getattr(args, "pretty", False) else None, sort_keys=True))
-    return 0 if overall_gate else 1
+    return 0 if result["overall_gate"] else 1
 
 
 def cmd_rules(args) -> int:
@@ -413,6 +875,13 @@ def cmd_rules(args) -> int:
                 print(f"{r.get('rule_id',''):14} {r.get('name','')[:28]:28} {r.get('severity',''):10} {r.get('category','')}")
             suffix = f" (filtered by {severity or category})" if severity or category else ""
             print(f"Total: {len(rules)}{suffix}")
+        daemon_count = _daemon_rules_count()
+        if daemon_count is None:
+            print("Active daemon rules: UNKNOWN (control daemon unavailable)")
+        elif daemon_count != len(original):
+            print(f"WARNING: local catalog={len(original)} but active daemon rules={daemon_count}")
+        else:
+            print(f"Active daemon rules: {daemon_count} (matches local catalog)")
         return 0
     if op == "show":
         rule_id = str(args.id)
@@ -428,14 +897,43 @@ def cmd_rules(args) -> int:
             for error in errors:
                 print(f"ERROR: {error}")
         print(f"{'VALID' if valid else 'INVALID'}: {len(rules)} rules checked")
+        daemon_count = _daemon_rules_count()
+        if daemon_count is None:
+            print("Active daemon rules: UNKNOWN (control daemon unavailable)")
+        elif daemon_count != len(rules):
+            print(f"WARNING: validated local catalog={len(rules)} but active daemon rules={daemon_count}")
+        else:
+            print(f"Active daemon rules: {daemon_count} (matches validated catalog)")
         return 0 if valid else 1
     if op == "reload":
         response = query_control("rules.reload") if CONTROL_API_AVAILABLE else None
         if response is None:
             print("Rules reload failed: daemon control pipe unavailable", file=sys.stderr)
             return 1
-        loaded = response.get("rules_loaded", response.get("loaded", len(rules))) if isinstance(response, dict) else len(rules)
-        print(f"Rules reloaded through Control Center: {loaded} rules")
+        if not isinstance(response, dict):
+            print("Rules reload failed: invalid daemon response", file=sys.stderr)
+            return 1
+        loaded = int(response.get("rules_loaded", response.get("loaded", 0)) or 0)
+        postcondition = response.get("postcondition")
+        result = {
+            "command": "rules.reload",
+            "previous_rules_loaded": response.get("previous_rules_loaded"),
+            "rules_loaded": loaded,
+            "status": response.get("status"),
+            "postcondition": postcondition,
+        }
+        # BE-DRIFT-098: pass the named-skip report through when the
+        # daemon serves it (old binaries omit these keys; the gate
+        # below only depends on the long-standing keys).
+        if isinstance(response.get("skipped"), dict):
+            result["skipped"] = response["skipped"]
+        if isinstance(response.get("skipped_ids"), list):
+            result["skipped_ids"] = response["skipped_ids"]
+        if isinstance(response.get("skipped_truncated"), bool):
+            result["skipped_truncated"] = response["skipped_truncated"]
+        print(json.dumps(result, indent=2, sort_keys=True))
+        if loaded <= 0 or response.get("status") != "reloaded" or postcondition != "ACTIVE":
+            return 5
         return 0
     if op in {"add", "update", "delete"}:
         return _mutate_rules(args, op)
@@ -516,12 +1014,65 @@ def _mutate_rules(args, op: str) -> int:
     except ValueError as exc:
         print(f"INVALID rule set: {exc}")
         return 1
+    except OSError as exc:
+        # Guest/hardened hosts: Rules.json may be admin-writable only.
+        # A traceback here would leak paths and confuse operators.
+        print(f"Cannot write rules file (need elevation?): {exc}")
+        return 1
     print(f"Rule {rid} {'deleted' if op == 'delete' else 'added' if op == 'add' else 'updated'}")
     return 0
 
 
+def _event_log_candidates() -> list[Path]:
+    # The service writes relative to ITS cwd (System32), an interactive run
+    # relative to the repo. events must read whichever is live, never a
+    # stale default blindly (F2: the CWD file held 2 test lines for weeks
+    # while the service wrote megabytes elsewhere).
+    # EVT-181: AEGIS_EVENT_LOG isolates one invocation to a chosen file
+    # (lab/tests point it at scratch; the suite proves the empty case with
+    # zero prod touch). Production default order is unchanged.
+    override = os.environ.get("AEGIS_EVENT_LOG")
+    if override:
+        return [Path(override)]
+    return [
+        Path(r"C:\Windows\System32\logs\aegis_core.ndjson"),
+        _logs_dir() / "aegis_core.ndjson",
+    ]
+
+
+def _select_event_log(candidates: list[Path]) -> Path | None:
+    """Newest existing candidate wins; None when nothing exists."""
+    best: Path | None = None
+    best_mtime = -1.0
+    for path in candidates:
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            continue
+        if mtime > best_mtime:
+            best, best_mtime = path, mtime
+    return best
+
+
 def _event_log() -> Path:
-    return TOOLS_DIR.parent / "logs" / "aegis_core.ndjson"
+    # An explicit override is authoritative even when the file does not
+    # exist (yet): _select_event_log() filters on existence, which would
+    # silently fall back to production logs and defeat isolation.
+    override = os.environ.get("AEGIS_EVENT_LOG")
+    if override:
+        return Path(override)
+    selected = _select_event_log(_event_log_candidates())
+    if selected is not None:
+        return selected
+    return _logs_dir() / "aegis_core.ndjson"
+
+
+def _event_log_note(path: Path) -> str:
+    try:
+        age = time.time() - path.stat().st_mtime
+        return f"events source: {path} ({age:.0f}s old)"
+    except OSError:
+        return f"events source: {path} (unreadable)"
 
 
 def _read_events() -> list[dict]:
@@ -539,28 +1090,56 @@ def _read_events() -> list[dict]:
     return rows
 
 
+def _valid_ipv4(value: str) -> bool:
+    try:
+        parts = str(value).split(".")
+        return len(parts) == 4 and all(p.isdigit() and 0 <= int(p) <= 255 for p in parts)
+    except (ValueError, AttributeError):
+        return False
+
+
 def cmd_events(args) -> int:
+    path = _event_log()
+    note = _event_log_note(path)
     events = _read_events()
+    src_ip = getattr(args, "src_ip", None)
+    if src_ip:
+        # EVT-197: attacker-centric lab view. The ring speaks ordinal/rule
+        # space by design (no IP in ring records); the evidence LOG carries
+        # dotted src_ip, so filter client-side here. No daemon change, no
+        # restart, works today.
+        if not _valid_ipv4(src_ip):
+            print(json.dumps({"available": False, "command": "events",
+                              "reason": "src_ip_must_be_a_dotted_quad"}, sort_keys=True),
+                  file=sys.stderr)
+            return 2
+        events = [e for e in events if e.get("src_ip") == src_ip]
+        note = "%s | src_ip=%s" % (note, src_ip)
     op = getattr(args, "events_command", "count")
     if op == "count":
         if getattr(args, "json", False):
-            print(json.dumps({"events": len(events)}, sort_keys=True))
+            print(json.dumps({"events": len(events), "source": str(path)}, sort_keys=True))
         else:
             print(f"Events: {len(events)}")
+            print(note)
     elif op == "tail":
         count = getattr(args, "count", 10)
         if not events:
             print("No events found")
+            print(note)
         else:
             for item in events[-count:]:
                 print(json.dumps(item, sort_keys=True) if getattr(args, "json", True) else item)
             print(f"{min(count, len(events))} event(s)")
+            print(note)
             if getattr(args, "follow", False):
                 seen = len(events)
                 try:
                     while True:
                         time.sleep(max(0.1, getattr(args, "interval", 1.0)))
                         current = _read_events()
+                        if src_ip:
+                            current = [e for e in current if e.get("src_ip") == src_ip]
                         for item in current[seen:]:
                             print(json.dumps(item, sort_keys=True) if getattr(args, "json", True) else item, flush=True)
                         seen = len(current)
@@ -569,48 +1148,115 @@ def cmd_events(args) -> int:
     else:
         if not events:
             print("No log file or events available")
+            print(note)
         else:
             levels = {}
             for item in events:
                 level = item.get("level", item.get("severity", "unknown"))
                 levels[str(level)] = levels.get(str(level), 0) + 1
             print("Event Statistics")
-            payload = {"total": len(events), "levels": levels}
+            payload = {"total": len(events), "levels": levels, "source": str(path)}
             print(json.dumps(payload, indent=2) if getattr(args, "json", True) else payload)
+            print(note)
     return 0
 
 
 def cmd_forensic(args) -> int:
-    log = _event_log()
-    if not log.exists():
-        print("No log file")
+    """Query forensic evidence through the authenticated control daemon."""
+    if not CONTROL_API_AVAILABLE:
+        print(json.dumps({"available": False, "reason": "control_api_unavailable"}, sort_keys=True), file=sys.stderr)
         return 1
-    records = _read_events()
     op = getattr(args, "forensic_command", "list")
-    if op == "show":
-        for item in records:
-            if str(item.get("id", item.get("event_id", ""))) == str(args.id):
-                print(json.dumps(item, indent=2))
-                return 0
-        print(f"Forensic record {args.id} not found")
-        return 1
-    if op == "search":
-        found = [r for r in records if str(r.get(args.field, "")) == str(args.value)]
-        for item in found:
-            print(json.dumps(item))
-        return 0 if found else 1
-    if op == "export":
-        Path(args.output).write_text(json.dumps(records, indent=2) + "\n", encoding="utf-8")
-        print(f"Exported {len(records)} records")
+    if op == "verify":
+        response = query_control("forensics.verify")
+    elif op == "show":
+        response = query_control("forensics.show", payload={"id": int(args.id)})
+    elif op == "search":
+        field = str(args.field)
+        value = str(args.value)
+        if field == "source":
+            # Source is a canonical origin ordinal (5 python_brain, 9 npcap),
+            # not an IP. A name is accepted too: the queue's ordinal and the
+            # canonical one differ, and an unknown number silently matches
+            # nothing. Unrecognized text still fails with guidance, never a
+            # traceback.
+            resolved = resolve_source_ordinal(value)
+            if resolved is None:
+                print(json.dumps({"available": False, "command": "forensics.search",
+                                  "reason": "source_must_be_a_numeric_ordinal",
+                                  "hint": "use a canonical name (python_brain) or its ordinal, or --field payload_prefix for text"},
+                                 sort_keys=True),
+                      file=sys.stderr)
+                return 2
+            payload = {"source": resolved}
+        elif field == "rule":
+            # Catalog id ("R9059") or bare integer: hashed client-side to
+            # the daemon's u32 rule space (FNV-1a, same as the engine).
+            try:
+                payload = {"rule": rule_id_to_u32(value)}
+            except ValueError:
+                print(json.dumps({"available": False, "command": "forensics.search",
+                                  "reason": "rule_must_be_an_id_or_integer"}, sort_keys=True),
+                      file=sys.stderr)
+                return 2
+        elif field == "payload_prefix":
+            # Raw record bytes from byte 0: on capture rows that is the L2
+            # header, so a readable string will not match. Use payload_contains
+            # for text.
+            payload = {"payload_prefix": value}
+        elif field == "payload_contains":
+            payload = {"payload_contains": value}
+        else:
+            print(json.dumps({"available": False, "command": "forensics.search", "reason": "control_protocol_supports_source_or_payload_prefix_filters_only", "field": field}, sort_keys=True), file=sys.stderr)
+            return 2
+        response = query_control("forensics.list", payload=payload)
+    elif op == "export":
+        verification = query_control("forensics.verify")
+        if not verification or verification.get("verified") is not True:
+            print(json.dumps({
+                "available": False,
+                "command": "forensics.verify",
+                "reason": "forensic_integrity_verification_failed",
+            }, sort_keys=True), file=sys.stderr)
+            return 1
+
+        response = query_control("forensics.list")
+        if response is None:
+            print(json.dumps({
+                "available": False,
+                "command": "forensics.list",
+                "reason": "control_daemon_query_failed",
+            }, sort_keys=True), file=sys.stderr)
+            return 1
+
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+
+        export_document = {
+            "export_kind": "forensic_ring_summary",
+            "integrity": verification,
+            "data": response,
+        }
+
+        output.write_text(
+            json.dumps(export_document, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        print(json.dumps({
+            "exported": True,
+            "output": str(output),
+            "verified": True,
+            "export_kind": "forensic_ring_summary",
+        }, sort_keys=True))
         return 0
+    else:
+        response = query_control("forensics.list")
+    if response is None:
+        print(json.dumps({"available": False, "command": f"forensics.{op}", "reason": "control_daemon_query_failed_or_not_implemented"}, sort_keys=True), file=sys.stderr)
+        return 1
+    print(json.dumps(response, indent=2, sort_keys=True))
     return 0
-
-
-def _state_file(name: str) -> Path:
-    path = TOOLS_DIR.parent / "logs" / "runtime" / name
-    path.parent.mkdir(parents=True, exist_ok=True)
-    return path
-
 
 def _load_state(path: Path, default: dict) -> dict:
     if not path.exists():
@@ -621,20 +1267,35 @@ def _load_state(path: Path, default: dict) -> dict:
         return default.copy()
 
 
-def _save_state(path: Path, value: dict) -> None:
-    path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
-
-
 def _rules() -> list[dict]:
     return load_rules().get("nids_rules", []) if CONTROL_API_AVAILABLE else []
 
 
+def _daemon_rules_count() -> int | None:
+    """Return the active daemon count; local files are only a catalog view."""
+    if not CONTROL_API_AVAILABLE:
+        return None
+    try:
+        response = query_control("rules.list")
+    except Exception:
+        return None
+    if not isinstance(response, dict) or "rules_loaded" not in response:
+        return None
+    try:
+        return int(response["rules_loaded"])
+    except (TypeError, ValueError):
+        return None
+
+
 def cmd_policy(args) -> int:
-    if getattr(args, "policy_command", "list") not in {"list", "show"}:
+    if getattr(args, "policy_command", "list") not in {"list", "show", "verify", "validate"}:
         return _unavailable("policy", "policy_runtime_postcondition_not_connected")
     rules = _rules()
-    disabled_path = TOOLS_DIR.parent / "config" / "disabled_rules.json"
-    disabled_path.parent.mkdir(parents=True, exist_ok=True)
+    # BE-DIS-089: the daemon engine (rule_loader.zig) honors
+    # configs/disabled_rules.json on startup + rules.reload. The old
+    # singular config/ path never met the engine — fixed to the
+    # canonical configs/ dir so CLI and engine read the same file.
+    disabled_path = TOOLS_DIR.parent / "configs" / "disabled_rules.json"
     state = _load_state(disabled_path, {"disabled_rules": []})
     disabled = set(state.get("disabled_rules", []))
     op = args.policy_command
@@ -643,158 +1304,1065 @@ def cmd_policy(args) -> int:
         for r in rules:
             rid = str(r.get("rule_id", "")); print(f"{rid:14} {'DISABLED' if rid in disabled else 'ENABLED':10} {r.get('name','')}")
         print(f"Total: {len(rules)}")
+        daemon_count = _daemon_rules_count()
+        if daemon_count is None:
+            print("Active daemon rules: UNKNOWN (control daemon unavailable; DISABLED above is a local candidate until rules.reload)")
+        else:
+            print(f"Active daemon rules: {daemon_count} (authoritative; DISABLED takes effect on rules.reload)")
         return 0
     rid = getattr(args, "id", None)
     match = next((r for r in rules if str(r.get("rule_id")) == str(rid)), None)
     if op == "show":
         if match is None: print(f"Rule {rid} not found"); return 1
         data = dict(match); data["state"] = "DISABLED" if str(rid) in disabled else "ENABLED"; print(json.dumps(data)); return 0
-    if op in {"enable", "disable"}:
-        if match is None: print(f"Rule {rid} not found"); return 1
-        if op == "disable":
-            if str(rid) in disabled: print(f"Rule {rid} already DISABLED")
-            else: disabled.add(str(rid)); print(f"Rule {rid} DISABLED")
-        else:
-            if str(rid) not in disabled: print(f"Rule {rid} already ENABLED")
-            else: disabled.discard(str(rid)); print(f"Rule {rid} ENABLED")
-        _save_state(disabled_path, {"disabled_rules": sorted(disabled)})
-        return 0
-    if op == "reload":
-        reachable = _query_control_safe("policy.reload")
-        print("Policy reloaded" if reachable else "Policy reload: core not running")
-        return 0 if reachable else 1
+    if op == "verify":
+        # BE-RCPT-091: report the daemon's canonical envelope verification
+        # (policies.json + IR mirror). Read-only; exit 3 when the daemon
+        # does not answer, never a local guess.
+        return _print_control_query("policy.verify", as_json=getattr(args, "json", True))
+    if op == "validate":
+        return _print_control_query("policy.validate", as_json=getattr(args, "json", True))
+    # LEFTOVER-SWEEP: enable/disable/reload are refused by the fail-closed
+    # guard at the top of this command (never a local write, never a fake
+    # success); pinned by tests/runtime/test_gate_e.py + the capability
+    # matrix. The old unreachable implementations (disabled_rules.json
+    # write + a policy.reload control query; no such control command
+    # exists) and the now-dead local-state helpers were removed here.
     return 2
-
-
-def _query_control_safe(command: str) -> bool:
-    try: return query_control(command) is not None
-    except Exception: return False
 
 
 def _unavailable(command: str, reason: str = "not_implemented") -> int:
     """Never report success for a command without a verified postcondition."""
-    print(json.dumps({"available": False, "command": command, "reason": reason}, sort_keys=True), file=sys.stderr)
+    print(json.dumps({
+        "available": False,
+        "command": command,
+        "reason": reason,
+        "status": "UNAVAILABLE_NOT_IMPLEMENTED",
+    }, sort_keys=True), file=sys.stderr)
     return 4
 
 
 def cmd_simulate(args) -> int:
-    return _unavailable("simulate", "use scripts/aegis_event_gen.py for controlled fixtures")
+    # Gate-E + T16 AC1: the canonical CLI never spawns processes and
+    # simulation stays fail-closed here. Controlled fixtures run through
+    # the sanctioned script directly (it owns its pipe/protocol contract);
+    # this message names the exact invocation so guidance replaces the stub.
+    return _unavailable(
+        "simulate",
+        "run: python scripts/aegis_event_gen.py --pipe --fixture {xss,command-injection,path-traversal}; verify: forensics --source 0 --after <tip> or: alerts",
+    )
+
+
+def _load_canary_defs() -> tuple[list[dict], str]:
+    """Load Gate-E canary definitions. Returns (tests, error_reason)."""
+    path = TOOLS_DIR.parent / "configs" / "canary_tests.json"
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return [], "canary_definitions_missing"
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+        return [], "canary_definitions_unreadable"
+    tests = doc.get("tests") if isinstance(doc, dict) else None
+    if not isinstance(tests, list):
+        return [], "canary_definitions_malformed"
+    return tests, ""
+
+
+def _load_rules_file() -> tuple[dict, str]:
+    """Load configs/Rules.json keyed by rule_id. Returns (by_id, error_reason)."""
+    path = TOOLS_DIR.parent / "configs" / "Rules.json"
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}, "rules_file_missing"
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+        return {}, "rules_file_unreadable"
+    rules = doc.get("nids_rules") if isinstance(doc, dict) else None
+    if not isinstance(rules, list):
+        return {}, "rules_file_malformed"
+    by_id = {}
+    for r in rules:
+        if isinstance(r, dict) and isinstance(r.get("rule_id"), str):
+            by_id.setdefault(r["rule_id"], r)
+    return by_id, ""
+
+
+def _live_engine_rule_count() -> int | None:
+    """Best-effort live engine rule count; None when the daemon is unreachable."""
+    if not CONTROL_API_AVAILABLE:
+        return None
+    try:
+        response = query_control("rules.list")
+    except Exception:
+        return None
+    if not isinstance(response, dict):
+        return None
+    for key in ("rules_loaded", "rule_count", "count"):
+        value = response.get(key)
+        if isinstance(value, int):
+            return value
+    return None
 
 
 def cmd_canary(args) -> int:
-    return _unavailable("canary", "end_to_end_canary_runner_not_connected")
+    """Gate-E canary: verify detection READINESS from definitions.
+
+    Honest scope: the wire carries no payload bytes for injected events,
+    so no CLI path can prove live firing (that needs a capture-path
+    fixture, not a control command). What this proves instead: every
+    ACTIVE canary's expected rule exists in configs/Rules.json with
+    matching severity, plus an optional live-engine count cross-check when
+    the daemon answers. Quarantined definitions (payload/rule mismatch,
+    dedicated rule pending) are reported separately, never graded.
+    Read-only; never touches enforcement or the engine.
+    """
+    sub = getattr(args, "canary_command", "status")
+    if sub == "status":
+        tests, err = _load_canary_defs()
+        by_id, rules_err = _load_rules_file()
+        print(json.dumps({
+            "available": True,
+            "definitions": len(tests),
+            "definitions_error": err or None,
+            "rules_in_file": len(by_id),
+            "rules_error": rules_err or None,
+            "engine_rules": _live_engine_rule_count(),
+        }, sort_keys=True))
+        return 0
+    if sub == "report":
+        receipt_path = _logs_dir() / "canary_last.json"
+        try:
+            print(json.dumps(json.loads(receipt_path.read_text(encoding="utf-8")), sort_keys=True))
+            return 0
+        except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError, OSError):
+            print(json.dumps({"available": False, "reason": "no_canary_runs_yet"}, sort_keys=True))
+            return 3
+    if sub != "run":
+        return _unavailable("canary", "unknown_canary_command")
+    only = getattr(args, "test", None)
+    tests, err = _load_canary_defs()
+    if err:
+        print(json.dumps({"available": False, "reason": err}, sort_keys=True))
+        return 2
+    by_id, rules_err = _load_rules_file()
+    if rules_err:
+        print(json.dumps({"available": False, "reason": rules_err}, sort_keys=True))
+        return 2
+    engine_count = _live_engine_rule_count()
+    details = []
+    quarantined = []
+    for t in tests:
+        if not isinstance(t, dict):
+            continue
+        name = t.get("name", "?")
+        if only is not None and name != only:
+            continue
+        # Quarantined definitions (payload never matches the named rule;
+        # dedicated rule pending owner verdict) are reported, never graded.
+        if t.get("quarantined") is True:
+            if only is not None:
+                print(json.dumps({"available": True, "quarantined": True,
+                                  "name": name,
+                                  "reason": t.get("quarantine_reason", "")},
+                                 sort_keys=True))
+                return 0
+            quarantined.append({"name": name,
+                                "reason": t.get("quarantine_reason", "")})
+            continue
+        want_rule = t.get("expected_rule_id")
+        want_sev = t.get("expected_severity")
+        got = by_id.get(want_rule) if isinstance(want_rule, str) else None
+        if got is None:
+            details.append({"name": name, "passed": False, "reason": "rule_not_in_file"})
+            continue
+        if want_sev is not None and got.get("severity") != want_sev:
+            details.append({"name": name, "passed": False, "reason": "severity_mismatch",
+                            "expected": want_sev, "actual": got.get("severity")})
+            continue
+        details.append({"name": name, "passed": True, "rule_id": want_rule,
+                        "severity": got.get("severity")})
+    if only is not None and not details:
+        print(json.dumps({"available": False, "reason": "unknown_canary_test",
+                          "test": only}, sort_keys=True))
+        return 2
+    passed = sum(1 for d in details if d["passed"])
+    failed = len(details) - passed
+    result = {"available": True, "passed": passed, "failed": failed,
+              "quarantined": len(quarantined),
+              "engine_rules": engine_count, "details": details}
+    if quarantined:
+        result["quarantined_tests"] = quarantined
+    if engine_count is not None and engine_count != len(by_id):
+        result["engine_drift"] = {"file": len(by_id), "engine": engine_count}
+    try:
+        _logs_dir().mkdir(parents=True, exist_ok=True)
+        (_logs_dir() / "canary_last.json").write_text(
+            json.dumps(result, sort_keys=True), encoding="utf-8")
+    except OSError:
+        pass  # receipt is best-effort; the stdout verdict is authoritative
+    print(json.dumps(result, sort_keys=True))
+    return 0 if failed == 0 else 1
 
 
 def _ip_entries(path: Path, key: str) -> list[dict]:
     return _load_state(path, {key: []}).get(key, [])
 
 
+def _logs_dir() -> Path:
+    """Runtime state directory.
+
+    S3-01: tests and lab runs point AEGIS_LOGS_DIR at tmp_path so a test can
+    exercise the candidate-list views without writing tracked tree state. The
+    installed service never sets the variable, so production state stays at
+    <repo>/logs. Same override as `aegisctl.config.LOGS_DIR`; kept as a helper
+    here so the CLI's local-path commands cannot drift from it again.
+    """
+    override = os.environ.get("AEGIS_LOGS_DIR")
+    return Path(override) if override else TOOLS_DIR.parent / "logs"
+
+
 def cmd_block(args) -> int:
-    if getattr(args, "block_command", "list") not in {"list"}:
+    # NEG-002: list-only. Mutations go through the control plane
+    # (enforcement.block -> Rust PEP -> receipt -> postcondition). The local
+    # file is a candidate view, never a host effect: this command must never
+    # print BLOCKED and never write blocked_ips.json.
+    # BLOCK-LABEL-038: no active writer maintains this file (the legacy
+    # direct-write path is gone), so entries are labeled local candidates —
+    # an entry here is not proof of a live WFP filter, and an empty file
+    # does not prove no filters exist. Live state: enforce status.
+    if getattr(args, "block_command", "list") != "list":
         return _unavailable("block", "pep_wfp_postcondition_not_connected")
-    path = TOOLS_DIR.parent / "logs" / "blocked_ips.json"; key = "blocked_ips"
-    entries = _ip_entries(path, key); op = args.block_command
-    if op == "list":
-        if not entries: print("No IPs in the block list")
-        else:
-            for e in entries: print(f"{e['ip']}  {e.get('reason','')}")
-            print(f"Total: {len(entries)}")
+    path = _logs_dir() / "blocked_ips.json"
+    entries = _ip_entries(path, "blocked_ips")
+    if not entries:
+        print("No IPs in the block list (local candidates only; live state: enforce status)")
         return 0
-    if op == "clear":
-        if not entries: print("Block list already empty")
-        else: print(f"Cleared {len(entries)} blocked IPs")
-        _save_state(path, {key: []}); return 0
-    ip = args.ip
-    if op == "add":
-        if any(e.get("ip") == ip for e in entries): print(f"{ip} already BLOCKED"); return 0
-        entries.append({"ip": ip, "reason": getattr(args, "reason", ""), "duration": getattr(args, "duration", None), "created_at": int(time.time())})
-        _save_state(path, {key: entries}); print(f"{ip} BLOCKED" + (f" for {args.duration}s" if args.duration else "")); return 0
-    before = len(entries); entries = [e for e in entries if e.get("ip") != ip]; _save_state(path, {key: entries})
-    print(f"{ip} UNBLOCKED" if len(entries) < before else f"{ip} NOT in the block list"); return 0
+    print("local block candidates (not live filter state; verify: enforce status):")
+    for e in entries:
+        print(f"{e['ip']}  {e.get('reason','')}")
+    return 0
+
+
+def _control_mutation(command: str, payload: dict) -> int:
+    """Route a privileged mutation to the daemon control plane.
+
+    Exit-code contract (AEGIS_Operator_UX_Specification, Unified CLI):
+    0 = daemon answered, 3 = daemon unreachable (honest offline JSON),
+    4 = local control API itself unavailable. Never claims a host effect;
+    the printed payload is the daemon's response verbatim.
+    """
+    if not CONTROL_API_AVAILABLE:
+        print(json.dumps({
+            "available": False,
+            "command": command,
+            "reason": "control_api_unavailable",
+        }, sort_keys=True))
+        return 4
+    response = query_control(command, payload=payload)
+    if response is None:
+        print(json.dumps({
+            "available": False,
+            "command": command,
+            "reason": "control_daemon_query_failed",
+        }, sort_keys=True))
+        return 3
+    print(json.dumps(dict(response), sort_keys=True))
+    return 0
 
 
 def cmd_enforce(args) -> int:
-    if getattr(args, "enforce_command", "status") != "status":
-        return _unavailable("enforce", "pep_runtime_postcondition_not_connected")
-    path = _state_file("pep_state.json"); state = _load_state(path, {"enabled": True, "mode": "FAIL_CLOSED"}); op = args.enforce_command
-    if op == "status": print(f"PEP\nEnabled: {state.get('enabled', True)}\nMode: {state.get('mode','FAIL_CLOSED')}"); return 0
-    if op in {"enable", "disable"}:
-        value = op == "enable"
-        if bool(state.get("enabled", True)) == value: print(f"Enforcement already {'ENABLED' if value else 'DISABLED'}")
-        else: state["enabled"] = value; print(f"Enforcement {'ENABLED' if value else 'DISABLED'}")
-        _save_state(path, state); return 0
-    policy = Path(args.policy)
-    if not policy.exists(): print(f"Policy file not found: {policy}"); return 1
-    try: data = json.loads(policy.read_text(encoding="utf-8"))
-    except json.JSONDecodeError: print("Invalid JSON policy"); return 1
-    rules_path = TOOLS_DIR.parent / "config" / "Rules.json"; rules_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    print(f"Policy pushed. Rules: {len(data.get('nids_rules', []))}"); return 0
+    """Show authoritative daemon enforcement status."""
+    sub = getattr(args, "enforce_command", "status")
+    if sub == "two-person":
+        # Project 3 (T3-TWOP-023): route the two-person rule flip to the
+        # daemon. Privilege is enforced daemon-side (role gate + FFI caps);
+        # the CLI never touches the PEP directly.
+        mode = getattr(args, "mode", None)
+        if mode not in ("on", "off"):
+            print(json.dumps({
+                "available": False,
+                "command": "enforcement.two_person",
+                "reason": "mode_must_be_on_or_off",
+            }, sort_keys=True))
+            return 2
+        return _control_mutation("enforcement.two_person", {"enabled": mode == "on"})
+    if sub == "approve":
+        try:
+            request_id = int(getattr(args, "request_id", 0))
+        except (TypeError, ValueError):
+            request_id = 0
+        if request_id <= 0:
+            print(json.dumps({
+                "available": False,
+                "command": "enforcement.approve",
+                "reason": "request_id_must_be_positive_integer",
+            }, sort_keys=True))
+            return 2
+        return _control_mutation("enforcement.approve", {"request_id": request_id})
+    if sub == "simulate":
+        # Read-only posture projection (B3-SIM-029): asks the daemon what the
+        # current gate/provider posture would do with an action, without
+        # invoking the PEP. Never a mutation; offline answers honestly.
+        action = getattr(args, "action", None)
+        severity = getattr(args, "severity", None)
+        if action not in ("allow", "block", "rate_limit", "quarantine"):
+            print(json.dumps({
+                "available": False,
+                "command": "enforcement.simulate",
+                "reason": "action_must_be_allow_block_rate_limit_quarantine",
+            }, sort_keys=True))
+            return 2
+        try:
+            severity = int(severity)
+        except (TypeError, ValueError):
+            severity = -1
+        if severity < 0 or severity > 10:
+            print(json.dumps({
+                "available": False,
+                "command": "enforcement.simulate",
+                "reason": "severity_must_be_integer_0_to_10",
+            }, sort_keys=True))
+            return 2
+        if not CONTROL_API_AVAILABLE:
+            print(json.dumps({
+                "available": False,
+                "command": "enforcement.simulate",
+                "reason": "control_api_unavailable",
+            }, sort_keys=True))
+            return 4
+        response = query_control("enforcement.simulate",
+                                 payload={"action": action, "severity": severity})
+        if response is None:
+            print(json.dumps({
+                "available": False,
+                "command": "enforcement.simulate",
+                "reason": "control_daemon_query_failed",
+            }, sort_keys=True))
+            return 3
+        print(json.dumps(dict(response), sort_keys=True))
+        return 0
+    if sub != "status":
+        return _unavailable(
+            "enforce",
+            "pep_runtime_postcondition_not_connected",
+        )
+
+    if not CONTROL_API_AVAILABLE:
+        print(json.dumps({
+            "available": False,
+            "command": "enforcement.status",
+            "reason": "control_api_unavailable",
+        }, sort_keys=True))
+        return 4
+
+    response = query_control("enforcement.status")
+    if response is None:
+        print(json.dumps({
+            "available": False,
+            "command": "enforcement.status",
+            "reason": "control_daemon_query_failed",
+        }, sort_keys=True))
+        return 3
+
+    response = dict(response)
+    response.setdefault("host_effect_confirmed", False)
+    print(json.dumps(response, sort_keys=True))
+    return 0
 
 
 def cmd_quarantine(args) -> int:
-    if getattr(args, "quarantine_command", "list") not in {"list"}:
+    # NEG-002: list-only, same authority rule as cmd_block.
+    # BLOCK-LABEL-038: same candidate labeling — no active writer maintains
+    # this file, so entries are local candidates, never live-state proof.
+    if getattr(args, "quarantine_command", "list") != "list":
         return _unavailable("quarantine", "pep_wfp_postcondition_not_connected")
-    qpath = TOOLS_DIR.parent / "logs" / "quarantine.json"; bpath = TOOLS_DIR.parent / "logs" / "blocked_ips.json"
-    qs = _ip_entries(qpath, "quarantined_ips"); bs = _ip_entries(bpath, "blocked_ips"); op = args.quarantine_command
-    if op == "list":
-        if not qs: print("No IPs in quarantine")
-        else:
-            for e in qs: print(f"{e['ip']}  {e.get('reason','')}")
-            print(f"Total: {len(qs)}")
+    qpath = _logs_dir() / "quarantine.json"
+    entries = _ip_entries(qpath, "quarantined_ips")
+    if not entries:
+        print("No IPs in quarantine (local candidates only; live state: enforce status)")
         return 0
-    ip = args.ip
-    if op == "add":
-        if any(e.get("ip") == ip for e in qs): print(f"{ip} already QUARANTINED"); return 0
-        entry = {"ip": ip, "reason": f"QUARANTINE: {getattr(args,'reason','')}"}; qs.append(entry)
-        if not any(e.get("ip") == ip for e in bs): bs.append(entry)
-        _save_state(qpath, {"quarantined_ips": qs}); _save_state(bpath, {"blocked_ips": bs}); print(f"{ip} QUARANTINED"); return 0
-    before = len(qs); qs = [e for e in qs if e.get("ip") != ip]; bs = [e for e in bs if e.get("ip") != ip]
-    _save_state(qpath, {"quarantined_ips": qs}); _save_state(bpath, {"blocked_ips": bs})
-    print(f"{ip} removed from quarantine" if len(qs) < before else f"{ip} NOT in the quarantine"); return 0
+    print("local quarantine candidates (not live state; verify: enforce status):")
+    for e in entries:
+        print(f"{e['ip']}  {e.get('reason','')}")
+    return 0
+
+
+def _fnv1a32(text: str) -> int:
+    """FNV-1a 32-bit over UTF-8 bytes. Same derivation the Zig loader and
+    the Go nose use for numeric rule IDs (e.g. R1004 -> 3730098280)."""
+    h = 0x811C9DC5
+    for byte in text.encode("utf-8"):
+        h ^= byte
+        h = (h * 0x01000193) & 0xFFFFFFFF
+    return h
+
+
+def _alert_rule_map() -> dict[int, dict]:
+    """Numeric rule_id -> rule object, derived from configs/Rules.json.
+
+    The forensic ring stores only the numeric FNV-1a of the rule_id
+    string, so the CLI re-derives the same mapping to label alerts.
+    Unknown numerics stay visible as UNKNOWN_RULE (never dropped).
+    """
+    by_id, _ = _load_rules_file()
+    return {_fnv1a32(rid): rule for rid, rule in by_id.items()}
+
+
+# ALERT-MAP-001: the native registry monitor uses small numeric rule ids
+# (1/2/3), not the catalog's FNV hashes. Without this map they surface as
+# UNKNOWN_RULE and the operator cannot tell which key matched.
+_REGISTRY_ALERT_RULES = {
+    1: {
+        "rule_id": "REG-HKLM-RUN",
+        "name": "Registry Run key modified (HKLM)",
+        "severity": "High",
+        "action": "Alert",
+    },
+    2: {
+        "rule_id": "REG-HKLM-SERVICES",
+        "name": "Registry Services key modified (HKLM)",
+        "severity": "High",
+        "action": "Alert",
+    },
+    3: {
+        "rule_id": "REG-HKCU-RUN",
+        "name": "Registry Run key modified (HKCU)",
+        "severity": "High",
+        "action": "Alert",
+    },
+}
+
+
+def _select_alerts(records: list) -> list[dict]:
+    """Pure: every forensic record carrying a rule match becomes an alert.
+
+    rule_id 0 means 'no rule fired'. Tolerates missing/str fields so one
+    malformed record never hides the rest.
+    """
+    alerts = []
+    for rec in records:
+        if not isinstance(rec, dict):
+            continue
+        try:
+            rule_num = int(rec.get("rule_id", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if rule_num == 0:
+            continue
+        alerts.append({
+            "record_seq": rec.get("record_seq"),
+            "event_id": rec.get("event_id"),
+            "source": rec.get("source_name") or rec.get("source"),
+            "rule_num": rule_num,
+            "payload_len": rec.get("payload_len"),
+            "verified": rec.get("verified"),
+        })
+    return alerts
+
+
+def _enrich_alert(alert: dict, by_num: dict[int, dict]) -> dict:
+    registry_rule = _REGISTRY_ALERT_RULES.get(alert["rule_num"])
+    if registry_rule is not None:
+        return {**alert, **registry_rule}
+    rule = by_num.get(alert["rule_num"])
+    if rule is None:
+        return {**alert, "rule_id": "UNKNOWN_RULE", "name": "unmapped numeric rule", "severity": "?", "action": "?"}
+    return {
+        **alert,
+        "rule_id": rule.get("rule_id"),
+        "name": rule.get("name"),
+        "severity": rule.get("severity"),
+        "action": rule.get("action"),
+    }
+
+
+def _alert_scan_start(ring_records, oldest_seq, window: int = 4096):
+    """Start sequence for a newest-first alert scan.
+
+    ALERT-SCAN-001: forensics.list pages from the OLDEST retained record, and
+    the previous 5-page cap read stale records while a canary written seconds
+    earlier sat at the tip. The ring response carries ring_records/oldest_seq;
+    start one window before the tip, bounded by the oldest retained seq.
+    """
+    try:
+        total = int(ring_records)
+        oldest = int(oldest_seq)
+    except (TypeError, ValueError):
+        return None
+    if total <= 0:
+        return 0
+    return max(oldest, total - max(1, int(window)))
+
+
+def _scan_ring_alerts(want: int):
+    """Scan the forensic ring for alert-level records (shared core).
+
+    Returns (found, scanned, pages, cursor_exhausted, failed): failed is
+    True only when the very first page is unreachable (blind, not quiet).
+    """
+    found: list[dict] = []
+    scanned = 0
+    pages = 0
+    cursor_exhausted = False
+    failed = False
+    after = None
+
+    # Probe the ring tip so the scan starts near the newest records instead
+    # of replaying the oldest page (ALERT-SCAN-001).
+    try:
+        probe = query_control("forensics.list", payload={"limit": 1})
+    except Exception:
+        probe = None
+    if isinstance(probe, dict):
+        start = _alert_scan_start(probe.get("ring_records"), probe.get("oldest_record_seq"))
+        if start is not None and start > 0:
+            after = start - 1
+
+    while len(found) < want and pages < 25 and not cursor_exhausted:
+        payload: dict = {"limit": 200}
+        if after is not None:
+            payload["after"] = after
+        try:
+            response = query_control("forensics.list", payload=payload)
+        except Exception:
+            response = None
+        if not response or not isinstance(response.get("records"), list):
+            if pages == 0:
+                failed = True
+            break
+        records = response["records"]
+        scanned += len(records)
+        pages += 1
+        found.extend(_select_alerts(records))
+        nxt = response.get("next_after")
+        if not records or nxt is None or nxt == after:
+            cursor_exhausted = True
+        else:
+            after = nxt
+    return found, scanned, pages, cursor_exhausted, failed
 
 
 def cmd_alerts(args) -> int:
     """View alerts.
 
-    Delegates all business logic to control_api.
-    CLI is thin: just call API and display structured result.
+    Live composition, no daemon change: pages forensics.list through the
+    control plane, keeps every record whose rule_id is non-zero, and
+    labels it from Rules.json. Scan totals are always reported, so a
+    quiet result is distinguishable from a blind result.
     """
-    return _unavailable("alerts", "alert_query_not_connected")
+    if not CONTROL_API_AVAILABLE:
+        return _unavailable("alerts", "control_api_unavailable")
+    want = getattr(args, "limit", 20) or 20
+    try:
+        want = max(1, int(want))
+    except (TypeError, ValueError):
+        want = 20
+    as_json = bool(getattr(args, "json", False))
+    found, scanned, pages, cursor_exhausted, failed = _scan_ring_alerts(want)
+    if failed:
+        return _unavailable("alerts", "control_daemon_query_failed")
+    by_num = _alert_rule_map()
+    alerts = [_enrich_alert(a, by_num) for a in found[:want]]
+    if as_json:
+        print(json.dumps({
+            "alerts": alerts,
+            "alerts_returned": len(alerts),
+            "available": True,
+            "command": "alerts",
+            "cursor_exhausted": cursor_exhausted,
+            "pages_scanned": pages,
+            "records_scanned": scanned,
+        }, sort_keys=True))
+        return 0
+    if not alerts:
+        print(f"No alerts in {scanned} scanned forensic records ({pages} page(s)).")
+        return 0
+    print(f"ALERTS ({scanned} scanned records, {pages} page(s)):")
+    for a in alerts:
+        print(f"  seq={a['record_seq']} event={a['event_id']} src={a['source']} "
+              f"rule={a['rule_id']}({a['rule_num']}) severity={a['severity']} "
+              f"action={a['action']} verified={a['verified']} :: {a['name']}")
+    return 0
 
 
-def cmd_dashboard(args) -> int:
-    """Real-time dashboard.
+def cmd_incidents(args) -> int:
+    """Show threat-tracker incident counters and open-incident detail.
 
-    Delegates all business logic to control_api.
-    CLI is thin: just call API and display structured result.
+    `list` (default) is a read-only view over the daemon's
+    incidents.list: totals (total/open/detections/policies/correlations)
+    plus, from EVT-210 onward, a bounded array of the open incidents
+    themselves (highest score first, mutex-copied on the daemon side --
+    not a ring reconstruction). An older daemon that sends no array
+    degrades honestly: the detail block says so instead of inventing rows.
+    `top` composes ring alerts client-side grouped by rule (count +
+    latest seq + severity + name) -- ring-derived scene-setting, labeled
+    as such, distinct from the tracker's authoritative incident rows.
+    This is the command every Kali lab script's verify hint points at --
+    it must exist and stay honest (quiet reads zero, never an error).
+    """
+    if not CONTROL_API_AVAILABLE:
+        return _unavailable("incidents", "control_api_unavailable")
+    as_json = bool(getattr(args, "json", False))
+    if getattr(args, "incidents_command", "list") == "top":
+        return _cmd_incidents_top(args, as_json)
+    try:
+        response = query_control("incidents.list")
+    except Exception:
+        response = None
+    if not isinstance(response, dict):
+        return _unavailable("incidents", "control_daemon_query_failed")
+    keys = ("incidents_total", "incidents_open", "detections",
+            "policies_matched", "correlations")
+    rows = response.get("incidents")
+    if not isinstance(rows, list):
+        rows = []
+    if as_json:
+        doc = {k: response.get(k, 0) for k in keys}
+        doc["incidents"] = rows
+        doc["incidents_returned"] = response.get("incidents_returned", len(rows))
+        if "incident_view_cap" in response:
+            doc["incident_view_cap"] = response.get("incident_view_cap")
+        doc.update({"available": True, "command": "incidents"})
+        print(json.dumps(doc, sort_keys=True))
+        return 0
+    print(f"Incidents open: {response.get('incidents_open', 0)} "
+          f"(total {response.get('incidents_total', 0)})")
+    print(f"Detections: {response.get('detections', 0)}  "
+          f"Policies matched: {response.get('policies_matched', 0)}  "
+          f"Correlations: {response.get('correlations', 0)}")
+    open_count = response.get("incidents_open", 0)
+    has_detail = "incidents" in response
+    if not has_detail:
+        if open_count:
+            print(f"Open incidents: {open_count} "
+                  f"(detail unavailable -- daemon predates the incident view)")
+        return 0
+    if not rows:
+        print("No open incidents.")
+        return 0
+    cap = response.get("incident_view_cap")
+    suffix = f" of {open_count}" if (cap and open_count > len(rows)) else ""
+    print(f"OPEN INCIDENTS (highest score first{', showing ' + str(len(rows)) + suffix if suffix else ''}):")
+    for r in rows:
+        print(f"  id={r.get('id')} score={r.get('score')} "
+              f"sev={r.get('severity')} state={r.get('state')} "
+              f"src={r.get('src_ip')} flow={r.get('flow_id')} "
+              f"evidence={r.get('evidence')}")
+    return 0
+
+
+def _cmd_incidents_top(args, as_json: bool) -> int:
+    """Top firing rules from a bounded ring scan (client-side grouping)."""
+    want = getattr(args, "limit", 200) or 200
+    try:
+        want = max(1, min(int(want), 1000))
+    except (TypeError, ValueError):
+        want = 200
+    found, scanned, pages, _, failed = _scan_ring_alerts(want)
+    if failed:
+        return _unavailable("incidents", "control_daemon_query_failed")
+    by_num = _alert_rule_map()
+    groups: dict = {}
+    for a in [_enrich_alert(r, by_num) for r in found]:
+        key = a.get("rule_num", "?")
+        g = groups.get(key)
+        if g is None:
+            groups[key] = {"rule": key, "name": a.get("name", "?"),
+                           "severity": a.get("severity", "?"), "count": 0,
+                           "latest_seq": 0}
+            g = groups[key]
+        g["count"] += 1
+        if a.get("record_seq", 0) > g["latest_seq"]:
+            g["latest_seq"] = a.get("record_seq", 0)
+    rows = sorted(groups.values(), key=lambda g: (-g["count"], g["rule"]))
+    if as_json:
+        print(json.dumps({"groups": rows, "groups_returned": len(rows),
+                          "records_scanned": scanned,
+                          "available": True, "command": "incidents",
+                          "mode": "top", "source": "ring"},
+                         sort_keys=True))
+        return 0
+    if not rows:
+        print(f"No firing rules in {scanned} scanned records ({pages} page(s)).")
+        return 0
+    print(f"TOP FIRING RULES ({scanned} scanned records, ring-derived):")
+    for g in rows:
+        print(f"  {g['count']:>5}x {g['rule']:<8} {str(g['severity']):<8} "
+              f"latest={g['latest_seq']} :: {g['name']}")
+    return 0
+
+
+def _render_dashboard_once(deep_components: bool = False) -> int:
+    """One dashboard frame. Pure display over control_api reads.
+
+    deep_components=True runs the concept-registry process probes (same
+    cost as `aegisctl components`): used for the one-shot render only.
+    The watch/iterations loop keeps the fast path so polling every few
+    seconds stays cheap.
     """
     if CONTROL_API_AVAILABLE:
         statuses = get_all_status()
         defcon = get_defcon()
-        print(f"\n  Dashboard: {len([s for s in statuses if s[1]])} subsystems running")
+        health = get_health_payload()
+        workers = health.get("workers", {})
+
+        # Color constants for dashboard formatting
+        C_CYAN = "\x1b[96m"
+        C_BOLD = "\x1b[1m"
+        C_RESET = "\x1b[0m"
+        C_GREEN = "\x1b[92m"
+        C_RED = "\x1b[91m"
+        C_YELLOW = "\x1b[93m"
+        C_DIM = "\x1b[2m"
+        C_ORANGE = "\x1b[38;5;208m"
+        C_MAGENTA = "\x1b[95m"
+
+        # Use ASCII box drawing for Windows compatibility
+        border = "=" * 50
+        header = "+" + border + "+"
+        footer = "+" + border + "+"
+
+        print(f"\n{C_CYAN}{C_BOLD}   AEGIS DASHBOARD v6.1 - DEFCON ENFORCER{C_RESET}")
+        print(f"{C_DIM}   Guardian + Voice - Alert + Mitigate + Enforce{C_RESET}")
+        print(f"  {header}")
+
+        # DEFCON Display - FOCAL POINT
         if defcon:
-            print(f"  DEFCON: {defcon[0]} ({defcon[1]})")
+            defcon_level = defcon[0]
+            defcon_label = defcon[1]
+            # Color mapping for DEFCON
+            defcon_colors = {
+                1: C_MAGENTA,  # MAXIMUM
+                2: C_RED,    # SEVERE
+                3: C_ORANGE, # HIGH
+                4: C_YELLOW, # ELEVATED
+                5: C_GREEN,  # SAFE
+            }
+            dc_color = defcon_colors.get(defcon_level, C_DIM)
+            print(f"  DEFCON: {dc_color}{C_BOLD}DEFCON {defcon_level}: {defcon_label}{C_RESET}")
+        else:
+            print(f"  DEFCON: {C_YELLOW}SAFE{C_RESET}")
+
+        print(f"  State: {health.get('state', 'UNKNOWN')}")
+        print(f"  Degraded: {health.get('degraded', True)}")
+        running = sum(1 for _, r, _ in statuses if r)
+        total = len(statuses)
+        print(f"  {running}/{total} subsystems running")
+        print(f"  Worker readiness:")
+
+        for name, ready in workers.items():
+            if name == "failure_reason":
+                print(f"    [REASON] {ready}")
+            elif name == "failure_mask":
+                print(f"    [MASK] {ready}")
+            elif name == "failure_reasons":
+                reasons = ready if ready else []
+                print(f"    [REASONS] {', '.join(reasons) if reasons else 'none'}")
+            elif name == "failed":
+                # EVT-218: same boolean flag as `diagnose`; render yes/no
+                # instead of the bare Python bool ("[FAILED] False").
+                print(f"    [FAILED] {'yes' if ready else 'no'}")
+            elif ready:
+                print(f"    [READY] {name}")
+            else:
+                print(f"    [NOT READY] {name}")
+
+        # readiness gate
+        required = ["pipeline_ready", "sensor_ready", "nose_ready", "etw_ready", "fim_ready", "registry_ready"]
+        missing = [n for n in required if workers.get(n) is not True]
+        worker_gate = not missing and not workers.get("failed", False)
+        overall_gate = health.get("state") == "RUNNING" and not health.get("degraded", True) and worker_gate
+        gate_text = "CLOSED - Ready for operations" if overall_gate else "OPEN - Issues must be resolved"
+        gate_color = C_GREEN if overall_gate else C_RED
+        print(f"  READY GATE: {gate_color}{C_BOLD}{gate_text}{C_RESET}")
+        # EVT-180: one-shot renders probe deep (same answer as
+        # `aegisctl components`); the watch loop below keeps the fast
+        # path -- see _render_dashboard_once's deep_components flag.
+        print(f"  COMPONENTS:")
+        try:
+            comp_rows = components_status(
+                health if isinstance(health, dict) else {},
+                deep=deep_components)
+        except Exception:
+            comp_rows = []
+        for row in comp_rows:
+            print(f"    [{str(row.get('status', '?')).upper():<8}] {row.get('name', '?')} ({row.get('language', '?')}) v{row.get('version', '?')}")
+        # EVT-207: detection counters, same numbers as `incidents list`
+        # (one extra query; unavailable reads as a labeled line, never
+        # a silent gap -- but never fail the whole frame for it).
+        print(f"  DETECTIONS:")
+        try:
+            inc = query_control("incidents.list")
+        except Exception:
+            inc = None
+        if isinstance(inc, dict):
+            print(f"    Incidents open: {inc.get('incidents_open', 0)} "
+                  f"(total {inc.get('incidents_total', 0)})")
+            print(f"    Detections: {inc.get('detections', 0)}  "
+                  f"Correlations: {inc.get('correlations', 0)}")
+            # EVT-210: surface the top open incidents inline when the
+            # daemon supplies them (highest score first). Older daemons
+            # send no array -- keep the frame identical, say nothing.
+            inc_rows = inc.get("incidents")
+            if isinstance(inc_rows, list) and inc_rows:
+                print(f"    Top incidents:")
+                for r in inc_rows[:3]:
+                    print(f"      id={r.get('id')} score={r.get('score')} "
+                          f"sev={r.get('severity')} src={r.get('src_ip')}")
+        else:
+            print(f"    (unavailable: daemon query failed)")
+        print(f"  {footer}")
     else:
         print("\nControl API not available")
     return 0
 
 
+def cmd_dashboard(args) -> int:
+    """Real-time dashboard; --watch refreshes every --interval seconds."""
+    try:
+        interval = max(0.5, float(getattr(args, "interval", 2.0) or 2.0))
+    except (TypeError, ValueError):
+        interval = 2.0
+    try:
+        iterations = getattr(args, "iterations", None)
+        remaining = None if iterations is None else max(1, int(iterations))
+    except (TypeError, ValueError):
+        remaining = None
+    if not bool(getattr(args, "watch", False)) and remaining is None:
+        return _render_dashboard_once(deep_components=True)
+    try:
+        first = True
+        while True:
+            if bool(getattr(args, "watch", False)) and not first:
+                print("\x1b[2J\x1b[H", end="")
+            first = False
+            if bool(getattr(args, "watch", False)):
+                print(f"aegisctl dashboard --watch every {interval:g}s (Ctrl+C to stop)")
+            rc = _render_dashboard_once()
+            if rc != 0:
+                return rc
+            if remaining is not None:
+                remaining -= 1
+                if remaining <= 0:
+                    return 0
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        return 0
+
+
 def cmd_bridge(args) -> int:
-    """Bridge IPC status.
+    """Bridge IPC status (RB-017 step 3): brain-channel listener honesty.
 
     Delegates all business logic to control_api.
     CLI is thin: just call API and display structured result.
+    Exit 0 = listener owned by the brain entrypoint; 1 = no/wrong
+    listener (actionable); 2 = identity indeterminate (unknown, not failed).
     """
-    return _unavailable("bridge", "bridge_diagnostic_not_connected")
+    if not CONTROL_API_AVAILABLE:
+        return _unavailable("bridge", "control_api_unavailable")
+    doc = bridge_diagnostic()
+    if bool(getattr(args, "json", False)):
+        print(json.dumps(doc, sort_keys=True))
+    else:
+        listener = doc.get("listener") or {}
+        print("Brain channel (UDP :%s)" % doc.get("port"))
+        if listener:
+            print("  listener: pid %s (%s)" % (listener.get("pid"), listener.get("process")))
+            print("  brain entrypoint match: %s" % listener.get("cmdline_match"))
+        else:
+            print("  listener: none (%s)" % doc.get("reason", "?"))
+        print("  owner_is_brain: %s" % doc.get("owner_is_brain"))
+        print("  this-shell secret configured: %s" % doc.get("this_shell_secret_configured"))
+        if doc.get("sender_side") is not None:
+            print("  sender-side daemon bit: %s" % (doc["sender_side"],))
+        print("  note: %s" % doc.get("note", ""))
+    if doc.get("owner_is_brain") is True:
+        return 0
+    if doc.get("available") is False and doc.get("listener") is None:
+        return 1
+    return 2
+
+
+def cmd_brain(args) -> int:
+    """Tier-2 brain: liveness counters + inbox tail.
+
+    Three honest parts, none invented: (1) UDP HEALTH counters from the
+    live brain (or an unreachable line); (2) listener ownership from the
+    same diagnostic `bridge` uses; (3) the tail of logs/anomalous.json,
+    labeled INBOX -- offers the brain received, not its verdicts
+    (verdicts leave via the sensor pipe). Exit 0 always when readable;
+    an unreachable brain still prints what is known.
+    """
+    if not CONTROL_API_AVAILABLE:
+        return _unavailable("brain", "control_api_unavailable")
+    try:
+        want = max(1, int(getattr(args, "count", 10) or 10))
+    except (TypeError, ValueError):
+        want = 10
+    as_json = bool(getattr(args, "json", False))
+    health = None
+    try:
+        health = brain_health()
+    except Exception:
+        health = None
+    inbox: list = []
+    try:
+        from collections import deque
+        log_path = _logs_dir() / "anomalous.json"
+        with open(log_path, encoding="utf-8", errors="replace") as fh:
+            tail = deque(fh, maxlen=max(want, 1))
+        for line in tail:
+            try:
+                doc = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(doc, dict):
+                inbox.append(doc)
+        inbox = inbox[-want:]
+    except OSError:
+        inbox = []
+    if as_json:
+        print(json.dumps({"health": health, "inbox": inbox,
+                          "inbox_returned": len(inbox),
+                          "available": True, "command": "brain"},
+                         sort_keys=True))
+        return 0
+    if isinstance(health, dict):
+        counters = health.get("counters", {}) if isinstance(
+            health.get("counters"), dict) else {}
+        print(f"Brain: {health.get('state', '?')} "
+              f"(in={counters.get('in_events', '?')} "
+              f"out={counters.get('out_events', '?')} "
+              f"errors={counters.get('errors', '?')})")
+    else:
+        print("Brain: HEALTH unreachable (no UDP answer on :9999)")
+    if not inbox:
+        print("Inbox: empty (no offers recorded in logs/anomalous.json)")
+    else:
+        print(f"Inbox (last {len(inbox)}, offers received -- not verdicts):")
+        for doc in inbox:
+            print(f"  {doc.get('rule_id', '?')} {doc.get('severity', '?')} "
+                  f"{doc.get('src_ip', '?')} :: "
+                  f"{str(doc.get('attack_type', '?'))[:60]}")
+    return 0
+
+
+def cmd_graph(args) -> int:
+    """Build the receipt-aware threat graph (EVT-165).
+
+    Reads the newest-wins canonical log, colors edges by receipt
+    evidence (legend states claim-based), writes interactive HTML.
+    On-demand only. --open launches the browser (explicit gesture).
+    """
+    from aegisctl.graph import DEFAULT_LIMIT, DEFAULT_OUT, build_threat_graph, read_records, select_log
+    out = Path(getattr(args, "out", None) or DEFAULT_OUT)
+    try:
+        limit = max(0, int(getattr(args, "limit", DEFAULT_LIMIT)))
+    except (TypeError, ValueError):
+        limit = DEFAULT_LIMIT
+    log = select_log()
+    records = read_records(log, limit)
+    try:
+        parsed, nodes, edges = build_threat_graph(records, out, limit)
+    except ImportError:
+        print("graph unavailable -- pip install networkx pyvis", file=sys.stderr)
+        return 4
+    except OSError as exc:
+        print("graph write failed: %s" % exc, file=sys.stderr)
+        return 1
+    print("Threat graph: %s" % out)
+    print("Events parsed: %d; nodes: %d; edges: %d (log: %s)" % (parsed, nodes, edges, log))
+    print("Colors are claim-based triage (green=receipt, red dashed=unverified claim); authority: forensics verify.")
+    if bool(getattr(args, "json", False)):
+        print(json.dumps({"command": "graph", "html": str(out), "parsed": parsed,
+                          "nodes": nodes, "edges": edges, "log": str(log)}, sort_keys=True))
+    if bool(getattr(args, "open", False)):
+        try:
+            import webbrowser
+            webbrowser.open(out.as_uri())
+        except Exception as exc:
+            print("browser open failed: %s" % exc, file=sys.stderr)
+            return 1
+    return 0
+
+
+def cmd_console(args) -> int:
+    """Interactive Command Control Center (EVT-165).
+
+    The v8.0 menu operators miss, rewired to current contracts (never a
+    second runtime; mutations need --role admin + elevation). --once
+    --choice KEY runs one action non-interactively (tests drive this).
+    """
+    from aegisctl.console import console_menu
+    role = getattr(args, "role", "operator") or "operator"
+    if bool(getattr(args, "once", False)):
+        return console_menu(role=role, once=True,
+                            choice=getattr(args, "choice", None))
+    return console_menu(role=role)
+
+
+def cmd_components(args) -> int:
+    """Show the five AEGIS runtime components as concepts of their own.
+
+    EVT-162: name, language, role, version, entrypoint, and best-available
+    live status per component. Thin: components_status() owns all logic.
+    Deep probes (process checks) run here -- the call is one-shot, never
+    a poll loop -- while the web/watch surfaces use the fast path.
+    """
+    if not CONTROL_API_AVAILABLE:
+        return _unavailable("components", "control_api_unavailable")
+    try:
+        health = get_health_payload()
+    except Exception:
+        health = {}
+    try:
+        rows = components_status(health if isinstance(health, dict) else {}, deep=True)
+    except Exception as exc:
+        print(json.dumps({"available": False, "command": "components",
+                          "reason": "components_probe_failed",
+                          "error": str(exc)[:160]}, sort_keys=True))
+        return 3
+    if bool(getattr(args, "json", False)):
+        print(json.dumps({"command": "components", "components": rows}, sort_keys=True))
+        return 0
+    print("AEGIS runtime components (concept + best-available status)")
+    for row in rows:
+        mark = {"running": "OK  ", "stopped": "DOWN ", "degraded": "DEGR ",
+                "unknown": "????"}.get(row["status"], "????")
+        req = "" if row["required"] else " (optional)"
+        print("[%s] %s (%s) v%s - %s%s" % (
+            mark, row["name"], row["language"], row["version"], row["status"], req))
+        print("       role: %s" % row["role"])
+        if row["detail"]:
+            print("       %s" % row["detail"])
+    return 0
 
 
 def cmd_iptest(args) -> int:
-    """IPC throughput test.
+    """Bounded control-pipe latency probe (EVT-167).
 
     Delegates all business logic to control_api.
     CLI is thin: just call API and display structured result.
+    Exit 0 when at least one round-trip succeeded, else 1.
     """
-    return _unavailable("iptest", "throughput_probe_not_connected")
+    if not CONTROL_API_AVAILABLE:
+        return _unavailable("iptest", "control_api_unavailable")
+    try:
+        rounds = int(getattr(args, "rounds", 20))
+    except (TypeError, ValueError):
+        rounds = 20
+    doc = pipe_latency_probe(rounds)
+    if bool(getattr(args, "json", False)):
+        print(json.dumps(doc, sort_keys=True))
+    else:
+        print("Control-pipe latency (%d rounds, capped at %d)" % (doc["rounds"], 100))
+        print("  ok %d / failed %d" % (doc["ok"], doc["failed"]))
+        if doc["ok"]:
+            print("  p50 %.1f ms · p99 %.1f ms · max %.1f ms" % (
+                doc["p50_ms"], doc["p99_ms"], doc["max_ms"]))
+        else:
+            print("  no successful round-trip (pipe unknown, not measured)")
+    return 0 if doc["ok"] > 0 else 1
 
 
 def cmd_authority(args) -> int:
@@ -822,13 +2390,21 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="AEGIS NIDS control plane CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="roles (full map: docs/OPERATOR_COMMAND_MAP.md):\n"
+               "  daily     run_aegis.bat / status / bridge / components / dashboard / console\n"
+               "  incident  events / alerts / forensic(s) / enforce status / block list / diagnose\n"
+               "  maintain  keep / close / rules / policy / forensics verify (admin where noted)\n"
+               "  lab/dev   simulate / canary / graph / federation / quarantine / builds (lab host only)\n"
+               "layers: the opener owns OS processes; start/stop ask the daemon;\n"
+               "restart refuses by design (needs an external service manager).",
     )
-    # P1: Global transport flag — explicit, no fallback
+    # P1/T1-NET-019: pipe only. The unauthenticated TCP branch was removed;
+    # the daemon never listens on TCP, so --transport=tcp is rejected.
     parser.add_argument(
         "--transport", "-t",
-        choices=["pipe", "tcp"],
+        choices=["pipe"],
         default="pipe",
-        help="Transport to daemon: pipe (default, Windows ACL protected) or tcp (diagnostic, explicit opt-in)",
+        help="Transport to daemon: pipe (Windows ACL protected named pipe)",
     )
     sub = parser.add_subparsers(dest="cmd")
 
@@ -866,9 +2442,23 @@ def main() -> int:
     metrics = sub.add_parser("metrics", help="Show runtime metrics snapshot")
     metrics.add_argument("--compact", action="store_true", help="Emit compact JSON")
     metrics.set_defaults(func=cmd_metrics)
+    queue_p = sub.add_parser("queue", help="Show pipeline queue ingress per source plus latency snapshot")
+    queue_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    queue_p.set_defaults(func=cmd_queue)
     federation = sub.add_parser("federation", help="Show federation cluster status")
     federation.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     federation.set_defaults(func=cmd_federation)
+    xdr_p = sub.add_parser("xdr", help="Advisory XDR evidence (read-only, never a host action)")
+    xdr_sub = xdr_p.add_subparsers(dest="xdr_command")
+    xdr_list_p = xdr_sub.add_parser("list", help="List advisory XDR incidents")
+    xdr_list_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    xdr_verify_p = xdr_sub.add_parser(
+        "verify", help="Replay-verify persisted multi-source XDR snapshots (read-only)"
+    )
+    xdr_verify_p.add_argument("--limit", type=int, default=8,
+                              help="Newest XDR snapshots to verify; default 8, capped at 64")
+    xdr_verify_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    xdr_p.set_defaults(func=cmd_xdr)
     sub.add_parser("snapshot", help="Emit one JSON runtime snapshot for dashboards").set_defaults(func=cmd_snapshot)
     readiness = sub.add_parser("readiness", help="Evaluate the production readiness gate")
     readiness.add_argument("--pretty", action="store_true", help="Pretty-print JSON")
@@ -876,11 +2466,21 @@ def main() -> int:
     forensic = sub.add_parser("forensics", help="Inspect forensic records and hash chain")
     forensic_sub = forensic.add_subparsers(dest="forensics_command")
     flist = forensic_sub.add_parser("list", help="List forensic records")
-    flist.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
-    flist.add_argument("--source", type=int, help="Filter by EventSource ordinal")
-    flist.add_argument("--payload-prefix", help="Filter by exact ASCII payload prefix")
+    flist.add_argument("--limit", type=int, default=100,
+                       help="Maximum records to return; capped at 1000")
+    flist.add_argument("--after", type=int, default=None,
+                       help="Return records with record_seq greater than this value")
+    flist.add_argument("--all", action="store_true",
+                       help="Follow the paging cursor until the result set is complete")
+    flist.add_argument("--json", action="store_true",
+                       help="Emit machine-readable JSON")
+    flist.add_argument("--source", type=int,
+                       help="Filter by EventSource ordinal")
+    flist.add_argument("--payload-prefix",
+                       help="Filter by exact ASCII payload prefix")
     fverify = forensic_sub.add_parser("verify", help="Verify forensic hash chain")
-    fverify.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    fverify.add_argument("--json", action="store_true",
+                         help="Emit machine-readable JSON")
     forensic.set_defaults(forensics_command="list", func=cmd_forensics)
     rules = sub.add_parser("rules", help="Rules management")
     rules_sub = rules.add_subparsers(dest="rules_command")
@@ -905,20 +2505,27 @@ def main() -> int:
     etail.add_argument("--follow", action="store_true", help="Continue watching for new events")
     etail.add_argument("--interval", type=float, default=1.0, help="Polling interval for --follow")
     etail.add_argument("--json", action="store_true", help="Emit JSON records")
+    etail.add_argument("--src-ip", default=None, help="Show only records from this source IP (lab attacker view)")
     ecount = events_sub.add_parser("count", help="Count event evidence")
     ecount.add_argument("--json", action="store_true", help="Emit JSON")
+    ecount.add_argument("--src-ip", default=None, help="Count only records from this source IP")
     estats = events_sub.add_parser("stats", help="Summarize event evidence")
     estats.add_argument("--json", action="store_true", help="Emit JSON")
+    estats.add_argument("--src-ip", default=None, help="Summarize only records from this source IP")
     events.set_defaults(events_command="count", func=cmd_events)
     forensic = sub.add_parser("forensic", help="Inspect forensic records")
     forensic_sub = forensic.add_subparsers(dest="forensic_command")
-    fshow = forensic_sub.add_parser("show"); fshow.add_argument("--id", required=True)
-    fsearch = forensic_sub.add_parser("search"); fsearch.add_argument("--field", required=True); fsearch.add_argument("--value", required=True)
+    fshow = forensic_sub.add_parser("show"); fshow.add_argument("--id", required=True, type=int)
+    fsearch = forensic_sub.add_parser("search", help="Filter ring records (source ordinal, rule id, or payload-bytes prefix)");
+    fsearch.add_argument("--field", required=True, help="source = numeric origin ordinal (9 npcap, 10 host); rule = catalog id (R9059) or integer, hashed client-side; payload_prefix = raw record-bytes prefix from byte 0 (L2 header on capture rows, not text); payload_contains = byte sequence anywhere in the payload, which is what text search needs");
+    fsearch.add_argument("--value", required=True, help="Ordinal for source; id for rule; byte prefix for payload_prefix")
+    forensic_sub.add_parser("verify", help="Verify forensic hash chain")
     fexport = forensic_sub.add_parser("export"); fexport.add_argument("--output", required=True)
     forensic.set_defaults(forensic_command="list", func=cmd_forensic)
     policy = sub.add_parser("policy", help="Policy lifecycle")
     policy_sub = policy.add_subparsers(dest="policy_command")
     policy_sub.add_parser("list"); pshow = policy_sub.add_parser("show"); pshow.add_argument("--id", required=True)
+    policy_sub.add_parser("verify"); policy_sub.add_parser("validate")
     preload = policy_sub.add_parser("reload"); pen = policy_sub.add_parser("enable"); pen.add_argument("--id", required=True)
     pdis = policy_sub.add_parser("disable"); pdis.add_argument("--id", required=True)
     policy.set_defaults(policy_command="list", func=cmd_policy)
@@ -934,25 +2541,76 @@ def main() -> int:
     crun = canary_sub.add_parser("run"); crun.add_argument("--test")
     canary_sub.add_parser("status"); canary_sub.add_parser("report")
     canary.set_defaults(func=cmd_canary)
-    block = sub.add_parser("block", help="Block IP through PEP request")
+    block = sub.add_parser("block", help="List block candidates (mutations need the control plane)")
     block_sub = block.add_subparsers(dest="block_command")
     badd = block_sub.add_parser("add"); badd.add_argument("--ip", required=True); badd.add_argument("--reason", default=""); badd.add_argument("--duration", type=int)
     brem = block_sub.add_parser("remove"); brem.add_argument("--ip", required=True)
     block_sub.add_parser("list"); block_sub.add_parser("clear"); block.set_defaults(func=cmd_block)
     enforce = sub.add_parser("enforce", help="PEP enforcement state")
     enforce_sub = enforce.add_subparsers(dest="enforce_command")
-    enforce_sub.add_parser("status"); enforce_sub.add_parser("enable"); enforce_sub.add_parser("disable")
-    epush = enforce_sub.add_parser("push"); epush.add_argument("--policy", required=True)
+    enforce_sub.add_parser("status")
+    etp = enforce_sub.add_parser("two-person", help="Project 3: enable/disable the two-person rule via the control plane")
+    etp.add_argument("mode", choices=["on", "off"])
+    eap = enforce_sub.add_parser("approve", help="Project 3: record a second-human approval via the control plane")
+    eap.add_argument("request_id", type=int)
+    esim = enforce_sub.add_parser("simulate", help="Project posture without enforcing (read-only, never touches PEP/WFP)")
+    esim.add_argument("--action", required=True, choices=["allow", "block", "rate_limit", "quarantine"])
+    esim.add_argument("--severity", required=True, type=int)
+    enforce_sub.add_parser("enable", help="Unavailable in Project 2; reserved for Project 3 IPS")
+    enforce_sub.add_parser("disable", help="Unavailable in Project 2; reserved for Project 3 IPS")
+    epush = enforce_sub.add_parser("push", help="Unavailable in Project 2; reserved for Project 3 IPS")
+    epush.add_argument("--policy", required=True)
     enforce.set_defaults(func=cmd_enforce)
-    quarantine = sub.add_parser("quarantine", help="Quarantine IP through PEP request")
+    quarantine = sub.add_parser("quarantine", help="List quarantine candidates (mutations need the control plane)")
     quarantine_sub = quarantine.add_subparsers(dest="quarantine_command")
     qadd = quarantine_sub.add_parser("add"); qadd.add_argument("--ip", required=True); qadd.add_argument("--reason", default="")
     qrem = quarantine_sub.add_parser("remove"); qrem.add_argument("--ip", required=True)
     quarantine_sub.add_parser("list"); quarantine.set_defaults(func=cmd_quarantine)
-    sub.add_parser("alerts", help="View alerts").set_defaults(func=cmd_alerts)
-    sub.add_parser("dashboard", help="Real-time dashboard").set_defaults(func=cmd_dashboard)
-    sub.add_parser("bridge", help="Bridge IPC status").set_defaults(func=cmd_bridge)
-    sub.add_parser("iptest", help="IPC throughput test").set_defaults(func=cmd_iptest)
+    alerts_p = sub.add_parser("alerts", help="View alerts (live: rule matches from the forensic ring)")
+    alerts_p.add_argument("--limit", type=int, default=20)
+    alerts_p.add_argument("--json", action="store_true")
+    alerts_p.set_defaults(func=cmd_alerts)
+    incidents_p = sub.add_parser("incidents", help="Threat-tracker incident counters")
+    incidents_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    incidents_sub = incidents_p.add_subparsers(dest="incidents_command")
+    incidents_list_p = incidents_sub.add_parser("list", help="Show incident counters")
+    incidents_list_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    incidents_top_p = incidents_sub.add_parser("top", help="Top firing rules from the ring (client-side grouping)")
+    incidents_top_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    incidents_top_p.add_argument("--limit", type=int, default=200, help="Max alerts to group")
+    incidents_p.set_defaults(func=cmd_incidents)
+    dashboard_p = sub.add_parser("dashboard", help="Real-time dashboard")
+    dashboard_p.add_argument("--watch", action="store_true", help="Refresh every --interval seconds")
+    dashboard_p.add_argument("--interval", type=float, default=2.0, help="Refresh interval in seconds")
+    dashboard_p.add_argument("--iterations", type=int, default=None, help="Render N frames then exit (scripted use)")
+    dashboard_p.set_defaults(func=cmd_dashboard)
+    _bridge_p = sub.add_parser("bridge", help="Bridge IPC status")
+    _bridge_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    _bridge_p.set_defaults(func=cmd_bridge)
+    _brain_p = sub.add_parser("brain", help="Tier-2 brain counters + inbox tail")
+    _brain_p.add_argument("--count", type=int, default=10, help="Inbox rows to show")
+    _brain_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    _brain_p.set_defaults(func=cmd_brain)
+    _comp_p = sub.add_parser("components", help="The five runtime components as concepts")
+    _comp_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    _comp_p.set_defaults(func=cmd_components)
+    _graph_p = sub.add_parser("graph", help="Receipt-aware threat graph (HTML)")
+    _graph_p.add_argument("--out", default=None, help="Output HTML path (default reports/threat_graph.html)")
+    _graph_p.add_argument("--limit", default=500, help="Max records from the log tail")
+    _graph_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    _graph_p.add_argument("--open", action="store_true", help="Open the graph in a browser")
+    _graph_p.set_defaults(func=cmd_graph)
+    _console_p = sub.add_parser("console", help="Interactive Command Control Center")
+    _console_p.add_argument("--role", choices=["operator", "admin"], default="operator",
+                            help="operator = read-only views; admin unlocks mutations (needs elevation)")
+    _console_p.add_argument("--once", action="store_true",
+                            help="Run one --choice non-interactively and exit")
+    _console_p.add_argument("--choice", default=None, help="Menu key for --once (0-9/A-C)")
+    _console_p.set_defaults(func=cmd_console)
+    _iptest_p = sub.add_parser("iptest", help="Bounded control-pipe latency probe")
+    _iptest_p.add_argument("--rounds", default=20, help="Round-trips (1-100, default 20; never a flood)")
+    _iptest_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    _iptest_p.set_defaults(func=cmd_iptest)
     sub.add_parser("authority", help="Verify authority invariant").set_defaults(func=cmd_authority)
     sub.add_parser("help", help="Show help").set_defaults(func=cmd_help)
 

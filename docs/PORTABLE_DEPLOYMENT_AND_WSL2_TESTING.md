@@ -4,7 +4,7 @@ AEGIS NIDS is portable when host-specific values remain in a deployment profile 
 
 ## Deployment model
 
-Copy `config/deployment_profile.example.json` to `config/deployment_profile.json` on the target Windows host. Select `npcap` for packet capture, `wfp` for flow enforcement telemetry, `etw` for process and kernel telemetry, or `replay` for deterministic offline testing. The fallback order is used only for acquisition availability; it never changes the Rust PEP enforcement authority.
+Copy `config/deployment_profile.example.json` to `config/deployment_profile.json` on the target Windows host. Select `npcap` for packet capture, `wfp` for observe-only flow telemetry, `etw` for process and kernel telemetry, or `replay` for deterministic offline testing. The fallback order is used only for acquisition availability; it never creates a host-effect path. AEGIS is detection-only: the Rust PEP records evidence and never authorizes a filter or other host mutation.
 
 For a Wi-Fi host, use `provider=npcap` and `interface_selector.mode=auto` or specify the adapter description. For a wired LAN host, keep the same provider and select the Ethernet adapter by description or MAC. The detector must not infer that Wi-Fi is the only supported network. Virtual, VPN, and Hyper-V adapters can be excluded explicitly when they are not part of the observation scope.
 

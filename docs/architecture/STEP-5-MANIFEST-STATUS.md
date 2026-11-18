@@ -1,5 +1,9 @@
 # Architecture Truth (Step 6)
 
+> **HISTORICAL (2026-10-06):** superseded by `SYSTEM_MAP.json` +
+> `build_truth.json` + `python tools/truth.py verify`. Preserved for
+> history — do not use as current truth.
+
 **Status:** In Progress (S0-S6 classification)
 **Baseline:** 85f4102 (before cleanup) / 78b62be (after Step 3 ADR) / b29a9c9 (after Step 5 manifest)
 **Current HEAD:** 61f85f6 (after core restore + Step 5 manifest)

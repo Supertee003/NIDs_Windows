@@ -30,6 +30,23 @@ extensions = [
         extra_compile_args=["-O3", "-Wall"],
         define_macros=[("NDEBUG", None)],
     ),
+    Extension(
+        # T2-BRAIN-023b: Tier-2 sensor-pipe sender (kernel32 named-pipe
+        # client). kernel32 is default-linked on Windows: no extra libs.
+        "sensor_pipe",
+        sources=["sensor_pipe.pyx"],
+        extra_compile_args=["-O3", "-Wall"],
+        define_macros=[("NDEBUG", None)],
+    ),
+    Extension(
+        # T3-BRIDGE-026: C++ IPC bridge binding (aegis_ipc.dll, runtime
+        # LoadLibrary: no link-time dependency, same DLL search order and
+        # fallback semantics as bridge/aegis_bridge_ctypes.py).
+        "bridge_ipc",
+        sources=["bridge_ipc.pyx"],
+        extra_compile_args=["-O3", "-Wall"],
+        define_macros=[("NDEBUG", None)],
+    ),
 ]
 
 setup(

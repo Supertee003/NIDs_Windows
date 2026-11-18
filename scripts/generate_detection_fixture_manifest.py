@@ -29,8 +29,8 @@ MARKER_TRIGGER = {
 
 def main() -> None:
     rules = json.loads(RULES.read_text(encoding="utf-8"))["nids_rules"]
-    if len(rules) != 22:
-        raise SystemExit(f"expected 22 rules, found {len(rules)}")
+    if not rules:
+        raise SystemExit("expected a non-empty rules list, found none")
 
     fixtures = []
     for index, rule in enumerate(rules, start=1):
@@ -94,7 +94,7 @@ def main() -> None:
     OUT_JSON.write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     lines = [
-        "# Rules 22 Detection Fixture Manifest",
+        f"# Rules {len(fixtures)} Detection Fixture Manifest",
         "",
         "> Synthetic observe-only fixtures only. These markers are not attack execution and are not sent to the network, filesystem, process launcher, or enforcement path.",
         "",

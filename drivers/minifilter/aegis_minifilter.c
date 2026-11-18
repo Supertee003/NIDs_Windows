@@ -41,9 +41,8 @@ VOID AegisProcessCallback(
 NTSTATUS AegisFilterConnect(PFLT_PORT* serverPort, PFLT_PORT* clientPort);
 VOID AegisFilterDisconnect(void);
 
-/* Ring buffer (aegis_minifilter_comm.c) */
-NTSTATUS AegisRingInitialize(ULONG size);
-VOID AegisRingDestroy(void);
+/* Ring buffer prototypes live in aegis_minifilter.h (single declaration
+ * point; the local duplicates here are gone). */
 
 /* ====== Filter Registration (C4 pattern: no Altitude/Name) ====== */
 const FLT_OPERATION_REGISTRATION callbacks[] = {

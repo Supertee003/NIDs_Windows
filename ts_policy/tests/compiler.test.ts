@@ -152,8 +152,8 @@ test("conflict resolution: higher priority wins (lower sort key)", () => {
   // Sort: highest priority first -> r2 first
   assert.equal(result.ir.rules[0]!.id, 2);
   assert.equal(result.ir.rules[1]!.id, 1);
-  assert.equal(result.winning_rule_indices.length, 2);
-  assert.equal(result.dropped_rule_indices.length, 0);
+  assert.equal(result.winning_rule_ids.length, 2);
+  assert.equal(result.dropped_rule_ids.length, 0);
 });
 
 test("conflict resolution: ties broken by specificity (more conditions wins)", () => {
@@ -188,8 +188,8 @@ test("conflict resolution: same priority+specificity, distinct rule_ids -> both 
   const r_b = makeRule({ id: 2, name: "b", priority: 100 });
   const result = compile([r_a, r_b], { compiled_at_ms: 1 });
   assert.equal(result.ir.rules.length, 2);
-  assert.equal(result.winning_rule_indices.length, 2);
-  assert.equal(result.dropped_rule_indices.length, 0);
+  assert.equal(result.winning_rule_ids.length, 2);
+  assert.equal(result.dropped_rule_ids.length, 0);
 });
 
 test("compile: deterministic across runs (same input -> same hash)", () => {

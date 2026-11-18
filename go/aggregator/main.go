@@ -5,7 +5,7 @@
 //   1. Watches logs/aegis_core.ndjson for new alerts
 //   2. Deduplicates by rule+IP+event hash
 //   3. Correlates events across tiers using session_id
-//   4. Exposes REST API on :9200 for dashboard/CLI queries
+//   4. Exposes REST API on 127.0.0.1:9200 (loopback only) for dashboard/CLI queries
 //
 // Endpoints:
 //   GET  /api/alerts          - List all alerts
@@ -25,13 +25,8 @@ import (
         "log"
         "net/http"
         "os"
-        "os/signal"
-        "path/filepath"
         "strconv"
-        "syscall"
         "time"
-
-        "github.com/google/uuid"
 )
 
 const (
@@ -51,98 +46,6 @@ type Server struct {
         startTime time.Time
 }
 
-func main() {
-        // G27 Gate-A: --version flag. Print SEMVER + exit 0 before any
-        // initialization so the supervisor (and tests/runtime/test_version.py)
-        // can verify the binary is present and reports a parseable version.
-        for _, arg := range os.Args[1:] {
-                if arg == "--version" || arg == "-v" || arg == "-V" {
-                        fmt.Println("aegis-aggregator 0.1.0")
-                        os.Exit(0)
-                }
-        }
-
-        // G35: record start time for uptime calculation in /api/health.
-        startTime := time.Now()
-
-        // Get config from env or defaults
-        logPath := getEnv("AEGIS_LOG_PATH", DEFAULT_LOG_PATH)
-        apiPort := getEnvInt("AEGIS_API_PORT", DEFAULT_API_PORT)
-        maxAlerts := getEnvInt("AEGIS_MAX_ALERTS", DEFAULT_MAX_ALERTS)
-
-        // Resolve absolute path
-        absLogPath, err := filepath.Abs(logPath)
-        if err != nil {
-                log.Fatalf("Failed to resolve log path: %v", err)
-        }
-
-        log.Printf("[AGGREGATOR] AEGIS NIDS Alert Aggregator starting")
-        log.Printf("[AGGREGATOR] Log file: %s", absLogPath)
-        log.Printf("[AGGREGATOR] API port: %d", apiPort)
-        log.Printf("[AGGREGATOR] Max alerts: %d", maxAlerts)
-
-        // Initialize components
-        aggregator := NewAlertAggregator(maxAlerts)
-        correlator := NewCorrelator(24 * time.Hour)
-
-        collector, err := NewCollector(absLogPath, aggregator)
-        if err != nil {
-                log.Fatalf("Failed to create collector: %v", err)
-        }
-
-        if err := collector.Start(); err != nil {
-                log.Fatalf("Failed to start collector: %v", err)
-        }
-
-        // Create server
-        server := &Server{
-                aggregator: aggregator,
-                collector:  collector,
-                correlator: correlator,
-                startTime:  startTime,
-        }
-
-        // Start correlator that watches for new alerts
-        go server.correlateAlerts()
-
-        // Start purge goroutine (every 5 min)
-        go server.purgeLoop()
-
-        // Setup HTTP server
-        mux := http.NewServeMux()
-        mux.HandleFunc("/api/alerts", server.handleAlerts)
-        mux.HandleFunc("/api/alerts/critical", server.handleCriticalAlerts)
-        mux.HandleFunc("/api/alerts/", server.handleAlertByHash)
-        mux.HandleFunc("/api/sessions", server.handleSessions)
-        mux.HandleFunc("/api/sessions/", server.handleSessionByID)
-        mux.HandleFunc("/api/stats", server.handleStats)
-        mux.HandleFunc("/api/health", server.handleHealth)
-        mux.HandleFunc("/api/purge", server.handlePurge)
-        mux.HandleFunc("/", server.handleRoot)
-
-        server.httpServer = &http.Server{
-                Addr:    fmt.Sprintf(":%d", apiPort),
-                Handler: mux,
-        }
-
-        // Start HTTP server
-        go func() {
-                log.Printf("[AGGREGATOR] REST API available at http://localhost:%d", apiPort)
-                if err := server.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-                        log.Fatalf("HTTP server error: %v", err)
-                }
-        }()
-
-        // Wait for shutdown signal
-        sigCh := make(chan os.Signal, 1)
-        signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-        <-sigCh
-
-        log.Printf("[AGGREGATOR] Shutting down...")
-        collector.Stop()
-        server.httpServer.Close()
-        log.Printf("[AGGREGATOR] Shutdown complete")
-}
 
 // correlateAlerts feeds alerts to the correlator
 func (s *Server) correlateAlerts() {
@@ -249,6 +152,21 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
         // supervisor and tests/runtime/test_health.py can validate the
         // response (was: {"status":"healthy","timestamp":...}).
         uptimeMs := time.Since(s.startTime).Milliseconds()
+        // DEADCODE-QUARANTINE: real ingest accounting instead of hardcoded
+        // zeros. in_events = NDJSON lines parsed since start; errors = parse
+        // failures; last_event_ms = age of the last successful ingest
+        // (0 = none yet, honest "never"). out_events/dropped stay 0: this
+        // is a pull-only REST surface (no event egress, no drop path).
+        var inEvents, errors uint64
+        lastEventMs := int64(0)
+        if s.collector != nil {
+                ingested, parseErrors, lastIngestMs := s.collector.Stats()
+                inEvents = ingested
+                errors = parseErrors
+                if lastIngestMs > 0 {
+                        lastEventMs = time.Now().UnixMilli() - lastIngestMs
+                }
+        }
         response := map[string]interface{}{
                 "op":             "HEALTH",
                 "state":          "RUNNING",
@@ -258,11 +176,11 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
                 "version":        "0.1.0",
                 "pid":            os.Getpid(),
                 "uptime_ms":      uptimeMs,
-                "last_event_ms":  0,
+                "last_event_ms":  lastEventMs,
                 "counters": map[string]interface{}{
-                        "in_events":  0,
+                        "in_events":  inEvents,
                         "out_events": 0,
-                        "errors":     0,
+                        "errors":     errors,
                         "dropped":    0,
                 },
                 "deps": []map[string]string{
@@ -295,9 +213,14 @@ func (s *Server) handlePurge(w http.ResponseWriter, r *http.Request) {
         writeJSON(w, map[string]int{"purged": purged})
 }
 
-// generateUUID creates a new UUID string
-func generateUUID() string {
-        return uuid.New().String()
+// apiAddr builds the aggregator listen address. Loopback only (T1-NET-019):
+// the documented contract is 127.0.0.1:9200 (COMPONENT_MATRIX.md,
+// Operator Manual) and every in-tree client (scripts/aegis_api.py,
+// tools/aegisctl/client.py AegisAPI, README curl examples) uses loopback.
+// Binding all interfaces would expose alert data + the purge endpoint to
+// the LAN with no authentication, so bare ":port" is never constructed.
+func apiAddr(apiPort int) string {
+        return fmt.Sprintf("127.0.0.1:%d", apiPort)
 }
 
 // writeJSON writes a JSON response

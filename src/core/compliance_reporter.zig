@@ -1,4 +1,12 @@
-﻿// compliance_reporter.zig - AEGIS Compliance Reporter (Phase 40)
+// compliance_reporter.zig - AEGIS Compliance Reporter (Phase 40)
+//
+// STATUS (REL-CLOSURE, 2026-10-19): TEST-GRAPH SCAFFOLD. This module is
+// exercised by the zig test suite only and is not wired into the
+// product. 13 of the 32 framework controls below are placeholders
+// (checkAlwaysTrue) - a real compliance claim needs real checks and
+// evidence first. Do not wire this module into production before
+// replacing the placeholders; keep src/main.zig / src/daemon.zig free
+// of it (pinned by tests/docs/test_stale_doc_sweep.py).
 //
 // Generates compliance reports from forensic logs for audit purposes.
 // Supports frameworks: PCI-DSS, HIPAA, ISO 27001.
@@ -18,6 +26,7 @@ const canonical = @import("../contract/canonical_event.zig");
 
 pub const REPORTS_DIR = "reports";
 pub const MAX_EVENTS_PER_REPORT = 100_000;
+pub const MAX_LOG_LINE_BYTES = 1024 * 1024;
 
 // ============================================================
 // Compliance Frameworks
@@ -305,20 +314,35 @@ pub const ComplianceReporter = struct {
         };
         defer file.close();
 
-        const content = try file.readToEndAlloc(self.allocator, 10 * 1024 * 1024); // 10MB max
-        defer self.allocator.free(content);
+        return self.generateReportFromFile(framework, file);
+    }
 
-        // Parse NDJSON line by line
+    /// Generate a report from an already-open NDJSON file.
+    ///
+    /// The reader is intentionally streaming: forensic logs are append-only and
+    /// may exceed any single allocation limit. Each line is bounded to prevent
+    /// an attacker-controlled record from causing an unbounded allocation, while
+    /// MAX_EVENTS_PER_REPORT bounds the amount of work retained in the report.
+    fn generateReportFromFile(self: *ComplianceReporter, framework: Framework, file: std.fs.File) !ComplianceReport {
+        var buffered_reader = std.io.bufferedReader(file.reader());
+        var reader = buffered_reader.reader();
         var stats = ReportStats{};
-        var iter = std.mem.tokenizeAny(u8, content, "\n\r");
         var unique_ips = std.StringHashMap(void).init(self.allocator);
+        var raw_line = std.ArrayList(u8).init(self.allocator);
+        defer raw_line.deinit();
         defer {
             var ip_iter = unique_ips.iterator();
             while (ip_iter.next()) |entry| self.allocator.free(entry.key_ptr.*);
             unique_ips.deinit();
         }
 
-        while (iter.next()) |line| {
+        while (true) {
+            raw_line.clearRetainingCapacity();
+            reader.readUntilDelimiterArrayList(&raw_line, '\n', MAX_LOG_LINE_BYTES) catch |err| switch (err) {
+                error.EndOfStream => break,
+                else => return err,
+            };
+            const line = std.mem.trimRight(u8, raw_line.items, "\r");
             if (line.len == 0) continue;
 
             stats.total_events += 1;
@@ -373,11 +397,7 @@ pub const ComplianceReporter = struct {
 
             // Track unique source IPs
             if (src_ip.len > 0) {
-                const ip_dup = try self.allocator.dupe(u8, src_ip);
-                const gop = try unique_ips.getOrPut(ip_dup);
-                if (gop.found_existing) {
-                    self.allocator.free(ip_dup);
-                }
+                try trackUniqueIp(self.allocator, &unique_ips, src_ip);
             }
         }
 
@@ -518,6 +538,14 @@ fn extractJsonString(line: []const u8, key: []const u8) []const u8 {
     const start = i;
     while (i < after_key.len and after_key[i] != ',' and after_key[i] != '}' and after_key[i] != ' ') i += 1;
     return after_key[start..i];
+}
+
+fn trackUniqueIp(allocator: std.mem.Allocator, unique_ips: *std.StringHashMap(void), src_ip: []const u8) !void {
+    if (unique_ips.contains(src_ip)) return;
+
+    const ip_dup = try allocator.dupe(u8, src_ip);
+    errdefer allocator.free(ip_dup);
+    try unique_ips.put(ip_dup, {});
 }
 
 // ============================================================
@@ -687,17 +715,44 @@ test "extractJsonString returns empty for missing key" {
     try std.testing.expect(result.len == 0);
 }
 
+test "trackUniqueIp avoids allocation when an address is already present" {
+    var unique_ips = std.StringHashMap(void).init(std.testing.allocator);
+    defer {
+        var iter = unique_ips.iterator();
+        while (iter.next()) |entry| std.testing.allocator.free(entry.key_ptr.*);
+        unique_ips.deinit();
+    }
+
+    try trackUniqueIp(std.testing.allocator, &unique_ips, "192.0.2.10");
+    var failing = std.testing.FailingAllocator.init(std.testing.allocator, .{ .fail_index = 0 });
+    try trackUniqueIp(failing.allocator(), &unique_ips, "192.0.2.10");
+    try std.testing.expectEqual(@as(usize, 1), unique_ips.count());
+}
+
 test "ComplianceReporter generates report from the configured log" {
     var reporter = ComplianceReporter.init(std.testing.allocator);
     defer reporter.deinit();
 
-    // The reporter reads the production-relative forensic log. A repository
-    // test run may contain a fixture or prior forensic output, so this test
-    // validates report construction without assuming the shared log is empty.
-    const result = reporter.generateReport(.pci_dss);
+    // Keep the fixture outside the tracked tree and make it larger than the
+    // old 10 MiB whole-file allocation limit. Streaming must still produce a
+    // report and must stop after the configured event-work bound.
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const log = try tmp.dir.createFile("anomalous.json", .{ .read = true });
+    defer log.close();
+    const line = "{\"attack_type\": \"GATE-B-TEST\", \"src_ip\": \"1.2.3.4\", \"severity\": \"High\", \"status\": \"DETECTED\", \"padding\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}\n";
+    var buffered = std.io.bufferedWriter(log.writer());
+    const writer = buffered.writer();
+    var i: usize = 0;
+    while (i < 80_000) : (i += 1) try writer.writeAll(line);
+    try buffered.flush();
+    try log.seekTo(0);
+
+    const result = reporter.generateReportFromFile(.pci_dss, log);
     if (result) |report| {
         try std.testing.expect(report.framework == .pci_dss);
         try std.testing.expectEqual(@as(u32, 10), report.controls_checked);
+        try std.testing.expectEqual(@as(u64, 80_000), report.stats.total_events);
     } else |_| {
         return error.TestUnexpectedResult;
     }

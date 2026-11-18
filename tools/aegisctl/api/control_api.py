@@ -2,8 +2,10 @@
 """AEGIS NIDS Control Plane API — Business logic shared by CLI, TUI, and WEB.
 
 This module contains ALL enforcement and operational logic. The frontend
-interfaces (CLI at tools/aegisctl.py, TUI at tools/aegisctl/commands/console.py,
-and any WEB layer) must be THIN clients that delegate to this API.
+interfaces (CLI at tools/aegisctl.py and WEB at
+tools/aegisctl/web_dashboard/) must be THIN clients that delegate to
+this API. (There is no Python TUI; the operator TUI is the Go
+nose/bubbletea interface.)
 
 STRICT INVARIANT: No component may bypass the Rust PEP for enforcement.
 All block/allow/quarantine requests route through aegis_pep_enforce() FFI.
@@ -15,6 +17,8 @@ from __future__ import annotations
 import json
 import ipaddress
 import os
+import socket
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -64,6 +68,34 @@ def decode_worker_failure_mask(mask: Any) -> List[str]:
     return [reason for bit, reason in WORKER_FAILURE_BITS.items() if value & (1 << bit)]
 
 
+# One control request produces exactly one JSON document. The daemon owns one
+# message-mode pipe instance and writes that document in chunks, while a single
+# ReadFile can deliver at most the read buffer. A response larger than the
+# buffer therefore arrives as several reads (ERROR_MORE_DATA = 234); treating
+# the first read as the whole response made a large paged forensic response
+# look like a hard transport failure. Accumulate until the document parses.
+_PIPE_READ_CHUNK = 65536
+_MAX_PIPE_READS = 256
+_MAX_PIPE_RESPONSE_BYTES = 8 * 1024 * 1024
+ERROR_MORE_DATA = 234
+ERROR_BROKEN_PIPE = 109
+
+
+def _response_document_complete(raw: bytes) -> bool:
+    """True when raw already contains one complete JSON document.
+
+    A partial read is never a control failure: the caller must keep reading
+    until the accumulated bytes parse as a single document.
+    """
+    if not raw:
+        return False
+    try:
+        json.loads(raw.decode("utf-8"))
+        return True
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return False
+
+
 def _query_daemon(command: str, payload: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
     """Query the running Zig daemon; return None when it is unavailable."""
     if os.name != "nt":
@@ -103,16 +135,29 @@ def _query_daemon(command: str, payload: Optional[Dict[str, Any]] = None) -> Opt
             if not write_file(handle, request_buf, len(request_bytes), ctypes.byref(sent), None):
                 return None
 
-            chunks = []
-            while True:
-                response_buf = ctypes.create_string_buffer(65536)
+            chunks: List[bytes] = []
+            total = 0
+            for _ in range(_MAX_PIPE_READS):
+                response_buf = ctypes.create_string_buffer(_PIPE_READ_CHUNK)
                 received = wintypes.DWORD(0)
-                ok = read_file(handle, response_buf, 65535, ctypes.byref(received), None)
+                ok = read_file(handle, response_buf, _PIPE_READ_CHUNK - 1, ctypes.byref(received), None)
                 if received.value:
                     chunks.append(response_buf.raw[:received.value])
-                if ok or ctypes.get_last_error() == 109:  # ERROR_BROKEN_PIPE
+                    total += received.value
+                    if total > _MAX_PIPE_RESPONSE_BYTES:
+                        return None
+                    if _response_document_complete(b"".join(chunks)):
+                        break
+                if ok:
+                    # A successful read proves one more message arrived, not
+                    # that the document is complete. GetLastError is only
+                    # meaningful after a failed call and may hold a stale
+                    # ERROR_BROKEN_PIPE here.
+                    continue
+                error = ctypes.get_last_error()
+                if error == ERROR_BROKEN_PIPE:  # server closed after the document
                     break
-                if ctypes.get_last_error() != 234:  # ERROR_MORE_DATA
+                if error != ERROR_MORE_DATA:
                     return None
             raw = b"".join(chunks)
         finally:
@@ -141,14 +186,25 @@ def _daemon_subsystems(payload: Dict[str, Any]) -> List[Tuple[str, bool, Optiona
     return result
 
 
-def _query_daemon_retry(command: str, payload: Optional[Dict[str, Any]] = None, attempts: int = 3) -> Optional[Dict[str, Any]]:
-    """Retry read-only queries because the daemon accepts one pipe client at a time."""
+def _query_daemon_retry(command: str, payload: Optional[Dict[str, Any]] = None, attempts: int = 5) -> Optional[Dict[str, Any]]:
+    """Retry read-only queries because the daemon accepts one pipe client at a time.
+
+    Contention is routine, not exceptional: the 1s dashboard refresh, web
+    snapshots, pytest live-daemon tests, and operator scans all share the
+    single control instance, and a full-ring verify holds it for seconds
+    under load. Backoff (0.05→0.4s, ~0.75s worst) rides out millisecond
+    contention without masking a truly dead daemon for long. It cannot
+    fix a verify-hogged pipe — that needs daemon-side multi-instance,
+    deliberately deferred (see EVIDENCE_INDEX GAP-015 notes).
+    """
+    delay = 0.05
     for attempt in range(attempts):
         result = _query_daemon(command, payload)
         if result is not None:
             return result
         if attempt + 1 < attempts:
-            time.sleep(0.05)
+            time.sleep(delay)
+            delay = min(delay * 2, 0.4)
     return None
 
 
@@ -219,13 +275,164 @@ def get_all_status() -> List[Tuple[str, bool, Optional[int]]]:
     return results
 
 
+# --------------------------------------------------------------------------
+# Bridge diagnostic (RB-017 step 3): honest brain-channel signal.
+# --------------------------------------------------------------------------
+# The daemon publishes no brain-channel posture (system.health carries no
+# udp_brain/auth keys), so this synthesizes host-local truth: the UDP :9999
+# listener owner. Anything sender-side is labeled as such; anything about
+# the secret is reported as unknown unless it is this shell's own env
+# (never another process's). Read-only; no pipe writes, no tree writes.
+
+BRAIN_UDP_PORT = 9999
+BRAIN_ENTRY_BASENAME = "windows_brain.py"
+
+
+def _ps_output(script: str, timeout: int = 30) -> str:
+    """Run one PowerShell probe; '' on any failure (unknown, never zero)."""
+    try:
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", script],
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    if proc.returncode != 0:
+        return ""
+    return (proc.stdout or "").strip()
+
+
+def udp_listener_owner(port: int) -> Optional[Tuple[int, str, Optional[str]]]:
+    """(pid, process name, command line) owning a local UDP listener.
+
+    Returns None when there is no listener or the owner is unreadable.
+    Command line may itself be None (e.g. elevated owner): callers must
+    treat that as unknown identity, not as a negative.
+    """
+    if os.name != "nt":
+        return None
+    pid_text = _ps_output(
+        "Get-NetUDPEndpoint -LocalPort %d -ErrorAction SilentlyContinue | "
+        "Select-Object -ExpandProperty OwningProcess | Select-Object -First 1" % port
+    )
+    try:
+        pid = int(pid_text.split()[0])
+    except (ValueError, IndexError):
+        return None
+    name = _ps_output(
+        "(Get-Process -Id %d -ErrorAction SilentlyContinue).ProcessName" % pid
+    ) or None
+    cmdline = _ps_output(
+        "(Get-CimInstance Win32_Process -Filter \"ProcessId=%d\" "
+        "-ErrorAction SilentlyContinue).CommandLine" % pid
+    ) or None
+    return (pid, name, cmdline)
+
+
+def _udp_health(port: int, timeout_s: float = 2.0) -> Optional[Dict[str, Any]]:
+    """One HEALTH probe datagram to a UDP listener; parsed dict or None.
+
+    Supervisor-channel read (milliseconds, no control pipe, no tree).
+    None means unknown (timeout/refused/garbage) -- never a negative.
+    """
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.settimeout(timeout_s)
+            s.sendto(b'{"op":"HEALTH"}', ("127.0.0.1", port))
+            data, _ = s.recvfrom(65535)
+        doc = json.loads(data.decode("utf-8", errors="ignore"))
+        return doc if isinstance(doc, dict) else None
+    except Exception:
+        return None
+
+
+def brain_health() -> Optional[Dict[str, Any]]:
+    """Brain HEALTH doc via one UDP probe, or None when unreachable.
+
+    Public wrapper over _udp_health for CLI/TUI consumers (the leading
+    underscore stays private). Carries state + counters when the brain
+    answers; None is unknown, never a negative.
+    """
+    return _udp_health(BRAIN_UDP_PORT)
+
+
+def bridge_diagnostic() -> Dict[str, Any]:
+    """Brain-channel diagnostic document for `aegisctl bridge`.
+
+    Keys: command, port, available, listener {pid, process, cmdline_match}
+    or None, owner_is_brain True/False/None, this_shell_secret_configured
+    bool, sender_side (daemon brain bit or None, labeled), note.
+    Pure composition over udp_listener_owner + one budgeted health read;
+    unit-pinned with both patched (no system touch in tests).
+    """
+    doc: Dict[str, Any] = {
+        "command": "bridge",
+        "port": BRAIN_UDP_PORT,
+        "available": False,
+        "listener": None,
+        "owner_is_brain": None,
+        "this_shell_secret_configured": bool(os.environ.get("AEGIS_BRAIN_SECRET", "")),
+        "secret_posture": "unknown",
+        "sender_side": None,
+    }
+    owner = udp_listener_owner(BRAIN_UDP_PORT)
+    if owner is None:
+        doc["reason"] = "no listener on :%d (brain not running)" % BRAIN_UDP_PORT
+        doc["note"] = ("RB-017 step 3 needs a listener owned by the brain process; "
+                       "start it supervised, then re-run.")
+        return doc
+    pid, name, cmdline = owner
+    if cmdline is None:
+        match: Optional[bool] = None
+    else:
+        match = BRAIN_ENTRY_BASENAME.lower() in cmdline.lower()
+    doc["listener"] = {"pid": pid, "process": name, "cmdline_match": match}
+    doc["owner_is_brain"] = match
+    if match is True:
+        doc["available"] = True
+        doc["note"] = ("listener owned by the brain entrypoint; sender-side daemon bits "
+                       "(if any) prove nothing alone -- this owner row is the honest signal.")
+    elif match is False:
+        doc["reason"] = ":%d owned by pid %s (%s), not the brain" % (BRAIN_UDP_PORT, pid, name)
+        doc["note"] = "another process holds the brain port; stop it or move the brain."
+    else:
+        doc["reason"] = "owner command line unreadable (elevate?)"
+        doc["note"] = "listener exists but identity is unknown, not negative."
+    # EVT-156: ask the listener itself. The brain answers HEALTH with an
+    # "auth" posture key (on/off, never the value). A schema-correct reply
+    # from the listener pid corroborates identity when the command line is
+    # unreadable, and reports posture otherwise. Timeout/garbage stays
+    # "unknown" -- never a negative, never fabricated.
+    health = _udp_health(BRAIN_UDP_PORT)
+    if isinstance(health, dict):
+        if health.get("auth") in ("on", "off"):
+            doc["secret_posture"] = health["auth"]
+        if match is None and health.get("pid") == pid:
+            doc["owner_is_brain"] = True
+            doc["available"] = True
+            doc["note"] = ("command line unreadable, but the schema-correct HEALTH "
+                           "reply comes from the listener pid itself: corroborated.")
+    try:
+        health = query_control("system.health") or {}
+        subs = health.get("subsystems")
+        if isinstance(subs, dict) and "brain" in subs:
+            doc["sender_side"] = {"brain": subs.get("brain"), "label": "sender-side only"}
+    except Exception:
+        pass
+    return doc
+
+
 def load_rules() -> Dict[str, Any]:
-    """Load rules from the daemon's canonical configs/Rules.json location."""
-    repo = REPO_ROOT
-    for rules_file in (repo / "configs" / "Rules.json", repo / "config" / "Rules.json"):
-        if rules_file.exists():
-            with open(rules_file, "r", encoding="utf-8") as f:
-                return json.load(f)
+    """Load rules from the single rule authority: configs/Rules.json.
+
+    The previous fallback to config/Rules.json silently served a divergent
+    rule set (its regex_patterns differed in two entries), so a caller could
+    validate one rule set and act on another.
+    """
+    rules_file = REPO_ROOT / "configs" / "Rules.json"
+    if rules_file.exists():
+        with open(rules_file, "r", encoding="utf-8") as f:
+            return json.load(f)
     return {"nids_rules": []}
 
 
@@ -319,12 +526,33 @@ def request_enforcement_via_pep(
         "trace_id": int(trace_id),
     }
     receipt = _query_daemon_retry("enforcement.block", payload=payload)
-    if not isinstance(receipt, dict) or receipt.get("status") != "ENFORCED":
+    if not is_valid_enforcement_receipt(receipt):
         return ("FAILED", "Rust PEP did not return a validated EnforcementReceipt")
-    filter_id = int(receipt.get("filter_id", 0) or 0)
-    if filter_id == 0:
-        return ("FAILED", "enforcement response did not contain filter_id")
     return ("ENFORCED", json.dumps(receipt, separators=(",", ":")))
+
+
+def is_valid_enforcement_receipt(receipt: Any) -> bool:
+    """Accept only a complete provider/read-back EnforcementReceipt."""
+    if not isinstance(receipt, dict):
+        return False
+    if str(receipt.get("status", "")).upper() != "ENFORCED":
+        return False
+    if not bool(receipt.get("host_effect_confirmed", False)):
+        return False
+    if not str(receipt.get("provider", "")).strip():
+        return False
+    try:
+        if int(receipt.get("receipt_version", 0) or 0) != 1:
+            return False
+    except (TypeError, ValueError):
+        return False
+    for field in ("request_id", "event_id", "policy_id", "filter_id", "trace_id", "audit_id"):
+        try:
+            if int(receipt.get(field, 0) or 0) <= 0:
+                return False
+        except (TypeError, ValueError):
+            return False
+    return True
 
 
 def cleanup_enforcement_filter(filter_id: int) -> Tuple[str, str]:
@@ -376,11 +604,27 @@ def apply_firewall_block(
 
 
 def get_defcon() -> Optional[Tuple[int, str]]:
-    """Get DEFCON level from Bridge IPC.
+    """Get DEFCON level — the daemon is the authority (FE-DEF-095a).
+
+    Primary: daemon health defcon_level/defcon_label (control/defcon.zig
+    ladder over daemon-owned counters). Fallback below is diagnostic-only:
+    bridge IPC or a stale anomalous.json tail, kept so an offline daemon
+    still shows something clearly labeled — never authoritative.
 
     Returns (level, label) or None if unavailable.
     """
-    # Try bridge first
+    # Authority first: daemon health.
+    try:
+        health = get_health_payload()
+        if isinstance(health, dict):
+            level = health.get("defcon_level")
+            label = health.get("defcon_label")
+            if isinstance(level, int) and 1 <= level <= 5 and isinstance(label, str) and label:
+                return level, label
+    except Exception:
+        pass
+
+    # Diagnostic fallback (unchanged semantics, demoted authority).
     try:
         shared_paths = [
             TOOLS_DIR.parent.parent / "shared",
@@ -433,6 +677,411 @@ def get_active_rules() -> List[Dict[str, Any]]:
 def query_control(command: str, payload: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
     """Run a read-only control-plane query through the protected pipe."""
     return _query_daemon_retry(command, payload=payload)
+
+
+def rule_id_to_u32(value: str) -> int:
+    """Rule id string to the daemon's numeric rule space.
+
+    Accepts a bare integer ("4009890390") or a catalog id ("R9059",
+    FNV-1a over the exact string bytes -- the same algorithm as
+    rule_loader.zig hashRuleId, cross-pinned with Go and the contract
+    suite). Raises ValueError on empty/unparseable input.
+    """
+    text = (value or "").strip()
+    if not text:
+        raise ValueError("empty rule id")
+    try:
+        number = int(text, 0)
+        if number < 0:
+            raise ValueError("negative rule id")
+        return number
+    except ValueError:
+        pass
+    h = 0x811C9DC5
+    for byte in text.encode("utf-8"):
+        h ^= byte
+        h = (h * 0x01000193) & 0xFFFFFFFF
+    return h
+
+
+PIPE_LATENCY_ROUNDS_DEFAULT = 20
+PIPE_LATENCY_ROUNDS_MAX = 100
+
+
+def pipe_latency_probe(rounds: int = PIPE_LATENCY_ROUNDS_DEFAULT) -> Dict[str, Any]:
+    """Bounded control-pipe latency probe (EVT-167).
+
+    N system.health round-trips through the budgeted retry path,
+    reporting attempts/ok plus p50/p99/max over the successful ones.
+    This is a latency SAMPLE, not a throughput flood: rounds are capped
+    at 100 and the result says so. Never raises; total failure reads as
+    ok=0 (unknown pipe), never fabricated timings.
+    """
+    try:
+        n = max(1, min(int(rounds), PIPE_LATENCY_ROUNDS_MAX))
+    except (TypeError, ValueError):
+        n = PIPE_LATENCY_ROUNDS_DEFAULT
+    samples: List[float] = []
+    ok = 0
+    for _ in range(n):
+        start = time.perf_counter()
+        try:
+            reply = query_control("system.health", {})
+        except Exception:
+            reply = None
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
+        if isinstance(reply, dict) and reply:
+            ok += 1
+            samples.append(elapsed_ms)
+    ordered = sorted(samples)
+    def _pct(p: float) -> Optional[float]:
+        if not ordered:
+            return None
+        idx = min(len(ordered) - 1, int(p * len(ordered)))
+        return ordered[idx]
+    return {
+        "command": "iptest",
+        "rounds_requested": rounds,
+        "rounds": n,
+        "capped": n != rounds,
+        "ok": ok,
+        "failed": n - ok,
+        "p50_ms": _pct(0.50),
+        "p99_ms": _pct(0.99),
+        "max_ms": ordered[-1] if ordered else None,
+        "note": "bounded latency sample, not a flood; p99 over successful rounds only",
+    }
+
+
+# The daemon page budget is authoritative; these only bound the client loop.
+FORENSIC_PAGE_LIMIT_CAP = 1000
+FORENSIC_PAGE_CAP = 64
+
+
+def query_forensic_records(
+    limit: int = 100,
+    *,
+    source: Optional[int] = None,
+    payload_prefix: Optional[str] = None,
+    after: Optional[int] = None,
+) -> Optional[Dict[str, Any]]:
+    """Collect forensic records across byte-budgeted control pages.
+
+    Every daemon page is bounded so one response fits in a single control
+    message, and the response reports `truncated` plus a `next_after` cursor.
+    Following that cursor keeps a large result set complete instead of
+    returning a silently short list or failing the transport.
+
+    The merged document carries `pages` and the final `truncated` state, so a
+    caller can always distinguish "complete result set" from "budget or page
+    cap exhausted, more records may remain".
+    """
+    requested = max(1, min(int(limit), FORENSIC_PAGE_LIMIT_CAP))
+    collected: List[Dict[str, Any]] = []
+    merged: Optional[Dict[str, Any]] = None
+    cursor: Optional[int] = max(0, int(after)) if after is not None else None
+    pages = 0
+
+    while pages < FORENSIC_PAGE_CAP:
+        page_payload: Dict[str, Any] = {
+            "limit": max(1, min(requested - len(collected), FORENSIC_PAGE_LIMIT_CAP)),
+        }
+        if source is not None:
+            page_payload["source"] = int(source)
+        if payload_prefix:
+            page_payload["payload_prefix"] = payload_prefix
+        if cursor is not None:
+            page_payload["after"] = cursor
+
+        document = query_control("forensics.list", payload=page_payload)
+        if document is None:
+            return None
+        pages += 1
+        if merged is None:
+            merged = dict(document)
+
+        records = document.get("records")
+        if isinstance(records, list):
+            collected.extend(item for item in records if isinstance(item, dict))
+
+        if not document.get("truncated"):
+            merged["records"] = collected
+            merged["records_returned"] = len(collected)
+            merged["pages"] = pages
+            merged["truncated"] = False
+            merged["next_after"] = None
+            return merged
+
+        next_after = document.get("next_after")
+        if next_after is None:
+            # Truncated without a cursor cannot be continued; report it as an
+            # incomplete result set rather than pretending it is complete.
+            break
+        cursor = int(next_after)
+        if not records or len(collected) >= requested:
+            break
+
+    if merged is None:
+        return None
+    merged["records"] = collected
+    merged["records_returned"] = len(collected)
+    merged["pages"] = pages
+    merged["truncated"] = True
+    merged["next_after"] = cursor
+    return merged
+
+
+def _udp_listener_pids(port: int):
+    """PIDs listening on a UDP port (any local interface), Windows only.
+
+    Returns None when the scan itself is unavailable (non-Windows, netstat
+    missing), [] when nothing listens. Read-only: netstat never mutates.
+    """
+    if sys.platform != "win32":
+        return None
+    import subprocess
+    try:
+        proc = subprocess.run(
+            ["netstat", "-ano", "-p", "UDP"],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    pids = set()
+    for line in proc.stdout.splitlines():
+        parts = line.split()
+        # UDP    127.0.0.1:9999    *:*    1234
+        if len(parts) >= 4 and parts[0].upper() == "UDP" \
+                and parts[1].endswith(":%d" % port):
+            try:
+                pids.add(int(parts[-1]))
+            except ValueError:
+                continue
+    return sorted(pids)
+
+
+def _process_identity(pid: int):
+    """(image name, command line) of a PID. Read-only; empty strings when
+    the process is not visible to the caller.
+
+    Uses wmic where present (fast) with a PowerShell CIM fallback (wmic
+    was removed from current Windows 11 builds).
+    """
+    if sys.platform != "win32":
+        return "", ""
+    import subprocess
+    try:
+        proc = subprocess.run(
+            ["wmic", "process", "where", "ProcessId=%d" % pid,
+             "get", "Name,CommandLine", "/format:value"],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        proc = None
+    name, cmd = "", ""
+    if proc is not None and proc.returncode == 0:
+        for line in proc.stdout.splitlines():
+            line = line.strip().strip("\x00")
+            if line.startswith("Name="):
+                name = line[len("Name="):].strip()
+            elif line.startswith("CommandLine="):
+                cmd = line[len("CommandLine="):].strip()
+    if not cmd:
+        try:
+            probe = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                 "(Get-CimInstance Win32_Process -Filter 'ProcessId=%d' | "
+                 "ForEach-Object { $_.Name + '||' + $_.CommandLine })" % pid],
+                capture_output=True, text=True, timeout=60,
+            )
+        except (OSError, subprocess.SubprocessError):
+            probe = None
+        if probe is not None and probe.returncode == 0 and "||" in probe.stdout:
+            name, _, cmd = probe.stdout.strip().partition("||")
+            name, cmd = name.strip(), cmd.strip()
+    return name, cmd
+
+
+def detect_foreign_udp_listener(port, expect_markers, corroborate=None):
+    """Classify listeners on an owned UDP channel (GAP-010, read-only).
+
+    expect_markers: substrings identifying the legitimate owner (e.g. the
+    brain script name). A listener whose command line contains none of
+    them is FOREIGN (possibly orphaned).
+
+    An invisible command line proves nothing either way. The supervisor on
+    this host runs the brain as SYSTEM in session 0, where its command line
+    is unreadable to an unelevated caller, so calling that FOREIGN raised a
+    red gate for a healthy brain. When the caller supplies `corroborate`, an
+    invisible owner is put to that test (for the brain: a schema-correct
+    HEALTH reply from the listener's own pid) and reported OWNED only when
+    it answers; otherwise it stays FOREIGN with the reason recorded, never
+    silently cleared. Returns finding dicts.
+    """
+    if corroborate is None:
+        corroborate = lambda _pid: False
+    pids = _udp_listener_pids(port)
+    if pids is None:
+        return [{"port": port, "pid": None, "status": "UNKNOWN",
+                 "detail": "listener scan unavailable on this platform"}]
+    findings = []
+    for pid in pids:
+        name, cmd = _process_identity(pid)
+        if cmd and any(m.lower() in cmd.lower() for m in expect_markers):
+            status, detail = "OWNED", (name or "owned process")
+        elif not cmd:
+            if corroborate(pid):
+                status = "OWNED"
+                detail = ("%s; ownership corroborated by the listener's own "
+                          "schema-correct reply" % (name or "process"))
+            else:
+                status = "FOREIGN"
+                detail = "command line not visible; pid %d (%s)" % (pid, name or "unknown image")
+        else:
+            status = "FOREIGN"
+            detail = "pid %d (%s) does not match the expected owner" % (pid, name or "unknown image")
+        findings.append({"port": port, "pid": pid, "status": status,
+                         "process": name, "command_excerpt": cmd[:160],
+                         "detail": detail})
+    if not findings:
+        findings.append({"port": port, "pid": None, "status": "CLEAR",
+                         "detail": "no listener"})
+    return findings
+
+
+def diagnose_endpoint_ownership():
+    """Owned-endpoint census for `aegisctl diagnose` (GAP-010, read-only).
+
+    Checks the brain channel (UDP 9999, owner: the brain script) plus the
+    control-pipe responder identity. Never kills, restarts, or otherwise
+    touches any process: detection only.
+    """
+    def _brain_listener_corroborates(pid) -> bool:
+        """EVT-156 identity test: the brain answers HEALTH itself."""
+        health = _udp_health(BRAIN_UDP_PORT)
+        return isinstance(health, dict) and health.get("pid") == pid
+
+    findings = []
+    for label, port, markers in (("brain channel", 9999, ("windows_brain.py", "brain/")),):
+        for found in detect_foreign_udp_listener(port, markers, _brain_listener_corroborates):
+            found = dict(found)
+            found["endpoint"] = label
+            findings.append(found)
+    try:
+        health = _query_daemon_retry("system.health")
+    except Exception:
+        health = None
+    if isinstance(health, dict):
+        findings.append({"endpoint": "control pipe", "name": "aegis_control",
+                         "status": "REACHABLE", "pid": health.get("pid"),
+                         "detail": "responder state %s" % health.get("state")})
+    else:
+        findings.append({"endpoint": "control pipe", "name": "aegis_control",
+                         "status": "UNREACHABLE", "pid": None,
+                         "detail": "no daemon answered the health query"})
+    foreign = sum(1 for f in findings if f.get("status") == "FOREIGN")
+    return {"findings": findings, "foreign_count": foreign}
+
+
+# Cache for the endpoint census: netstat + identity lookups cost real
+# subprocess time, so long-lived consumers (TUI loop, WEB polling) reuse a
+# bounded-stale census instead of rescanning per health call. CLI diagnose
+# calls diagnose_endpoint_ownership() directly for a fresh census.
+_ENDPOINT_OWNERSHIP_TTL_S = 60.0
+_endpoint_ownership_cache = {"at": 0.0, "value": None}
+
+
+def _reset_endpoint_ownership_cache() -> None:
+    """Clear the census cache (tests use this for determinism)."""
+    _endpoint_ownership_cache["at"] = 0.0
+    _endpoint_ownership_cache["value"] = None
+
+
+def get_endpoint_ownership_cached() -> Dict[str, Any]:
+    """Endpoint census, at most _ENDPOINT_OWNERSHIP_TTL_S old."""
+    now = time.monotonic()
+    cached = _endpoint_ownership_cache["value"]
+    if cached is not None and (now - _endpoint_ownership_cache["at"]) < _ENDPOINT_OWNERSHIP_TTL_S:
+        return cached
+    fresh = diagnose_endpoint_ownership()
+    _endpoint_ownership_cache["at"] = now
+    _endpoint_ownership_cache["value"] = fresh
+    return fresh
+
+
+def summarize_endpoint_ownership(census: Dict[str, Any]) -> Dict[str, Any]:
+    """Collapse a census to health-payload shape (GAP-010, additive).
+
+    Worst status wins, FOREIGN over UNKNOWN over CLEAR; the pipe entry is
+    informational (daemon liveness already has its own fields). Only UDP
+    channel findings drive the status.
+    """
+    worst, foreign = "CLEAR", 0
+    for found in census.get("findings", []):
+        if found.get("endpoint") == "control pipe":
+            continue
+        if found.get("status") == "FOREIGN":
+            worst, foreign = "FOREIGN", foreign + 1
+        elif found.get("status") == "UNKNOWN" and worst == "CLEAR":
+            worst = "UNKNOWN"
+    return {"status": worst, "foreign_count": foreign,
+            "findings": census.get("findings", [])}
+
+
+def _daemon_counters_or_synthesized(daemon_health: Dict[str, Any],
+                                    synthesized: Dict[str, int]) -> Dict[str, int]:
+    """Prefer daemon-owned counters, fall back to the synthesis honestly.
+
+    CTRL-SHIM-150: since CTRL-HEALTH-115 the daemon emits RUNTIME_CONTRACT
+    §4.1 counters itself. Use them verbatim when all four are present
+    non-negative ints; otherwise (pre-slice daemons, malformed values)
+    use the caller-supplied data_plane synthesis. Never merged per-field:
+    a half-present daemon object must not produce a half-synthesized one.
+    """
+    raw = daemon_health.get("counters")
+    if isinstance(raw, dict):
+        keys = ("in_events", "out_events", "errors", "dropped")
+        vals = []
+        for key in keys:
+            val = raw.get(key)
+            if isinstance(val, bool) or not isinstance(val, int) or val < 0:
+                break
+            vals.append(val)
+        else:
+            return dict(zip(keys, vals))
+    return dict(synthesized)
+
+
+def _daemon_data_integrity(daemon_health: Dict[str, Any]) -> Dict[str, int]:
+    """Project validated ingress-loss counters from daemon health.
+
+    Older daemon builds do not emit this additive object. Preserve that as
+    an empty mapping, and omit malformed/unknown individual counters rather
+    than turning them into misleading zeroes.
+    """
+    raw = daemon_health.get("data_integrity")
+    if not isinstance(raw, dict):
+        return {}
+    keys = (
+        "queue_dropped_total",
+        "nose_frames_rejected",
+        "nose_frames_dropped",
+        "nose_pipe_errors",
+        "minifilter_ring_dropped",
+        "minifilter_pipeline_dropped",
+        # LOSS-BUDGET-001: additive; older daemons omit it and the projection
+        # simply stays without the field, which is why it is not defaulted to 0.
+        "loss_budget",
+    )
+    projected: Dict[str, int] = {}
+    for key in keys:
+        value = raw.get(key)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            continue
+        projected[key] = value
+    return projected
 
 
 def get_health_payload() -> Dict[str, Any]:
@@ -492,7 +1141,10 @@ def get_health_payload() -> Dict[str, Any]:
         tier3_diagnostics["provider_ready"] = tier3_diagnostics["dependency_ready"] and bool(
             capabilities.get("wfp", False)
         )
-        tier3_diagnostics["host_effect_capable"] = tier3_diagnostics["provider_ready"] and tier3_ready
+        # Production is permanently detection-only. Keep technical provider
+        # readiness visible without projecting it as a host effect capability.
+        tier3_diagnostics["provider_capable"] = tier3_diagnostics["provider_ready"] and tier3_ready
+        tier3_diagnostics["host_effect_capable"] = False
         computed_state, computed_degraded = compute_health_state()
         # The daemon is authoritative for the current canonical subsystem
         # names and worker postconditions. The legacy compute_health_state()
@@ -548,6 +1200,39 @@ def get_health_payload() -> Dict[str, Any]:
         # cannot advertise Tier-3 readiness.
         effective_state = computed_state
         effective_degraded = computed_degraded
+        # The daemon owns both runtime lifecycle and operational health. Its
+        # lifecycle can remain RUNNING while the health contract is degraded
+        # by data loss; never let that lifecycle value promote a degraded
+        # health result to RUNNING in the control API.
+        daemon_runtime_state = str(
+            daemon_health.get("runtime_state", daemon_health.get("state", "DEGRADED"))
+        ).upper()
+        daemon_health_state = str(daemon_health.get("state", daemon_runtime_state)).upper()
+        daemon_degraded = bool(daemon_health.get("degraded", False))
+        # CLI-STATE-001: the daemon owns two different states. `state` is the
+        # health contract, computed from live operational facts (workers,
+        # subsystems, data loss). `runtime_state` is the lifecycle state
+        # machine, which src/daemon.zig sets ONCE at startup and never
+        # re-promotes. The merge below stays fail-closed — a degraded lifecycle
+        # must not promote anything — but a lifecycle that contradicts a fully
+        # healthy health contract is a named condition an operator can act on,
+        # not an unattributable degradation.
+        state_machine_disagrees = (
+            daemon_runtime_state == "DEGRADED"
+            and daemon_health_state == "RUNNING"
+            and not daemon_degraded
+            and workers_ready
+            and canonical_subsystems_ready
+        )
+        if "FAILED" in {computed_state, daemon_runtime_state, daemon_health_state}:
+            effective_state = "FAILED"
+        elif daemon_runtime_state in {"STOPPED", "STOPPING", "STARTING"}:
+            effective_state = daemon_runtime_state
+        elif daemon_runtime_state == "DEGRADED" or daemon_health_state == "DEGRADED" or daemon_degraded:
+            effective_state = "DEGRADED"
+        effective_degraded = effective_degraded or daemon_degraded
+        if daemon_runtime_state != "RUNNING":
+            effective_degraded = True
         effective_tier3_ready = tier3_ready and effective_state != "FAILED"
         shield_status = subsystem_payload.get("rust_pep", subsystem_payload.get("pep", {}))
         if not isinstance(shield_status, dict):
@@ -559,36 +1244,69 @@ def get_health_payload() -> Dict[str, Any]:
             "pep_ready": shield_running,
             "policy_authority": shield_running,
             "provider_ready": shield_wfp_ready,
-            "host_effect_capable": shield_wfp_ready,
+            "provider_capable": shield_wfp_ready,
+            "host_effect_capable": False,
             "wfp": "READY" if shield_wfp_ready else "UNAVAILABLE",
             "error": None if shield_running else "rust_shield_not_ready",
         }
+        # `rust_pep` is the canonical enforcement authority.  Keep the old
+        # rust_shield projection only as a compatibility alias for clients
+        # that have not migrated yet; it is not a second subsystem/process.
+        rust_pep = dict(rust_shield)
+        rust_pep["canonical"] = True
+        rust_pep["authority"] = "sole_enforcement_authority"
+        rust_shield["canonical"] = False
+        rust_shield["alias_of"] = "rust_pep"
         return {
             "component": daemon_health.get("component", "core"),
+            "canonical_enforcement_authority": "rust_pep",
+            "compatibility_aliases": {"rust_shield": "rust_pep"},
             "state": effective_state,
             "runtime_state": daemon_health.get("runtime_state", daemon_health.get("state", "DEGRADED")),
+            "state_machine_state": daemon_runtime_state,
+            "state_machine_disagrees": state_machine_disagrees,
+            "rules_loaded": int(daemon_health.get("rules_loaded", 0) or 0),
+            "policies_loaded": int(daemon_health.get("policies_loaded", 0) or 0),
+            # CLI-SHOW-158: forward the daemon traffic gauges for operator
+            # displays (absent on pre-slice daemons reads as 0, matching the
+            # legacy .get(key, 0) convention downstream).
+            "packets_captured": int(daemon_health.get("packets_captured", 0) or 0),
+            "flows_active": int(daemon_health.get("flows_active", 0) or 0),
+            # FE-DEF-095a: daemon-owned DEFCON passthrough (control/defcon.zig
+            # via healthJson). Invalid shapes become None so UIs fall back
+            # to their local evidence ladder instead of rendering garbage.
+            "defcon_level": daemon_health.get("defcon_level") if isinstance(daemon_health.get("defcon_level"), int) else None,
+            "defcon_label": daemon_health.get("defcon_label") if isinstance(daemon_health.get("defcon_label"), str) else None,
             "pid": daemon_health.get("pid"),
-            "version": daemon_health.get("version", "6.0.0"),
+            "version": daemon_health.get("version", "5.0.0"),
             "uptime_ms": daemon_health.get("uptime_ms", 0),
             "last_event_ms": int(daemon_health.get("last_event_ms", 0) or max((v["last_event_ms"] for v in subsystem_payload.values()), default=0)),
-            "counters": {
-                "in_events": nose_frames_read,
-                "out_events": nose_frames_submitted,
-                "errors": nose_pipe_errors,
-                "dropped": nose_frames_dropped,
-            },
+            # CTRL-SHIM-150: the daemon owns the RUNTIME_CONTRACT 4.1 shape
+            # since CTRL-HEALTH-115, so prefer its counters verbatim. Fall
+            # back to the data_plane synthesis only for pre-slice daemons
+            # (or malformed values), never silently, never merged.
+            "counters": _daemon_counters_or_synthesized(
+                daemon_health,
+                {"in_events": nose_frames_read,
+                 "out_events": nose_frames_submitted,
+                 "errors": nose_pipe_errors,
+                 "dropped": nose_frames_dropped},
+            ),
             "subsystems": subsystem_payload,
             "tier3": {
                 **tier3_diagnostics,
                 "ready": effective_tier3_ready,
                 "state": "READY" if effective_tier3_ready else "STOPPED",
             },
+            "rust_pep": rust_pep,
             "rust_shield": rust_shield,
             "deps": [{"name": name, "state": data["state"]} for name, data in subsystem_payload.items()],
             "degraded": effective_degraded,
             "capabilities": daemon_health.get("capabilities", {}),
             "workers": workers,
             "data_plane": data_plane,
+            "data_integrity": _daemon_data_integrity(daemon_health),
+            "endpoint_ownership": summarize_endpoint_ownership(get_endpoint_ownership_cached()),
             "exactly_once": exactly_once,
         }
 
@@ -618,11 +1336,19 @@ def _diagnostic_health_payload(reason: str) -> Dict[str, Any]:
     }
     return {
         "component": "control_api",
+        "canonical_enforcement_authority": "rust_pep",
+        "compatibility_aliases": {"rust_shield": "rust_pep"},
         "state": "DEGRADED",
         "pid": os.getpid(),
-        "version": "6.0.0",
+        "version": "5.0.0",
         "uptime_ms": max(0, time.monotonic_ns() // 1_000_000 - _PROCESS_START_MONOTONIC_MS),
         "last_event_ms": 0,
+        # CLI-SHOP-158: traffic gauges are present even when the daemon is
+        # unreachable — absent reads as 0 (unknown), same convention as the
+        # live path's daemon_health.get(key, 0). Machine readers gate on
+        # key presence, so omitting them here breaks status --json.
+        "packets_captured": 0,
+        "flows_active": 0,
         "counters": {
             "in_events": 0,
             "out_events": 0,
@@ -630,12 +1356,28 @@ def _diagnostic_health_payload(reason: str) -> Dict[str, Any]:
             "dropped": 0,
         },
         "subsystems": subsystem_payload,
+        "data_integrity": {},
         "tier3": {"ready": False, "state": "UNAVAILABLE"},
-        "rust_shield": {
+        "rust_pep": {
             "state": "UNAVAILABLE",
+            "canonical": True,
+            "authority": "sole_enforcement_authority",
             "pep_ready": False,
             "policy_authority": False,
             "provider_ready": False,
+            "provider_capable": False,
+            "host_effect_capable": False,
+            "wfp": "UNAVAILABLE",
+            "error": "control_daemon_unavailable",
+        },
+        "rust_shield": {
+            "state": "UNAVAILABLE",
+            "canonical": False,
+            "alias_of": "rust_pep",
+            "pep_ready": False,
+            "policy_authority": False,
+            "provider_ready": False,
+            "provider_capable": False,
             "host_effect_capable": False,
             "wfp": "UNAVAILABLE",
             "error": "control_daemon_unavailable",
@@ -684,6 +1426,7 @@ def _tier3_artifact_diagnostics() -> Dict[str, Any]:
         "artifact_path": str(found) if found is not None else None,
         "dependency_ready": False,
         "provider_ready": False,
+        "provider_capable": False,
         "host_effect_capable": False,
     }
 
@@ -755,43 +1498,77 @@ def compute_health_state() -> Tuple[str, bool]:
 def verify_authority_invariant() -> bool:
     """Verify that the Rust PEP is the sole enforcement authority.
 
-    Checks:
-    1. No Zig module calls privileged WFP transport directly (wfp_ioctl.block_ip/unblock_ip)
-    2. shield/ PEP/WFP exports are quarantined (marked, not active)
-    3. All enforcement requests go through aegisctl → Rust PEP FFI
+    Static source checks (both must hold):
+    1. No Zig module calls privileged WFP/bridge mutation directly
+       (wfp_ioctl.block_ip/unblock_ip, Fwpm*, aegis_bridge_block_ip).
+    2. shield/ contains no WFP/mutation surface, and no Zig module links
+       shield symbols (sec_monitor/aegis_shield_* FFI).
 
-    Returns True if the invariant holds.
+    Comment lines are stripped before matching so documentation cannot
+    hide (or fake) a call site. Returns True if the invariant holds.
     """
     import re
 
-    # Check 1: No privileged WFP calls in src/
+    def code_text(path: Path) -> str:
+        try:
+            lines = []
+            for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+                lines.append(line.split("//", 1)[0])
+            return "\n".join(lines)
+        except Exception:
+            return ""
+
+    # Check 1: No privileged WFP calls in src/ (code, not comments).
     wfp_privileged_patterns = [
         r"\bwfp_ioctl\.(?:block_ip|unblock_ip)\s*\(",
-        r"\bFwpmEngineOpen\b",
-        r"\bFwpmFilterAdd\b",
+        r"\bFwpmEngineOpen\w*\s*\(",
+        r"\bFwpmFilterAdd\w*\s*\(",
+        r"\baegis_bridge_block_ip\s*\(",
     ]
+    # Fail-closed stubs whose entire body refuses mutation.
+    check1_allowlist = {"wfp_production.zig"}
 
-    src_dir = TOOLS_DIR.parent.parent / "src"
+    src_dir = REPO_ROOT / "src"
     if src_dir.exists():
         for path in src_dir.rglob("*.zig"):
-            try:
-                text = path.read_text(encoding="utf-8", errors="ignore")
-                for pat in wfp_privileged_patterns:
-                    if re.search(pat, text):
-                        # Allow wfp_production.zig as the authoritative module
-                        if "wfp_production" not in str(path):
-                            return False
-            except Exception:
-                pass
+            if path.name in check1_allowlist:
+                continue
+            text = code_text(path)
+            for pat in wfp_privileged_patterns:
+                if re.search(pat, text):
+                    return False
 
-    # Check 2: shield/ exports are quarantined, not active
-    shield_dir = TOOLS_DIR.parent.parent / "shield"
+    # Check 2a: shield/ itself must not grow a WFP/mutation surface.
+    shield_mutation_patterns = [
+        r"Wfp|FWPM|Fwpm",
+        r"DeviceIoControl|CreateFileW?|WriteFile",
+        r"block_flow|unblock_filter|BLOCK_FLOW",
+    ]
+    shield_dir = REPO_ROOT / "shield" / "src"
     if shield_dir.exists():
-        try:
-            # Check that no caller outside shield references shield PEP symbols
-            # (This is a code-audit check, not a runtime check)
-            pass
-        except Exception:
-            pass
+        for path in shield_dir.rglob("*.rs"):
+            text = code_text(path)
+            for pat in shield_mutation_patterns:
+                if re.search(pat, text):
+                    return False
+
+    # Check 2b: no Zig module links shield symbols. Sole exception is
+    # the DynLib-only loader (SHIELD-WIRE-123), allowlisted by filename
+    # exactly like the pep_bindings exception model: runtime lookup,
+    # never a link-time extern, advisory use only.
+    shield_link_patterns = [
+        r'extern\s+"sec_monitor"',
+        r"\baegis_shield_\w+\s*\(",
+        r"sec_monitor\.dll",
+    ]
+    check2b_allowlist = {"shield_screen.zig"}
+    if src_dir.exists():
+        for path in src_dir.rglob("*.zig"):
+            if path.name in check2b_allowlist:
+                continue
+            text = code_text(path)
+            for pat in shield_link_patterns:
+                if re.search(pat, text):
+                    return False
 
     return True

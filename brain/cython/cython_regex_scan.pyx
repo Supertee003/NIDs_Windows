@@ -114,8 +114,9 @@ def scan_cython(str payload, dict engine):
     index can unpack the first four.
 
     Note: payload is `str`, not `bytes`, to match the contract of
-    `windows_brain.run_regex_scan` which does `str(payload)[:MAX_PAYLOAD_SIZE]`
-    before calling. The compiled `re.Pattern` objects are also str-patterns.
+    `windows_brain.run_regex_scan`, which passes one scan window (a `str`
+    slice; see SCAN_CHUNK/SCAN_OVERLAP) per call. The compiled `re.Pattern`
+    objects are also str-patterns.
     """
     cdef:
         list patterns = engine["patterns"]

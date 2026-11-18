@@ -10,8 +10,8 @@
  *      specificity DESC, rule_id ASC, version DESC)
  *   3. Conflict resolution (deterministic): when two rules match the
  *      same input, the compiler picks the winner using the same
- *      ordering. This matches `core/policy_ir.zig::ConflictResolver`:
- *      priority > specificity > deny > rule_id.
+ *      ordering. This matches `src/policy/policy_ir.zig::sortByPriority` (POL-PRIO-070):
+ *      priority-DESC file order (TS specificity/rule_id tiebreaks are TS-only).
  *   4. Hash: SHA-256 of the canonicalized rule bytes, take first 8
  *      bytes as u64 (little-endian).
  *   5. Magic / version stamp: writes POLICY_MAGIC and POLICY_IR_VERSION.
@@ -77,13 +77,15 @@ export class PolicyCompileError extends Error {
 
 export interface CompileResult {
   readonly ir: PolicyIR;
-  /** Indices of rules that were DROPPED due to conflict resolution.
-   *  These are kept in the IR (for audit) but the conflict resolver
-   *  treats them as disabled. Empty if there were no conflicts. */
-  readonly dropped_rule_indices: readonly number[];
-  /** Indices of rules that are the WINNERS of their conflict group.
-   *  Always length === rules.length - dropped_rule_indices.length. */
-  readonly winning_rule_indices: readonly number[];
+  /** Rule IDs (not indices) that conflict resolution DROPPED, in sort
+   *  order. Structurally empty today: rule_id is part of the sort key and
+   *  duplicate IDs are rejected, so no two rules can share a key - the
+   *  drop branch is the deterministic tie-break guard for future key
+   *  changes. */
+  readonly dropped_rule_ids: readonly number[];
+  /** Rule IDs (not indices) that won their group, in sort order.
+   *  Always length === rules.length - dropped_rule_ids.length. */
+  readonly winning_rule_ids: readonly number[];
   /** SHA-256 of the canonicalized rules (the same bytes the hash is
    *  derived from). Hex string for easy logging. */
   readonly canonical_hash_hex: string;
@@ -356,8 +358,8 @@ export function compile(
 
   // ---- Conflict resolution ----
   // Rules with the same priority+specificity+id+version are grouped;
-  // the first (lowest sort key) wins. This matches
-  // `core/policy_ir.zig::ConflictResolver.shouldWin`.
+  // the first (lowest sort key) wins. Zig side keeps file order among
+  // equal priorities (`src/policy/policy_ir.zig::sortByPriority`).
   const dropped: number[] = [];
   const winning: number[] = [];
   let lastKey: readonly [number, number, number, number] | null = null;
@@ -404,8 +406,8 @@ export function compile(
 
   return {
     ir,
-    dropped_rule_indices: dropped,
-    winning_rule_indices: winning,
+    dropped_rule_ids: dropped,
+    winning_rule_ids: winning,
     canonical_hash_hex,
   };
 }

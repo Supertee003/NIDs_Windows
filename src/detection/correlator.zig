@@ -90,7 +90,12 @@ pub const Correlator = struct {
                     slot.timestamp_ns = ev.timestamp_ns;
                     slot.count = 1;
                 } else {
-                    slot.count += 1;
+                    // CORR-SAT-069: saturating bump. A plain += wraps u8 at
+                    // 255 (panic in safety builds, silent reset in release)
+                    // when one slot floods while a sibling slot starves and
+                    // no match ever resets the window. Saturation keeps the
+                    // slot eligible; matching/reset semantics are unchanged.
+                    slot.count +|= 1;
                 }
                 // Check if all slots have hit their required counts within window
                 if (self.allSlotsMatched(rule, ws, ev.timestamp_ns)) {
@@ -121,6 +126,27 @@ pub const Correlator = struct {
         }
         _ = self;
         return true;
+    }
+
+    /// CORR-DNS-080: DNS-tunneling rate rule (production id 9003).
+    /// Sustained query bursts per source suggest exfiltration; a single
+    /// count threshold cannot convict, so severity stays .alert and the
+    /// PEP gate owns every host effect as usual. N=100/60s is an initial
+    /// value: high enough that normal browsing bursts rarely trip it,
+    /// low enough to catch active tunnels — Kali-tunable, and sensor
+    /// proof is still pending (QUALIFIED_SYNTHETIC, like the 22-rule kit
+    /// at 23/0). Single-event canaries can never fire a count rule, so
+    /// data_exfil stays quarantined until multi-event canary support.
+    /// NOTE: the spec array is module-static: returning a slice of a
+    /// function-local array would dangle after return.
+    const dns_exfil_specs = [_]EventSpec{.{ .kind = .dns_query, .count = 100 }};
+    pub fn dnsExfilRule() CorrelationRule {
+        return .{
+            .id = 9003,
+            .events = &dns_exfil_specs,
+            .window_sec = 60,
+            .severity = .alert,
+        };
     }
 
     pub fn prune(self: *Correlator, now_ns: i128) u32 {
@@ -185,6 +211,53 @@ test "Correlator simple two-event rule" {
     try std.testing.expectEqual(@as(u32, 100), r2.?);
 }
 
+test "CORR-DNS-080: dnsExfilRule pins production params" {
+    const rule = Correlator.dnsExfilRule();
+    try std.testing.expectEqual(@as(u32, 9003), rule.id);
+    try std.testing.expectEqual(@as(i64, 60), rule.window_sec);
+    try std.testing.expectEqual(event.EventSeverity.alert, rule.severity);
+    try std.testing.expectEqual(@as(usize, 1), rule.events.len);
+    try std.testing.expectEqual(event.EventKind.dns_query, rule.events[0].kind);
+    try std.testing.expectEqual(@as(u8, 100), rule.events[0].count);
+}
+
+test "CORR-DNS-080: burst of 100 dns_query fires 9003, 99 stays silent" {
+    const rule = Correlator.dnsExfilRule();
+    var rule_buf = [_]CorrelationRule{rule};
+    var cor = Correlator.init(std.testing.allocator, &rule_buf);
+    defer cor.deinit();
+    var i: u8 = 0;
+    while (i < 99) : (i += 1) {
+        var e = event.IpcEvent.init(.dns_query);
+        e.now();
+        e.src_ip = 0x0A00000E;
+        try std.testing.expect(try cor.observe(&e) == null);
+    }
+    var last = event.IpcEvent.init(.dns_query);
+    last.now();
+    last.src_ip = 0x0A00000E;
+    try std.testing.expectEqual(@as(?u32, 9003), try cor.observe(&last));
+}
+
+test "CORR-DNS-080: windows are per-source" {
+    const rule = Correlator.dnsExfilRule();
+    var rule_buf = [_]CorrelationRule{rule};
+    var cor = Correlator.init(std.testing.allocator, &rule_buf);
+    defer cor.deinit();
+    // 60 queries from each of two sources: neither hits 100 alone.
+    var i: u8 = 0;
+    while (i < 60) : (i += 1) {
+        var a = event.IpcEvent.init(.dns_query);
+        a.now();
+        a.src_ip = 0x0A000001;
+        try std.testing.expect(try cor.observe(&a) == null);
+        var b = event.IpcEvent.init(.dns_query);
+        b.now();
+        b.src_ip = 0x0A000002;
+        try std.testing.expect(try cor.observe(&b) == null);
+    }
+}
+
 test "Correlator window expiry" {
     var spec_buf = [_]EventSpec{ .{ .kind = .dns_query, .count = 2 } };
     var rule_buf = [_]CorrelationRule{
@@ -238,8 +311,7 @@ test "Correlator multiple rules independent" {
     try std.testing.expectEqual(@as(u32, 401), r1.?);
 }
 
-test "Correlator same event type multiple sources" {
-    // The correlator tracks by (rule_id, src_ip), so multiple sources
+test "Correlator same event type multiple sources" {    // The correlator tracks by (rule_id, src_ip), so multiple sources
     // create separate windows. This test verifies that behavior.
     var spec_buf = [_]EventSpec{ .{ .kind = .dns_query, .count = 3 } };
     var rule_buf = [_]CorrelationRule{
@@ -262,4 +334,35 @@ test "Correlator same event type multiple sources" {
     const r = try cor.observe(&e3);
     try std.testing.expect(r != null);
     try std.testing.expectEqual(@as(u32, 500), r.?);
+}
+
+test "Correlator slot count saturates instead of wrapping" {
+    // CORR-SAT-069: a slot flooded past 255 while its sibling starves must
+    // saturate (stay eligible), never wrap to 0 (silent reset) or panic
+    // (safety builds). Two-spec rule, only the first kind arrives.
+    var spec_buf = [_]EventSpec{
+        .{ .kind = .dns_query, .count = 2 },
+        .{ .kind = .tls_hello, .count = 1 },
+    };
+    var rule_buf = [_]CorrelationRule{
+        .{ .id = 600, .events = &spec_buf, .window_sec = 3600, .severity = .warning },
+    };
+    var cor = Correlator.init(std.testing.allocator, &rule_buf);
+    defer cor.deinit();
+    var i: u32 = 0;
+    while (i < 300) : (i += 1) {
+        var e = event.IpcEvent.init(.dns_query);
+        e.timestamp_ns = 1_000_000_000 + i;
+        e.src_ip = 0x0A000009;
+        // No match possible (tls_hello never arrives) — must not panic.
+        try std.testing.expect(try cor.observe(&e) == null);
+    }
+    // Late arrival of the missing kind still completes the rule: the
+    // saturated slot stayed eligible instead of resetting.
+    var late = event.IpcEvent.init(.tls_hello);
+    late.timestamp_ns = 2_000_000_000;
+    late.src_ip = 0x0A000009;
+    const hit = try cor.observe(&late);
+    try std.testing.expect(hit != null);
+    try std.testing.expectEqual(@as(u32, 600), hit.?);
 }

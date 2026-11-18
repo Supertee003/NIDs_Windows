@@ -23,8 +23,8 @@
 The WFP driver (aegis_wfp.sys) must be:
 1. Compiled with WDK (Windows Driver Kit)
 2. Signed with a test certificate (for development) or WHQL (for production)
-3. Installed via `sc create` or NSIS installer
-4. Started via `sc start aegis_wfp`
+3. Installed via `sc.exe create` or NSIS installer
+4. Started via `sc.exe start aegis_wfp`
 5. Connected to core via wfp_ioctl.zig (IOCTL bridge)
 6. Health-monitored via IOCTL_AEGIS_GET_STATS
 
@@ -38,8 +38,8 @@ Build steps:
 cd drivers/wfp_callout
 build.bat  (uses WDK)
 signtool sign /fd SHA256 /f test.pfx aegis_wfp.sys
-sc create aegis_wfp type= kernel binPath= aegis_wfp.sys
-sc start aegis_wfp
+sc.exe create aegis_wfp type= kernel binPath= aegis_wfp.sys
+sc.exe start aegis_wfp
 ```
 
 Integration with core:
@@ -57,7 +57,7 @@ core/wfp_ioctl.zig:
 The minifilter driver (aegis_minifilter.sys) must be:
 1. Compiled with WDK
 2. Signed and installed
-3. Started via `sc start aegis_minifilter`
+3. Started via `sc.exe start aegis_minifilter`
 4. Connected to core via minifilter_reader.zig (pipe-based)
 5. Events flow: minifilter -> named pipe -> minifilter_reader.zig -> hids_engine.zig -> Canonical Event
 
@@ -127,8 +127,8 @@ Each component should run as a Windows Service:
 
 Service recovery on failure:
 ```bat
-sc failure aegis-core reset= 86400 actions= restart/5000/restart/10000/restart/30000
-sc failure aegis-brain reset= 86400 actions= restart/5000/restart/10000/restart/30000
+sc.exe failure aegis-core reset= 86400 actions= restart/5000/restart/10000/restart/30000
+sc.exe failure aegis-brain reset= 86400 actions= restart/5000/restart/10000/restart/30000
 ```
 
 Service wrapper options:
@@ -149,8 +149,8 @@ NSIS installer (installer/aegis_nids_installer.nsi) requires:
 ### 2.7 Recovery/Rollback
 
 Rollback scenarios:
-1. Driver installation fails -> sc delete aegis_wfp, remove files
-2. Service fails to start -> sc stop, check Event Log, rollback to previous version
+1. Driver installation fails -> sc.exe delete aegis_wfp, remove files
+2. Service fails to start -> sc.exe stop, check Event Log, rollback to previous version
 3. Config invalid -> aegisctl policy reject update, keep last known-good
 4. PEP unavailable -> no enforcement, record failure, fail-safe
 

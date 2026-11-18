@@ -20,9 +20,14 @@ Metrics exposed:
   aegis_forward_events_total
 
 Usage:
-  python aegis_metrics.py                # Start HTTP server on :9100
-  python aegis_metrics.py --port 9101   # Custom port
+  python aegis_metrics.py                # Start HTTP server on 127.0.0.1:9100
+  python aegis_metrics.py --port 9101   # Custom port (loopback only)
   python aegis_metrics.py --print       # Print metrics to stdout and exit
+
+Bind posture (T1-NET-019): loopback only. The documented contract is
+127.0.0.1:9100 (docs/runtime/COMPONENT_MATRIX.md, Operator Manual) and this
+module refuses any non-loopback --host instead of silently exposing the
+endpoint to the LAN.
 """
 
 import argparse
@@ -187,16 +192,21 @@ class MetricsHandler(http.server.BaseHTTPRequestHandler):
 def main():
     parser = argparse.ArgumentParser(description="AEGIS NIDS Prometheus Metrics Endpoint")
     parser.add_argument("--port", type=int, default=METRICS_PORT, help="HTTP port (default: 9100)")
+    parser.add_argument("--host", default="127.0.0.1",
+                        help="Bind address, loopback only (default: 127.0.0.1)")
     parser.add_argument("--print", action="store_true", help="Print metrics and exit")
     args = parser.parse_args()
+
+    if args.host not in ("127.0.0.1", "localhost", "::1"):
+        parser.error("refusing non-loopback bind address (loopback only: 127.0.0.1, localhost, ::1)")
 
     if args.print:
         print(generate_prometheus_metrics())
         return 0
 
-    print(f"[METRICS] Serving Prometheus metrics on http://0.0.0.0:{args.port}/metrics")
+    print(f"[METRICS] Serving Prometheus metrics on http://{args.host}:{args.port}/metrics")
 
-    with socketserver.TCPServer(("0.0.0.0", args.port), MetricsHandler) as httpd:
+    with socketserver.TCPServer((args.host, args.port), MetricsHandler) as httpd:
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

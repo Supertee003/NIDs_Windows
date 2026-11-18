@@ -1,10 +1,14 @@
 # 06 - Security Boundary
 
-## Rust PEP is the Final Enforcement Authority
+## Rust PEP is Detection-Only
 
-No bypass allowed.
+The confirmed product decision (RETIRE-HOST-EFFECT-001, issue #25) is that
+AEGIS observes traffic and never mutates it. The Rust PEP evaluates policy and
+records evidence; BLOCK/QUARANTINE requests are reported as ESCALATE reason 8
+and never become a WFP filter or any other host effect. The driver's block
+IOCTL hard-fails as `STATUS_NOT_SUPPORTED`, and capture callouts only permit.
 
-## PEP Validation (before execution)
+## PEP Validation (before classification)
 
 Rust validates:
 - policy
@@ -30,10 +34,11 @@ Rust validates:
 | Component | Forbidden Action |
 |-----------|-----------------|
 | Detection | Call PEP directly |
-| Detection | Decide enforcement |
+| Detection | Decide a host effect |
 | Brain | Execute block/quarantine/kill-process |
 | Policy | Execute directly (must go through Rust PEP) |
-| Any language | Bypass Rust PEP |
+| Any language | Bypass the detection-only PEP contract |
+| Any language | Request, install, or infer a host effect |
 
 ## Policy Plane Security
 

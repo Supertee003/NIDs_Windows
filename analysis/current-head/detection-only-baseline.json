@@ -1,0 +1,33 @@
+{
+  "id": "DETECTION-ONLY-BASELINE",
+  "rule": "Product code may not mention a block action or the block-flow IOCTL outside this list. The list may only shrink; every entry leaves when slice B1 retires the enforcement authority.",
+  "created_at": "2026-11-09",
+  "issue": "#25 - WFP/PEP host-blocking source paths vs detection-only scope",
+  "tokens": [
+    "FWP_ACTION_BLOCK",
+    "IOCTL_AEGIS_BLOCK_FLOW",
+    "aegis_wfp_ioctl_block_flow"
+  ],
+  "allowed": [
+    {
+      "path": "drivers/wfp_callout/aegis_wfp.c",
+      "reason": "Implements IOCTL_AEGIS_BLOCK_FLOW and creates FWP_ACTION_BLOCK filters; retired by B1"
+    },
+    {
+      "path": "drivers/wfp_callout/aegis_wfp.h",
+      "reason": "Declares the block-flow IOCTL number and request shape; retired by B1"
+    },
+    {
+      "path": "drivers/wfp_callout/quarantined/aegis_wfp_comm.c",
+      "reason": "Quarantined historical copy, not built; kept as evidence of the retired design"
+    },
+    {
+      "path": "src/windows/wfp_ioctl.c",
+      "reason": "User-mode side of the block-flow IOCTL; retired by B1"
+    },
+    {
+      "path": "rust-src/lib.rs",
+      "reason": "Resolves the block-flow symbol and exposes block_flow(); retired by B1"
+    }
+  ]
+}

@@ -28,13 +28,11 @@ Usage:
   .\scripts\aegis.ps1 rules list|validate|reload
   .\scripts\aegis.ps1 events stats|count|tail
   .\scripts\aegis.ps1 forensic verify|list
-  .\scripts\aegis.ps1 tui
-  .\scripts\aegis.ps1 tui --mode dashboard --interval 5
-  .\scripts\aegis.ps1 tui --mode dashboard --once
-  .\scripts\aegis.ps1 console --role operator|admin
-  .\scripts\aegis.ps1 console --mode snapshot
-  .\scripts\aegis.ps1 web
-  .\scripts\aegis.ps1 graph
+  .\scripts\aegis.ps1 tui [--stop]
+  .\scripts\aegis.ps1 console [--role operator|admin] [--once --choice KEY]
+  .\scripts\aegis.ps1 web [--stop]
+  .\scripts\aegis.ps1 gui
+  .\scripts\aegis.ps1 graph [--out PATH] [--limit N]
   .\scripts\aegis.ps1 test golden-path
   .\scripts\aegis.ps1 version
   .\scripts\aegis.ps1 start
@@ -50,22 +48,34 @@ All operational mutations use the protected Control Center pipe.
     "version" { Invoke-Cli @("version") }
     "start" { Invoke-Cli @("start", "--all") }
     "tui" {
-        $console = Join-Path $root "scripts\aegis_console.py"
-        if (-not (Test-Path $console)) { throw "TUI entrypoint not found: $console" }
-        & python $console @Args
+        # EVT-171: the old menu console is retired; tui means the live
+        # Mouth TUI surface (opener owns it, like everything else).
+        if ($Args -contains "--stop") {
+            & python (Join-Path $root "scripts\aegis_open.py") displays --stop --tui
+        } else {
+            & python (Join-Path $root "scripts\aegis_open.py") displays --tui
+        }
         exit $LASTEXITCODE
     }
     "console" {
-        $console = Join-Path $root "scripts\aegis_console_pro.py"
-        if (-not (Test-Path $console)) { throw "Pro console entrypoint not found: $console" }
-        & python $console @Args
+        & python $cli console @Args
         exit $LASTEXITCODE
     }
     "web" {
+        # EVT-171: the name means the web console now (it used to start
+        # the desktop GUI binary; use `gui` for that).
+        if ($Args -contains "--stop") {
+            & python (Join-Path $root "scripts\aegis_open.py") displays --stop --web
+        } else {
+            & python (Join-Path $root "scripts\aegis_open.py") displays --web --no-browser
+        }
+        exit $LASTEXITCODE
+    }
+    "gui" {
         $dashboard = Join-Path $root "aegis_dashboard\target\release\aegis_dashboard.exe"
         if (Test-Path $dashboard) {
             Start-Process $dashboard -WorkingDirectory $root
-            Write-Host "AEGIS Web/Desktop dashboard started"
+            Write-Host "AEGIS desktop dashboard started"
             exit 0
         }
         $manifest = Join-Path $root "aegis_dashboard\Cargo.toml"
@@ -75,8 +85,7 @@ All operational mutations use the protected Control Center pipe.
         exit $LASTEXITCODE
     }
     "graph" {
-        $graph = Join-Path $root "scripts\aegis_graph.py"
-        & python $graph @Args
+        & python $cli graph @Args
         exit $LASTEXITCODE
     }
     "rules" {

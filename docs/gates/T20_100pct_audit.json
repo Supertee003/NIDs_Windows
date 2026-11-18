@@ -1,10 +1,13 @@
 {
-  "step": "T20 AC4 (Steps 63-64)",
-  "commit": "163dca3",
-  "declaration": "100% PRODUCTION VERIFIED",
+  "step": "T20 AC4 (Steps 63-64) + release readiness",
+  "commit": "f7f55ed",
+  "declaration": {
+    "component_audit": "COMPLETE",
+    "release": "NOT SHIPPABLE"
+  },
   "part_i": {
-    "total_modules": 109,
-    "passing": 109,
+    "total_modules": 66,
+    "passing": 66,
     "failing": [],
     "prod_failures": []
   },
@@ -16,61 +19,73 @@
     "Fail-Safe-Verified": true
   },
   "part_iii_golden_path_declared": true,
-  "declared": true,
+  "component_audit_complete": true,
+  "release": {
+    "shippable": false,
+    "shippable_with_waiver": false,
+    "open": [
+      "soak_24h"
+    ],
+    "waived": [],
+    "unwaived": [
+      "soak_24h"
+    ],
+    "owners": [
+      "time"
+    ],
+    "gates": [
+      {
+        "id": "truth_artifacts",
+        "ok": true,
+        "owner": "none",
+        "detail": "TRUTH_VALID — artifacts carry build source f4cde3c (ancestor of HEAD; source history and worktree clean)"
+      },
+      {
+        "id": "component_audit",
+        "ok": true,
+        "owner": "none",
+        "detail": "modules 66/66, prod failures 0, part_ii 5/5, golden path declared=True"
+      },
+      {
+        "id": "release_signature",
+        "ok": true,
+        "owner": "owner",
+        "detail": "release\\T20-final\\b597e71\\signatures.json cryptographically signs SHA256SUMS (02562BC958AE4516...) with a ed25519 key; commit b597e71 contains runtime f4cde3c"
+      },
+      {
+        "id": "clean_host_e5",
+        "ok": true,
+        "owner": "owner",
+        "detail": "admin-evidence\\e5-clean-host-20261119-final\\preflight-20261119.json PASS with the loader under C:\\Program Files\\AEGIS NIDS"
+      },
+      {
+        "id": "soak_24h",
+        "ok": false,
+        "owner": "time",
+        "detail": "admin-evidence\\e5-clean-host-20261119-final\\soak-24h-final-delta-20261119-0223.json is IN_PROGRESS at 0.01/24.0 h; an older PASS (admin-evidence\\e5-clean-host-20261117-process-soak\\soak-24h-process-start.json at 24.62 h) predates the current source commit and does not close this gate"
+      },
+      {
+        "id": "evidence_debt",
+        "ok": true,
+        "owner": "none",
+        "detail": "unnamed product files 0 <= baseline 0"
+      }
+    ]
+  },
   "modules": {
-    ".github/workflows/ci.yml": {
-      "file": "ci.yml",
-      "classification": "ci",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "repo-level CI (config/doc/tool)",
-        "Verified": "CI workflow; validated by workflow runs",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "not subject to perf measurement (non-production class)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    ".github/workflows/host-regression.yml": {
-      "file": "host-regression.yml",
-      "classification": "ci",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "repo-level CI (config/doc/tool)",
-        "Verified": "CI workflow; validated by workflow runs",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "not subject to perf measurement (non-production class)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
     "brain/aegis_brain_cython/fast_scan.pyx": {
       "file": "fast_scan.pyx",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
       "golden_path": true,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
-        "Authoritative": "golden-path step",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
         "Verified": "cython CI job (tests/cython)",
         "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
+        "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
@@ -80,17 +95,17 @@
     },
     "brain/cython/cython_regex_scan.pyx": {
       "file": "cython_regex_scan.pyx",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
       "golden_path": true,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
         "Verified": "cython CI job (tests/cython)",
         "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
+        "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
@@ -100,77 +115,17 @@
     },
     "brain/windows_brain.py": {
       "file": "windows_brain.py",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
       "golden_path": true,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
         "Verified": "python/cython tests + CI job",
         "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "bridge/": {
-      "file": "bridge",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "golden-path step",
-        "Integrated": "repo-level CI (config/doc/tool)",
-        "Verified": "module directory; covered by its CI job build/test",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "bridge/aegis_adapter.cpp": {
-      "file": "aegis_adapter.cpp",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "c-native CI build + wfp/etw host tests",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "bridge/aegis_adapter.hpp": {
-      "file": "aegis_adapter.hpp",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "repo-level CI (config/doc/tool)",
-        "Verified": "c-native CI build + wfp/etw host tests",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
+        "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
@@ -180,7 +135,7 @@
     },
     "build_manifest.json": {
       "file": "build_manifest.json",
-      "classification": "release",
+      "classification": "",
       "status": "REAL",
       "golden_path": false,
       "dims": {
@@ -200,7 +155,7 @@
     },
     "ci_coverage.json": {
       "file": "ci_coverage.json",
-      "classification": "config",
+      "classification": "",
       "status": "REAL",
       "golden_path": false,
       "dims": {
@@ -212,265 +167,25 @@
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
-        "Recoverable": "covered by upgrade/rollback tooling + runbooks",
+        "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
       "missing": [],
       "pass": true
     },
-    "config/Rules.json": {
+    "configs/Rules.json": {
       "file": "Rules.json",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
-      "golden_path": false,
+      "golden_path": true,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "repo-level CI (config/doc/tool)",
         "Verified": "config_validator.py tests",
         "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/authority_review.zig": {
-      "file": "authority_review.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "audit/forensic trace producer"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/brain_engine.zig": {
-      "file": "brain_engine.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/canonical_event.zig": {
-      "file": "canonical_event.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/cluster_coord.zig": {
-      "file": "cluster_coord.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/config_reload_proof.zig": {
-      "file": "config_reload_proof.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "audit/forensic trace producer"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/control_ipc.zig": {
-      "file": "control_ipc.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "audit/forensic trace producer"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/correlation_engine.zig": {
-      "file": "correlation_engine.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/cpp_adapter.zig": {
-      "file": "cpp_adapter.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "golden-path step",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/decision_trace.zig": {
-      "file": "decision_trace.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "audit/forensic trace producer"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/detection_engine.zig": {
-      "file": "detection_engine.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/detection_interface.zig": {
-      "file": "detection_interface.zig",
-      "classification": "production",
-      "status": "PARTIAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/dispatcher.zig": {
-      "file": "dispatcher.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "golden-path step",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
+        "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
@@ -480,57 +195,17 @@
     },
     "core/event_fabric.zig": {
       "file": "event_fabric.zig",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
       "golden_path": true,
       "dims": {
-        "Implemented": "file on disk",
+        "Implemented": "alias of src/contract/event_fabric.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
         "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/event_queue.zig": {
-      "file": "event_queue.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/fabric_accounting.zig": {
-      "file": "fabric_accounting.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
+        "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
@@ -540,39 +215,19 @@
     },
     "core/fault_injection.zig": {
       "file": "fault_injection.zig",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
-      "golden_path": false,
+      "golden_path": true,
       "dims": {
-        "Implemented": "file on disk",
+        "Implemented": "alias of src/reliability/fault_injection.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
         "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
+        "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
-        "Recoverable": "recovery path referenced",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/fault_injection_integration.zig": {
-      "file": "fault_injection_integration.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery path referenced",
+        "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
       "missing": [],
@@ -580,355 +235,35 @@
     },
     "core/fault_matrix.zig": {
       "file": "fault_matrix.zig",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
-      "golden_path": false,
+      "golden_path": true,
       "dims": {
-        "Implemented": "file on disk",
+        "Implemented": "alias of src/reliability/fault_matrix.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
         "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
+        "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
-        "Recoverable": "recovery path referenced",
-        "Auditable": "audit/forensic trace producer"
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
       },
       "missing": [],
       "pass": true
     },
     "core/federation_bench.zig": {
       "file": "federation_bench.zig",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
-      "golden_path": false,
+      "golden_path": true,
       "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "perf/metrics/health coverage",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/federation_bench_cli.zig": {
-      "file": "federation_bench_cli.zig",
-      "classification": "tooling",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
+        "Implemented": "alias of src/federation/federation_bench.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "release/build tooling; validated by CI jobs",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "perf/metrics/health coverage",
-        "Documented": "referenced in docs",
-        "Recoverable": "covered by upgrade/rollback tooling + runbooks",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/federation_bench_config.json": {
-      "file": "federation_bench_config.json",
-      "classification": "config",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "repo-level CI (config/doc/tool)",
-        "Verified": "manifest JSON validated by tooling/CI",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "perf/metrics/health coverage",
-        "Documented": "referenced in docs",
-        "Recoverable": "covered by upgrade/rollback tooling + runbooks",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/federation_codec.zig": {
-      "file": "federation_codec.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
         "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/federation_tcp.zig": {
-      "file": "federation_tcp.zig",
-      "classification": "test",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "CI job covers language",
-        "Verified": "test asset (class test); runs in CI",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "not subject to perf measurement (non-production class)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/federation_tls.zig": {
-      "file": "federation_tls.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/flow_engine.zig": {
-      "file": "flow_engine.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery path referenced",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/flow_types.zig": {
-      "file": "flow_types.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "compatibility shim re-exporting a tested module",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/forensic_log.zig": {
-      "file": "forensic_log.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "audit/forensic trace producer"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/forensics_engine.zig": {
-      "file": "forensics_engine.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "audit/forensic trace producer"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/health_monitoring_proof.zig": {
-      "file": "health_monitoring_proof.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "perf/metrics/health coverage",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery path referenced",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/ips_canary_order.zig": {
-      "file": "ips_canary_order.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery path referenced",
-        "Auditable": "audit/forensic trace producer"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/lifecycle.zig": {
-      "file": "lifecycle.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "golden-path step",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery path referenced",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/nids_analyze.zig": {
-      "file": "nids_analyze.zig",
-      "classification": "legacy",
-      "status": "LEGACY",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "CI job covers language",
-        "Verified": "legacy path (documented deprecated); build-verified by CI",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "not subject to perf measurement (non-production class)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/nids_main.zig": {
-      "file": "nids_main.zig",
-      "classification": "legacy",
-      "status": "LEGACY",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "CI job covers language",
-        "Verified": "legacy path (documented deprecated); build-verified by CI",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "not subject to perf measurement (non-production class)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "audit/forensic trace producer"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/nose_contract.zig": {
-      "file": "nose_contract.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/nose_pipe_e2e_cli.zig": {
-      "file": "nose_pipe_e2e_cli.zig",
-      "classification": "test",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "CI job covers language",
-        "Verified": "test asset (class test); runs in CI",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
@@ -940,157 +275,17 @@
     },
     "core/nose_pipe_reader.zig": {
       "file": "nose_pipe_reader.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/npcap_capture.zig": {
-      "file": "npcap_capture.zig",
       "classification": "",
       "status": "REAL",
       "golden_path": true,
       "dims": {
-        "Implemented": "file on disk",
+        "Implemented": "alias of src/capture/nose_pipe_reader.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
         "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/perf_benchmark.zig": {
-      "file": "perf_benchmark.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "perf/metrics/health coverage",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/perf_benchmark_cli.zig": {
-      "file": "perf_benchmark_cli.zig",
-      "classification": "tooling",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "CI job covers language",
-        "Verified": "release/build tooling; validated by CI jobs",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "perf/metrics/health coverage",
-        "Documented": "referenced in docs",
-        "Recoverable": "covered by upgrade/rollback tooling + runbooks",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/perf_benchmark_config.json": {
-      "file": "perf_benchmark_config.json",
-      "classification": "config",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "repo-level CI (config/doc/tool)",
-        "Verified": "manifest JSON validated by tooling/CI",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "perf/metrics/health coverage",
-        "Documented": "referenced in docs",
-        "Recoverable": "covered by upgrade/rollback tooling + runbooks",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/performance_harness.zig": {
-      "file": "performance_harness.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "perf/metrics/health coverage",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/performance_integration.zig": {
-      "file": "performance_integration.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "perf/metrics/health coverage",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/performance_tuning_proof.zig": {
-      "file": "performance_tuning_proof.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "perf/metrics/health coverage",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
@@ -1100,311 +295,11 @@
     },
     "core/policy_engine.zig": {
       "file": "policy_engine.zig",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
       "golden_path": true,
       "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/policy_ir.zig": {
-      "file": "policy_ir.zig",
-      "classification": "production",
-      "status": "PARTIAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/policy_plane.zig": {
-      "file": "policy_plane.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "audit/forensic trace producer"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/policy_signing.zig": {
-      "file": "policy_signing.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery path referenced",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/priority_queue.zig": {
-      "file": "priority_queue.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "golden-path step",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/rag_engine.zig": {
-      "file": "rag_engine.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/rag_intelligence.zig": {
-      "file": "rag_intelligence.zig",
-      "classification": "production",
-      "status": "PARTIAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/real_ips_path.zig": {
-      "file": "real_ips_path.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery path referenced",
-        "Auditable": "audit/forensic trace producer"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/release_engineering.zig": {
-      "file": "release_engineering.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "perf/metrics/health coverage",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/release_engineering_integration.zig": {
-      "file": "release_engineering_integration.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/release_provenance.zig": {
-      "file": "release_provenance.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/reliability.zig": {
-      "file": "reliability.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "perf/metrics/health coverage",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery path referenced",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/replay_engine.zig": {
-      "file": "replay_engine.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/replayable_security.zig": {
-      "file": "replayable_security.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/runtime_spine.zig": {
-      "file": "runtime_spine.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "golden-path step",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "audit/forensic trace producer"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/rust_pep.zig": {
-      "file": "rust_pep.zig",
-      "classification": "test-sim",
-      "status": "MOCK",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
+        "Implemented": "alias of src/policy/policy_engine.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
@@ -1418,93 +313,73 @@
       "missing": [],
       "pass": true
     },
-    "core/shadow_decision.zig": {
-      "file": "shadow_decision.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/threat_intel.zig": {
-      "file": "threat_intel.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/verdict_aggregator.zig": {
-      "file": "verdict_aggregator.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/wfp_ioctl.zig": {
-      "file": "wfp_ioctl.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/wfp_production.zig": {
-      "file": "wfp_production.zig",
+    "core/rag_engine.zig": {
+      "file": "rag_engine.zig",
       "classification": "",
       "status": "REAL",
       "golden_path": true,
       "dims": {
-        "Implemented": "file on disk",
+        "Implemented": "alias of src/detection/rag_engine.zig (file on disk)",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "core/release_engineering.zig": {
+      "file": "release_engineering.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "alias of src/reliability/release_engineering.zig (file on disk)",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "core/release_provenance.zig": {
+      "file": "release_provenance.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "alias of src/reliability/release_provenance.zig (file on disk)",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "core/reliability.zig": {
+      "file": "reliability.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "alias of src/reliability/reliability.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
@@ -1520,117 +395,17 @@
     },
     "core/windows_adapters.zig": {
       "file": "windows_adapters.zig",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
       "golden_path": true,
       "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "core/xdr_incident_fabric.zig": {
-      "file": "xdr_incident_fabric.zig",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "zig test suite + fixtures",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "docs/gates/T17_benchmark_results.md": {
-      "file": "T17_benchmark_results.md",
-      "classification": "doc",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
+        "Implemented": "alias of src/windows/windows_adapters.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "repo-level CI (config/doc/tool)",
-        "Verified": "documentation asset (doc class)",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
-        "Measured": "perf/metrics/health coverage",
-        "Documented": "referenced in docs",
-        "Recoverable": "documentation asset (doc class)",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "drivers/": {
-      "file": "drivers",
-      "classification": "production",
-      "status": "PARTIAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "repo-level CI (config/doc/tool)",
-        "Verified": "module directory; covered by its CI job build/test",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "go/": {
-      "file": "go",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "repo-level CI (config/doc/tool)",
-        "Verified": "module directory; covered by its CI job build/test",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "nose/": {
-      "file": "nose",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "repo-level CI (config/doc/tool)",
-        "Verified": "module directory; covered by its CI job build/test",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
+        "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
@@ -1640,35 +415,15 @@
     },
     "nose/canonical.go": {
       "file": "canonical.go",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
       "golden_path": true,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "go-build-test CI job + host tests",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "nose/canonical_test.go": {
-      "file": "canonical_test.go",
-      "classification": "test",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "test asset (class test); runs in CI",
+        "Verified": "go-build-test CI job + host tests",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
@@ -1680,17 +435,17 @@
     },
     "nose/capture.go": {
       "file": "capture.go",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
       "golden_path": true,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
         "Verified": "go-build-test CI job + host tests",
         "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
+        "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
@@ -1700,17 +455,17 @@
     },
     "nose/pipe_writer.go": {
       "file": "pipe_writer.go",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
       "golden_path": true,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
         "Verified": "go-build-test CI job + host tests",
         "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
+        "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
@@ -1720,9 +475,9 @@
     },
     "rust-src/lib.rs": {
       "file": "lib.rs",
-      "classification": "redirect-to-shield",
+      "classification": "",
       "status": "REAL",
-      "golden_path": false,
+      "golden_path": true,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
@@ -1740,17 +495,17 @@
     },
     "scripts/aegis_defcon.py": {
       "file": "aegis_defcon.py",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
-      "golden_path": false,
+      "golden_path": true,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
         "Verified": "python/cython tests + CI job",
         "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
+        "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
@@ -1760,27 +515,27 @@
     },
     "scripts/aegis_metrics.py": {
       "file": "aegis_metrics.py",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
-      "golden_path": false,
+      "golden_path": true,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
         "Verified": "python/cython tests + CI job",
         "Secure": "covered by security-scan component scan",
         "Measured": "perf/metrics/health coverage",
         "Documented": "referenced in docs",
-        "Recoverable": "recovery path referenced",
+        "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
       "missing": [],
       "pass": true
     },
-    "tools/aegisctl.py": {
-      "file": "aegisctl.py",
-      "classification": "control",
+    "src/capture/nose_pipe_reader.zig": {
+      "file": "nose_pipe_reader.zig",
+      "classification": "",
       "status": "REAL",
       "golden_path": true,
       "dims": {
@@ -1788,7 +543,7 @@
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "python/cython tests + CI job",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
@@ -1798,19 +553,279 @@
       "missing": [],
       "pass": true
     },
-    "shield/src/lib.rs": {
-      "file": "lib.rs",
-      "classification": "production",
+    "src/capture/npcap_capture.zig": {
+      "file": "npcap_capture.zig",
+      "classification": "",
+      "status": "LAB",
+      "golden_path": false,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/capture/proto/l7_payload.zig": {
+      "file": "l7_payload.zig",
+      "classification": "",
+      "status": "LAB",
+      "golden_path": false,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/contract/event_fabric.zig": {
+      "file": "event_fabric.zig",
+      "classification": "",
       "status": "REAL",
       "golden_path": true,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "rust cargo test",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/core/authority_review.zig": {
+      "file": "authority_review.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/core/perf_benchmark.zig": {
+      "file": "perf_benchmark.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "perf/metrics/health coverage",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/core/performance_harness.zig": {
+      "file": "performance_harness.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "perf/metrics/health coverage",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/core/real_ips_path.zig": {
+      "file": "real_ips_path.zig",
+      "classification": "",
+      "status": "LAB",
+      "golden_path": false,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/detection/proto_anomaly.zig": {
+      "file": "proto_anomaly.zig",
+      "classification": "",
+      "status": "LAB",
+      "golden_path": false,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/federation/cluster_coord.zig": {
+      "file": "cluster_coord.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/federation/cluster_uplink.zig": {
+      "file": "cluster_uplink.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/federation/federation_codec.zig": {
+      "file": "federation_codec.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/federation/federation_rust_tls.zig": {
+      "file": "federation_rust_tls.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/federation/federation_tcp.zig": {
+      "file": "federation_tcp.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/forensic/decision_trace.zig": {
+      "file": "decision_trace.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "audit/forensic trace producer"
@@ -1818,57 +833,17 @@
       "missing": [],
       "pass": true
     },
-    "shield/src/pep.rs": {
-      "file": "pep.rs",
-      "classification": "production",
+    "src/forensic/forensic_log.zig": {
+      "file": "forensic_log.zig",
+      "classification": "",
       "status": "REAL",
       "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "rust cargo test",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "audit/forensic trace producer"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "shield/src/windows_enforce.rs": {
-      "file": "windows_enforce.rs",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "CI job covers language",
-        "Verified": "rust cargo test",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery runbook coverage",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "src/": {
-      "file": "src",
-      "classification": "legacy-to-migrate",
-      "status": "REAL",
-      "golden_path": false,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "repo-level CI (config/doc/tool)",
-        "Verified": "legacy path (documented deprecated); build-verified by CI",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
@@ -1878,9 +853,9 @@
       "missing": [],
       "pass": true
     },
-    "src/main.zig": {
-      "file": "main.zig",
-      "classification": "legacy-to-migrate",
+    "src/forensic/forensics_engine.zig": {
+      "file": "forensics_engine.zig",
+      "classification": "",
       "status": "REAL",
       "golden_path": false,
       "dims": {
@@ -1888,7 +863,27 @@
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "legacy path (documented deprecated); build-verified by CI",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "audit/forensic trace producer"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/forensic/replay_engine.zig": {
+      "file": "replay_engine.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": false,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
@@ -1898,17 +893,17 @@
       "missing": [],
       "pass": true
     },
-    "src/tests/": {
-      "file": "tests",
-      "classification": "test",
+    "src/forensic/replayable_security.zig": {
+      "file": "replayable_security.zig",
+      "classification": "",
       "status": "REAL",
       "golden_path": false,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "repo-level CI (config/doc/tool)",
-        "Verified": "test asset (class test); runs in CI",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
@@ -1918,37 +913,337 @@
       "missing": [],
       "pass": true
     },
-    "tests/": {
-      "file": "tests",
-      "classification": "test",
+    "src/policy/control_ipc.zig": {
+      "file": "control_ipc.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/policy/policy_engine.zig": {
+      "file": "policy_engine.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/policy/policy_signing.zig": {
+      "file": "policy_signing.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/policy/shadow_decision.zig": {
+      "file": "shadow_decision.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/policy/wfp_production.zig": {
+      "file": "wfp_production.zig",
+      "classification": "",
       "status": "REAL",
       "golden_path": false,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "repo-level CI (config/doc/tool)",
-        "Verified": "test asset (class test); runs in CI",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/tests/integration/fault_injection_integration.zig": {
+      "file": "fault_injection_integration.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/tests/integration/forensics_integration.zig": {
+      "file": "forensics_integration.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": false,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "audit/forensic trace producer"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/tests/integration/performance_integration.zig": {
+      "file": "performance_integration.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "perf/metrics/health coverage",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/tests/integration/release_engineering_integration.zig": {
+      "file": "release_engineering_integration.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/tests/proofs/config_reload_proof.zig": {
+      "file": "config_reload_proof.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/tests/proofs/forensic_replay_proof.zig": {
+      "file": "forensic_replay_proof.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": false,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "audit/forensic trace producer"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/tests/proofs/health_monitoring_proof.zig": {
+      "file": "health_monitoring_proof.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "perf/metrics/health coverage",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/tests/proofs/performance_tuning_proof.zig": {
+      "file": "performance_tuning_proof.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "perf/metrics/health coverage",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/windows/ips_canary_order.zig": {
+      "file": "ips_canary_order.zig",
+      "classification": "",
+      "status": "LAB",
+      "golden_path": false,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/windows/windows_adapters.zig": {
+      "file": "windows_adapters.zig",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": true,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
+    "src/xdr/xdr_incident_fabric.zig": {
+      "file": "xdr_incident_fabric.zig",
+      "classification": "",
+      "status": "LAB",
+      "golden_path": false,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "zig test suite + fixtures",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery runbook coverage",
+        "Auditable": "audit/forensic trace producer"
       },
       "missing": [],
       "pass": true
     },
     "tests/runtime/test_health.py": {
       "file": "test_health.py",
-      "classification": "test",
+      "classification": "",
       "status": "REAL",
-      "golden_path": false,
+      "golden_path": true,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "test asset (class test); runs in CI",
+        "Verified": "python/cython tests + CI job",
         "Secure": "covered by security-scan component scan",
         "Measured": "perf/metrics/health coverage",
         "Documented": "referenced in docs",
@@ -1960,7 +1255,7 @@
     },
     "tools/ci_coverage.py": {
       "file": "ci_coverage.py",
-      "classification": "tooling",
+      "classification": "",
       "status": "REAL",
       "golden_path": false,
       "dims": {
@@ -1968,11 +1263,11 @@
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "release/build tooling; validated by CI jobs",
+        "Verified": "python/cython tests + CI job",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
-        "Recoverable": "covered by upgrade/rollback tooling + runbooks",
+        "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
       "missing": [],
@@ -1980,17 +1275,17 @@
     },
     "tools/config_validator.py": {
       "file": "config_validator.py",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
-      "golden_path": false,
+      "golden_path": true,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
         "Verified": "python/cython tests + CI job",
         "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
+        "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
@@ -1998,69 +1293,9 @@
       "missing": [],
       "pass": true
     },
-    "tools/final_audit.py": {
-      "file": "final_audit.py",
-      "classification": "tooling",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "CI job covers language",
-        "Verified": "release/build tooling; validated by CI jobs",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "not subject to perf measurement (non-production class)",
-        "Documented": "referenced in docs",
-        "Recoverable": "covered by upgrade/rollback tooling + runbooks",
-        "Auditable": "audit/forensic trace producer"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "tools/final_regression.py": {
-      "file": "final_regression.py",
-      "classification": "tooling",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "CI job covers language",
-        "Verified": "release/build tooling; validated by CI jobs",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "perf/metrics/health coverage",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery path referenced",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "tools/golden_path_evidence.py": {
-      "file": "golden_path_evidence.py",
-      "classification": "tooling",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "CI job covers language",
-        "Verified": "release/build tooling; validated by CI jobs",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "perf/metrics/health coverage",
-        "Documented": "referenced in docs",
-        "Recoverable": "covered by upgrade/rollback tooling + runbooks",
-        "Auditable": "audit/forensic trace producer"
-      },
-      "missing": [],
-      "pass": true
-    },
     "tools/installer.py": {
       "file": "installer.py",
-      "classification": "tooling",
+      "classification": "",
       "status": "REAL",
       "golden_path": false,
       "dims": {
@@ -2068,31 +1303,11 @@
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "release/build tooling; validated by CI jobs",
+        "Verified": "python/cython tests + CI job",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
-        "Recoverable": "covered by upgrade/rollback tooling + runbooks",
-        "Auditable": "audit/forensic trace producer"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "tools/release_candidate.py": {
-      "file": "release_candidate.py",
-      "classification": "tooling",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "CI job covers language",
-        "Verified": "release/build tooling; validated by CI jobs",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "not subject to perf measurement (non-production class)",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery path referenced",
+        "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
       "missing": [],
@@ -2100,7 +1315,7 @@
     },
     "tools/release_engineering.py": {
       "file": "release_engineering.py",
-      "classification": "tooling",
+      "classification": "",
       "status": "REAL",
       "golden_path": false,
       "dims": {
@@ -2108,49 +1323,9 @@
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "release/build tooling; validated by CI jobs",
+        "Verified": "python/cython tests + CI job",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
-        "Documented": "referenced in docs",
-        "Recoverable": "covered by upgrade/rollback tooling + runbooks",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "tools/upgrade_rollback.py": {
-      "file": "upgrade_rollback.py",
-      "classification": "tooling",
-      "status": "REAL",
-      "golden_path": false,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "non-authoritative class; governed by owning authority invariant",
-        "Integrated": "CI job covers language",
-        "Verified": "release/build tooling; validated by CI jobs",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "perf/metrics/health coverage",
-        "Documented": "referenced in docs",
-        "Recoverable": "recovery path referenced",
-        "Auditable": "covered by audit runbook/control-plane audit"
-      },
-      "missing": [],
-      "pass": true
-    },
-    "ts_policy/": {
-      "file": "ts_policy",
-      "classification": "production",
-      "status": "REAL",
-      "golden_path": true,
-      "dims": {
-        "Implemented": "file on disk",
-        "Used": "declared module (runtime manifest)",
-        "Authoritative": "named in authority_invariants",
-        "Integrated": "repo-level CI (config/doc/tool)",
-        "Verified": "module directory; covered by its CI job build/test",
-        "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
@@ -2158,19 +1333,39 @@
       "missing": [],
       "pass": true
     },
+    "tools/upgrade_rollback.py": {
+      "file": "upgrade_rollback.py",
+      "classification": "",
+      "status": "REAL",
+      "golden_path": false,
+      "dims": {
+        "Implemented": "file on disk",
+        "Used": "declared module (runtime manifest)",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
+        "Integrated": "CI job covers language",
+        "Verified": "python/cython tests + CI job",
+        "Secure": "covered by security-scan component scan",
+        "Measured": "not subject to perf measurement (non-production class)",
+        "Documented": "referenced in docs",
+        "Recoverable": "recovery path referenced",
+        "Auditable": "covered by audit runbook/control-plane audit"
+      },
+      "missing": [],
+      "pass": true
+    },
     "ts_policy/src/compiler.ts": {
       "file": "compiler.ts",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
       "golden_path": true,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
-        "Authoritative": "golden-path step",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
         "Verified": "typescript CI job + ts tests",
         "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
+        "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
@@ -2180,17 +1375,17 @@
     },
     "ts_policy/src/seal.ts": {
       "file": "seal.ts",
-      "classification": "production",
+      "classification": "",
       "status": "REAL",
       "golden_path": true,
       "dims": {
         "Implemented": "file on disk",
         "Used": "declared module (runtime manifest)",
-        "Authoritative": "golden-path step",
+        "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
         "Verified": "typescript CI job + ts tests",
         "Secure": "covered by security-scan component scan",
-        "Measured": "covered by performance authority invariant (engine measured)",
+        "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"

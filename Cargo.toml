@@ -39,6 +39,10 @@ windows = { version = "0.58", features = [
     "Win32_System_SystemInformation",
 ] }
 
+[[bin]]
+name = "aegis-keygen"
+path = "rust-src/bin/aegis_keygen.rs"
+
 [profile.release]
 opt-level = 3
 lto = true
@@ -49,3 +53,8 @@ panic = "abort"
 [profile.dev]
 opt-level = 0
 debug = true
+
+[dev-dependencies]
+# Test-only X.509 issuance for the federation TLS loopback proofs (P2A).
+# Production issuance stays operator-owned (ADR-0005 custody pattern).
+rcgen = "0.13"

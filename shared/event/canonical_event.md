@@ -114,8 +114,13 @@ File: `brain/canonical_event.py`
 ## Invariants
 
 - Magic MUST be 0x41454731 ("AEG1")
-- Version MUST be 1
-- Wire size MUST be 109 bytes (explicit field-by-field codec; see WIRE_PAYLOAD_SIZE)
+- Version MUST be 1 (v1, frozen), 2 (v2 full IPv6 tail, see
+  `shared/protocol/wire_v2.md`), or 3 (v3 bounded payload + provenance, see
+  `shared/protocol/wire_v3.md`)
+- Wire size MUST be 109 bytes (v1, frozen), 133 bytes (v2 = 109 + 24 tail),
+  or 165 + payload_len bytes (v3 = v2 base + 32-byte envelope + 0..1024
+  payload). Receivers MUST dispatch on version and MUST reject anything
+  else — no silent truncation, no version fallback.
 - struct_size field carries the in-memory extern-struct size of the producer
   (e.g. Zig @sizeOf = 128 due to alignment); receivers MUST validate the
   wire frame as exactly 109 bytes and MUST NOT memcpy the in-memory layout

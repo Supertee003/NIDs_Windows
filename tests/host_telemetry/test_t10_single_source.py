@@ -1,4 +1,4 @@
-"""T10: Host Network + Process telemetry single authoritative source (Step 32).
+r"""T10: Host Network + Process telemetry single authoritative source (Step 32).
 
 The T10 acceptance criteria are:
   AC1. A single authoritative Windows host-network source is chosen
@@ -8,11 +8,13 @@ The T10 acceptance criteria are:
   AC3. No second/incompatible host-network event model exists in the
        runtime.
 
-The architecture: `core/npcap_capture.zig` is the SOLE host-network
-authoritative source on Windows. It produces canonical events via
-`core/canonical_event.zig`. Process telemetry comes from the
-EtwProcessSource in `core/windows_adapters.zig` (T9). Both feed the
-same Zig Flow engine (`core/flow_engine.zig`) as ONE model.
+Current architecture: Go Nose (`nose/`) is the canonical production
+acquisition path. It emits length-prefixed CanonicalEvent frames over
+`\\.\pipe\aegis_nose` to the Zig reader. Direct Npcap
+(`src/capture/npcap_capture.zig`) remains a disjoint, lab-only
+full-payload sensor; it is not a second production ingress. Both paths
+normalize to the same CanonicalEvent model and feed the same Zig flow
+engine.
 
 This file proves the invariants by scanning the repo for
 host-network source modules and asserting the architectural
@@ -179,76 +181,63 @@ def test_no_alternate_host_network_module() -> None:
     )
 
 
-def test_host_network_and_process_share_dispatcher() -> None:
-    """AC2 (lock-in): The dispatcher must consume both network and
-    process events through the same pipeline (processEvent /
-    StageContext). No parallel dispatcher for process events."""
-    text = (REPO_ROOT / "src" / "policy" / "dispatcher.zig").read_text(encoding="utf-8")
-    # The dispatcher's processEvent must handle both network and
-    # process source kinds via the same StageContext. The canonical
-    # test is that the processEvent function does not branch on the
-    # source kind for flow construction -- all events go through the
-    # same flow.
-    assert "processEvent" in text, "dispatcher.zig must define processEvent"
-    # And the StageContext contains both flow_update and other fields
-    assert "flow_update" in text, (
-        "dispatcher.zig StageContext must carry flow_update (single model)"
+def test_host_network_and_process_share_event_processor() -> None:
+    """AC2 (lock-in): The event processor must consume both network and
+    process events through the same pipeline (processEvent, one flow
+    construction site). No parallel dispatcher for process events."""
+    text = (REPO_ROOT / "src" / "pipeline" / "event_processor.zig").read_text(encoding="utf-8")
+    # processEvent handles every event kind through one flow key build —
+    # there is no source-kind branch and no second flow construction site.
+    # (Unit tests in the same file also call FlowKey.normalize, so the pin
+    # matches the production call site, not the bare identifier.)
+    assert "fn processEvent" in text, "event_processor.zig must define processEvent"
+    assert text.count("const fkey = flow.FlowKey.normalize") == 1, (
+        "event_processor must build the flow key at exactly one site (single model)"
     )
 
 
-def test_manifest_documents_host_network_source() -> None:
-    """AC1 (manifest): The runtime_manifest.json must document the
-    authoritative host-network source (npcap_capture.zig) as REAL
-    and on the golden path."""
+def test_manifest_documents_lab_npcap_and_production_nose() -> None:
+    """AC1 (manifest): the manifest must state the current split.
+
+    Go Nose is the production acquisition path (REAL, golden path);
+    direct Npcap is a disjoint lab-only full-payload sensor.
+    """
     import json
     manifest = json.loads((REPO_ROOT / "runtime_manifest.json").read_text(encoding="utf-8"))
     mod = manifest["modules"].get(HOST_NETWORK_SOURCE)
     assert mod is not None, (
-        f"{HOST_NETWORK_SOURCE} must be in runtime_manifest.json (T10 authoritative source)"
+        f"{HOST_NETWORK_SOURCE} must be in runtime_manifest.json (lab sensor record)"
     )
-    assert mod.get("status") == "REAL", (
-        f"{HOST_NETWORK_SOURCE} must be REAL (T10 authoritative source); got {mod}"
+    assert mod.get("status") == "LAB", (
+        f"{HOST_NETWORK_SOURCE} must be LAB (direct Npcap is not production ingress); got {mod}"
     )
-    assert mod.get("golden_path") is True, (
-        f"{HOST_NETWORK_SOURCE} must be on the golden path"
+    assert mod.get("golden_path") is False, (
+        f"{HOST_NETWORK_SOURCE} must not be on the production golden path"
     )
+    for nose_mod in ("nose/capture.go", "nose/canonical.go", "nose/pipe_writer.go"):
+        entry = manifest["modules"].get(nose_mod)
+        assert entry is not None, f"{nose_mod} must be in runtime_manifest.json"
+        assert entry.get("status") == "REAL", f"{nose_mod} must be REAL; got {entry}"
+        assert entry.get("golden_path") is True, f"{nose_mod} must be on the golden path"
 
 
 def test_authority_invariants_declare_one_host_network_source() -> None:
-    """AC1: The authority_invariants section of the manifest must
-    document the single host-network source."""
+    """AC1: The authority_invariants section must document the single
+    production acquisition source and the lab-only direct-Npcap split.
+
+    This test is read-only. It must never repair tracked state: a missing
+    invariant is a source/generator defect, not something a test may write.
+    """
     import json
     manifest = json.loads((REPO_ROOT / "runtime_manifest.json").read_text(encoding="utf-8"))
     invariants = manifest.get("authority_invariants", [])
-    # At least one invariant must mention "host-network" or
-    # "host network" with a single-source statement.
     matching = [
         line for line in invariants
-        if ("host network" in line.lower() or "host-network" in line.lower())
-        and ("single" in line.lower() or "one" in line.lower() or "authoritative" in line.lower())
+        if "canonical acquisition path" in line.lower()
+        and "direct npcap" in line.lower()
+        and "lab-only" in line.lower()
     ]
-    # If no matching invariant, add one programmatically. We don't
-    # modify the manifest in this test (that would be a test that
-    # mutates a config). Instead, the test asserts the invariant is
-    # already present OR logs a clear diagnostic. Since T10 is
-    # adding this invariant, we add it on commit.
-    if not matching:
-        # Best-effort: add the invariant to the manifest and re-read.
-        invariants.append(
-            "host-network source: core/npcap_capture.zig (single authoritative source for Windows host network + process telemetry; one model -> CanonicalEvent -> Zig Flow)"
-        )
-        manifest["authority_invariants"] = invariants
-        (REPO_ROOT / "runtime_manifest.json").write_text(
-            json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
-        # Re-read
-        manifest = json.loads((REPO_ROOT / "runtime_manifest.json").read_text(encoding="utf-8"))
-        invariants = manifest.get("authority_invariants", [])
-        matching = [
-            line for line in invariants
-            if ("host network" in line.lower() or "host-network" in line.lower())
-        ]
     assert matching, (
-        f"authority_invariants must declare a single host-network source (T10 AC1); got: {invariants}"
+        "authority_invariants must declare Go Nose as the canonical acquisition "
+        f"path and direct Npcap as lab-only (T10 AC1); got: {invariants}"
     )

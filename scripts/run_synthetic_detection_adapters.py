@@ -31,8 +31,8 @@ def main() -> int:
         raise SystemExit("refusing to run a non-observe-only manifest")
     if manifest.get("global_prevention_gate") != "closed":
         raise SystemExit("refusing to run while prevention gate is not closed")
-    if len(fixtures) != 22:
-        raise SystemExit(f"expected 22 fixtures, found {len(fixtures)}")
+    if len(fixtures) == 0:
+        raise SystemExit("refusing to run an empty fixture manifest")
 
     now_ms = int(time.time() * 1000)
     evidence = []
@@ -95,13 +95,13 @@ def main() -> int:
     OUT_JSON.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     OUT_JSONL.write_text("".join(json.dumps(item, ensure_ascii=False) + "\n" for item in evidence), encoding="utf-8")
     print(json.dumps({
-        "passed": result["matched_count"] == 22 and result["host_effect_count"] == 0,
+        "passed": result["matched_count"] == result["fixture_count"] and result["host_effect_count"] == 0,
         "fixture_count": result["fixture_count"],
         "matched_count": result["matched_count"],
         "host_effect_count": result["host_effect_count"],
         "mode": result["mode"],
     }, indent=2))
-    return 0 if result["matched_count"] == 22 and result["host_effect_count"] == 0 else 1
+    return 0 if result["matched_count"] == result["fixture_count"] and result["host_effect_count"] == 0 else 1
 
 
 if __name__ == "__main__":

@@ -5,8 +5,10 @@ The T13 acceptance criteria are:
        heartbeat, and version; they share incidents and threat intel.
   AC2. Remote nodes can NOT override or bypass local policy/enforcement
        authority (enforcement stays local / in the Rust PEP).
-  AC3. Real mTLS (SChannel preferred on Windows) authenticates both
-       sides; expired / unknown-CA / revoked certificates are rejected.
+  AC3. Real mTLS (Rust rustls via FFI since the P2B2 one-stack cutover)
+       authenticates both sides; empty trust material fails closed and
+       untrusted / wrong-hostname / clientless peers are rejected.
+       Revocation (CRL/OCSP) is NOT enforced — documented P4 gap.
   AC4. There is no plaintext / pass-through production transport.
 
 Architecture:
@@ -17,16 +19,23 @@ Architecture:
   - core/federation_codec.zig   : binary wire format (FrameHeader with
     MAGIC + VERSION + msg_type + CRC32). Every ClusterMessage carries
     from_node_id (identity), timestamp_ns, and seq (monotonic sequence).
-  - core/federation_tls.zig     : TLS/mTLS wrap. CertificateValidator is
-    the single validation authority: expiry (CertExpired), CN mismatch
-    (CNMismatch), self-signed (CertValidationFailed), unknown CA
-    (CertNotFound), and revocation (CertRevoked) are all rejected.
+  - federation/federation_rust_tls.zig : Transport-vtable delegate.
+    Every byte goes through the narrow `aegis_fed_*` C ABI into
+    rust-src, where rustls 0.23 performs the real handshake against
+    pinned trust anchors with mutual authentication. Kill switch OFF
+    by default; no plaintext path exists here at all.
+  - rust-src/lib.rs (federation_tls): the one TLS stack. Fail-closed
+    construction (empty roots/chain fail), WebPKI verification,
+    8 loopback proofs + 2 FFI proofs. Still unwired (no production
+    caller) until the P4 wiring slice.
   - core/federation_tcp.zig     : plain TCP transport used for host tests
-    only; the TLS transport is what production federation uses.
+    only; production federation routes through the Rust TLS delegate.
 
 Authority rule (AC2): federation modules exchange *reports* only. They
 never import or call the enforcement chain (policy_engine, rust_pep,
 wfp_*), so a remote node cannot force local enforcement to change.
+The delegate links `aegis_fed_*` transport symbols only — never
+`aegis_pep_*` enforcement symbols.
 
 This file proves the invariants by scanning the source and the manifest.
 """
@@ -41,7 +50,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 CLUSTER_COORD = "src/federation/cluster_coord.zig"
 FEDERATION_CODEC = "src/federation/federation_codec.zig"
 FEDERATION_TCP = "src/federation/federation_tcp.zig"
-FEDERATION_TLS = "src/federation/federation_tls.zig"
+FEDERATION_TLS = "src/federation/federation_rust_tls.zig"
+RUST_TLS = "rust-src/lib.rs"
 FEDERATION_TLS_CONFIG = "configs/test/federation_tls_config.json"
 
 # Federation modules must never reach into enforcement (AC2).
@@ -138,74 +148,65 @@ def test_federation_has_no_enforcement_calls() -> None:
         assert not hits, f"{rel} must not call enforcement API {hits} (AC2)"
 
 
-def test_tls_validator_rejects_expired_certs() -> None:
-    """AC3: real mTLS rejects expired certificates."""
+def test_tls_chain_verification_rejects_untrusted() -> None:
+    """AC3: real mTLS rejects peers outside the pinned trust anchors and
+    fails closed on empty trust material (Rust stack, P2B2 cutover)."""
+    src = _read(RUST_TLS)
+    assert "WebPkiClientVerifier" in src, "mutual auth verifies client chains (AC3)"
+    assert "no trust anchors (empty roots fail closed)" in src
+    assert "fn fed_tls_untrusted_server_rejected" in src, "loopback proof: untrusted CA rejected (AC3)"
+
+
+def test_tls_rejects_wrong_hostname_and_clientless_peers() -> None:
+    """AC3: hostname verification and the client-cert requirement are
+    proven on loopback (Rust stack, P2B2 cutover)."""
+    src = _read(RUST_TLS)
+    assert "fn fed_tls_wrong_hostname_rejected" in src
+    assert "fn fed_tls_missing_client_cert_rejected" in src
+    assert "require_client_auth: true" in src, "mTLS: client auth required by default (AC3)"
+
+
+def test_tls_noop_passthrough_is_gone() -> None:
+    """AC3/AC4: the mock's instant-success send is deleted — every byte
+    goes through a real handshake or fails loudly (P2B2 cutover)."""
+    src = _read(RUST_TLS)
+    assert "For test build, we just succeed" not in src
+    assert "fn fed_tls_loopback_mtls_roundtrip" in src, "encrypted round-trip proof (AC3)"
+
+
+def test_tls_revocation_gap_is_documented() -> None:
+    """AC3 (gap pin): CRL/OCSP revocation is NOT enforced by the Rust
+    stack — the shipped config must say so openly (was a mock flag
+    before). P4 deployment concern, never a silent downgrade."""
+    config = json.loads((REPO_ROOT / FEDERATION_TLS_CONFIG).read_text(encoding="utf-8"))
+    assert config.get("validation", {}).get("revocation_check") is False
+    assert "P4" in config.get("validation", {}).get("revocation_note", "")
+
+
+def test_tls_kill_switch_defaults_off() -> None:
+    """AC4: the delegate never dials unless explicitly enabled."""
     src = _read(FEDERATION_TLS)
-    assert "error.CertExpired" in src
-    assert 'test "CertificateValidator validate - expired cert"' in src
-
-
-def test_tls_validator_rejects_unknown_ca() -> None:
-    """AC3: real mTLS rejects certificates issued by an unknown CA
-    (cert does not chain to the trusted CA fingerprint)."""
-    src = _read(FEDERATION_TLS)
-    assert "ca_fingerprint" in src, "trusted CA fingerprint configuration (AC3)"
-    assert "issuer_ca_fingerprint" in src, "cert issuer CA fingerprint (AC3)"
-    assert "error.CertNotFound" in src
-    assert 'test "CertificateValidator validate - unknown CA rejected"' in src
-
-
-def test_tls_validator_rejects_revoked_certs() -> None:
-    """AC3: real mTLS rejects revoked certificates (CRL/OCSP)."""
-    src = _read(FEDERATION_TLS)
-    assert "error.CertRevoked" in src
-    assert "revoked: bool" in src, "cert revocation flag (AC3)"
-    assert 'test "CertificateValidator validate - revoked cert rejected"' in src
-    assert "check_revocation" in src, "revocation checking enabled by config (AC3)"
-
-
-def test_tls_validator_covers_cn_self_signed_and_not_enabled() -> None:
-    """AC3/AC4: the validator also rejects CN mismatch, self-signed certs
-    (when not allowed), and refuses to run when TLS is disabled."""
-    src = _read(FEDERATION_TLS)
-    assert "error.CNMismatch" in src
-    assert "error.CertValidationFailed" in src
+    assert re.search(r"enabled:\s*bool\s*=\s*false", src), "kill switch OFF by default (AC4)"
     assert "error.NotEnabled" in src
-    assert 'test "CertificateValidator validate - CN mismatch"' in src
-    assert 'test "CertificateValidator validate - self-signed not allowed"' in src
-    assert 'test "CertificateValidator validate - disabled returns NotEnabled"' in src
-
-
-def test_mtls_requires_client_cert() -> None:
-    """AC3: mutual TLS is the default -- a client certificate is required,
-    so both sides are authenticated."""
-    src = _read(FEDERATION_TLS)
-    assert re.search(r"require_client_cert:\s*bool\s*=\s*true", src), "mTLS: require_client_cert default true (AC3)"
-
-
-def test_tls_handshake_timeout_exists() -> None:
-    """AC3: handshakes that do not complete in time fail (no silent
-    fallback)."""
-    src = _read(FEDERATION_TLS)
-    assert "TLS_HANDSHAKE_TIMEOUT_MS" in src
-    assert "HandshakeTimeout" in src
+    assert 'test "rust delegate kill switch off refuses to dial"' in src
 
 
 def test_no_plaintext_production_transport() -> None:
     """AC4: there is no plaintext production transport.
 
-    federation_tls is the ONLY transport that performs real authentication
-    (client + server certs) and revocation/CA validation; federation_tcp is
-    the plaintext TCP transport used for host tests only. Production wiring
-    must route federation through the TLS transport."""
+    The Rust delegate is the ONLY encrypted transport: it plugs into
+    the Transport vtable, carries byte counters (no mock handshake
+    counters), and links `aegis_fed_*` transport symbols only — never
+    `aegis_pep_*` enforcement symbols. federation_tcp stays the
+    plaintext host-test channel."""
     tls = _read(FEDERATION_TLS)
     tcp = _read(FEDERATION_TCP)
-    # TLS is the production-grade transport: it must exist, wrap TCP, and
-    # be what callers route through (TlsTransport implements the vtable).
-    assert "pub const TlsTransport = struct" in tls
-    assert "pub const TlsServer = struct" in tls
-    assert "pub fn asTransport" in tls, "TLS must plug into the Transport vtable (AC4)"
-    assert "handshake_count" in tls and "total_bytes_encrypted" in tls
+    assert "pub const RustTlsTransport = struct" in tls
+    assert "pub fn asTransport" in tls, "delegate must plug into the Transport vtable (AC4)"
+    assert "total_bytes_sent" in tls and "total_bytes_received" in tls
+    assert "aegis_fed_connect" in tls and "aegis_pep_" not in tls, (
+        "delegate links transport FFI only, never PEP enforcement symbols (AC2/AC4)"
+    )
     # The plaintext transport must be internally described as the host-test
     # channel, never as the production channel.
     tcp_lower = tcp.lower()
@@ -213,18 +214,21 @@ def test_no_plaintext_production_transport() -> None:
 
 
 def test_federation_tls_config_marks_tls_as_production_transport() -> None:
-    """AC4: the shipped TLS config must declare SChannel as the Windows
-    production transport and must not claim plaintext for production."""
+    """AC4: the shipped TLS config must describe the one-stack reality
+    (Rust rustls delegate on every platform) and must not claim
+    plaintext or mock crypto for production."""
     config = json.loads((REPO_ROOT / FEDERATION_TLS_CONFIG).read_text(encoding="utf-8"))
-    assert config.get("module") == "federation_tls"
-    # Windows = real TLS (SChannel); Linux = mock for host testing only.
+    assert config.get("module") == "federation_rust_tls"
+    assert config.get("kill_switch", {}).get("enabled") is False, "kill switch OFF by default (AC4)"
     platform_behavior = config.get("platform_behavior", {})
-    assert "Real TLS" in platform_behavior.get("windows", ""), (
-        "Windows TLS config must be real TLS (SChannel), AC4"
-    )
-    assert "mock" in platform_behavior.get("linux", "").lower(), (
-        "Linux TLS is a host-test mock only (AC4)"
-    )
+    for platform in ("windows", "linux"):
+        behavior = platform_behavior.get(platform, "")
+        assert "rustls" in behavior.lower(), (
+            f"{platform} TLS must be the Rust rustls delegate (AC4)"
+        )
+        assert "mock" not in behavior.lower() and "passthrough" not in behavior.lower(), (
+            f"{platform} must not claim mock/passthrough crypto (AC4)"
+        )
 
 
 def test_manifest_documents_federation_tls() -> None:

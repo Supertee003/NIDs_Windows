@@ -1,0 +1,33 @@
+{
+  "schema": "aegis.rule22-single.v1",
+  "rule_id": "R0088",
+  "name": "Path Traversal (Sensitive)",
+  "layer": "L7",
+  "severity": "Critical",
+  "action": "Block",
+  "patterns": {
+    "fast_pattern": "PATH_TRAV",
+    "match_pattern": "/etc/passwd",
+    "regex_pattern": "\\.\\./\\.\\./|/etc/passwd|/windows/win.ini|\\\\..\\\\..\\\\"
+  },
+  "fixture": {
+    "fixture_id": "FX-04-R0088",
+    "source": "synthetic_payload_event",
+    "marker": "PATH_TRAV",
+    "synthetic_signal": "PATH_TRAV /etc/passwd C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "regex_match": true
+  },
+  "expected_observe_only": {
+    "host_effect": "none",
+    "wfp_block": false,
+    "enforcement_receipt": false,
+    "forensic_record": true,
+    "canonical_event": true
+  },
+  "prevention_gate": "closed",
+  "vm_steps": [
+    "replay payload via run_synthetic_detection_adapters.py",
+    "host-only: kali_l7_benign_probe.sh, then malicious variant",
+    "verify: L7 parser event + signature match, no enforcement"
+  ]
+}

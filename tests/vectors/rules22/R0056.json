@@ -1,0 +1,33 @@
+{
+  "schema": "aegis.rule22-single.v1",
+  "rule_id": "R0056",
+  "name": "SQL Injection (Auth Bypass)",
+  "layer": "L7",
+  "severity": "Critical",
+  "action": "Drop",
+  "patterns": {
+    "fast_pattern": "SQLI_BYPASS",
+    "match_pattern": "' OR 1=1",
+    "regex_pattern": "'\\s*OR\\s*1=1|'\\s*OR\\s*'1'='1|INFO:SQLI_BYPASS"
+  },
+  "fixture": {
+    "fixture_id": "FX-01-R0056",
+    "source": "synthetic_payload_event",
+    "marker": "SQLI_BYPASS",
+    "synthetic_signal": "SQLI_BYPASS ' OR 1=1 C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "regex_match": true
+  },
+  "expected_observe_only": {
+    "host_effect": "none",
+    "wfp_block": false,
+    "enforcement_receipt": false,
+    "forensic_record": true,
+    "canonical_event": true
+  },
+  "prevention_gate": "closed",
+  "vm_steps": [
+    "replay payload via run_synthetic_detection_adapters.py",
+    "host-only: kali_l7_benign_probe.sh, then malicious variant",
+    "verify: L7 parser event + signature match, no enforcement"
+  ]
+}

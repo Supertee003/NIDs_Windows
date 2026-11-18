@@ -3,7 +3,7 @@
 //
 // Integration layers:
 //   1. TypeScript Policy IR → Zig: JSON contract (policy_ir.json)
-//   2. Zig → Rust Shield: FFI (scoring, PEP)
+//   2. Zig → Rust Shield: FFI (advisory screening only — PEP-001)
 //   3. Policy enum contracts: must match across all languages
 
 const std = @import("std");
@@ -46,58 +46,15 @@ pub const ConditionType = enum(u8) {
 };
 
 // ============================================================================
-// Contract 2: Shield screening compatibility data (non-authoritative)
+// Contract 2: Shield screening surface (PEP-001)
 // ============================================================================
 
-/// Shield scoring request (Zig → Rust).
-pub const ShieldScoreRequest = extern struct {
-    event_kind: u8,
-    src_ip: u32,
-    dst_ip: u32,
-    src_port: u16,
-    dst_port: u16,
-    protocol: u8,
-    payload_length: u32,
-    rule_id: u32,
-    context_flags: u32,
-};
-
-/// Shield scoring response (Rust → Zig).
-pub const ShieldScoreResponse = extern struct {
-    score: u32, // 0-1000 threat score
-    is_threat: u8, // 0=benign, 1=threat
-    confidence: u8, // 0-100
-    action: u8, // PolicyAction
-    reserved: [5]u8,
-};
-
-/// Shield PEP request (Zig → Rust).
-pub const ShieldPepRequest = extern struct {
-    decision_kind: u8,
-    flow_id: u64,
-    src_ip: u32,
-    dst_ip: u32,
-    src_port: u16,
-    dst_port: u16,
-    policy_id: u32,
-    severity: u8,
-    caller_pid: u32,
-    caller_capability_mask: u32,
-    request_id: u64,
-    reserved: u32,
-};
-
-/// Shield PEP response (Rust → Zig).
-pub const ShieldPepResponse = extern struct {
-    decision: u8,
-    reason: u32,
-    quota_remaining: u32,
-    signed_by: u32,
-};
-
-// No extern declarations live here by design. These structures are retained
-// only for screening/test compatibility. Privileged authorization and WFP
-// mutation are exported solely by rust-src/lib.rs (the Rust PEP).
+// REMOVED (PEP-001, 2026-10-17): the ShieldScore* and ShieldPep* mirrors
+// described scoring/PEP wire formats no component implements ("the shield
+// C-ABI shim"; see GAP-007 / EVIDENCE_INDEX EVT-228). The runtime screening
+// surface is `aegis_shield_screen` (shield/src/lib.rs, DynLib-only from
+// src/policy/shield_screen.zig); every enforcement contract lives in the
+// canonical PEP ABI (rust-src/lib.rs + src/policy/pep_bindings.zig).
 
 // ============================================================================
 // Contract 3: Policy Enum Contracts (must match across all languages)
@@ -121,13 +78,45 @@ pub const Severity = enum(u8) {
     critical = 3,
 };
 
-/// Enforcement status values (must match across all languages).
+/// Enforcement status values for the frozen wire/forensic byte (must match
+/// across all languages). This is the 4-value space documented on
+/// `canonical_event.zig` enforcement_status. The receipt vocabulary
+/// (`policy/enforcement_receipt.zig`) is richer and must cross into this space
+/// through `EnforcementStatus.wireStatus`, never by ordinal reinterpretation.
 pub const EnforcementStatus = enum(u8) {
     pending = 0,
     enforced = 1,
     failed = 2,
     rolled_back = 3,
 };
+
+test "receipt status vocabulary maps onto the frozen wire space" {
+    const receipt = @import("../policy/enforcement_receipt.zig");
+    // The two spaces share their first three ordinals...
+    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(receipt.EnforcementStatus.pending));
+    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(receipt.EnforcementStatus.enforced));
+    try std.testing.expectEqual(@as(u8, 2), @intFromEnum(receipt.EnforcementStatus.failed));
+    // ...and diverge after them: receipt 3 is `unavailable`, wire 3 is
+    // `rolled_back`. A raw ordinal read across the boundary would report a
+    // failed provider as a completed rollback.
+    try std.testing.expectEqual(@as(u8, 3), @intFromEnum(receipt.EnforcementStatus.unavailable));
+    try std.testing.expectEqual(@as(u8, 3), @intFromEnum(EnforcementStatus.rolled_back));
+    try std.testing.expectEqual(@as(u8, 4), @intFromEnum(receipt.EnforcementStatus.rolled_back));
+
+    // The mapping is total and only `enforced` may claim a host effect.
+    try std.testing.expectEqual(@as(u8, 1), receipt.EnforcementStatus.enforced.wireStatus());
+    try std.testing.expectEqual(@as(u8, 3), receipt.EnforcementStatus.rolled_back.wireStatus());
+    try std.testing.expectEqual(@as(u8, 0), receipt.EnforcementStatus.pending.wireStatus());
+    for ([_]receipt.EnforcementStatus{
+        .pending,
+        .failed,
+        .unavailable,
+        .rolled_back,
+        .simulated,
+    }) |status| {
+        try std.testing.expect(status.wireStatus() != 1);
+    }
+}
 
 // ============================================================================
 // Tests
@@ -150,20 +139,6 @@ test "TypeScript→Zig: ConditionType enum values" {
     try std.testing.expectEqual(@as(u8, 3), @intFromEnum(ConditionType.port));
     try std.testing.expectEqual(@as(u8, 4), @intFromEnum(ConditionType.protocol));
     try std.testing.expectEqual(@as(u8, 5), @intFromEnum(ConditionType.regex));
-}
-
-test "Rust→Zig: Shield scoring request/response sizes" {
-    try std.testing.expect(@sizeOf(ShieldScoreRequest) > 0);
-    try std.testing.expect(@sizeOf(ShieldScoreRequest) <= 128);
-    try std.testing.expect(@sizeOf(ShieldScoreResponse) > 0);
-    try std.testing.expect(@sizeOf(ShieldScoreResponse) <= 64);
-}
-
-test "Rust→Zig: Shield PEP request/response sizes" {
-    try std.testing.expect(@sizeOf(ShieldPepRequest) > 0);
-    try std.testing.expect(@sizeOf(ShieldPepRequest) <= 256);
-    try std.testing.expect(@sizeOf(ShieldPepResponse) > 0);
-    try std.testing.expect(@sizeOf(ShieldPepResponse) <= 64);
 }
 
 test "Policy enum: PolicyAction values match cross-language contract" {
@@ -313,18 +288,3 @@ test "FFI-004: PolicyRule size is ABI-safe for JSON round-trip" {
     try std.testing.expect(rule_size <= 128);
 }
 
-test "FFI-004: Shield scoring request/response sizes match Rust contract" {
-    // ShieldScoreRequest/Response must match Rust shield/src/lib.rs
-    try std.testing.expect(@sizeOf(ShieldScoreRequest) > 0);
-    try std.testing.expect(@sizeOf(ShieldScoreRequest) <= 128);
-    try std.testing.expect(@sizeOf(ShieldScoreResponse) > 0);
-    try std.testing.expect(@sizeOf(ShieldScoreResponse) <= 64);
-}
-
-test "FFI-004: Shield PEP request/response sizes match Rust contract" {
-    // ShieldPepRequest/Response must match Rust shield/src/lib.rs
-    try std.testing.expect(@sizeOf(ShieldPepRequest) > 0);
-    try std.testing.expect(@sizeOf(ShieldPepRequest) <= 256);
-    try std.testing.expect(@sizeOf(ShieldPepResponse) > 0);
-    try std.testing.expect(@sizeOf(ShieldPepResponse) <= 64);
-}

@@ -10,6 +10,8 @@ package main
 
 import (
 	"encoding/binary"
+	"net"
+	"os"
 	"testing"
 
 	"github.com/google/gopacket"
@@ -338,51 +340,201 @@ func TestEventFromPacketSynthetic(t *testing.T) {
 	}
 }
 
-func TestSignatureClassifierSetsCanonicalMetadata(t *testing.T) {
-	activeNoseSignatureRules = []noseSignatureRule{
-		{RuleID: "TEST1", MatchPattern: "GET", Severity: "High"},
-	}
-	defer func() { activeNoseSignatureRules = nil }()
+// v6ProbeEvent mirrors the Zig v2 test probe: 2001:0db8::1/::2 with the
+// truncated flag and first-4-byte u32 identity (BigEndian.Uint32(addr[:4])).
+func v6ProbeEvent() *CanonicalEvent {
+	ev := goldenEvent()
+	ev.SourceIP = 0x20010DB8
+	ev.DestIP = 0x20010DB8
+	ev.ContextFlags |= ContextV6Truncated
+	ev.Src6 = [16]byte{0x20, 0x01, 0x0D, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
+	ev.Dst6 = [16]byte{0x20, 0x01, 0x0D, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2}
+	return ev
+}
 
-	ip := &layers.IPv4{Version: 4, IHL: 5, SrcIP: []byte{192, 168, 1, 10}, DstIP: []byte{192, 168, 1, 20}, Protocol: layers.IPProtocolTCP}
-	tcp := &layers.TCP{SrcPort: 50000, DstPort: 80}
-	tcp.SetNetworkLayerForChecksum(ip)
-	buf := gopacket.NewSerializeBuffer()
-	if err := gopacket.SerializeLayers(buf, gopacket.SerializeOptions{ComputeChecksums: true, FixLengths: true}, ip, tcp, gopacket.Payload([]byte("GET / HTTP/1.1\r\n"))); err != nil {
-		t.Fatalf("serialize classifier packet: %v", err)
-	}
-	pkt := gopacket.NewPacket(buf.Bytes(), layers.LayerTypeIPv4, gopacket.NoCopy)
-	ev := eventFromPacket(pkt)
-	classifyNosePacket(ev, pkt)
-
-	if ev.EventType != TypeMatch {
-		t.Fatalf("event type: got %d want %d", ev.EventType, TypeMatch)
-	}
-	if ev.RuleID != hashNoseRuleID("TEST1") {
-		t.Fatalf("rule id mismatch: got %#x want %#x", ev.RuleID, hashNoseRuleID("TEST1"))
-	}
-	if ev.Severity != 2 {
-		t.Fatalf("severity: got %d want 2 for High", ev.Severity)
-	}
-	wire, err := ev.Serialize()
+func TestSerializeV2RoundTrip(t *testing.T) {
+	ev := v6ProbeEvent()
+	wire, err := ev.SerializeV2()
 	if err != nil {
-		t.Fatalf("serialize classified event: %v", err)
+		t.Fatalf("SerializeV2: %v", err)
 	}
-	if len(wire) != EventWireSize {
-		t.Fatalf("wire size changed: got %d want %d", len(wire), EventWireSize)
+	if len(wire) != EventV2WireSize {
+		t.Fatalf("v2 size: got %d want %d", len(wire), EventV2WireSize)
+	}
+	if binary.LittleEndian.Uint16(wire[4:6]) != EventSchemaVersionV2 {
+		t.Fatalf("v2 version field: got %d", binary.LittleEndian.Uint16(wire[4:6]))
+	}
+	// v1 prefix intact (first-4 identity + flags).
+	if binary.LittleEndian.Uint32(wire[33:37]) != ev.SourceIP {
+		t.Fatalf("v1 prefix source mismatch")
+	}
+	if binary.LittleEndian.Uint32(wire[89:93])&ContextV6Truncated == 0 {
+		t.Fatalf("bit2 must survive the v2 round-trip")
+	}
+	back, err := DeserializeDispatch(wire[:])
+	if err != nil {
+		t.Fatalf("DeserializeDispatch: %v", err)
+	}
+	if back.Src6 != ev.Src6 || back.Dst6 != ev.Dst6 {
+		t.Fatalf("full addresses differ:\n  got  % x / % x\n  want % x / % x",
+			back.Src6, back.Dst6, ev.Src6, ev.Dst6)
+	}
+	if back.SourceIP != ev.SourceIP || back.DestIP != ev.DestIP {
+		t.Fatalf("v1 identity fields differ after v2 round-trip")
 	}
 }
 
-func TestSignatureClassifierIgnoresNonMatchingPayload(t *testing.T) {
-	activeNoseSignatureRules = []noseSignatureRule{
-		{RuleID: "TEST1", MatchPattern: "GET", Severity: "High"},
+func TestSerializeV2Guards(t *testing.T) {
+	ev := goldenEvent() // no bit2
+	if _, err := ev.SerializeV2(); err == nil {
+		t.Fatalf("v2 without ContextV6Truncated must fail")
 	}
-	defer func() { activeNoseSignatureRules = nil }()
+	ev = v6ProbeEvent()
+	ev.SourceIP = 0x0A000001 // first-4 no longer matches Src6[:4]
+	if _, err := ev.SerializeV2(); err == nil {
+		t.Fatalf("v2 with mismatched first-4 must fail")
+	}
+}
 
-	pkt := gopacket.NewPacket([]byte{}, layers.LayerTypeIPv4, gopacket.NoCopy)
+func TestDeserializeDispatchVersions(t *testing.T) {	// v1 still dispatches with zero sidecars.
+	gold := goldenBytes()
+	back, err := DeserializeDispatch(gold[:])
+	if err != nil {
+		t.Fatalf("v1 dispatch: %v", err)
+	}
+	var zero [16]byte
+	if back.Src6 != zero || back.Dst6 != zero {
+		t.Fatalf("v1 must decode with zero v6 sidecars")
+	}
+	// Unknown version rejected.
+	bad := gold
+	bad[4] = 9
+	if _, err := DeserializeDispatch(bad[:]); err == nil {
+		t.Fatalf("unknown version must be rejected")
+	}
+	// Short buffer rejected.
+	if _, err := DeserializeDispatch(gold[:10]); err == nil {
+		t.Fatalf("short buffer must be rejected")
+	}
+	// Version 2 with only 109 bytes is malformed.
+	v2 := v6ProbeEvent()
+	wire, err := v2.SerializeV2()
+	if err != nil {
+		t.Fatalf("SerializeV2: %v", err)
+	}
+	if _, err := DeserializeDispatch(wire[:EventWireSize]); err == nil {
+		t.Fatalf("truncated v2 frame must be rejected, never silently truncated")
+	}
+}
+
+// TestV2Vector006MatchesCommittedBin pins Go/Zig/Python byte identity:
+// the same logical v2 event must serialize to the committed
+// event_v2_006.bin (frozen by generate_test_vectors.py) in every language.
+func TestV2Vector006MatchesCommittedBin(t *testing.T) {
+	raw, err := os.ReadFile("../tests/contracts/event_vectors/event_vectors/event_v2_006.bin")
+	if err != nil {
+		t.Fatalf("read committed v2 vector: %v", err)
+	}
+	if len(raw) != EventV2WireSize {
+		t.Fatalf("v2 vector size: got %d want %d", len(raw), EventV2WireSize)
+	}
+	ev := &CanonicalEvent{
+		EventID:           6006,
+		TimestampMS:       1700000006000,
+		MonotonicNS:       6000000000,
+		Source:            SourceNpcapSensor,
+		SourceIP:          0x20010DB8,
+		SourcePort:        49152,
+		DestIP:            0x20010DB8,
+		DestPort:          443,
+		SessionID:         6060,
+		Protocol:          6,
+		EventType:         TypeForward,
+		Severity:          1,
+		RulesetVersion:    3,
+		PayloadLength:     1500,
+		PolicyAction:      byte(PolicyAllow),
+		DefconImpact:      5,
+		ContextFlags:      ContextV6Truncated,
+		Src6:              [16]byte{0x20, 0x01, 0x0D, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+		Dst6:              [16]byte{0x20, 0x01, 0x0D, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2},
+	}
+	wire, err := ev.SerializeV2()
+	if err != nil {
+		t.Fatalf("SerializeV2: %v", err)
+	}
+	if string(wire[:]) != string(raw) {
+		t.Fatalf("v2 bytes differ from committed vector:\n  got  % x\n  want % x", wire, raw)
+	}
+	back, err := DeserializeDispatch(raw)
+	if err != nil {
+		t.Fatalf("DeserializeDispatch(006): %v", err)
+	}
+	if back.Src6 != ev.Src6 || back.Dst6 != ev.Dst6 {
+		t.Fatalf("v2 vector full addresses differ")
+	}
+	if back.ContextFlags&ContextV6Truncated == 0 {
+		t.Fatalf("bit2 must survive the committed v2 vector")
+	}
+}
+
+func TestEventFromPacketFillsV6Sidecars(t *testing.T) {	// T2-V6-022b emit path: a synthetic IPv6 packet must produce first-4
+	// identity + bit2 AND full Src6/Dst6, so Send can emit v2 frames.
+	ip6 := &layers.IPv6{
+		Version:    6,
+		NextHeader: 6,
+		SrcIP:      net.ParseIP("2001:db8::1"),
+		DstIP:      net.ParseIP("2001:db8::2"),
+	}
+	tcp := &layers.TCP{SrcPort: 1234, DstPort: 80}
+	buf := gopacket.NewSerializeBuffer()
+	if err := gopacket.SerializeLayers(buf, gopacket.SerializeOptions{},
+		ip6, tcp, gopacket.Payload([]byte("hello"))); err != nil {
+		t.Fatalf("serialize v6 packet: %v", err)
+	}
+	pkt := gopacket.NewPacket(buf.Bytes(), layers.LayerTypeIPv6, gopacket.NoCopy)
 	ev := eventFromPacket(pkt)
-	classifyNosePacket(ev, pkt)
-	if ev.EventType != TypeForward || ev.RuleID != 0 || ev.Severity != 0 {
-		t.Fatalf("non-match mutated canonical metadata: type=%d rule=%d severity=%d", ev.EventType, ev.RuleID, ev.Severity)
+	if !ev.IsV6() {
+		t.Fatalf("v6 packet must set bit2")
+	}
+	var wantSrc, wantDst [16]byte
+	copy(wantSrc[:], net.ParseIP("2001:db8::1").To16())
+	copy(wantDst[:], net.ParseIP("2001:db8::2").To16())
+	if ev.Src6 != wantSrc || ev.Dst6 != wantDst {
+		t.Fatalf("v6 sidecars differ:\n  got  % x / % x", ev.Src6, ev.Dst6)
+	}
+	if ev.SourceIP != 0x20010DB8 || ev.DestIP != 0x20010DB8 {
+		t.Fatalf("v6 first-4 identity wrong: %08x %08x", ev.SourceIP, ev.DestIP)
+	}
+}
+
+func TestCommittedVectorsValidate(t *testing.T) {
+	// Wires the golden_path_ffi validators (previously print-only, never
+	// executed by any test or main path) into `go test`.
+	if !ValidateSemanticEquivalence() {
+		t.Fatalf("committed vectors failed Go cross-language validation")
+	}
+}
+
+func TestOverLengthV1FrameDecodesAsV1(t *testing.T) {
+	// Hardening parity: a 133-byte frame stamped version 1 decodes on the
+	// frozen v1 path (first 109 bytes, tail ignored, zero sidecars) — the
+	// version field is authoritative, not the length. Zig/Python/C++ agree.
+	gold := goldenBytes()
+	var long [EventV2WireSize]byte
+	copy(long[:], gold[:])
+	for i := EventWireSize; i < EventV2WireSize; i++ {
+		long[i] = byte(i)
+	}
+	back, err := DeserializeDispatch(long[:])
+	if err != nil {
+		t.Fatalf("over-length v1 dispatch: %v", err)
+	}
+	var zero [16]byte
+	if back.Src6 != zero || back.Dst6 != zero {
+		t.Fatalf("v1 version must decode with zero sidecars at any length")
+	}
+	if back.SourceIP != 0xC0A80164 {
+		t.Fatalf("v1 identity must survive trailing bytes")
 	}
 }

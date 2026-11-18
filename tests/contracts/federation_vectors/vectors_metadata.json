@@ -1,0 +1,28 @@
+{
+  "magic": "AEGI",
+  "version": 1,
+  "header_len": 12,
+  "vectors": [
+    {
+      "file": "fed_v1_001.bin",
+      "msg_type": 0,
+      "description": "Heartbeat node 7 -> broadcast, seq 1, no node/TI blocks",
+      "sha256": "54f782748458e204469a619f9cb78425633b14b98a8d6e3d5e0f63071c851c2a",
+      "size": 51
+    },
+    {
+      "file": "fed_v1_002.bin",
+      "msg_type": 3,
+      "description": "Incident node 7 -> node 9 with announcement, DNS tunnel High 7.5",
+      "sha256": "9a152efa803d6c73aa6f58d747c90147f0b2b67eaa9ffcd3e0c8588df23eedb6",
+      "size": 112
+    },
+    {
+      "file": "fed_v1_003.bin",
+      "msg_type": 4,
+      "description": "Threat-intel share node 9 -> broadcast, malicious IP 10.0.0.14",
+      "sha256": "c1597e2177dd8bd4f9a27c6c186703c8938145b3ac9eb6b554d4dd2fc14712e7",
+      "size": 94
+    }
+  ]
+}

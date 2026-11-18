@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -29,6 +30,82 @@ import (
 // AEGIS_NOSE_VERSION is the SEMVER reported by `aegis-nose --version`.
 // Parsed by tests/runtime/test_version.py.
 const AEGIS_NOSE_VERSION = "5.0.0"
+
+// RB-021: the daemon's direct-Npcap guard verifies the exact selector owned by
+// this process. Publish only an explicitly selected interface; auto-selection
+// must remain unverifiable and therefore cannot authorize direct Npcap.
+const noseIfaceEnv = "AEGIS_NOSE_IFACE"
+
+func publishCaptureInterface(selector string) error {
+	selector = strings.TrimSpace(selector)
+	if selector == "" {
+		return os.Unsetenv(noseIfaceEnv)
+	}
+	return os.Setenv(noseIfaceEnv, selector)
+}
+
+// NOSE-HEALTH-190 (DEADCODE-QUARANTINE): headless beacon counters must move
+// with real work — the old block hardcoded zeros, so a supervisor could not
+// tell a live collector loop from a dead one. In headless mode nose's events
+// are its collector samples: in_events counts samples consumed, out_events
+// counts beacons emitted, last_event_ms is the age of the most recent sample
+// (0 = none yet; >5x the health interval = soft failure, RUNTIME_CONTRACT
+// §4.1). Capture-mode frame counters are reported daemon-side (nose_frames_*).
+type headlessTelemetry struct {
+	inEvents  uint64
+	outEvents uint64
+	lastEvent time.Time // zero = nothing processed yet
+}
+
+func (t *headlessTelemetry) noteSamples(n int, now time.Time) {
+	if n == 0 {
+		return
+	}
+	t.inEvents += uint64(n)
+	t.lastEvent = now
+}
+
+// noteBeacon counts a beacon once it is on stdout; the payload of that
+// beacon carries the pre-increment value (prior beacons only).
+func (t *headlessTelemetry) noteBeacon() {
+	t.outEvents++
+}
+
+func (t *headlessTelemetry) lastEventAgeMs(now time.Time) int64 {
+	if t.lastEvent.IsZero() {
+		return 0 // no event yet — honest "never", not a fake freshness
+	}
+	return now.Sub(t.lastEvent).Milliseconds()
+}
+
+// NOSE-JSON-166: headless beacon constructor (extracted for contract
+// tests; behavior identical to the former inline literal).
+func buildHeadlessState(resData ResourceData, trafData TrafficData, thrData ThreatData, tel *headlessTelemetry, startTime time.Time, pid int) map[string]interface{} {
+	return map[string]interface{}{
+		"op":            "HEALTH",
+		"state":         "RUNNING",
+		"status":        "OK",
+		"component":     "nose",
+		"version":       AEGIS_NOSE_VERSION,
+		"pid":           pid,
+		"uptime_ms":     time.Since(startTime).Milliseconds(),
+		"last_event_ms": tel.lastEventAgeMs(time.Now()),
+		"counters": map[string]interface{}{
+			"in_events":  tel.inEvents,
+			"out_events": tel.outEvents,
+			"errors":     0, // no error path in the synthetic headless loop
+			"dropped":    0, // no drop path in the synthetic headless loop
+		},
+		"deps": []map[string]string{
+			{"name": "core", "state": "RUNNING"},
+		},
+		// Nose-specific metrics (kept for downstream consumers).
+		"timestamp": time.Now().Format(time.RFC3339),
+		"resource":  resData,
+		"traffic":   trafData,
+		"threat":    thrData,
+	}
+}
 
 func main() {
 	// G27 Gate-A: --version flag. Print SEMVER + exit 0 before any
@@ -47,11 +124,19 @@ func main() {
 	listDevices := flag.Bool("list-devices", false, "List Npcap devices, descriptions, and addresses")
 	captureProbeAll := flag.Bool("capture-probe-all", false, "Probe every Npcap device for raw packets")
 	capturePipe := flag.String("pipe", nosePipeName, "Named pipe consumer (Zig core) for -capture")
-	captureIface := flag.String("iface", "", "Capture interface name (empty = auto-select) for -capture")
+	captureIface := flag.String("iface", "", "Exact Npcap interface name (empty = auto-select) for -capture")
+	requireIface := flag.Bool("require-iface", false, "Refuse auto-selection; required for isolated VMware lab capture")
+	liveTalkers := flag.Bool("live-talkers", false, "Feed Top Talkers from live Npcap capture (non-promiscuous, no pipe writes; falls back to synthetic silently)")
 	selfTest := flag.Bool("capture-self-test", false, "Run capture encoder self-test then exit")
 	injectObserve := flag.Bool("inject-observe", false, "Send canonical alert-only fixture through the Zig Nose pipe")
 	injectCount := flag.Int("inject-count", 1, "Number of observe-only canonical fixtures to send")
 	flag.Parse()
+
+	if (*capture || *captureProbe) && *requireIface && *captureIface == "" {
+		fmt.Fprintln(os.Stderr, "[AEGIS NOSE] REFUSE: --require-iface needs --iface <exact Npcap name>")
+		fmt.Fprintln(os.Stderr, "[AEGIS NOSE] First run: aegis-nose.exe --list-devices")
+		os.Exit(2)
+	}
 
 	if *selfTest {
 		if err := captureSelfTest(); err != nil {
@@ -103,6 +188,10 @@ func main() {
 
 	// CAPTURE MODE: acquisition-only packet capture feeding the Zig core.
 	if *capture {
+		if err := publishCaptureInterface(*captureIface); err != nil {
+			fmt.Fprintf(os.Stderr, "[AEGIS NOSE] cannot publish capture interface: %v\n", err)
+			os.Exit(1)
+		}
 		stop := make(chan struct{})
 		go func() {
 			if err := runCapture(*captureIface, *capturePipe, stop); err != nil {
@@ -122,6 +211,14 @@ func main() {
 	go trafficCollector(trafficCh)
 	go threatCollector(threatCh)
 
+	// NOSE-TALK-145: opt-in live talkers feed. Any failure (no Npcap,
+	// no permission) keeps today's synthetic path with one stderr note.
+	if *liveTalkers {
+		if err := startLiveTalkersFeed(); err != nil {
+			fmt.Fprintf(os.Stderr, "[AEGIS NOSE] live talkers unavailable, synthetic retained: %v\n", err)
+		}
+	}
+
 	if *headless {
 		// HEADLESS MODE: Continuously print JSON metrics to stdout.
 		// G35: each JSON beacon now includes a HEALTH envelope so the
@@ -133,57 +230,42 @@ func main() {
 		ticker := time.NewTicker(2 * time.Second)
 		defer ticker.Stop()
 
+		// NOSE-HEALTH-190: count the samples this loop actually consumed.
+		tel := &headlessTelemetry{}
 		for range ticker.C {
 			var resData ResourceData
 			var trafData TrafficData
 			var thrData ThreatData
 
+			consumed := 0
 			// Non-blocking read from channels
 			select {
 			case resData = <-resourceCh:
+				consumed++
 			default:
 			}
 			select {
 			case trafData = <-trafficCh:
+				consumed++
 			default:
 			}
 			select {
 			case thrData = <-threatCh:
+				consumed++
 			default:
 			}
+			tel.noteSamples(consumed, time.Now())
 
 			// Construct unified JSON state with HEALTH envelope.
 			// Schema fields required by RUNTIME_CONTRACT.md §4.1:
 			//   component, state, pid, uptime_ms, last_event_ms,
 			//   counters (in_events, out_events, errors, dropped), deps
-			state := map[string]interface{}{
-				"op":            "HEALTH",
-				"state":         "RUNNING",
-				"status":        "OK",
-				"component":     "nose",
-				"version":       AEGIS_NOSE_VERSION,
-				"pid":           os.Getpid(),
-				"uptime_ms":     time.Since(startTime).Milliseconds(),
-				"last_event_ms": 0,
-				"counters": map[string]interface{}{
-					"in_events":  0,
-					"out_events": 0,
-					"errors":     0,
-					"dropped":    0,
-				},
-				"deps": []map[string]string{
-					{"name": "core", "state": "RUNNING"},
-				},
-				// Nose-specific metrics (kept for downstream consumers).
-				"timestamp": time.Now().Format(time.RFC3339),
-				"resource":  resData,
-				"traffic":   trafData,
-				"threat":    thrData,
-			}
+			state := buildHeadlessState(resData, trafData, thrData, tel, startTime, os.Getpid())
 
 			jsonBytes, err := json.Marshal(state)
 			if err == nil {
 				fmt.Println(string(jsonBytes))
+				tel.noteBeacon()
 			}
 		}
 	} else {

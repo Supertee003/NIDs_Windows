@@ -1,0 +1,218 @@
+import json, os, time
+from datetime import datetime
+from pathlib import Path
+
+VERSION = "2.1.0"
+START_TIME = datetime.now()
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parent
+
+LOG_FILE = str(PROJECT_ROOT / "logs" / "anomalous.json")
+RULES_FILE = str(PROJECT_ROOT / "Rules.json")
+
+# =====================================================================
+# AEGIS NIDS COMMAND CENTER (Legacy Dashboard) v2.1
+# =====================================================================
+# รายงานผลการตรวจจับและสถานะระบบแบบรวมศูนย์
+# ใช้แสดงผลบนคอนโซลแบบ TUI/Legacy หลังจากระบบทำงานแล้ว
+# รองรับการดู:
+#   - สถิติการตรวจจับรวม
+#   - ตารางเหตุการณ์ล่าสุด
+#   - ตัวชี้ DEFCON
+#   - สถานะความพร้อม (readiness gate)
+#   - ตารางการทำงานของ subsystem
+# ---
+# Compile:  not required (Python script)
+# Run:      python scripts\Dashboard.py
+# ----------------------------------------------------------------
+
+# โมดูลเก็บสถานะระบบระดับคณะ
+SYSTEM_STATUS = {
+    "state": "UNKNOWN",
+    "degraded": True,
+    "uptime_ms": 0,
+    "subsystems": {},
+}
+
+# ฟิกซ์: เพิ่มการรองรับการเข้ารหัส UTF-8 บน Windows
+import sys
+import io
+for _s in ("stdout", "stderr"):
+    _stream = getattr(sys, _s, None)
+    if _stream is None:
+        continue
+    _reconf = getattr(_stream, "reconfigure", None)
+    if _reconf is not None:
+        try:
+            _reconf(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+    else:
+        # Python < 3.7 fallback
+        import io as _io
+        setattr(sys, _s, _io.TextIOWrapper(_stream.buffer, encoding="utf-8", errors="replace", line_buffering=True))
+# ----------------------------------------------------------------
+
+# --- [ COLOR PALETTE ] ---
+# ใช้สีสอดคล้องกับ AEGIS NIDS visual design language
+class C:
+    CYAN = '\033[96;1m'
+    BOLD = '\033[1m'
+    RED = '\033[91;1m'
+    GREEN = '\033[92;1m'
+    YELLOW = '\033[93;1m'
+    DIM = '\033[2m'
+    RESET = '\033[0m'
+    ORANGE = '\033[38;5;208m'
+    MAGENTA = '\033[95m'
+    WHITE = '\033[97m'
+
+# --- [ DEFCON LEVELS ]---
+# สีสำหรับแต่ละระดับ DEFCON
+DEFCON_COLORS = {
+    1: C.MAGENTA,  # MAXIMUM
+    2: C.RED,      # SEVERE
+    3: C.ORANGE,   # HIGH
+    4: C.YELLOW,   # ELEVATED
+    5: C.GREEN,    # SAFE
+}
+
+DEFCON_LABELS = {
+    1: "MAXIMUM",
+    2: "SEVERE",
+    3: "HIGH",
+    4: "ELEVATED",
+    5: "SAFE",
+}
+
+# --- [ MAIN DISPLAY FUNCTIONS ] ---
+
+def clear_screen():
+    """Clear console screen (Windows / Unix compatible)."""
+    import os
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def print_header():
+    """Print standardized header for AEGIS dashboards."""
+    clear_screen()
+    print(f"{C.CYAN}╔{'═'*78}╗{C.RESET}")
+    header_text = f"🛡️  AEGIS NIDS COMMAND CENTER v{VERSION} | TIME: {datetime.now().strftime('%H:%M:%S')}"
+    print(f"{C.CYAN}║{C.RESET} {header_text.ljust(76)} {C.CYAN}║{C.RESET}")
+    print(f"{C.CYAN}╚{'═'*78}╝{C.RESET}")
+    print()
+
+def get_defcon_info():
+    """Get DEFCON level from system status."""
+    state = SYSTEM_STATUS.get('state', 'UNKNOWN')
+    # หา DEFCON จากสถานะหรือค่า default
+    degraded = SYSTEM_STATUS.get('degraded', True)
+    # ใช้ระดับ DEFCON ขั้นพื้นฐานจากสถานะระบบ
+    if degraded and state == "RUNNING":
+        return 3, "HIGH"  # ระบบทำงานแต่มีความเสี่ยง
+    elif degraded:
+        return 2, "SEVERE"
+    else:
+        return 5, "SAFE"
+
+def load_rules():
+    if os.path.exists(RULES_FILE):
+        with open(RULES_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"nids_rules": []}
+
+def main():
+    while True:
+        rules = load_rules()
+        attack_summary = {sig['name']: 0 for sig in rules.get('nids_rules', [])}
+        stats = {"Total_Alerts": 0, "Total_Dropped": 0}
+
+        lines_to_show = []
+
+        if os.path.exists(LOG_FILE):
+            try:
+                with open(LOG_FILE, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                    stats["Total_Alerts"] = len(lines)
+
+                    for line in lines:
+                        if not line.strip(): continue
+                        data = json.loads(line)
+                        attack_type = data.get("attack_type")
+                        if attack_type in attack_summary:
+                            attack_summary[attack_type] += 1
+
+                        # สมมติว่าถ้า policy เป็น DROP หรือ BLOCK ให้บวก Total_Dropped
+                        if data.get("policy", "").upper() in ["DROP", "BLOCK"]:
+                            stats["Total_Dropped"] += 1
+
+                    lines_to_show = lines[-12:] # โชว์ 12 บรรทัดล่าสุด
+            except Exception:
+                pass
+        else:
+            print(f"{C.YELLOW}[!] Log file not found: {LOG_FILE}{C.RESET}")
+
+        # --- [ CLEAR SCREEN & HEADER ] ---
+        clear_screen()
+        print_header()
+
+        # DEFCON Display - จุดศูนย์กลาง
+        defcon_level, defcon_label = get_defcon_info()
+        defcon_color = DEFCON_COLORS.get(defcon_level, C.DIM)
+        print(f"{C.CYAN}{C.BOLD}  DEFCON {defcon_level}: {defcon_color}{defcon_label}{C.RESET}")
+        print()
+
+        # Print system status row
+        print(f"{C.BOLD}[ SYSTEM STATE ]{C.RESET}")
+        print(f"  Overall State: {SYSTEM_STATUS.get('state', 'UNKNOWN')}")
+        print(f"  Degraded: {SYSTEM_STATUS.get('degraded', True)}")
+        print(f"  Uptime: {SYSTEM_STATUS.get('uptime_ms', 0)} ms")
+        print()
+
+        # --- [ NETWORK STATS ] ---
+        print(f"{C.BOLD}[ OVERALL STATISTICS ]{C.RESET}")
+        print(f"  Alerts Triggered: {C.YELLOW}{stats['Total_Alerts']}{C.RESET}   |   Packets Dropped: {C.RED}{stats['Total_Dropped']}{C.RESET}")
+
+        # --- [ THREAT COUNTERS ] ---
+        print(f"{C.BOLD}[ ACTIVE THREAT COUNTERS ]{C.RESET}")
+        active_threats = [f"{name}: {C.RED}{count}{C.RESET}" for name, count in attack_summary.items() if count > 0]
+        if active_threats:
+            # จัดให้อยู่ในบรรทัดละ 3 รายการ
+            for i in range(0, len(active_threats), 3):
+                print("  " + " | ".join(active_threats[i:i+3]))
+        else:
+            print(f"  {C.GREEN}✓ No threats matched with rules yet.{C.RESET}")
+
+        # --- [ LATEST LOGS TABLE ] ---
+        print(f"{C.CYAN}┌{'─'*78}┐{C.RESET}")
+        print(f"{C.CYAN}│{C.RESET} {C.BOLD}{'TIME':<10} │ {'SOURCE':<23} │ {'THREAT TYPE':<25} │ {'ACTION':<10}{C.RESET} {C.CYAN}│{C.RESET}")
+        print(f"{C.CYAN}├{'─'*78}┤{C.RESET}")
+
+        if not lines_to_show:
+            print(f"{C.CYAN}│{C.RESET} {'Waiting for traffic...'.center(76)} {C.CYAN}│{C.RESET}")
+
+        for line in reversed(lines_to_show): # แสดงจากใหม่สุดไปเก่าสุด
+            if not line.strip(): continue
+            try:
+                data = json.loads(line)
+
+                # จัดรูปแบบข้อมูล
+                ts_raw = data.get("timestamp", time.time())
+                ts = datetime.fromtimestamp(ts_raw).strftime("%H:%M:%S") if isinstance(ts_raw, (int, float)) else ts_raw
+                source = str(data.get("source", "Unknown"))[:23]
+                attack = str(data.get("attack_type", "Unknown"))[:25]
+                policy = str(data.get("policy", "ALERT"))[:10].upper()
+
+                # กำหนดสีตาม Action
+                action_color = C.RED if policy in ["DROP", "BLOCK"] else C.YELLOW
+
+                print(f"{C.CYAN}│{C.RESET} {ts:<10} │ {source:<23} │ {attack:<25} │ {action_color}{policy:<10}{C.RESET} {C.CYAN}│{C.RESET}")
+            except (json.JSONDecodeError, KeyError, ValueError):
+                continue
+
+        print(f"{C.CYAN}└{'─'*78}┘{C.RESET}")
+
+        time.sleep(1) # อัปเดตทุก 1 วินาที
+
+if __name__ == "__main__":
+    main()

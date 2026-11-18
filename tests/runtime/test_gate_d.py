@@ -7,8 +7,9 @@ Verifies that the aegisctl inspection commands work correctly:
   - forensic show/search/export
 
 These are read-only tests that verify the CLI plumbing. They do NOT
-require running components -- they work against the Rules.json file
-and (if present) the NDJSON forensic log.
+require running components -- they work against the canonical
+configs/Rules.json rule file and the control daemon (forensic queries are
+served from the daemon's hash-chained ring, not from a local NDJSON log).
 """
 
 from __future__ import annotations
@@ -23,16 +24,18 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 AEGISCTL = REPO_ROOT / "tools" / "aegisctl.py"
-RULES_FILE = REPO_ROOT / "config" / "Rules.json"
+# Single rule authority (see tests/security/test_single_rule_authority.py).
+RULES_FILE = REPO_ROOT / "configs" / "Rules.json"
 FORENSIC_LOG = REPO_ROOT / "logs" / "aegis_core.ndjson"
 
 
-def _run_aegisctl(*args: str, timeout: int = 10) -> tuple[int, str, str]:
+def _run_aegisctl(*args: str, timeout: int = 10,
+                  env: dict | None = None) -> tuple[int, str, str]:
     cmd = [sys.executable, str(AEGISCTL)] + list(args)
     try:
         result = subprocess.run(
             cmd, capture_output=True, text=True, timeout=timeout,
-            cwd=str(REPO_ROOT),
+            cwd=str(REPO_ROOT), env=env,
         )
         return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
@@ -132,12 +135,59 @@ class TestEventsCommands(unittest.TestCase):
         )
 
     def test_events_count_with_no_log(self):
-        """If the log doesn't exist, count should report 0 gracefully."""
-        if FORENSIC_LOG.exists():
-            self.skipTest("forensic log already exists -- can't test empty case")
-        rc, stdout, _ = _run_aegisctl("events", "count")
+        """Missing and empty logs both report 0 gracefully, isolated.
+
+        EVT-181: the old version skipped whenever the production log
+        existed (always, on the opened system). AEGIS_EVENT_LOG points
+        the CLI at scratch instead: a nonexistent path and an empty
+        file must both read as Events: 0 with rc 0. Zero prod touch.
+        """
+        child_env = dict(os.environ)
+        missing = str(Path(tempfile.mkdtemp(prefix="events-empty-"))
+                      / "absent.ndjson")
+        child_env["AEGIS_EVENT_LOG"] = missing
+        rc, stdout, _ = _run_aegisctl("events", "count", env=child_env)
         self.assertEqual(rc, 0)
-        self.assertIn("0", stdout)
+        self.assertIn("Events: 0", stdout)
+        empty = Path(missing).parent / "empty.ndjson"
+        empty.write_text("", encoding="utf-8")
+        child_env["AEGIS_EVENT_LOG"] = str(empty)
+        rc, stdout, _ = _run_aegisctl("events", "count", env=child_env)
+        self.assertEqual(rc, 0)
+        self.assertIn("Events: 0", stdout)
+
+    def test_events_src_ip_filters_attacker_view(self):
+        """EVT-197: --src-ip isolates one source (lab attacker tracking).
+
+        The ring has no IP field by design; the evidence log does, so the
+        filter runs client-side over an isolated scratch log: exact counts
+        per IP, src_ip echoed in the note, garbage rejected with rc 2.
+        """
+        import json as _json
+        tmp = Path(tempfile.mkdtemp(prefix="events-srcip-"))
+        log = tmp / "lab.ndjson"
+        rows = [
+            {"event": "signature_match", "rule": "1", "src_ip": "192.168.126.10"},
+            {"event": "signature_match", "rule": "2", "src_ip": "192.168.126.10"},
+            {"event": "signature_match", "rule": "3", "src_ip": "192.168.126.20"},
+        ]
+        log.write_text("\n".join(_json.dumps(r) for r in rows) + "\n",
+                       encoding="utf-8")
+        child_env = dict(os.environ)
+        child_env["AEGIS_EVENT_LOG"] = str(log)
+        rc, stdout, _ = _run_aegisctl("events", "count", "--src-ip",
+                                      "192.168.126.10", env=child_env)
+        self.assertEqual(rc, 0)
+        self.assertIn("Events: 2", stdout)
+        self.assertIn("src_ip=192.168.126.10", stdout)
+        rc, stdout, _ = _run_aegisctl("events", "tail", "--count", "10",
+                                      "--src-ip", "192.168.126.20",
+                                      env=child_env)
+        self.assertEqual(rc, 0)
+        self.assertIn("1 event(s)", stdout)
+        rc, _, _ = _run_aegisctl("events", "count", "--src-ip", "nope",
+                                 env=child_env)
+        self.assertEqual(rc, 2)
 
 
 class TestForensicCommands(unittest.TestCase):
@@ -156,24 +206,38 @@ class TestForensicCommands(unittest.TestCase):
         rc, _, _ = _run_aegisctl("forensic", "export")
         self.assertNotEqual(rc, 0)
 
-    def test_forensic_search_with_no_log(self):
-        """If no log file exists, search should report it gracefully."""
-        if FORENSIC_LOG.exists():
-            self.skipTest("forensic log already exists -- can't test empty case")
-        rc, stdout, _ = _run_aegisctl(
+    def test_forensic_search_rejects_unsupported_fields(self):
+        """Search is served by the control daemon, which filters on the
+        canonical source/payload-prefix fields only. An unsupported field must
+        fail with a machine-readable reason instead of silently searching a
+        different (local log) data source."""
+        rc, _stdout, stderr = _run_aegisctl(
             "forensic", "search", "--field", "rule_id", "--value", "TEST"
         )
-        self.assertEqual(rc, 1)
-        self.assertIn("No log file", stdout)
+        self.assertEqual(rc, 2)
+        payload = json.loads(stderr)
+        self.assertFalse(payload["available"])
+        self.assertIn("source_or_payload_prefix", payload["reason"])
 
-    def test_forensic_export_with_no_log(self):
-        if FORENSIC_LOG.exists():
-            self.skipTest("forensic log already exists -- can't test empty case")
-        rc, stdout, _ = _run_aegisctl(
-            "forensic", "export", "--output", "/tmp/test_export.json"
+    def test_forensic_export_requires_a_verified_hash_chain(self):
+        """Export is daemon-sourced evidence, never a local log file: it must
+        either write a verified ring summary or fail closed with no artifact."""
+        output = Path(tempfile.mkdtemp()) / "export.json"
+        rc, stdout, stderr = _run_aegisctl(
+            "forensic", "export", "--output", str(output)
         )
-        self.assertEqual(rc, 1)
-        self.assertIn("No log file", stdout)
+        if rc == 0:
+            document = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(document["export_kind"], "forensic_ring_summary")
+            self.assertTrue(document["integrity"]["verified"])
+            self.assertTrue(json.loads(stdout)["verified"])
+        else:
+            payload = json.loads(stderr)
+            self.assertFalse(payload["available"])
+            self.assertEqual(payload["command"], "forensics.verify")
+            self.assertFalse(
+                output.exists(), "a failed integrity verification must not write evidence"
+            )
 
 
 class TestForensicExportWithTestData(unittest.TestCase):

@@ -33,6 +33,35 @@ pub const Anomaly = struct {
     detail_len: u8 = 0,
 };
 
+pub const RULE_ID_BASE: u32 = 10_000;
+
+/// Stable IDS rule identity for protocol anomalies. These IDs are deliberately
+/// outside the policy/signature and correlation ranges; the event processor
+/// records them as observe-only evidence and does not make them policy hits.
+pub fn ruleId(kind: AnomalyKind) u32 {
+    return RULE_ID_BASE + @as(u32, @intFromEnum(kind));
+}
+
+/// Inspect a transport payload only when its port identifies a supported
+/// application protocol. Parsing is defensive and returns at most one
+/// anomaly, preserving deterministic receipt identity and bounded work.
+pub fn inspect(protocol: u8, src_port: u16, dst_port: u16, payload: []const u8, dns_name_scratch: []u8) ?Anomaly {
+    const port = if (dst_port != 0) dst_port else src_port;
+    if (protocol == 6 and (port == 80 or port == 8080 or port == 8000 or port == 8081)) {
+        if (parsers.parseHttpRequest(payload)) |request| return checkHttp(request);
+    }
+    if ((protocol == 6 or protocol == 17) and port == 53) {
+        if (parsers.parseDns(payload, dns_name_scratch)) |query| return checkDns(query);
+    }
+    if (protocol == 6 and (port == 443 or port == 8443)) {
+        if (parsers.parseTlsClientHello(payload)) |hello| return checkTls(hello);
+    }
+    if (protocol == 6 and (port == 445 or port == 139)) {
+        if (parsers.parseSmbNegotiate(payload)) |negotiate| return checkSmb(negotiate);
+    }
+    return null;
+}
+
 pub fn checkHttp(req: parsers.HttpRequest) ?Anomaly {
     // Method must be a known token; "other" alone is not an anomaly unless other red flags
     if (req.method == .other) {
@@ -158,4 +187,16 @@ test "checkSmb malformed" {
     const neg = parsers.SmbNegotiate{ .dialects = 0, .is_smb2 = false };
     const a = checkSmb(neg).?;
     try std.testing.expectEqual(AnomalyKind.smb_malformed, a.kind);
+}
+
+test "inspect maps HTTP anomaly to stable IDS rule ID" {
+    var scratch: [256]u8 = undefined;
+    const a = inspect(6, 1234, 80, "GET / WRONG/1.0\r\nHost: example.com\r\n\r\n", &scratch).?;
+    try std.testing.expectEqual(AnomalyKind.http_invalid_version, a.kind);
+    try std.testing.expectEqual(RULE_ID_BASE + 3, ruleId(a.kind));
+}
+
+test "inspect ignores unsupported ports" {
+    var scratch: [256]u8 = undefined;
+    try std.testing.expect(inspect(6, 1234, 22, "not HTTP", &scratch) == null);
 }

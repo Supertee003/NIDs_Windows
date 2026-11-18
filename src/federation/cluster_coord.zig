@@ -30,6 +30,15 @@
 //!   try cc.ClusterCoord.instance().?.init(allocator, .{ .node_id = 1 });
 //!   defer cc.ClusterCoord.instance().?.shutdown();
 //!   cc.ClusterCoord.instance().?.ingest(msg);
+//!
+//! FED-TIDY-058 STATUS — TEST-ONLY, unwired (verdict open). This module and
+//! the whole src/federation/ family (codec, TLS, TCP, bench, aggregator,
+//! node_registry) are imported only by tests/benchmark/CLIs; the daemon
+//! graph (main/daemon/pipeline/control/...) imports none of it, the
+//! control plane reports standalone, and ActionDispatcher escalations have
+//! no installed transport. This is the hub future cluster work would wire
+//! behind a design slice (Project 4+ verdict) — never import from
+//! production meanwhile (forbidden-edges pin).
 
 const std = @import("std");
 

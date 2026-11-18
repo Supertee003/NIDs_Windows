@@ -41,8 +41,41 @@ pub const PepRequest = extern struct {
     protocol: u8,
     policy_id: u32,
     severity: u8,
+    // FFI-001 direction byte: reuses historical padding between severity and
+    // ctx, so PepRequest stays 64 bytes and ctx stays at offset 40.
+    // 0 = outbound/default (dst_ip/dst_port); 1 = inbound WFP capture
+    // (peer src_ip + local service dst_port). Unknown values fail closed in
+    // the Rust PEP; the Zig side only emits 0 or 1.
+    direction: u8 = 0,
     ctx: PepContext,
 };
+
+/// Map an event source to the WFP direction byte. Only the kernel WFP
+/// telemetry source is inbound; every other path keeps the historical
+/// outbound dst_ip/dst_port contract.
+pub fn requestDirection(ev: *const event.IpcEvent) u8 {
+    return if (ev.source == .capture_wfp) 1 else 0;
+}
+
+/// The WFP read-back tuple a receipt must match. Inbound WFP capture uses
+/// the peer source address with the local service port; every other path
+/// keeps dst_ip/dst_port. A zero inbound peer fails closed.
+pub const ReceiptTarget = struct {
+    direction: u8,
+    remote_ipv4: u32,
+    service_port: u16,
+    protocol: u8,
+};
+
+pub fn receiptTarget(ev: *const event.IpcEvent) ?ReceiptTarget {
+    if (ev.source == .capture_wfp and ev.src_ip == 0) return null;
+    return .{
+        .direction = requestDirection(ev),
+        .remote_ipv4 = if (ev.source == .capture_wfp) ev.src_ip else ev.dst_ip,
+        .service_port = ev.dst_port,
+        .protocol = ev.protocol,
+    };
+}
 
 pub const PepResponse = extern struct {
     decision: u8,
@@ -51,6 +84,25 @@ pub const PepResponse = extern struct {
     signed_by: u32, // KeyId prefix
     filter_id: u64,
 };
+
+/// Explicit evidence-only response. It has no filter/receipt field and the
+/// host-effect flag must remain zero at the FFI boundary.
+pub const PepAssessmentResponse = extern struct {
+    decision: u8,
+    reason: u32,
+    host_effect_confirmed: u8,
+    reserved: [7]u8,
+};
+
+pub const PepAssessment = struct {
+    decision: PepDecision,
+    reason: u32,
+};
+
+/// Assessment failure must never be projected as an allow decision.
+pub fn assessmentVerdict(assessment: ?PepAssessment) PepDecision {
+    return if (assessment) |value| value.decision else .escalate;
+}
 
 pub const PepEnforcementReceipt = struct {
     decision: PepDecision,
@@ -97,14 +149,44 @@ pub const FilterQueryResult = union(enum) {
     present: PepFilterState,
 };
 
+// ============================================================================
+// SLICE-C-LAB: host-mutation guard order (pure, FFI-free, unit-tested)
+// ============================================================================
+
+/// Fail-closed guards shared by every S1 enforcement entry, in evaluation
+/// order. Returns the decision to short-circuit with, or null when the
+/// request may reach the provider boundary (aegis_pep_enforce).
+pub fn hostEffectGuardVerdict(gate_open: bool, action: policy.Action, trusted: bool, available: bool) ?PepDecision {
+    // 1. SLICE-C-LAB prevention gate (master switch): while closed, actions
+    //    that can mutate host state never reach the provider boundary, even
+    //    when the policy is trusted and the provider is ready. Non-mutating
+    //    actions (pass/log/alert) keep their detection-only flow; escalate
+    //    is authorization-gated but not host-mutating.
+    if (policy.isHostMutating(action) and !gate_open) return .escalate;
+    // 2. Trust guard: the active JSON loader does not verify a signed
+    //    canonical policy envelope. Keep every privileged action
+    //    non-enforcing until a verified loader marks the policy trusted.
+    if (policy.requiresTrustedAuthorization(action) and !trusted) return .escalate;
+    // 3. SAFETY CONTAINMENT: unavailable PEP is not an ALLOW decision.
+    //    Escalate to the non-enforcing/degraded path so callers cannot
+    //    confuse detection-only mode with an authorized action.
+    if (!available) return .escalate;
+    return null;
+}
+
 // Rust FFI functions
 extern "aegis_pep" fn aegis_pep_enforce(req: *const PepRequest, resp: *PepResponse) c_int;
+extern "aegis_pep" fn aegis_pep_assess(req: *const PepRequest, resp: *PepAssessmentResponse) c_int;
 extern "aegis_pep" fn aegis_pep_unblock_filter(filter_id: u64, caller_pid: u32, caller_capability_mask: u32, request_id: u64) c_int;
 extern "aegis_pep" fn aegis_pep_query_filter(filter_id: u64, out: *PepFilterState) c_int;
+extern "aegis_pep" fn aegis_pep_query_filter_dir(filter_id: u64, direction: u8, out: *PepFilterState) c_int;
 extern "aegis_pep" fn aegis_pep_init() c_int;
 extern "aegis_pep" fn aegis_pep_provider_ready() c_int;
 extern "aegis_pep" fn aegis_pep_shutdown() void;
 extern "aegis_pep" fn aegis_pep_quota_remaining(src_ip: u32) u32;
+extern "aegis_pep" fn aegis_pep_set_two_person_rule(enabled: u32, caller_capability_mask: u32) c_int;
+extern "aegis_pep" fn aegis_pep_approve(request_id: u64, approver_pid: u32, caller_capability_mask: u32) c_int;
+extern "aegis_pep" fn aegis_pep_read_events(out_buf: [*]u8, buf_size: u32, bytes_read: *u32) c_int;
 
 // ============================================================================
 // PepEnforcer â€” Zig wrapper
@@ -133,20 +215,37 @@ pub const PepEnforcer = struct {
         return aegis_pep_provider_ready() == 1;
     }
 
-    pub fn enforce(self: *PepEnforcer, ev: *const event.IpcEvent, p: policy.Policy, caller_pid: u32, caller_caps: u32, request_id: u64) PepDecision {
+    /// Evaluate policy for evidence only. This path never opens or calls a
+    /// WFP adapter and cannot produce an enforcement receipt. The assessment
+    /// itself does not depend on provider initialization/readiness.
+    pub fn assess(self: *PepEnforcer, ev: *const event.IpcEvent, p: policy.Policy, caller_pid: u32, caller_caps: u32, request_id: u64) ?PepAssessment {
+        _ = self;
+        if (@import("builtin").os.tag != .windows) return null;
+        var req = PepRequest{
+            .decision_kind = @intFromEnum(ev.kind),
+            .requested_action = @intFromEnum(p.action),
+            .flow_id = ev.flow_id,
+            .src_ip = ev.src_ip,
+            .dst_ip = ev.dst_ip,
+            .src_port = ev.src_port,
+            .dst_port = ev.dst_port,
+            .protocol = ev.protocol,
+            .policy_id = p.id,
+            .severity = @intFromEnum(ev.severity),
+            .direction = requestDirection(ev),
+            .ctx = .{ .caller_pid = caller_pid, .caller_capability_mask = caller_caps, .request_id = request_id },
+        };
+        var resp: PepAssessmentResponse = undefined;
+        if (aegis_pep_assess(&req, &resp) != 0) return null;
+        if (resp.host_effect_confirmed != 0 or !std.mem.eql(u8, &resp.reserved, &([_]u8{0} ** 7))) return null;
+        if (resp.decision > @intFromEnum(PepDecision.drop)) return null;
+        return .{ .decision = @enumFromInt(resp.decision), .reason = resp.reason };
+    }
+
+    pub fn enforce(self: *PepEnforcer, ev: *const event.IpcEvent, p: policy.Policy, caller_pid: u32, caller_caps: u32, request_id: u64, gate_open: bool) PepDecision {
         self.last_receipt = null;
-        // The active JSON loader does not verify a signed canonical policy
-        // envelope. Keep every privileged action non-enforcing until a
-        // verified loader marks the policy trusted. Alert/log paths remain
-        // available for detection-only operation.
-        if (policy.requiresTrustedAuthorization(p.action) and !p.trusted) {
-            return .escalate;
-        }
-        if (!self.available) {
-            // SAFETY CONTAINMENT: unavailable PEP is not an ALLOW decision.
-            // Escalate to the non-enforcing/degraded path so callers cannot
-            // confuse detection-only mode with an authorized action.
-            return .escalate;
+        if (hostEffectGuardVerdict(gate_open, p.action, p.trusted, self.available)) |d| {
+            return d;
         }
         var req = PepRequest{
             .decision_kind = @intFromEnum(ev.kind),
@@ -159,6 +258,7 @@ pub const PepEnforcer = struct {
             .protocol = ev.protocol,
             .policy_id = p.id,
             .severity = @intFromEnum(ev.severity),
+            .direction = requestDirection(ev),
             .ctx = .{ .caller_pid = caller_pid, .caller_capability_mask = caller_caps, .request_id = request_id },
         };
         var resp: PepResponse = undefined;
@@ -179,6 +279,21 @@ pub const PepEnforcer = struct {
                 .filter_id = resp.filter_id,
             };
         }
+        // QUAR-RCPT-113: same receipt capture for quarantine. The Rust side
+        // now executes quarantine through the flow-block primitive and mints
+        // a filter_id; without this mirror the dispatch path would keep
+        // seeing null receipts and quarantine could never confirm no matter
+        // what the provider did. A decision without a filter still yields
+        // no receipt (verified downstream, never assumed here).
+        if (resp.decision == @intFromEnum(PepDecision.quarantine) and resp.filter_id != 0) {
+            self.last_receipt = .{
+                .decision = .quarantine,
+                .reason = resp.reason,
+                .quota_remaining = resp.quota_remaining,
+                .signed_by = resp.signed_by,
+                .filter_id = resp.filter_id,
+            };
+        }
         return @enumFromInt(resp.decision);
     }
 
@@ -189,6 +304,26 @@ pub const PepEnforcer = struct {
     pub fn quotaRemaining(self: *PepEnforcer, src_ip: u32) u32 {
         if (!self.available) return 0;
         return aegis_pep_quota_remaining(src_ip);
+    }
+
+    /// Enable/disable the two-person rule for high-severity BLOCKs.
+    /// Privileged operator action (capability bit required by the DLL);
+    /// returns false when the PEP is unavailable or rejects the call.
+    /// Exposed on the control plane as enforcement.two_person (T3-TWOP-023).
+    pub fn setTwoPersonRule(self: *PepEnforcer, enabled: bool, caller_caps: u32) bool {
+        if (!self.available) return false;
+        if (@import("builtin").os.tag != .windows) return false;
+        return aegis_pep_set_two_person_rule(if (enabled) @as(u32, 1) else @as(u32, 0), caller_caps) == 0;
+    }
+
+    /// Record a second-human approval for one enforcement request ID.
+    /// Approvals are one-shot inside the DLL. Exposed on the control plane
+    /// as enforcement.approve (T3-TWOP-023); same availability notes as
+    /// setTwoPersonRule.
+    pub fn approveRequest(self: *PepEnforcer, request_id: u64, approver_pid: u32, caller_caps: u32) bool {
+        if (!self.available or request_id == 0) return false;
+        if (@import("builtin").os.tag != .windows) return false;
+        return aegis_pep_approve(request_id, approver_pid, caller_caps) == 0;
     }
 
     pub fn enforceFlow(
@@ -230,13 +365,60 @@ pub const PepEnforcer = struct {
         };
     }
 
+    /// Request quarantine enforcement and return the receipt on success.
+    /// QUAR-RCPT-112: mirrors enforceFlow exactly (same guards, same
+    /// receipt shape); only the requested action and the accepted decision
+    /// differ. The Rust side executes quarantine through the flow-block
+    /// primitive and returns DECISION_QUARANTINE with a filter_id, which is
+    /// what verifyEnforcementReceipt keys on. The pipeline routes policy
+    /// quarantine through the generic enforce() path; this direct-flow
+    /// entry point serves the control-plane ceremony and host harness.
+    pub fn enforceQuarantineFlow(
+        self: *PepEnforcer,
+        dst_ip: u32,
+        dst_port: u16,
+        protocol: u8,
+        policy_id: u32,
+        severity: u8,
+        caller_pid: u32,
+        caller_caps: u32,
+        request_id: u64,
+    ) ?PepEnforcementReceipt {
+        if (!self.available or dst_ip == 0 or dst_port == 0 or protocol == 0 or policy_id == 0) return null;
+        var req = PepRequest{
+            .decision_kind = 0,
+            // requested_action uses the policy.Action ABI, not PepDecision.
+            // Rust maps policy.Action.quarantine to ACTION_QUARANTINE = 5.
+            .requested_action = @intFromEnum(policy.Action.quarantine),
+            .flow_id = request_id,
+            .src_ip = 0,
+            .dst_ip = dst_ip,
+            .src_port = 0,
+            .dst_port = dst_port,
+            .protocol = protocol,
+            .policy_id = policy_id,
+            .severity = severity,
+            .ctx = .{ .caller_pid = caller_pid, .caller_capability_mask = caller_caps, .request_id = request_id },
+        };
+        var resp: PepResponse = undefined;
+        if (aegis_pep_enforce(&req, &resp) != 0) return null;
+        if (resp.decision != @intFromEnum(PepDecision.quarantine) or resp.filter_id == 0) return null;
+        return .{
+            .decision = .quarantine,
+            .reason = resp.reason,
+            .quota_remaining = resp.quota_remaining,
+            .signed_by = resp.signed_by,
+            .filter_id = resp.filter_id,
+        };
+    }
+
     pub fn unblockFilter(self: *PepEnforcer, filter_id: u64, caller_pid: u32, caller_caps: u32, request_id: u64) bool {
         if (!self.available or filter_id == 0) return false;
         return aegis_pep_unblock_filter(filter_id, caller_pid, caller_caps, request_id) == 0;
     }
 
-    pub fn queryFilter(self: *PepEnforcer, filter_id: u64) ?PepFilterState {
-        return switch (self.queryFilterResult(filter_id)) {
+    pub fn queryFilter(self: *PepEnforcer, filter_id: u64, direction: u8) ?PepFilterState {
+        return switch (self.queryFilterResult(filter_id, direction)) {
             .present => |state| state,
             .absent => null,
             .query_error => null,
@@ -244,11 +426,13 @@ pub const PepEnforcer = struct {
     }
 
     /// Preserve the provider distinction between an exact filter that is
-    /// absent and a query transport/provider failure.
-    pub fn queryFilterResult(self: *PepEnforcer, filter_id: u64) FilterQueryResult {
-        if (!self.available or filter_id == 0) return .query_error;
+    /// absent and a query transport/provider failure. The direction is part
+    /// of the query, not just the response: the provider must attest the
+    /// outbound or inbound WFP layer that the caller intends to prove.
+    pub fn queryFilterResult(self: *PepEnforcer, filter_id: u64, direction: u8) FilterQueryResult {
+        if (!self.available or filter_id == 0 or direction > 1) return .query_error;
         var state: PepFilterState = .{ .bytes = undefined };
-        if (aegis_pep_query_filter(filter_id, &state) != 0) return .query_error;
+        if (aegis_pep_query_filter_dir(filter_id, direction, &state) != 0) return .query_error;
         if (state.filterId() != filter_id) return .query_error;
         return if (state.present() != 0) .{ .present = state } else .{ .absent = state };
     }
@@ -256,17 +440,23 @@ pub const PepEnforcer = struct {
     /// Confirm that a receipt proves the exact host effect requested by ev.
     /// A receipt ID alone is insufficient: provider read-back must report the
     /// same destination tuple and an explicitly present owned filter.
+    /// QUAR-RCPT-094: block and quarantine receipts verify through the same
+    /// filter read-back (the PEP owns the block-vs-quarantine filter
+    /// semantics; the read-back proves presence + tuple match). Any other
+    /// decision, or a zero filter, fails closed.
     pub fn verifyEnforcementReceipt(
         self: *PepEnforcer,
         ev: *const event.IpcEvent,
         receipt: PepEnforcementReceipt,
     ) bool {
-        if (receipt.decision != .block or receipt.filter_id == 0) return false;
-        return switch (self.queryFilterResult(receipt.filter_id)) {
+        if (receipt.filter_id == 0) return false;
+        if (receipt.decision != .block and receipt.decision != .quarantine) return false;
+        const target = receiptTarget(ev) orelse return false;
+        return switch (self.queryFilterResult(receipt.filter_id, target.direction)) {
             .present => |state| state.filterId() == receipt.filter_id and
-                state.remoteIpv4() == ev.dst_ip and
-                state.remotePort() == ev.dst_port and
-                state.protocol() == ev.protocol and
+                state.remoteIpv4() == target.remote_ipv4 and
+                state.remotePort() == target.service_port and
+                state.protocol() == target.protocol and
                 state.present() != 0,
             .absent, .query_error => false,
         };
@@ -299,8 +489,68 @@ test "PepEnforcer unavailable is not an allow decision" {
         .ttl_sec = 0,
     };
     // Unavailable PEP must remain visible to the caller as non-enforcing state.
-    const d = pep.enforce(&ev, p, 0, 0, 0);
+    const d = pep.enforce(&ev, p, 0, 0, 0, true);
     try std.testing.expectEqual(PepDecision.escalate, d);
+}
+
+test "QUAR-RCPT-113: quarantine action without PEP escalates, never enforces" {
+    // Caller-wiring corollary: a quarantine policy against an unavailable
+    // PEP must escalate with no receipt, so dispatchWithReceipt can only
+    // take the best-effort legacy path (never a confirmed quarantine).
+    var pep = PepEnforcer{ .available = false };
+    var ev = event.IpcEvent.init(.dns_query);
+    const p = policy.Policy{
+        .id = 9,
+        .name = "",
+        .condition = .{ .clauses = &[_]policy.Clause{} },
+        .action = .quarantine,
+        .severity = .critical,
+        .ttl_sec = 0,
+    };
+    try std.testing.expectEqual(PepDecision.escalate, pep.enforce(&ev, p, 0, 0, 0, true));
+    try std.testing.expect(pep.lastReceipt() == null);
+}
+
+test "SLICE-C-LAB: hostEffectGuardVerdict spec — gate-first, fail-closed" {
+    const t = std.testing;
+    const esc = @as(?PepDecision, .escalate);
+    const none = @as(?PepDecision, null);
+    // Gate closed: every host-mutating action escalates regardless of
+    // trust or availability (the master switch is checked first).
+    try t.expectEqual(esc, hostEffectGuardVerdict(false, .block, true, true));
+    try t.expectEqual(esc, hostEffectGuardVerdict(false, .quarantine, true, true));
+    try t.expectEqual(esc, hostEffectGuardVerdict(false, .rate_limit, true, true));
+    // Gate closed leaves non-mutating actions untouched (not short-circuited).
+    try t.expectEqual(none, hostEffectGuardVerdict(false, .alert, false, true));
+    try t.expectEqual(none, hostEffectGuardVerdict(false, .log, false, true));
+    try t.expectEqual(none, hostEffectGuardVerdict(false, .pass, false, true));
+    try t.expectEqual(none, hostEffectGuardVerdict(false, .escalate, true, true));
+    // Gate open: trust guard and availability guard keep their order.
+    try t.expectEqual(esc, hostEffectGuardVerdict(true, .block, false, true));
+    try t.expectEqual(esc, hostEffectGuardVerdict(true, .block, true, false));
+    try t.expectEqual(none, hostEffectGuardVerdict(true, .block, true, true));
+    try t.expectEqual(esc, hostEffectGuardVerdict(true, .escalate, false, true));
+    try t.expectEqual(esc, hostEffectGuardVerdict(true, .alert, false, false));
+    try t.expectEqual(none, hostEffectGuardVerdict(true, .alert, false, true));
+}
+
+test "SLICE-C-LAB: closed gate stops block enforcement before the provider boundary" {
+    var pep = PepEnforcer{ .available = true };
+    var ev = event.IpcEvent.init(.dns_query);
+    var p = policy.Policy{
+        .id = 77,
+        .name = "",
+        .condition = .{ .clauses = &[_]policy.Clause{} },
+        .action = .block,
+        .severity = .critical,
+        .ttl_sec = 0,
+    };
+    p.trusted = true;
+    // No FFI call is reachable here: the gate guard returns first (with
+    // available=true the provider would otherwise be contacted).
+    const d = pep.enforce(&ev, p, 0, 0, 1, false);
+    try std.testing.expectEqual(PepDecision.escalate, d);
+    try std.testing.expect(pep.lastReceipt() == null);
 }
 
 test "filter query ABI has stable packed layout" {
@@ -319,6 +569,47 @@ test "receipt verification rejects incomplete receipt" {
         .filter_id = 0,
     };
     try std.testing.expect(!pep.verifyEnforcementReceipt(&ev, receipt));
+}
+
+test "QUAR-RCPT-094: quarantine receipt fails closed without filter or PEP" {
+    var pep = PepEnforcer{ .available = false };
+    var ev = event.IpcEvent.init(.flow_created);
+    // Zero filter: rejected by the gate before any provider query.
+    const no_filter = PepEnforcementReceipt{
+        .decision = .quarantine,
+        .reason = 0,
+        .quota_remaining = 0,
+        .signed_by = 0,
+        .filter_id = 0,
+    };
+    try std.testing.expect(!pep.verifyEnforcementReceipt(&ev, no_filter));
+    // Nonzero filter but no provider: read-back fails, never confirms.
+    const no_pep = PepEnforcementReceipt{
+        .decision = .quarantine,
+        .reason = 0,
+        .quota_remaining = 0,
+        .signed_by = 0,
+        .filter_id = 7,
+    };
+    try std.testing.expect(!pep.verifyEnforcementReceipt(&ev, no_pep));
+    // A non-block/quarantine decision can never verify (exhaustive gate).
+    const bad_decision = PepEnforcementReceipt{
+        .decision = .allow,
+        .reason = 0,
+        .quota_remaining = 0,
+        .signed_by = 0,
+        .filter_id = 7,
+    };
+    try std.testing.expect(!pep.verifyEnforcementReceipt(&ev, bad_decision));
+}
+
+test "QUAR-RCPT-112: enforceQuarantineFlow fails closed without provider" {
+    // No PEP available: no request leaves, no receipt fabricates.
+    var pep = PepEnforcer{ .available = false };
+    try std.testing.expect(pep.enforceQuarantineFlow(0xC0A80164, 80, 6, 1, 5, 0, 0, 1) == null);
+    // Zeroed request fields fail closed even in shape (never sent).
+    var pep2 = PepEnforcer{ .available = false };
+    try std.testing.expect(pep2.enforceQuarantineFlow(0, 0, 0, 0, 0, 0, 0, 0) == null);
 }
 
 test "mapAction correctness" {
@@ -355,10 +646,13 @@ test "FFI-001: PepContext field offsets match Rust" {
 
 test "FFI-001: PepRequest size matches Rust" {
     // Rust #[repr(C)] PepRequest:
-    //   decision_kind: u8 (1) + padding(7) + flow_id: u64 (8) + src_ip: u32 (4) +
-    //   dst_ip: u32 (4) + src_port: u16 (2) + dst_port: u16 (2) + policy_id: u32 (4) +
-    //   severity: u8 (1) + padding(7) + ctx: PepContext (24)
-    // = 1+7+8+4+4+2+2+4+1+7+24 = 64 bytes
+    //   decision_kind u8 (1) + requested_action u8 (1) + padding(6) +
+    //   flow_id u64 (8) + src_ip u32 (4) + dst_ip u32 (4) +
+    //   src_port u16 (2) + dst_port u16 (2) + policy_id u32 (4) +
+    //   severity u8 (1) + direction u8 (1) + padding(2) +
+    //   ctx PepContext (24) + tail padding(4)
+    // = 64 bytes. The direction byte reuses historical padding; ctx stays
+    // at offset 40 and no field before it moves.
     try std.testing.expectEqual(@as(usize, 64), @sizeOf(PepRequest));
 }
 
@@ -374,7 +668,58 @@ test "FFI-001: PepRequest field offsets match Rust" {
     try std.testing.expectEqual(@as(usize, 28), @offsetOf(PepRequest, "protocol"));
     try std.testing.expectEqual(@as(usize, 32), @offsetOf(PepRequest, "policy_id"));
     try std.testing.expectEqual(@as(usize, 36), @offsetOf(PepRequest, "severity"));
+    try std.testing.expectEqual(@as(usize, 37), @offsetOf(PepRequest, "direction"));
     try std.testing.expectEqual(@as(usize, 40), @offsetOf(PepRequest, "ctx"));
+}
+
+test "FFI-001: requestDirection marks only WFP capture inbound" {
+    var wfp = event.IpcEvent.init(.packet_captured);
+    wfp.source = .capture_wfp;
+    try std.testing.expectEqual(@as(u8, 1), requestDirection(&wfp));
+
+    var npcap = event.IpcEvent.init(.packet_captured);
+    npcap.source = .capture_npcap;
+    try std.testing.expectEqual(@as(u8, 0), requestDirection(&npcap));
+
+    var policy_ev = event.IpcEvent.init(.flow_created);
+    policy_ev.source = .policy;
+    try std.testing.expectEqual(@as(u8, 0), requestDirection(&policy_ev));
+}
+
+test "FFI-001: receiptTarget uses peer/local port for WFP capture" {
+    var wfp = event.IpcEvent.init(.packet_captured);
+    wfp.source = .capture_wfp;
+    wfp.src_ip = 0xC0A87E01;
+    wfp.dst_ip = 0xC0A87E14;
+    wfp.src_port = 51617;
+    wfp.dst_port = 443;
+    wfp.protocol = 6;
+    const inbound = receiptTarget(&wfp).?;
+    try std.testing.expectEqual(@as(u8, 1), inbound.direction);
+    try std.testing.expectEqual(@as(u32, 0xC0A87E01), inbound.remote_ipv4);
+    try std.testing.expectEqual(@as(u16, 443), inbound.service_port);
+    try std.testing.expectEqual(@as(u8, 6), inbound.protocol);
+
+    var outbound = event.IpcEvent.init(.flow_created);
+    outbound.source = .policy;
+    outbound.src_ip = 0xC0A87E01;
+    outbound.dst_ip = 0xCB00710A;
+    outbound.dst_port = 443;
+    outbound.protocol = 6;
+    const egress = receiptTarget(&outbound).?;
+    try std.testing.expectEqual(@as(u8, 0), egress.direction);
+    try std.testing.expectEqual(@as(u32, 0xCB00710A), egress.remote_ipv4);
+    try std.testing.expectEqual(@as(u16, 443), egress.service_port);
+}
+
+test "FFI-001: receiptTarget fails closed on zero inbound peer" {
+    var wfp = event.IpcEvent.init(.packet_captured);
+    wfp.source = .capture_wfp;
+    wfp.src_ip = 0;
+    wfp.dst_ip = 0xC0A87E14;
+    wfp.dst_port = 443;
+    wfp.protocol = 6;
+    try std.testing.expect(receiptTarget(&wfp) == null);
 }
 
 test "FFI-001: PepResponse size matches Rust" {
@@ -389,6 +734,23 @@ test "FFI-001: PepResponse field offsets match Rust" {
     try std.testing.expectEqual(@as(usize, 8), @offsetOf(PepResponse, "quota_remaining"));
     try std.testing.expectEqual(@as(usize, 12), @offsetOf(PepResponse, "signed_by"));
     try std.testing.expectEqual(@as(usize, 16), @offsetOf(PepResponse, "filter_id"));
+}
+
+test "KIDS-001: PepAssessmentResponse is explicit evidence-only ABI" {
+    try std.testing.expectEqual(@as(usize, 16), @sizeOf(PepAssessmentResponse));
+    try std.testing.expectEqual(@as(usize, 0), @offsetOf(PepAssessmentResponse, "decision"));
+    try std.testing.expectEqual(@as(usize, 4), @offsetOf(PepAssessmentResponse, "reason"));
+    try std.testing.expectEqual(@as(usize, 8), @offsetOf(PepAssessmentResponse, "host_effect_confirmed"));
+    try std.testing.expectEqual(@as(usize, 9), @offsetOf(PepAssessmentResponse, "reserved"));
+    try std.testing.expectEqual(@as(usize, 7), @sizeOf([7]u8));
+}
+
+test "KIDS-002: missing assessment fails closed instead of becoming allow" {
+    try std.testing.expectEqual(PepDecision.escalate, assessmentVerdict(null));
+    try std.testing.expectEqual(PepDecision.block, assessmentVerdict(.{
+        .decision = .block,
+        .reason = 0,
+    }));
 }
 
 test "FFI-001: PepDecision enum values match Rust constants" {
@@ -407,16 +769,30 @@ test "FFI-001: extern function signatures are C ABI" {
     // We can verify by checking the function type is not void
     // In Zig 0.13.0, use @typeInfo(T) == .Fn or check the tag
     const enforce_type = @TypeOf(aegis_pep_enforce);
+    const assess_type = @TypeOf(aegis_pep_assess);
     const init_type = @TypeOf(aegis_pep_init);
     const shutdown_type = @TypeOf(aegis_pep_shutdown);
     const quota_type = @TypeOf(aegis_pep_quota_remaining);
+    const read_type = @TypeOf(aegis_pep_read_events);
     // Just verify they compile and are callable — the extern link will be checked at link time
     _ = enforce_type;
+    _ = assess_type;
     _ = init_type;
     _ = shutdown_type;
     _ = quota_type;
+    _ = read_type;
     // If we reach here, the declarations are syntactically valid
     try std.testing.expect(true);
+}
+
+test "EVT-211: readWfpEvents labels empty-buffer calls without probing" {
+    // The zero-size guard returns before the extern call, so this test
+    // never opens a device (host stays untouched) while pinning the
+    // labeled-absence contract the capture loop depends on.
+    switch (readWfpEvents(&.{})) {
+        .unavailable => {},
+        .bytes => return error.TestUnexpectedResult,
+    }
 }
 
 test "FFI-001: PepRequest binary serialization roundtrip" {
@@ -432,6 +808,7 @@ test "FFI-001: PepRequest binary serialization roundtrip" {
         .protocol = 6,
         .policy_id = 42,
         .severity = 7,
+        .direction = 1,
         .ctx = .{
             .caller_pid = 1234,
             .caller_capability_mask = 0xFF,
@@ -445,6 +822,9 @@ test "FFI-001: PepRequest binary serialization roundtrip" {
     // Verify flow_id at offset 8 (little-endian u64)
     const flow_id_bytes = bytes[8..16];
     try std.testing.expectEqual(@as(u8, 0x08), flow_id_bytes[0]); // LE first byte
+    // The direction byte stays at 37 and ctx stays at 40.
+    try std.testing.expectEqual(@as(u8, 1), bytes[37]);
+    try std.testing.expectEqual(@as(usize, 40), @offsetOf(PepRequest, "ctx"));
 }
 
 test "FFI-001: flow enforcement uses policy block ordinal" {
@@ -452,4 +832,41 @@ test "FFI-001: flow enforcement uses policy block ordinal" {
     // Rust's ACTION_BLOCK is 4 and must remain distinct from DECISION_BLOCK.
     try std.testing.expectEqual(@as(u8, 4), @intFromEnum(policy.Action.block));
     try std.testing.expectEqual(@as(u8, 1), @intFromEnum(PepDecision.block));
+}
+
+/// Process-wide provider attestation WITHOUT opening anything new.
+/// The Rust adapter is the sole device owner (adapter_cache inside the
+/// DLL); every other component MUST query through here instead of
+/// CreateFile -- exclusive opens race each other (EVT-202: the Zig
+/// bridge and the Rust adapter took turns failing the capability).
+/// EVT-212: the first successful attestation adopts that cached handle
+/// (the DLL closes it cleanly on drop), so repeated calls reuse one
+/// owner instead of leaking an exclusive orphan per probe.
+/// Read-only: never a host-effect claim by itself.
+pub fn providerAttested() bool {
+    if (@import("builtin").os.tag != .windows) return false;
+    return aegis_pep_provider_ready() == 1;
+}
+
+pub const WfpEventsRead = union(enum) {
+    /// Provider answered: bytes written into the buffer (0 = idle ring,
+    /// a valid non-error state).
+    bytes: u32,
+    /// No provider read surface: no adapter/old provider copy/IOCTL
+    /// failure. Callers MUST label this state; it is not a zero reading.
+    unavailable: void,
+};
+
+/// EVT-211: read-only kernel flow telemetry through the provider adapter
+/// (sole device owner; adapter_cache inside aegis_pep.dll). FLOW
+/// visibility only -- never enforcement, no policy decision, no receipt.
+/// `.unavailable` is returned on any failure so the capture loop labels
+/// absence instead of rendering a silent zero.
+pub fn readWfpEvents(out_buf: []u8) WfpEventsRead {
+    if (@import("builtin").os.tag != .windows) return .unavailable;
+    const buf_size = std.math.cast(u32, out_buf.len) orelse return .unavailable;
+    if (buf_size == 0) return .unavailable;
+    var bytes: u32 = 0;
+    if (aegis_pep_read_events(out_buf.ptr, buf_size, &bytes) != 0) return .unavailable;
+    return .{ .bytes = bytes };
 }

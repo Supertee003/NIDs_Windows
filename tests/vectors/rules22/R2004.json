@@ -1,0 +1,32 @@
+{
+  "schema": "aegis.rule22-single.v1",
+  "rule_id": "R2004",
+  "name": "certutil Download Abuse",
+  "layer": "KERNEL_PROCESS",
+  "severity": "High",
+  "action": "Block",
+  "patterns": {
+    "fast_pattern": "CERTUTIL",
+    "match_pattern": "certutil",
+    "regex_pattern": "certutil(?:\\.exe)?\\b.*(?:-urlcache|-f)\\b"
+  },
+  "fixture": {
+    "fixture_id": "FX-16-R2004",
+    "source": "synthetic_etw_process_event",
+    "marker": "CERTUTIL certutil -urlcache",
+    "synthetic_signal": "CERTUTIL certutil -urlcache certutil C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "regex_match": true
+  },
+  "expected_observe_only": {
+    "host_effect": "none",
+    "wfp_block": false,
+    "enforcement_receipt": false,
+    "forensic_record": true,
+    "canonical_event": true
+  },
+  "prevention_gate": "closed",
+  "vm_steps": [
+    "run_etw_runtime_observe_only_proof.ps1 on the VM",
+    "verify: ETW process event + pattern match, no process creation by test"
+  ]
+}

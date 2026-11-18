@@ -1,8 +1,14 @@
 # AEGIS NIDS Windows — PEP และ Enforcement Security Review
 
+> **HISTORICAL (2026-10-19):** this review was performed against HEAD
+> `46b93dc` in 2026-09. Several findings have since been resolved (e.g.
+> replay/two-person, duplicate WFP exports) or superseded by later
+> slices. It is retained for history and must not be read as current
+> truth.
+
 **ขอบเขตการตรวจ:** `rust-src`, `src/policy`, `src/core/rust_pep.zig`, `src/windows/aegis_wfp.c`, `src/windows/wfp_ioctl.c`, WFP driver/callout, Shield, policy/rules configuration และ privileged action ทุกจุดที่พบใน source tree
 
-**Revision ที่ใช้ตรวจ:** `46b93dcf9cca17b323ddff7a4c71e33e81c37fb5` (current `HEAD`)
+**Revision ที่ใช้ตรวจ:** `46b93dcf9cca17b323ddff7a4c71e33e81c37fb5` (HEAD at review time)
 
 **Revision ที่ไม่ใช้เป็นหลักฐาน:** `688ab56` และ machine maps ที่ชี้ไป revision นี้ถือเป็น stale ตามโจทย์
 
@@ -169,7 +175,7 @@ Rust `PepState` มี `quotas`, `two_person_rule` และ `pending_approvals`
 | `PepResponse` | 16 bytes; offsets 0,4,8,12 | `u8,u32,u32,u32` | น่าจะตรงบน x64 |
 | decision ordinals | 0..5 | constants 0..5 | ตรงตาม source |
 
-แต่มี static compile inconsistency ใน Rust tests: struct field คือ `PepContext.policy_version` (`rust-src/lib.rs:156-162`) ขณะที่ tests สร้าง field `.reserved` (`rust-src/lib.rs:559-563`). หากไฟล์นี้ถูก compile ตาม current HEAD tests จะไม่ผ่านจนกว่าจะยืนยันว่า source/artifact คนละ revisionหรือแก้ให้ตรงกัน. นี่เป็นหลักฐานว่า “ABI tests มีอยู่” ไม่เท่ากับ “Rust crate current HEAD build ผ่าน”.
+แต่มี static compile inconsistency ใน Rust tests: struct field คือ `PepContext.policy_version` (`rust-src/lib.rs:156-162`) ขณะที่ tests สร้าง field `.reserved` (`rust-src/lib.rs:559-563`). หากไฟล์นี้ถูก compile ตาม review HEAD tests จะไม่ผ่านจนกว่าจะยืนยันว่า source/artifact คนละ revisionหรือแก้ให้ตรงกัน. นี่เป็นหลักฐานว่า “ABI tests มีอยู่” ไม่เท่ากับ “Rust crate review HEAD build ผ่าน”.
 
 `pep_bindings.zig` tests ตรวจขนาด/offset ฝั่ง Zig (`pep_bindings.zig:164-223`) แต่ไม่มี Rust `size_of`/offset export ที่ generated จาก compiler และไม่มี Windows link/runtime proof.
 
@@ -267,7 +273,7 @@ Shield ถูกประกาศให้เป็น screening-only และ
 
 ## 8. Static evidence กับ runtime proof
 
-### 8.1 Static evidence ที่ยืนยันได้จาก current HEAD
+### 8.1 Static evidence ที่ยืนยันได้จาก review HEAD
 
 * Active-looking daemon call graph โหลด policy JSON, สร้าง `PepEnforcer`, และส่ง matched policy เข้า PEP FFI.
 * PEP FFI มี enum/struct declarations และ Zig-side size/offset tests.
@@ -318,7 +324,7 @@ Unit tests ใน `pep_bindings.zig`, `policy_signing.zig`, `control_ipc.zig`, `
 | P2-PEP-13 | P2 | Policy parser ลด multi-condition และ `gte` เป็น `gt` | `daemon.zig:240-280` | false negative/incorrect enforcement |
 | P2-PEP-14 | P2 | Default allow/empty policy/dependency degradation ไม่แสดง final enforcement state ทุก path | `policy_integration.zig:45-71`; `daemon.zig:184-187` | detection-only ถูกเข้าใจเป็น prevention/allow |
 | P2-PEP-15 | P2 | Forensics เก็บ intent/ordinal ไม่ใช่ final adapter/WFP receipt | `event_processor.zig:175-200` | incident reconstruction และ replay audit ไม่ครบ |
-| P2-PEP-16 | P2 | Rust PEP crate manifest/artifact provenance ไม่ชัด; `rust-src/Cargo.toml` ไม่อยู่ใน tree | `build.zig:59-70`; `rust-src/lib.rs` | ไม่สามารถพิสูจน์ว่าผลิต DLL จาก current HEAD |
+| P2-PEP-16 | P2 | Rust PEP crate manifest/artifact provenance ไม่ชัด; `rust-src/Cargo.toml` ไม่อยู่ใน tree | `build.zig:59-70`; `rust-src/lib.rs` | ไม่สามารถพิสูจน์ว่าผลิต DLL จาก review HEAD |
 
 ---
 
@@ -346,7 +352,7 @@ Unit tests ใน `pep_bindings.zig`, `policy_signing.zig`, `control_ipc.zig`, `
 
 ### Gate A — build and ABI
 
-ให้ build Rust PEP จาก current HEAD บน Windows และแก้/ยืนยัน `policy_version` field mismatch. ให้ Zig/C/Rust export `sizeof`, `alignof`, field offsets และ enum ordinals ลง artifact เดียว แล้ว compare ใน CI. ตรวจ `WfpEventHeader=40`, `WfpRingStats=24` และ bytes returned จาก `DeviceIoControl`.
+ให้ build Rust PEP จาก review HEAD บน Windows และแก้/ยืนยัน `policy_version` field mismatch. ให้ Zig/C/Rust export `sizeof`, `alignof`, field offsets และ enum ordinals ลง artifact เดียว แล้ว compare ใน CI. ตรวจ `WfpEventHeader=40`, `WfpRingStats=24` และ bytes returned จาก `DeviceIoControl`.
 
 ### Gate B — policy security
 
@@ -368,9 +374,9 @@ Unit tests ใน `pep_bindings.zig`, `policy_signing.zig`, `control_ipc.zig`, `
 
 ## 12. ข้อสรุปสุดท้าย
 
-จาก current HEAD `46b93dcf9cca17b323ddff7a4c71e33e81c37fb5` มี source intent ที่ดีเรื่อง PEP เดียวและ fail-closed เมื่อ Rust PEP/WFP adapter หาย โดยเฉพาะ `pep_bindings.zig` และ Rust block path. แต่ implementation ยังมี authority ที่ caller ปลอมได้, policy signature ที่ไม่ mandatory, replay/quota/two-person ที่ไม่ active, direct mutating device path ที่ไม่มีหลักฐาน ACL, duplicate WFP exports, ABI mismatch ของ WFP telemetry และ false-success models หลายชุด.
+จาก review HEAD `46b93dcf9cca17b323ddff7a4c71e33e81c37fb5` มี source intent ที่ดีเรื่อง PEP เดียวและ fail-closed เมื่อ Rust PEP/WFP adapter หาย โดยเฉพาะ `pep_bindings.zig` และ Rust block path. แต่ implementation ยังมี authority ที่ caller ปลอมได้, policy signature ที่ไม่ mandatory, replay/quota/two-person ที่ไม่ active, direct mutating device path ที่ไม่มีหลักฐาน ACL, duplicate WFP exports, ABI mismatch ของ WFP telemetry และ false-success models หลายชุด.
 
-ดังนั้นผล review คือ **ไม่ผ่านสำหรับ privileged prevention production**. ให้เปิดได้เฉพาะ detection-only หรือ degraded mode ที่ health/audit ระบุชัดว่าไม่มี enforcement guarantee จนกว่า P0 ทั้งหมดและ Gate A–E จะผ่านบน Windows host ด้วย artifact ที่ผูกกับ current HEAD. `688ab56` และ machine maps ที่อ้าง revision ดังกล่าวไม่ควรใช้เป็นหลักฐานปิดความเสี่ยง.
+ดังนั้นผล review คือ **ไม่ผ่านสำหรับ privileged prevention production**. ให้เปิดได้เฉพาะ detection-only หรือ degraded mode ที่ health/audit ระบุชัดว่าไม่มี enforcement guarantee จนกว่า P0 ทั้งหมดและ Gate A–E จะผ่านบน Windows host ด้วย artifact ที่ผูกกับ review HEAD. `688ab56` และ machine maps ที่อ้าง revision ดังกล่าวไม่ควรใช้เป็นหลักฐานปิดความเสี่ยง.
 
 ---
 

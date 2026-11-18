@@ -3,6 +3,14 @@
 //
 // This struct is the *contract* between capture, detection, policy, forensic,
 // and federation. It MUST remain binary-stable across releases.
+//
+// VER-NS-039 namespace note: EVENT_MAGIC/VERSION here belong to the
+// INTERNAL queue event only (magic 0xAE615011, currently v5). They are a
+// different namespace from the WIRE canonical event in
+// contract/canonical_event.zig (magic "AEG1", v1, v2 with IPv6 tail).
+// The magics differ on purpose so the two framings can never be confused,
+// and the versions evolve independently — 5-vs-1 is not drift. Never
+// compare a version or magic across the two modules.
 
 const std = @import("std");
 const builtin = @import("builtin");
@@ -46,6 +54,10 @@ pub const EventKind = enum(u8) {
     action_allow = 62,
     action_rate_limit = 63,
     action_log = 64,
+    // QUAR-RCPT-094: confirmed-quarantine event kind. Additive only: existing
+    // numeric values are frozen (cross-language forensic readers may map
+    // them); new kinds take the next free value, never renumber.
+    action_quarantine = 65,
     etw_process_create = 70,
     etw_process_exit = 71,
     etw_image_load = 72,
@@ -54,6 +66,9 @@ pub const EventKind = enum(u8) {
     fim_change = 75,
     reg_change = 76,
     injection_detected = 77,
+    /// XDR-005-A: one newly observed established TCP endpoint pair from the
+    /// Windows owner-PID table. Evidence-only; never a detection identity.
+    host_socket_observed = 78,
     federation_heartbeat = 90,
     federation_aggregate = 91,
     federation_leader_change = 92,
@@ -94,14 +109,51 @@ pub const EventSource = enum(u8) {
     capture_fim = 3,
     capture_registry = 4,
     capture_pipe_monitor = 5,
+    /// XDR-005-A: Windows TCP table observation (GetExtendedTcpTable).
+    /// Host evidence, not a network capture and not a detection source.
+    capture_host_net = 6,
     detection_sig = 10,
     detection_anom = 11,
     detection_corr = 12,
+    /// Python Tier-2 brain findings arriving over the sensor pipe.
+    /// Advisory detection input: counted and correlated like any other
+    /// sensor event, never a host-effect claim by itself.
+    detection_brain = 13,
     policy = 20,
+    /// Kernel WFP flow telemetry (EVT-210): the driver ring is a sensor
+    /// in its own right, not policy output. Values below 32 stay clear
+    /// of every existing bucket, so old readers keep working.
+    capture_wfp = 21,
     federation = 30,
     system = 99,
     _,
 };
+
+/// GAP-015: human name for a legacy source ordinal. The queue.stats
+/// control response labels per-source ingress buckets with these so
+/// operators never decode ordinals by hand. Unknown ordinals format
+/// as "unknown_<N>" into a caller buffer (never dropped, never null).
+pub fn legacySourceName(ordinal: u8, buf: []u8) []const u8 {
+    const known: ?[]const u8 = switch (ordinal) {
+        1 => "capture_npcap",
+        2 => "capture_etw",
+        3 => "capture_fim",
+        4 => "capture_registry",
+        5 => "capture_pipe_monitor",
+        6 => "capture_host_net",
+        10 => "detection_sig",
+        11 => "detection_anom",
+        12 => "detection_corr",
+        13 => "detection_brain",
+        20 => "policy",
+        21 => "capture_wfp",
+        30 => "federation",
+        99 => "system",
+        else => null,
+    };
+    if (known) |name| return name;
+    return std.fmt.bufPrint(buf, "unknown_{d}", .{ordinal}) catch "unknown";
+}
 
 pub const IpcEvent = extern struct {
     magic: u32,
@@ -215,4 +267,18 @@ test "EventKind round-trip" {
     const v: u8 = @intFromEnum(k);
     const back: EventKind = @enumFromInt(v);
     try std.testing.expectEqual(k, back);
+}
+
+test "legacySourceName covers every named source, formats the rest (GAP-015)" {
+    var buf: [32]u8 = undefined;
+    try std.testing.expectEqualStrings("capture_etw", legacySourceName(2, &buf));
+    try std.testing.expectEqualStrings("capture_fim", legacySourceName(3, &buf));
+    try std.testing.expectEqualStrings("capture_registry", legacySourceName(4, &buf));
+    try std.testing.expectEqualStrings("capture_host_net", legacySourceName(6, &buf));
+    try std.testing.expectEqualStrings("capture_wfp", legacySourceName(21, &buf));
+    try std.testing.expectEqualStrings("system", legacySourceName(99, &buf));
+    // Pipe-sensor JSON arrives as .system (nids_capture); it must stay
+    // distinguishable from ETW/FIM/registry in queue.stats buckets.
+    try std.testing.expectEqualStrings("unknown_7", legacySourceName(7, &buf));
+    try std.testing.expectEqualStrings("unknown_0", legacySourceName(0, &buf));
 }

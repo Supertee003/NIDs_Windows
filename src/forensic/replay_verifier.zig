@@ -295,8 +295,8 @@ test "ReplayVerifier export and verify" {
 
     var ev = event.IpcEvent.init(.signature_match);
     ev.now();
-    _ = try ring.append(&ev, "payload1", 10, 5, 1, 3);
-    _ = try ring.append(&ev, "payload2", 11, 6, 0, 4);
+    _ = ring.append(&ev, "payload1", 10, 5, 1, 3);
+    _ = ring.append(&ev, "payload2", 11, 6, 0, 4);
 
     var verifier = ReplayVerifier.init(std.testing.allocator, &ring, 1);
     defer verifier.deinit();
@@ -314,7 +314,7 @@ test "ReplayVerifier records replay results" {
 
     var ev = event.IpcEvent.init(.signature_match);
     ev.now();
-    _ = try ring.append(&ev, "data", 0, 0, 0, 0);
+    _ = ring.append(&ev, "data", 0, 0, 0, 0);
 
     var verifier = ReplayVerifier.init(std.testing.allocator, &ring, 1);
     defer verifier.deinit();
@@ -340,7 +340,7 @@ test "ReplayVerifier detects mismatch" {
 
     var ev = event.IpcEvent.init(.signature_match);
     ev.now();
-    _ = try ring.append(&ev, "data", 0, 0, 0, 0);
+    _ = ring.append(&ev, "data", 0, 0, 0, 0);
 
     var verifier = ReplayVerifier.init(std.testing.allocator, &ring, 1);
     defer verifier.deinit();

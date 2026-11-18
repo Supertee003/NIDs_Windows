@@ -4,6 +4,13 @@
 // On Windows: prefers CNG (BCrypt) for key storage; falls back to in-memory.
 // On Linux/test: in-memory only.
 //
+// POL-SIGN-078 NOTE: key MATERIAL here is mock random bytes (see
+// generate()) -- never use this module for policy verification. The
+// canonical policy trust store is policy_signing.zig (real Ed25519
+// verify, provision/revoke/rotate, rollback floor, tested). This file
+// remains the lifecycle/purpose model (KeyKind/KeyPurpose slots,
+// incl. federation_tls) until a consolidation slice merges them.
+//
 // Lifecycle states:
 //   generated â†’ loaded â†’ active â†’ rotating â†’ retired â†’ revoked
 

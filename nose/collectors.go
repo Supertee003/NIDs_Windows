@@ -65,6 +65,11 @@ type TrafficData struct {
         RxBytesPerSec float64 `json:"rx_bytes_sec"`
         TxBytesPerSec float64 `json:"tx_bytes_sec"`
         TotalPkts     int64   `json:"total_pkts"`
+        // Simulated marks synthetic data. Each synthetic stage sets it:
+        // the fallback numbers below and the TopTalkers/Protocols block
+        // in trafficCollector. A future real source clears its own stage;
+        // the TUI and status JSON read this flag instead of assuming.
+        Simulated     bool    `json:"simulated"`
         // v5.0: Enhanced network data
         TopTalkers    []TopTalkerEntry  `json:"top_talkers"`
         Protocols     []ProtocolEntry   `json:"protocols"`
@@ -146,25 +151,37 @@ func gcPauseAvg(pauseTotalNs uint64, numGC uint32) uint64 {
 
 // ── Goroutine 2: Traffic Sensor ──
 // v5.0: เพิ่ม Top Talkers + Protocol Distribution
+// fallbackTraffic — synthetic numbers used when readTrafficFromSystem
+// fails. Pure function (no channels, no sleep) so the synthesis contract
+// is unit-testable. Marks Simulated; the caller keeps it marked while
+// TopTalkers/Protocols stay synthetic (see trafficCollector).
+func fallbackTraffic(now int64, tick int) TrafficData {
+        variation := int64(200 * float64(tick%60) / 60.0)
+        return TrafficData{
+                RxPktsPerSec:  1000 + (now%500) + variation,
+                TxPktsPerSec:  800 + (now%300) + variation/2,
+                ActiveConns:   50 + (now % 20),
+                RxBytesPerSec: float64(1200000 + (now%600000) + variation*1000),
+                TxBytesPerSec: float64(800000 + (now%400000) + variation*500),
+                Simulated:     true,
+        }
+}
+
 func trafficCollector(ch chan<- TrafficData) {
         var totalPkts int64
         tick := 0
         for {
                 now := time.Now().Unix()
                 data, err := readTrafficFromSystem()
+                numbersOK := err == nil
                 if err != nil {
                         // Simulate realistic traffic with natural variation
-                        variation := int64(200 * float64(tick%60) / 60.0)
-                        data = TrafficData{
-                                RxPktsPerSec:  1000 + (now%500) + variation,
-                                TxPktsPerSec:  800 + (now%300) + variation/2,
-                                ActiveConns:   50 + (now % 20),
-                                RxBytesPerSec: float64(1200000 + (now%600000) + variation*1000),
-                                TxBytesPerSec: float64(800000 + (now%400000) + variation*500),
-                        }
+                        data = fallbackTraffic(now, tick)
                 }
 
-                // v5.0: Simulate Top Talkers (real data would come from packet capture)
+                // v5.0: Synthetic baseline (real data would come from packet
+                // capture). applyLiveTalkers below replaces BOTH blocks
+                // while the live table is fresh; otherwise this stands.
                 data.TopTalkers = simulateTopTalkers(now)
                 data.Protocols = []ProtocolEntry{
                         {Name: "TCP",  Count: data.RxPktsPerSec*70/100 + data.TxPktsPerSec*70/100},
@@ -172,6 +189,9 @@ func trafficCollector(ch chan<- TrafficData) {
                         {Name: "ICMP", Count: data.RxPktsPerSec*5/100 + data.TxPktsPerSec*5/100},
                         {Name: "Other",Count: data.RxPktsPerSec*5/100 + data.TxPktsPerSec*5/100},
                 }
+                // NOSE-TALK-145: live table replaces the synthetic block only
+                // while fresh; Simulated stays set unless every section is real.
+                applyLiveTalkers(&data, numbersOK)
                 data.TCPCount = data.Protocols[0].Count
                 data.UDPCount = data.Protocols[1].Count
                 data.ICMPCount = data.Protocols[2].Count
@@ -205,10 +225,9 @@ func threatCollector(ch chan<- ThreatData) {
 }
 
 // ── readTrafficFromSystem ──
-// TODO: รองรับ real traffic จาก Windows performance counters หรือ Bridge IPC
-func readTrafficFromSystem() (TrafficData, error) {
-        return TrafficData{}, fmt.Errorf("no real traffic data yet — using simulation")
-}
+// Implemented per platform: traffic_sys_windows.go (IP Helper, live),
+// traffic_sys_other.go (always errors, fallback stays in force).
+// (The old always-failing stub was replaced by NOSE-SYS-143.)
 
 // ── parseThreatMap ──
 // v5.0: เพิ่ม raw stream entries from anomalous.json

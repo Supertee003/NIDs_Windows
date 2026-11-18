@@ -244,9 +244,18 @@ class TestGoldenPathLive(unittest.TestCase):
             raise unittest.SkipTest("live tests are Windows-only")
 
     def setUp(self):
-        # Check that bridge + core + brain are running
+        # Check that bridge + core + brain are running. The component probe
+        # shells out per name and can miss under full-suite load; retry
+        # briefly before concluding a component is down (same transient
+        # class as the pipe probes in test_harness_integration.py).
         for name in ("bridge", "core", "brain"):
-            if not _is_component_running(name):
+            running = False
+            for _ in range(3):
+                if _is_component_running(name):
+                    running = True
+                    break
+                time.sleep(1.0)
+            if not running:
                 self.skipTest(f"component {name} not running (use 'aegisctl start --all')")
 
     def test_brain_health_endpoint_responds(self):
@@ -263,76 +272,148 @@ class TestGoldenPathLive(unittest.TestCase):
             self.skipTest(f"brain health probe failed: {e}")
 
     def test_brain_receives_synthetic_event(self):
-        """Send a synthetic event via UDP to brain and verify it processes it.
+        """Send synthetic events to an ISOLATED brain and verify processing.
 
-        We send an event with a unique rule_id, then query the brain's
-        HEALTH endpoint to see if in_events counter increased.
+        EVT-177: the old version sent bare UDP at the production brain,
+        which the provisioned secret now drops by design (fail-closed),
+        and it perturbed prod counters either way. The isolated brain
+        (alt port, scrubbed secret, same binary) proves the receive path
+        deterministically; prod-brain liveness stays covered by the
+        bridge/status/components pins, which never inject traffic.
         """
-        # Get baseline counter
+        import os
+        from tests.runtime.conftest import start_component
+        target = 51994
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-                s.settimeout(2.0)
-                s.sendto(b'{"op":"HEALTH"}', UDP_BRAIN_ALERT)
-                data, _ = s.recvfrom(8192)
-            baseline = json.loads(data.decode("utf-8"))
-            baseline_in = baseline.get("counters", {}).get("in_events", 0)
-        except Exception as e:
-            self.skipTest(f"cannot get baseline brain health: {e}")
-            return
-
-        # Send 3 synthetic events via UDP
-        unique_rule = f"GATE-B-LIVE-{int(time.time())}"
-        rc, _, _ = _run([
-            sys.executable, str(EVENT_GEN),
-            "--udp", "--count", "3", "--rule-id", unique_rule,
-            "--attack", "GATE-B-TEST", "--severity", "High",
-        ], timeout=10)
-        if rc != 0:
-            self.skipTest("event_gen failed to send events")
-            return
-
-        # Wait a moment for the brain to process
-        time.sleep(0.5)
-
-        # Get updated counter
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+                probe.bind(("127.0.0.1", target))
+        except OSError:
+            self.skipTest("isolated brain port busy; retry the suite")
+        child_env = dict(os.environ)
+        child_env.pop("AEGIS_BRAIN_SECRET", None)
+        brain_cmd = [sys.executable, str(REPO_ROOT / "brain" / "windows_brain.py"),
+                     "--port", str(target)]
+        proc = start_component(brain_cmd, cwd=str(REPO_ROOT), env=child_env)
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-                s.settimeout(2.0)
-                s.sendto(b'{"op":"HEALTH"}', UDP_BRAIN_ALERT)
-                data, _ = s.recvfrom(8192)
-            updated = json.loads(data.decode("utf-8"))
-            updated_in = updated.get("counters", {}).get("in_events", 0)
-        except Exception as e:
-            self.skipTest(f"cannot get updated brain health: {e}")
-            return
+            peer = ("127.0.0.1", target)
 
-        # Counter should have increased by at least 3
-        self.assertGreaterEqual(
-            updated_in, baseline_in + 3,
-            f"brain in_events did not increase by 3 (baseline={baseline_in}, "
-            f"updated={updated_in}). The brain may not be receiving events."
-        )
+            def _health():
+                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                    s.settimeout(2.0)
+                    s.sendto(b'{"op":"HEALTH"}', peer)
+                    data, _ = s.recvfrom(8192)
+                return json.loads(data.decode("utf-8"))
+
+            deadline = time.time() + 30
+            baseline_in = None
+            while time.time() < deadline:
+                try:
+                    doc = _health()
+                    if doc.get("state") == "RUNNING":
+                        baseline_in = doc.get("counters", {}).get("in_events", 0)
+                        break
+                except (OSError, ValueError):
+                    pass
+                time.sleep(0.5)
+            if baseline_in is None:
+                self.skipTest("isolated brain never RUNNING")
+                return
+
+            # Send 3 synthetic events via the real sender at the alt port.
+            unique_rule = f"GATE-B-LIVE-{int(time.time())}"
+            rc, _, _ = _run([
+                sys.executable, str(EVENT_GEN),
+                "--udp", "--port", str(target), "--count", "3",
+                "--rule-id", unique_rule,
+                "--attack", "GATE-B-TEST", "--severity", "High",
+            ], timeout=10)
+            self.assertEqual(rc, 0, "event_gen failed to send events")
+
+            # The isolated brain must count exactly our 3 (zero background
+            # on its private port -- the assertion prod could never make).
+            deadline = time.time() + 10
+            updated_in = baseline_in
+            while time.time() < deadline:
+                try:
+                    updated_in = _health().get("counters", {}).get("in_events", 0)
+                    if updated_in >= baseline_in + 3:
+                        break
+                except (OSError, ValueError):
+                    pass
+                time.sleep(0.5)
+            self.assertGreaterEqual(
+                updated_in, baseline_in + 3,
+                f"isolated brain in_events did not increase by 3 "
+                f"(baseline={baseline_in}, updated={updated_in})")
+        finally:
+            if proc.poll() is None:
+                proc.terminate()
+                proc.wait(timeout=15)
 
     def test_aggregator_health_endpoint_responds(self):
-        """Aggregator's /api/health should respond with the full schema."""
-        if not _is_component_running("aggregator"):
-            self.skipTest("aggregator not running")
+        """Isolated aggregator's /api/health responds with the full schema.
+
+        EVT-179: the old version probed the production :9200 listener and
+        skipped when no aggregator ran (it never runs -- it is an
+        optional sidecar, Required=no). The isolated instance (fresh
+        `go build` of the CURRENT sources to a temp dir, alt port via
+        AEGIS_API_PORT, temp log via AEGIS_LOG_PATH) proves the serve
+        path deterministically with zero prod touch -- and it exercises
+        the EVT-179 console/service split binary end to end.
+        """
+        import tempfile
+        import urllib.request
+        from tests.runtime.conftest import start_component
+        agg_dir = REPO_ROOT / "go" / "aggregator"
+        tmp = tempfile.mkdtemp(prefix="agg-isolated-")
         try:
-            import urllib.request
-            host, port = HTTP_AGGREGATOR
-            url = f"http://{host}:{port}/api/health"
-            with urllib.request.urlopen(url, timeout=2.0) as resp:
-                data = resp.read().decode("utf-8")
-            parsed = json.loads(data)
-            # G35: aggregator now returns full schema
-            self.assertEqual(parsed.get("component"), "aggregator")
-            self.assertEqual(parsed.get("state"), "RUNNING")
-            self.assertIn("counters", parsed)
-            self.assertIn("deps", parsed)
-        except ImportError:
-            self.skipTest("urllib not available")
-        except Exception as e:
-            self.skipTest(f"aggregator health probe failed: {e}")
+            exe = str(Path(tmp) / "aegis-aggregator-test.exe")
+            try:
+                build = subprocess.run(
+                    ["go", "build", "-o", exe, "."], capture_output=True,
+                    text=True, timeout=300, cwd=str(agg_dir))
+            except FileNotFoundError:
+                self.skipTest("go toolchain unavailable")
+                return
+            self.assertEqual(build.returncode, 0,
+                             f"go build failed: {build.stderr[-2000:]}")
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("127.0.0.1", 0))
+                target = s.getsockname()[1]
+            child_env = dict(os.environ)
+            child_env["AEGIS_API_PORT"] = str(target)
+            child_env["AEGIS_LOG_PATH"] = str(Path(tmp) / "test.ndjson")
+            proc = start_component([exe], cwd=str(REPO_ROOT), env=child_env)
+            try:
+                url = f"http://127.0.0.1:{target}/api/health"
+                parsed = None
+                deadline = time.time() + 30
+                last_err = ""
+                while time.time() < deadline:
+                    if proc.poll() is not None:
+                        break
+                    try:
+                        with urllib.request.urlopen(url, timeout=2.0) as resp:
+                            parsed = json.loads(
+                                resp.read().decode("utf-8"))
+                        break
+                    except Exception as e:
+                        last_err = str(e)
+                    time.sleep(0.5)
+                self.assertIsNotNone(
+                    parsed, f"isolated aggregator never answered: {last_err}")
+                # G35: aggregator now returns full schema
+                self.assertEqual(parsed.get("component"), "aggregator")
+                self.assertEqual(parsed.get("state"), "RUNNING")
+                self.assertIn("counters", parsed)
+                self.assertIn("deps", parsed)
+            finally:
+                if proc.poll() is None:
+                    proc.terminate()
+                    proc.wait(timeout=15)
+        finally:
+            import shutil
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 # =====================================================================

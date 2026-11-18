@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
 """Fix main_menu in console.py to use control_api."""
 
+# QUARANTINED (LEGACY-INERT-001): retained for history only.
+# Nothing in the runtime imports this file and the installer does not ship it.
+# Several of these scripts rewrite tracked files when run (for example
+# tools/aegisctl/commands/console.py or AUTHORITY_MAP.json), so an accidental
+# `python tools/legacy/<name>.py` was a tree mutation. The guard below makes the
+# file inert: it exits before any line of the original body executes.
+raise SystemExit(
+    "QUARANTINED: tools/legacy/fix_console.py must not run; retained for history only."
+)
+
 with open('tools/aegisctl/commands/console.py', 'r') as f:
     data = f.read()
 
@@ -92,7 +102,8 @@ new_running = """        # Use control_api to get status
         print(f"\n  {Colors.BLD}MAIN MENU{Colors.RST}  ({running}/{total} subsystems)")
         print(f"  {'=' * 50}")
         if defcon_val:
-            print(f"  DEFCON: {defcon_val[0]} ({defcon_val[1]})""""
+            print(f"  DEFCON: {defcon_val[0]} ({defcon_val[1]})")
+"""
 
 data = data.replace(old_running, new_running)
 

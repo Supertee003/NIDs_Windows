@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "D:\\NIDs_Windows\\.archify\\architecture-aegis-runtime-20261007-181633\\candidate.json",
+    "sha256": "0de09009fe3ba09c015535b2979d6b823c4fe4543e670e28bea32345d97330c2",
+    "bytes": 4567
+  },
+  "artifact": {
+    "path": "D:\\NIDs_Windows\\.archify\\architecture-aegis-runtime-20261007-181633\\aegis-runtime.html",
+    "sha256": "31c0d5c2939725b162db9b648d786f4bc2f1165e9460511e9102437378ff7126",
+    "bytes": 769211
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "D:\\NIDs_Windows\\.archify\\architecture-aegis-runtime-20261007-181633\\aegis-runtime.finalize.json",
+    "summaryReceipt": "D:\\NIDs_Windows\\.archify\\architecture-aegis-runtime-20261007-181633\\aegis-runtime.finalize-summary.json",
+    "browserCheckReceipt": "D:\\NIDs_Windows\\.archify\\architecture-aegis-runtime-20261007-181633\\aegis-runtime.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.0.1",
+    "availableVersion": "3.0.1",
+    "releaseNotes": null,
+    "checkedAt": "2026-10-07T11:17:11.029Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 3123,
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "routesOverSuggestedBends": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [],
+      "detours": [
+        {
+          "relationship": {
+            "id": "nose-to-zig",
+            "from": "nose",
+            "to": "zig",
+            "label": "CanonicalEvent via C ABI",
+            "collectionIndex": 1,
+            "artifactIndex": 2
+          },
+          "bends": 4,
+          "stretch": 1.132
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "nose → zig needs 4 bends: move node nose or zig so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

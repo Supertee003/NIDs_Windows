@@ -1,4 +1,4 @@
-# Rules 22 Rule-to-Policy Mapping Draft
+# Rule-to-Policy Mapping Draft
 
 > **Inactive draft:** this file is qualification metadata only. It is not loaded by the daemon and cannot authorize WFP enforcement.
 
@@ -26,6 +26,7 @@
 | `R3003` | `Alert` | `ALERT` | `L2_PIPE` | `pipe_telemetry` | `DETECT_ONLY` | `false` | `DRAFT_NOT_LOADED` |
 | `R3004` | `Drop` | `BLOCK` | `L2_PIPE` | `pipe_telemetry` | `DETECT_ONLY` | `false` | `DRAFT_NOT_LOADED` |
 | `R3005` | `Block` | `BLOCK` | `L2_PIPE` | `pipe_telemetry` | `DETECT_ONLY` | `false` | `DRAFT_NOT_LOADED` |
+| `R0089` | `Block` | `BLOCK` | `L7` | `payload_sensor_pending` | `DETECT_ONLY` | `false` | `DRAFT_NOT_LOADED` |
 
 ## Activation rule
 

@@ -12,6 +12,7 @@ def main() -> int:
     doc = json.loads(MANIFEST.read_text(encoding="utf-8"))
     errors: list[str] = []
     fixtures = doc.get("fixtures", [])
+    expected = len(json.loads((ROOT / "configs" / "Rules.json").read_text(encoding="utf-8"))["nids_rules"])
 
     if doc.get("active") is not False:
         errors.append("manifest active must be false")
@@ -19,8 +20,8 @@ def main() -> int:
         errors.append("execution_mode must be synthetic_observe_only")
     if doc.get("global_prevention_gate") != "closed":
         errors.append("global_prevention_gate must be closed")
-    if len(fixtures) != 22 or doc.get("rule_count") != 22:
-        errors.append("manifest must contain exactly 22 fixtures")
+    if len(fixtures) != expected or doc.get("rule_count") != expected:
+        errors.append(f"manifest must contain exactly {expected} fixtures (configs/Rules.json)")
 
     seen_rules: set[str] = set()
     for fixture in fixtures:

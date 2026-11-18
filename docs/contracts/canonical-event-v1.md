@@ -70,7 +70,7 @@
 | Field | Type | Size | Description |
 |---|---|---|---|
 | defcon_impact | u8 | 1 | 1-5 (5=normal, 1=critical) |
-| context_flags | u32 | 4 | Bitfield for enrichment flags |
+| context_flags | u32 | 4 | Bitfield for enrichment flags; bits 16..23 carry the raw TCP flags byte and bit 24 marks it valid (RB-021-NOSE-FLAGS). Wire size/offset unchanged. |
 
 ### Reserved
 

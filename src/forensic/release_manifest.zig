@@ -1,8 +1,18 @@
 // PATCH-44 - Release Manifest / Reproducibility
 // AEGIS NIDS v5.0+ -- Release manifest and build reproducibility
 //
+// STATUS (REL-CLOSURE, 2026-10-19): SPEC-REFERENCE ONLY. This v5.0
+// PATCH-44 module is a reference structure exercised by the zig test
+// suite (EVT-017); production does not load it. The production
+// release-engineering implementation is tools/release_engineering.py
+// (build_manifest.json artifact digests, SBOM, --verify /
+// --refresh-digests) with tools/fresh_deploy.py as the preflight.
+// Keep src/main.zig and src/daemon.zig free of this module (pinned by
+// tests/docs/test_stale_doc_sweep.py); wiring it in is a dedicated-slice
+// decision.
+//
 // This module defines the release manifest structure and verifies
-// build reproducibility across environments.
+// build reproducibility across environments (reference shape only).
 
 const std = @import("std");
 

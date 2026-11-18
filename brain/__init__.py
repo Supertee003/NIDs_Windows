@@ -1,2 +1,2 @@
-﻿# AEGIS NIDS package marker
+# AEGIS NIDS package marker
 

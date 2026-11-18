@@ -80,7 +80,7 @@ COMPONENTS: tuple[dict[str, Any], ...] = (
         "name":      "core",
         "binary":    "zig-out/bin/aegis_nids.exe",
         "language":   "Zig",
-        "health":    {"transport": "pipe", "endpoint": r"\\.\pipe\aegis_control_t1"},
+        "health":    {"transport": "pipe", "endpoint": r"\\.\pipe\aegis_control"},
         "required":  True,
         "gate":      "A",
     },
@@ -136,6 +136,7 @@ REQUIRED_COMPONENTS = tuple(c["name"] for c in COMPONENTS if c["required"])
 # Captured output per spawned pid, plus the drain threads (kept referenced so
 # they are not collected while the component is alive).
 _SPAWNED_OUTPUT: dict[int, dict[str, list[str]]] = {}
+_SPAWNED_PROCS: list["subprocess.Popen"] = []
 _DRAIN_THREADS: list[threading.Thread] = []
 _MAX_CAPTURED_LINES = 2000
 
@@ -160,7 +161,8 @@ def _drain(stream: Any, sink: list[str]) -> None:
             pass
 
 
-def start_component(cmd: list[str], cwd: Optional[Path] = None) -> "subprocess.Popen":
+def start_component(cmd: list[str], cwd: Optional[Path] = None,
+                    env: Optional[dict] = None) -> "subprocess.Popen":
     """Start a component process with its stdout/stderr actively drained.
 
     A component started with `stdout=PIPE` and never read blocks as soon as the
@@ -172,15 +174,20 @@ def start_component(cmd: list[str], cwd: Optional[Path] = None) -> "subprocess.P
 
     Output is retained per pid (see component_output) so a genuine startup
     failure can be diagnosed instead of guessed at.
+
+    env overrides the child environment when given (e.g. scrubbing secrets
+    for isolated test brains); None inherits (previous behavior, unchanged).
     """
     proc = subprocess.Popen(
         cmd,
         cwd=str(cwd) if cwd is not None else None,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=env,
     )
     buffers: dict[str, list[str]] = {"stdout": [], "stderr": []}
     _SPAWNED_OUTPUT[proc.pid] = buffers
+    _SPAWNED_PROCS.append(proc)
     for stream, key in ((proc.stdout, "stdout"), (proc.stderr, "stderr")):
         if stream is None:
             continue
@@ -348,11 +355,18 @@ class RuntimeProbe:
             )
             if winerror in (2, 231, 5):
                 # 2 = ERROR_FILE_NOT_FOUND (pipe server not running)
-                # 231 = ERROR_PIPE_BUSY
-                # 5 = ERROR_ACCESS_DENIED
-                raise FileNotFoundError(
+                # 231 = ERROR_PIPE_BUSY (another server instance owns the name)
+                # 5 = ERROR_ACCESS_DENIED (a foreign principal owns the pipe
+                #     and its security descriptor excludes this caller)
+                exc = FileNotFoundError(
                     f"named pipe {pipe!r} not available (winerror={winerror})"
-                ) from e
+                )
+                # Carry the raw code so callers can distinguish "no server" (2)
+                # from "another, unreadable owner holds the single-instance
+                # pipe" (5/231). Both leave the endpoint unusable, but only the
+                # former means a local component may start and serve it.
+                exc.winerror = winerror
+                raise exc from e
             raise
         try:
             # Use the canonical v2 control command.  The legacy HEALTH op is
@@ -518,3 +532,40 @@ __all__ = [
     "quarantine_dir",
     "write_audit_record",
 ]
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Deterministic teardown: reap components, join drain threads.
+
+    Per-test tearDowns terminate their own procs, but a skip/failure
+    between start and teardown (or a component ignoring terminate) would
+    otherwise leak processes and leave pipe-drain threads blocked in
+    readline() into interpreter shutdown. This backstop terminates
+    stragglers, kills the stubborn, and JOINS every drain thread, and
+    REPORTS leftovers instead of hiding them. (A full-suite teardown AV
+    is under separate investigation; this hook narrows it by making the
+    harness's own threads deterministic.)
+    """
+    stragglers = [p for p in _SPAWNED_PROCS if p.poll() is None]
+    for proc in stragglers:
+        try:
+            proc.terminate()
+        except Exception:
+            pass
+    deadline = time.time() + 10
+    for proc in stragglers:
+        try:
+            proc.wait(timeout=max(0, deadline - time.time()))
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+    still_alive = 0
+    for thread in _DRAIN_THREADS:
+        thread.join(timeout=10)
+        if thread.is_alive():
+            still_alive += 1
+    if stragglers or still_alive:
+        print(f"[conftest] sessionfinish: reaped {len(stragglers)} procs, "
+              f"{still_alive} drain threads still alive")

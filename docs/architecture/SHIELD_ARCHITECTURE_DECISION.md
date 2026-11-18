@@ -1,5 +1,11 @@
 # SHIELD_ARCHITECTURE_DECISION — REBUILD-001 (UPDATED)
 
+**SUPERSEDED (PEP-001, 2026-10-17):** the rust-src/shield authority consolidation
+this decision calls for is complete. The duplicate PEP/WFP surface is removed and
+`shield/` remains only as the advisory Tier-3 screening crate (`aegis_shield_screen`).
+Counts and file lists below are the 2026-09-11 historical record; current truth:
+AUTHORITY_MAP.json + EVIDENCE_INDEX EVT-228.
+
 **Decision: KEEP shield/ as the Tier-3 Rust safety shield. Integrate with rust-src/ for authority consolidation.**
 
 **HEAD:** `2c7cb30` · **Mode:** corrected audit · **Date:** 2026-09-11

@@ -95,11 +95,12 @@
 - Detection logic
 - Brain/RAG logic
 
-**Authority files**: `shield/`, `mouth/`
+**Authority files**: `rust-src/`, `shield/` (SUPPORT only)
 
-**Rule**: Rust is the **final enforcement authority**. No bypass allowed.
+**Rule**: Rust is the **detection-only policy evaluation authority**. It records
+evidence and never authorizes a host effect. No bypass allowed.
 
-**PEP validation** (before execution):
+**PEP validation** (before classification):
 - policy
 - version
 - signature

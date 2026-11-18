@@ -198,9 +198,13 @@ def test_rule_id_hash_matches_the_zig_pinned_vectors(runner) -> None:
         assert runner.hash_rule_id(text) == expected, f"FNV-1a 32 drift for {text!r}"
 
 
-def test_runner_passes_and_reports_no_host_effect() -> None:
+def test_runner_passes_and_reports_no_host_effect(tmp_path: Path) -> None:
+    # Test hygiene: the runner's result stamps are producer-owned tracked
+    # files, so the test redirects them into tmp_path and asserts there.
+    out = tmp_path / "results.json"
     proc = subprocess.run(
-        [sys.executable, str(RUNNER)], cwd=ROOT, capture_output=True, text=True
+        [sys.executable, str(RUNNER), "--out", str(out)],
+        cwd=ROOT, capture_output=True, text=True,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     summary = json.loads(proc.stdout)
@@ -211,7 +215,7 @@ def test_runner_passes_and_reports_no_host_effect() -> None:
     assert summary["wfp_block_claimed_count"] == 0
     assert summary["prevention_gate"] == "closed"
 
-    results = json.loads(RESULTS.read_text(encoding="utf-8"))
+    results = json.loads(out.read_text(encoding="utf-8"))
     assert summary["scenario_count"] == results["scenario_count"]
     assert results["qualification"] == "SYNTHETIC_LAB_MARKER_NOT_HOST_PROOF"
     for row in results["results"]:

@@ -15,7 +15,159 @@ use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
 use std::time::Instant;
+
+// Case-insensitive critical level detection
+fn is_critical_level(level: &str) -> bool {
+    level.eq_ignore_ascii_case("critical")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{is_critical_level, read_tail, resolve_defcon, resolve_log_path, AlertEntry, format_component};
+
+    #[test]
+    fn log_path_prefers_newest_candidate() {
+        // F3: tmp-only fixtures, never the repo tree.
+        let dir = std::env::temp_dir().join("aegis_dash_f3_test");
+        let _ = std::fs::create_dir_all(&dir);
+        let old = dir.join("old.ndjson");
+        let new = dir.join("new.ndjson");
+        std::fs::write(&old, "{}\n").unwrap();
+        // Ensure distinct mtimes (FAT/1s granularity on some volumes).
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        std::fs::write(&new, "{}\n").unwrap();
+        assert_eq!(resolve_log_path(&[old.clone(), new.clone()]), new);
+        assert_eq!(resolve_log_path(&[new.clone(), old.clone()]), new);
+        assert_eq!(
+            resolve_log_path(&[dir.join("missing.ndjson"), new.clone()]),
+            new
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_tail_returns_line_bounded_suffix() {
+        // F3: the refresh loop must never half-parse a leading line.
+        let dir = std::env::temp_dir().join("aegis_dash_f3_tail");
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("log.ndjson");
+        let mut content = String::new();
+        for i in 0..100 {
+            content.push_str(&format!("{{\"n\":{}}}\n", i));
+        }
+        std::fs::write(&path, &content).unwrap();
+        // Whole file when smaller than the window.
+        let all = read_tail(&path, 1_000_000).unwrap();
+        assert_eq!(all.lines().count(), 100);
+        // Bounded window: complete lines only, all from the tail.
+        let tail = read_tail(&path, 100).unwrap();
+        let lines: Vec<&str> = tail.lines().collect();
+        assert!(!lines.is_empty() && lines.len() < 100);
+        assert!(lines.iter().all(|l| l.starts_with("{\"n\":")));
+        assert!(lines.last().unwrap().starts_with("{\"n\":99}"));
+        // Missing file propagates the error (caller keeps old data).
+        assert!(read_tail(&dir.join("nope.ndjson"), 100).is_err());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn critical_level_is_case_insensitive() {
+        assert!(is_critical_level("critical"));
+        assert!(is_critical_level("Critical"));
+        assert!(is_critical_level("CRITICAL"));
+        assert!(!is_critical_level("high"));
+    }
+
+    #[test]
+    fn daemon_defcon_wins_over_file_tail() {
+        // FE-DEF-095b: daemon health is the authority. A live DEFCON 3
+        // projects HIGH even when the evidence file is empty (SAFE).
+        let health: serde_json::Value =
+            serde_json::from_str(r#"{"defcon_level":3,"defcon_label":"HIGH"}"#).unwrap();
+        let (level, label, source) = resolve_defcon(&health, 5);
+        assert_eq!((level, label, source), (3, "HIGH", "daemon"));
+    }
+
+    #[test]
+    fn missing_daemon_defcon_falls_back_to_labeled_file_ladder() {
+        // Pre-095a daemon (or unreachable control plane): the file ladder
+        // survives explicitly labeled as derived, never as authority.
+        let health: serde_json::Value = serde_json::from_str(r#"{"state":"X"}"#).unwrap();
+        let (level, label, source) = resolve_defcon(&health, 5);
+        assert_eq!((level, label, source), (5, "SAFE", "evidence-log"));
+    }
+
+    #[test]
+    fn garbage_daemon_defcon_never_reaches_the_display() {
+        for raw in [
+            r#"{"defcon_level":9,"defcon_label":"MAXIMUM"}"#,
+            r#"{"defcon_level":1,"defcon_label":""}"#,
+            r#"{"defcon_level":"1","defcon_label":"MAXIMUM"}"#,
+            r#"{"defcon_level":2,"defcon_label":"SAFE"}"#,
+        ] {
+            let health: serde_json::Value = serde_json::from_str(raw).unwrap();
+            let (_, _, source) = resolve_defcon(&health, 4);
+            assert_eq!(source, "evidence-log", "raw={raw}");
+        }
+    }
+
+    #[test]
+    fn writer_receipt_line_counts_as_confirmed_block() {
+        // BE-EVI-097: a daemon-writer line with the full receipt set
+        // satisfies confirmed_block(); an observed line never does.
+        // serde_json ignores the writer's extra keys (policy_id, …).
+        let enforced = r#"{"ts_ms":1791296893400,"mono_ns":1,"level":"critical","event":"signature_match","rule":"4237725842","src_ip":"192.168.1.100","src_port":1234,"session_id":7,"payload_len":3,"policy":"block","policy_id":4,"event_id":201,"trace_id":202,"audit_id":203,"enforcement_status":"enforced","host_effect_confirmed":true,"filter_id":301,"request_id":302,"decision":"block","provider":"wfp","receipt_version":1}"#;
+        let entry: AlertEntry = serde_json::from_str(enforced).unwrap();
+        assert_eq!(entry.rule, "4237725842");
+        assert_eq!(entry.src_ip, "192.168.1.100");
+        assert!(entry.confirmed_block());
+        let observed = r#"{"ts_ms":1791296893401,"level":"warn","event":"signature_match","rule":"1","src_ip":"10.0.0.1","policy":"alert","enforcement_status":"observed","host_effect_confirmed":false,"filter_id":0,"request_id":0}"#;
+        let entry: AlertEntry = serde_json::from_str(observed).unwrap();
+        assert!(!entry.confirmed_block());
+    }
+
+    #[test]
+    fn component_row_formats_identity_and_degrades() {
+        // EVT-163: full entry renders name (lang) version — status;
+        // an older snapshot without the block degrades to placeholders.
+        let full: serde_json::Value = serde_json::from_str(
+            r#"{"name":"AEGIS Nose","language":"Go","version":"5.0.0","status":"running"}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            format_component(&full),
+            "AEGIS Nose (Go) v5.0.0 — running"
+        );
+        let empty = serde_json::Value::Null;
+        assert_eq!(format_component(&empty), "? (?) v? — unknown");
+    }
+}
+
+/// FE-DEF-095b: resolve which DEFCON the dashboard displays.
+///
+/// Daemon health (control/defcon.zig via healthJson) wins whenever it
+/// carries a valid level (1-5) with its matching MAXIMUM-vocabulary
+/// label. Otherwise the file-tail ladder value is shown explicitly
+/// labeled as derived — never silently promoted to authority.
+fn resolve_defcon(health: &serde_json::Value, file_level: u8) -> (u8, &'static str, &'static str) {
+    const LABELS: [&str; 6] = ["", "MAXIMUM", "SEVERE", "HIGH", "ELEVATED", "SAFE"];
+    if let Some(level) = health.get("defcon_level").and_then(|v| v.as_u64()) {
+        if (1..=5).contains(&level) {
+            if let Some(label) = health.get("defcon_label").and_then(|v| v.as_str()) {
+                let idx = level as usize;
+                if !label.is_empty() && label == LABELS[idx] {
+                    return (level as u8, LABELS[idx], "daemon");
+                }
+            }
+        }
+    }
+    let idx = file_level.clamp(1, 5) as usize;
+    (file_level.clamp(1, 5), LABELS[idx], "evidence-log")
+}
 
 // =====================================================================
 // DATA TYPES
@@ -88,13 +240,32 @@ struct RuleEntry {
 
 #[derive(Debug, Deserialize, Default, Clone)]
 struct RuntimeSnapshot {
-    #[serde(default)]
     health: serde_json::Value,
+
     #[serde(default)]
+    enforcement: serde_json::Value,
+
     metrics: serde_json::Value,
-    #[serde(default)]
     forensic: serde_json::Value,
+
+    // EVT-163: the five components as concepts (added by `aegisctl.py
+    // snapshot`; default keeps older snapshots parsing).
+    #[serde(default)]
+    components: serde_json::Value,
 }
+
+
+/// One-line concept row for a component entry. Unknown fields degrade to
+/// placeholders, never panic: the dashboard must survive older snapshots
+/// that predate the components block.
+fn format_component(c: &serde_json::Value) -> String {
+    let name = c.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+    let lang = c.get("language").and_then(|v| v.as_str()).unwrap_or("?");
+    let ver = c.get("version").and_then(|v| v.as_str()).unwrap_or("?");
+    let status = c.get("status").and_then(|v| v.as_str()).unwrap_or("unknown");
+    format!("{name} ({lang}) v{ver} — {status}")
+}
+
 
 // =====================================================================
 // APP STATE
@@ -107,6 +278,7 @@ struct AegisDashboard {
     total_blocked: usize,
     total_critical: usize,
     defcon_level: u8,
+    defcon_source: &'static str,
     last_refresh: Instant,
     log_path: PathBuf,
     rules_path: PathBuf,
@@ -115,6 +287,70 @@ struct AegisDashboard {
     last_refresh_ago: f32,
     runtime_snapshot: RuntimeSnapshot,
     control_available: bool,
+    // Control-plane snapshot subprocess handling. The full snapshot costs
+    // ~5-7s (forensics.verify alone is ~4.5s), so it must NEVER run on the
+    // UI thread: a 1s refresh with Command::output() froze the window for
+    // seconds at a time (spawning a new subprocess every second on top of
+    // that hammered the single control pipe -> every display slowed down
+    // and windows flashed). Now one python snapshot is launched at most
+    // every 30s on a background thread; update() drains the finished one.
+    control_rx: Option<mpsc::Receiver<std::process::Output>>,
+    control_next_due: Instant,
+}
+
+/// F3: where the live daemon log can live. The service writes relative
+/// to ITS cwd (System32); an interactive run writes relative to the repo.
+/// Candidates are ranked by freshness at startup, never hardcoded to one.
+#[cfg(windows)]
+const SERVICE_LOG_PATH: &str = r"C:\Windows\System32\logs\aegis_core.ndjson";
+#[cfg(not(windows))]
+const SERVICE_LOG_PATH: &str = "/var/log/aegis_core.ndjson";
+
+/// F3: newest existing candidate wins; the CWD-relative default is the
+/// fallback so a bare checkout behaves exactly as before.
+fn resolve_log_path(candidates: &[std::path::PathBuf]) -> std::path::PathBuf {
+    let mut best: Option<std::path::PathBuf> = None;
+    let mut best_mtime = std::time::SystemTime::UNIX_EPOCH;
+    for path in candidates {
+        if let Ok(meta) = std::fs::metadata(path) {
+            if let Ok(mtime) = meta.modified() {
+                if mtime > best_mtime {
+                    best_mtime = mtime;
+                    best = Some(path.clone());
+                }
+            }
+        }
+    }
+    best.unwrap_or_else(|| {
+        candidates
+            .last()
+            .cloned()
+            .unwrap_or_else(|| std::path::PathBuf::from("logs/aegis_core.ndjson"))
+    })
+}
+
+/// F3: tail window for the 1s refresh loop. The live log grows past
+/// megabytes; re-reading + re-parsing all of it every second is pure
+/// UI-thread latency. Returns at most max_bytes ending on a line
+/// boundary (a leading partial line is dropped, never half-parsed).
+fn read_tail(path: &std::path::Path, max_bytes: u64) -> std::io::Result<String> {
+    let file = std::fs::File::open(path)?;
+    let len = file.metadata()?.len();
+    let start = len.saturating_sub(max_bytes);
+    use std::io::{Read, Seek, SeekFrom};
+    let mut file = file;
+    file.seek(SeekFrom::Start(start))?;
+    let mut buf = Vec::new();
+    file.read_to_end(&mut buf)?;
+    let mut text = String::from_utf8_lossy(&buf).into_owned();
+    if start > 0 {
+        if let Some(pos) = text.find('\n') {
+            text = text[pos + 1..].to_string();
+        } else {
+            text.clear();
+        }
+    }
+    Ok(text)
 }
 
 impl AegisDashboard {
@@ -127,9 +363,15 @@ impl AegisDashboard {
             total_blocked: 0,
             total_critical: 0,
             defcon_level: 5,
+            defcon_source: "evidence-log",
             last_refresh: Instant::now(),
-            // GAP-4: Read aegis_core.ndjson (was anomalous.json - old Brain format)
-            log_path: base.join("logs").join("aegis_core.ndjson"),
+            // F3: live-log resolution (service path vs dev-tree path,
+            // newest wins) instead of a blind CWD-relative default that
+            // showed 2 stale test lines while the service wrote elsewhere.
+            log_path: resolve_log_path(&[
+                std::path::PathBuf::from(SERVICE_LOG_PATH),
+                base.join("logs").join("aegis_core.ndjson"),
+            ]),
             // The daemon and aegisctl share this canonical rules location.
             rules_path: base.join("configs").join("Rules.json"),
             auto_refresh: true,
@@ -137,24 +379,63 @@ impl AegisDashboard {
             last_refresh_ago: 0.0,
             runtime_snapshot: RuntimeSnapshot::default(),
             control_available: false,
+            control_rx: None,
+            control_next_due: Instant::now(),
         }
     }
 
     fn refresh_control_snapshot(&mut self) {
-        let output = Command::new("python")
-            .args(["tools/aegisctl.py", "snapshot"])
-            .current_dir(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
-            .output();
-        if let Ok(output) = output {
-            if output.status.success() {
-                if let Ok(snapshot) = serde_json::from_slice::<RuntimeSnapshot>(&output.stdout) {
-                    self.runtime_snapshot = snapshot;
-                    self.control_available = true;
-                    return;
+        // Drain a finished background snapshot (never block on launch).
+        if let Some(rx) = self.control_rx.take() {
+            match rx.try_recv() {
+                Ok(output) => {
+                    if output.status.success() {
+                        if let Ok(snapshot) = serde_json::from_slice::<RuntimeSnapshot>(&output.stdout) {
+                            self.runtime_snapshot = snapshot;
+                            self.control_available = true;
+                            return;
+                        }
+                    }
+                    self.control_available = false;
+                }
+                Err(mpsc::TryRecvError::Empty) => {
+                    // Still running; keep the receiver for the next drain.
+                    self.control_rx = Some(rx);
+                }
+                Err(mpsc::TryRecvError::Disconnected) => {
+                    self.control_available = false;
                 }
             }
         }
-        self.control_available = false;
+        // Launch one background snapshot at most every 30s, off the UI
+        // thread: the subprocess (aegisctl.py snapshot) re-verifies the
+        // forensic ring (~4.5s of the ~5s cost) and must not dominate the
+        // shared control pipe. 30s is plenty for counters/DEFCON/enforcement
+        // on an operator dashboard; the 1s evidence-feed refresh is separate.
+        if self.control_rx.is_none() && Instant::now() >= self.control_next_due {
+            self.control_next_due = Instant::now() + Duration::from_secs(30);
+            let (tx, rx) = mpsc::channel::<std::process::Output>();
+            let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+            thread::spawn(move || {
+                let mut cmd = Command::new("python");
+                cmd.args(["tools/aegisctl.py", "snapshot"])
+                    .current_dir(cwd);
+                #[cfg(windows)]
+                {
+                    use std::os::windows::process::CommandExt;
+                    // EVT-164: never allocate a console for the snapshot
+                    // child. On a console-less parent each 30s tick flashed
+                    // a blank Administrator python window; the flag is a
+                    // no-op when the parent already has a console.
+                    cmd.creation_flags(0x08000000);
+                }
+                let output = cmd.output();
+                if let Ok(output) = output {
+                    let _ = tx.send(output);
+                }
+            });
+            self.control_rx = Some(rx);
+        }
     }
 
     fn refresh_data(&mut self) {
@@ -165,18 +446,20 @@ impl AegisDashboard {
         self.total_blocked = 0;
         self.total_critical = 0;
 
-        if let Ok(content) = fs::read_to_string(&self.log_path) {
+        // F3: tail window (256KB) instead of the whole multi-MB file.
+        // Display keeps the last 50 alerts anyway; the window covers
+        // thousands of recent lines at 1s refresh for ~zero UI latency.
+        if let Ok(content) = read_tail(&self.log_path, 256 * 1024) {
             for line in content.lines() {
                 if line.trim().is_empty() {
                     continue;
                 }
                 if let Ok(entry) = serde_json::from_str::<AlertEntry>(line) {
                     self.total_alerts += 1;
-                    let event_type = entry.event.to_uppercase();
                     if entry.confirmed_block() {
                         self.total_blocked += 1;
                     }
-                    if entry.level == "critical" {
+                    if is_critical_level(&entry.level) {
                         self.total_critical += 1;
                     }
                     self.alerts.push(entry);
@@ -190,8 +473,11 @@ impl AegisDashboard {
             self.alerts = self.alerts[start..].to_vec();
         }
 
-        // Calculate DEFCON
-        self.defcon_level = if self.total_critical >= 10 || self.total_blocked >= 5 {
+        // Calculate DEFCON from the evidence file (fallback ladder only).
+        // FE-DEF-095b: daemon health wins below; this value survives
+        // explicitly labeled as derived when the daemon predates 095a
+        // or the control plane is unreachable.
+        let file_defcon_level = if self.total_critical >= 10 || self.total_blocked >= 5 {
             1
         } else if self.total_critical >= 5 || self.total_blocked >= 3 {
             2
@@ -202,6 +488,9 @@ impl AegisDashboard {
         } else {
             5
         };
+        let (level, _, source) = resolve_defcon(&self.runtime_snapshot.health, file_defcon_level);
+        self.defcon_level = level;
+        self.defcon_source = source;
 
         // Read rules (count only)
         self.rules.clear();
@@ -279,6 +568,14 @@ impl eframe::App for AegisDashboard {
                     defcon_color,
                     format!("DEFCON {}: {}", self.defcon_level, defcon_label),
                 );
+                ui.small(format!(
+                    "({})",
+                    if self.defcon_source == "daemon" {
+                        "daemon authority"
+                    } else {
+                        "evidence-log derived"
+                    }
+                ));
 
                 ui.separator();
 
@@ -347,7 +644,12 @@ impl eframe::App for AegisDashboard {
                             egui::Color32::from_rgb(200, 200, 100)
                         };
                         ui.colored_label(color, format!("{} [{}]", rule.rule_id, rule.action));
-                        ui.label(format!("  {}", rule.name));
+                        let layer = if rule.layer.is_empty() {
+                            "unknown"
+                        } else {
+                            &rule.layer
+                        };
+                        ui.label(format!("  {} | layer={}", rule.name, layer));
                         ui.add_space(4.0);
                     }
                 });
@@ -374,10 +676,14 @@ impl eframe::App for AegisDashboard {
                     ui.heading(format!("{}", self.total_blocked));
                     ui.small("valid receipts only");
                 });
-            ui.group(|ui| {
+                ui.group(|ui| {
                     ui.strong("Rules");
-                    ui.heading(format!("{}", self.rules.len()));
-                    ui.small("from configs/Rules.json");
+                    let active_rules = self.runtime_snapshot.health
+                        .get("rules_loaded")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
+                    ui.heading(format!("{}", active_rules));
+                    ui.small(format!("active daemon rules | local catalog {}", self.rules.len()));
                 });
                 ui.group(|ui| {
                     ui.strong("Forensics");
@@ -397,6 +703,95 @@ impl eframe::App for AegisDashboard {
                 data_plane.get("nose_frames_dropped").and_then(|v| v.as_u64()).unwrap_or(0),
                 data_plane.get("nose_duplicate_event_ids").and_then(|v| v.as_u64()).unwrap_or(0),
                 data_plane.get("nose_non_monotonic_event_ids").and_then(|v| v.as_u64()).unwrap_or(0)));
+            let pep = self.runtime_snapshot.health
+    .get("rust_pep")
+    .cloned()
+    .unwrap_or_default();
+
+let alias = self.runtime_snapshot.health
+    .get("rust_shield")
+    .cloned()
+    .unwrap_or_default();
+
+let pep_state = pep
+    .get("state")
+    .and_then(|v| v.as_str())
+    .unwrap_or("UNKNOWN");
+
+let alias_of = alias
+    .get("alias_of")
+    .and_then(|v| v.as_str())
+    .unwrap_or("rust_pep");
+
+let provider_ready = self.runtime_snapshot
+    .enforcement
+    .get("provider_ready")
+    .and_then(|v| v.as_bool())
+    .unwrap_or(false);
+
+let host_effect_capable = self.runtime_snapshot
+    .enforcement
+    .get("host_effect_capable")
+    .and_then(|v| v.as_bool())
+    .unwrap_or(false);
+
+let prevention_gate = self.runtime_snapshot
+    .enforcement
+    .get("prevention_gate")
+    .and_then(|v| v.as_str())
+    .unwrap_or("closed");
+
+let enforcement_mode = self.runtime_snapshot
+    .enforcement
+    .get("enforcement_mode")
+    .and_then(|v| v.as_str())
+    .unwrap_or("detection-only");
+
+let tier3_enforcing = self.runtime_snapshot
+    .enforcement
+    .get("tier3_enforcing")
+    .and_then(|v| v.as_bool())
+    .unwrap_or(false);
+
+let posture_ok = prevention_gate != "closed"
+    || (!tier3_enforcing && enforcement_mode.eq_ignore_ascii_case("detection-only"));
+
+ui.label(format!(
+    "Canonical authority: rust_pep | state={} | WFP provider={} | host-effect capability={}",
+    pep_state,
+    if provider_ready { "READY" } else { "UNAVAILABLE" },
+    if host_effect_capable { "YES" } else { "NO" }
+));
+
+ui.label(format!(
+    "Posture: gate={} | mode={} | tier3_enforcing={} | contract={}",
+    prevention_gate,
+    enforcement_mode,
+    tier3_enforcing,
+    if posture_ok { "OK" } else { "VIOLATION" }
+));
+
+ui.label(format!(
+    "Compatibility alias: rust_shield -> {} | alias-only",
+    alias_of
+));
+
+// EVT-163: the five components as concepts (from `aegisctl.py snapshot`;
+// missing on older snapshots degrades to a note, never a panic).
+ui.label("AEGIS Components (concept + status):");
+if let Some(list) = self.runtime_snapshot.components.as_array() {
+    for c in list {
+        ui.label(format_component(c));
+    }
+} else {
+    ui.small("component data unavailable (snapshot predates the block)");
+}
+            let metrics = &self.runtime_snapshot.metrics;
+            let metric_events = metrics.get("events_total").or_else(|| metrics.get("events"))
+                .and_then(|v| v.as_u64()).unwrap_or(0);
+            let metric_dropped = metrics.get("events_dropped").or_else(|| metrics.get("dropped"))
+                .and_then(|v| v.as_u64()).unwrap_or(0);
+            ui.label(format!("Runtime metrics: events={} dropped={}", metric_events, metric_dropped));
             ui.add_space(10.0);
             ui.heading("Latest Evidence");
             ui.separator();
@@ -428,6 +823,8 @@ impl eframe::App for AegisDashboard {
                                         let datetime = chrono::DateTime::from_timestamp(secs, 0)
                                             .unwrap_or_default();
                                         datetime.format("%H:%M:%S").to_string()
+                                    } else if entry.mono_ns > 0 {
+                                        format!("mono:{}", entry.mono_ns)
                                     } else {
                                         "-".to_string()
                                     };
@@ -440,7 +837,7 @@ impl eframe::App for AegisDashboard {
                                     } else {
                                         entry.src_ip.clone()
                                     };
-                                    ui.label(src);
+                                    ui.label(src).on_hover_text(format!("src_port={} session_id={}", entry.src_port, entry.session_id));
                                 });
                                 // Event
                                 row.col(|ui| {
@@ -449,16 +846,16 @@ impl eframe::App for AegisDashboard {
                                     } else {
                                         entry.event.clone()
                                     };
-                                    ui.label(ev);
+                                    ui.label(ev).on_hover_text(format!("payload_len={} mono_ns={}", entry.payload_len, entry.mono_ns));
                                 });
                                 // Level (was severity)
                                 row.col(|ui| {
                                     let level = entry.level.clone();
-                                    let color = if level == "Critical" || level == "critical" {
+                                    let color = if is_critical_level(&entry.level) {
                                         egui::Color32::RED
-                                    } else if level == "High" || level == "high" {
+                                    } else if level.eq_ignore_ascii_case("High") || level.eq_ignore_ascii_case("high") {
                                         egui::Color32::from_rgb(255, 165, 0)
-                                    } else if level == "Medium" || level == "medium" {
+                                    } else if level.eq_ignore_ascii_case("Medium") || level.eq_ignore_ascii_case("medium") {
                                         egui::Color32::YELLOW
                                     } else {
                                         egui::Color32::from_rgb(180, 180, 180)
@@ -472,7 +869,7 @@ impl eframe::App for AegisDashboard {
                                     } else {
                                         entry.rule.clone()
                                     };
-                                    ui.label(rule);
+                                    ui.label(rule).on_hover_text(format!("ruleset_version={}", entry.ruleset_version));
                                 });
                             });
                         }

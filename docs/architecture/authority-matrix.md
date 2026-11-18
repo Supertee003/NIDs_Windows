@@ -2,6 +2,9 @@
 
 **Gate:** G1 | **Date:** 2026-09-07
 
+> **HISTORICAL (2026-10-06):** superseded by `AUTHORITY_MAP.json` +
+> AGENTS.md. Preserved for history — do not use as current truth.
+
 ## Single Authority Per Concern
 
 | Concern | Authority | Component | Language | Status |
@@ -39,8 +42,8 @@ OBSERVABILITY:  EventAccounting + FlowTable + PEP stats + DEFCON + JSONL logs
 
 ## Shield Authority Resolution
 
-- `src/lib.rs` = PRODUCTION (Rust PEP + Tier-3 detector)
-- `shield/` = EMPTY (removed)
+- `rust-src/lib.rs` = PRODUCTION (Rust PEP; detection-only policy evaluation and evidence authority)
+- `shield/` = SUPPORT (Tier-3 advisory payload screening; former duplicate PEP/WFP surface removed by PEP-001, 2026-10-17)
 - `windows_sec_monitor.rs` = TOOL (DEFCON display only)
 
 ## Forbidden Crossings

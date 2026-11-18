@@ -9,7 +9,20 @@ pub fn build(b: *std.Build) void {
     // Declare this option explicitly for Zig 0.13.0. Some 0.13 builds do
     // not expose the standard helper's `-Doptimize` registration reliably
     // when the build graph is loaded from a cached Windows build runner.
-    const optimize = b.option(std.builtin.OptimizeMode, "optimize", "Build optimization mode") orelse .Debug;
+    // QLOSS-CONSUMER-001: this defaulted to .Debug, so the daemon that shipped
+    // and every measurement taken from it ran an unoptimized binary. The
+    // forensic append alone costs ~34 us/record in Debug versus ~12 us in
+    // ReleaseSafe (measured on the 4 KiB record path), and that cost sits on the
+    // single consumer thread. ReleaseSafe keeps every runtime safety check, so
+    // the default now ships an optimized binary with checks intact; pass
+    // -Doptimize=Debug explicitly for a debug session.
+    const optimize = b.option(std.builtin.OptimizeMode, "optimize", "Build optimization mode") orelse .ReleaseSafe;
+
+    // SLICE-C-LAB: lab-only prevention-gate open path. Defaults to false and
+    // is never passed by release/CI scripts (pinned by
+    // tests/security/test_prevention_gate_surface.py). A default build has no
+    // code path that can open the gate (docs/SLICE_C_LAB_GATE_DESIGN.md).
+    const lab_prevention_gate = b.option(bool, "lab-prevention-gate", "LAB ONLY: compile in the prevention-gate open path (never for production)") orelse false;
 
     // ----- Core NIDS Executable -----
     const exe = b.addExecutable(.{
@@ -19,6 +32,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     exe.linkLibC();
+
+    // SLICE-C-LAB: surfaced to src/daemon.zig only (main.zig graph).
+    const gate_build_opts = b.addOptions();
+    gate_build_opts.addOption(bool, "lab_prevention_gate", lab_prevention_gate);
+    exe.root_module.addOptions("build_options", gate_build_opts);
 
     // Link Windows system libraries
     exe.linkSystemLibrary("ws2_32");
@@ -119,6 +137,10 @@ pub fn build(b: *std.Build) void {
     opts.addOption([]const u8, "host_correlator_config_json", hc_json);
     opts.addOption([]const u8, "integration_test_config_json", it_json);
     opts.addOption([]const u8, "perf_benchmark_config_json", pb_json);
+    // T3-TSIR-025: the TS-authored golden IR shared with the Zig loader.
+    // Same pattern (file stays in ts_policy/, bytes surface via options).
+    const pir_json = std.fs.cwd().readFileAlloc(b.allocator, "ts_policy/tests/fixtures/policy_ir_002.json", 1 * 1024 * 1024) catch "";
+    opts.addOption([]const u8, "policy_ir_fixture_json", pir_json);
 
     const tests = b.addTest(.{
         .root_source_file = b.path("src/all_tests.zig"),
@@ -158,11 +180,95 @@ pub fn build(b: *std.Build) void {
         std.debug.print("WARNING: target/release/aegis_pep.dll.lib not found for tests; run `cargo build --release` first\n", .{});
     }
 
+    // Compile operator/CLI/harness imports separately from the unit runner.
+    // This artifact is a dependency of `test` for compile coverage only; it
+    // is deliberately never passed to addRunArtifact.
+    const compile_only_tests = b.addTest(.{
+        .root_source_file = b.path("src/compile_only_imports.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    compile_only_tests.root_module.addOptions("core_test_configs", opts);
+    compile_only_tests.linkLibC();
+    compile_only_tests.linkSystemLibrary("tdh");
+    compile_only_tests.linkSystemLibrary("advapi32");
+    compile_only_tests.linkSystemLibrary("ntdll");
+    if (helper_dir) |dir| {
+        compile_only_tests.addLibraryPath(.{ .cwd_relative = dir });
+        compile_only_tests.linkSystemLibrary("aegis_etw_helper");
+        compile_only_tests.linkSystemLibrary("aegis_fim_helper");
+    }
+    if (std.fs.cwd().access("target/release/aegis_pep.lib", .{})) |_| {
+        compile_only_tests.addLibraryPath(.{ .cwd_relative = "target/release" });
+        compile_only_tests.linkSystemLibrary("aegis_pep");
+    } else |_| {
+        std.debug.print("WARNING: target/release/aegis_pep.lib not found for compile-only tests\n", .{});
+    }
+
     const run_tests = b.addRunArtifact(tests);
     run_tests.addPathDir(b.pathFromRoot("target/helpers"));
     run_tests.addPathDir(b.pathFromRoot("target/release"));
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_tests.step);
+
+    // Real loopback TCP checks are opt-in integration tests. Keeping them in
+    // a separate target makes `zig build test` hermetic under restricted
+    // hosts while preserving an explicit authorized-host proof command.
+    const network_integration_tests = b.addTest(.{
+        // BUILD-NETINT-001: the aggregator file lives under src/tests/ and
+        // cannot import ../../federation while it is the module root, which
+        // made this step fail to compile. Root the step at the module whose
+        // tests we want to run.
+        .root_source_file = b.path("src/federation/federation_tcp.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    network_integration_tests.linkLibC();
+    const run_network_integration = b.addRunArtifact(network_integration_tests);
+    run_network_integration.setEnvironmentVariable("AEGIS_TCP_INTEGRATION", "1");
+    const network_integration_step = b.step("test-network-integration", "Run real loopback TCP integration tests (authorized network host only)");
+    network_integration_step.dependOn(&run_network_integration.step);
+
+    const compile_only_step = b.step("compile-only", "Compile operator and CLI tests without running them");
+    compile_only_step.dependOn(&compile_only_tests.step);
+    test_step.dependOn(&compile_only_tests.step);
+
+    // ----- SCOPE-103: out-of-unit harness execution -----
+    // The integration/proof harnesses were compiled at best and executed by
+    // nobody: `core-tools` only builds two CLIs and `compile_only_imports`
+    // never runs. This artifact gives ~350 harness tests a real run edge so
+    // rot is visible in a gate instead of on an operator's desk. Scopes stay
+    // declared in tests/security/test_zig_test_scope.py.
+    const out_of_unit_tests = b.addTest(.{
+        .root_source_file = b.path("src/out_of_unit_tests.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    out_of_unit_tests.root_module.addOptions("core_test_configs", opts);
+    out_of_unit_tests.linkLibC();
+    out_of_unit_tests.linkSystemLibrary("tdh");
+    out_of_unit_tests.linkSystemLibrary("advapi32");
+    out_of_unit_tests.linkSystemLibrary("ntdll");
+    if (helper_dir) |dir| {
+        out_of_unit_tests.addLibraryPath(.{ .cwd_relative = dir });
+        out_of_unit_tests.linkSystemLibrary("aegis_etw_helper");
+        out_of_unit_tests.linkSystemLibrary("aegis_fim_helper");
+    }
+    if (std.fs.cwd().access("target/release/aegis_pep.lib", .{})) |_| {
+        out_of_unit_tests.addLibraryPath(.{ .cwd_relative = "target/release" });
+        out_of_unit_tests.linkSystemLibrary("aegis_pep");
+    } else |_| {
+        std.debug.print("WARNING: target/release/aegis_pep.lib not found for out-of-unit tests\n", .{});
+    }
+    const run_out_of_unit = b.addRunArtifact(out_of_unit_tests);
+    run_out_of_unit.addPathDir(b.pathFromRoot("target/helpers"));
+    run_out_of_unit.addPathDir(b.pathFromRoot("target/release"));
+    const out_of_unit_step = b.step("test-out-of-unit", "Run integration/proof harness tests (operator scope)");
+    out_of_unit_step.dependOn(&run_out_of_unit.step);
+    // SCOPE-103: the harnesses run in ~1s, so they belong in the default gate
+    // instead of being an optional step nobody invokes. A rot here is now a
+    // failing `zig build test`, not a surprise on an operator's desk.
+    test_step.dependOn(out_of_unit_step);
 
     // ----- Fuzz target -----
     const fuzz = b.addExecutable(.{

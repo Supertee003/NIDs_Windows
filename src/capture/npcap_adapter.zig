@@ -30,7 +30,21 @@ extern "c" fn pcap_set_snaplen(p: *pcap_t, snaplen: c_int) c_int;
 extern "c" fn pcap_set_promisc(p: *pcap_t, promisc: c_int) c_int;
 extern "c" fn pcap_set_timeout(p: *pcap_t, to_ms: c_int) c_int;
 extern "c" fn pcap_set_buffer_size(p: *pcap_t, buffer_size: c_int) c_int;
-pub extern "c" fn pcap_next_ex(p: *pcap_t, hdr: *pcap_pkthdr, data: *[*]const u8) c_int;
+// EVT-216 (RB-021 follow-up): Npcap SDK pcap/pcap.h:574 declares
+//   PCAP_API int pcap_next_ex(pcap_t *, struct pcap_pkthdr **, const u_char **);
+// Both out-params are POINTER-TO-POINTER: the DLL stores its own header
+// and data pointers into the caller's variables; the caller reads through
+// them. The previous declaration took `*pcap_pkthdr` (one indirection
+// short): the returned header pointer landed in the first 8 bytes of our
+// struct, and caplen/len (offsets 8/12) were never written -- in a
+// safety-checked build they read the 0xAA undefined fill (2863311530),
+// padding every direct-capture window to the 1500-byte queue cap and
+// letting trailing buffer bytes match text rules (RB-021 lab anomaly:
+// a plain frame matching R9064 via a following frame's ;whoami bytes).
+// Same shape as npcap_capture.zig's PcapNextExFn; the header behind the
+// pointer is the 16-byte layout below (live-measured 2026-10-17:
+// caplen == len == true frame size on captured frames).
+pub extern "c" fn pcap_next_ex(p: *pcap_t, hdr: *?*const pcap_pkthdr, data: *?[*]const u8) c_int;
 extern "c" fn pcap_close(p: *pcap_t) void;
 extern "c" fn pcap_geterr(p: *pcap_t) [*:0]const u8;
 extern "c" fn pcap_datalink(p: *pcap_t) c_int;
@@ -78,6 +92,101 @@ fn isVirtualOrUnsupportedDescription(description: ?[*:0]const u8) bool {
 // ============================================================================
 // NpcapAdapter â€” live capture handle
 // ============================================================================
+// Lab capture selection (EVT-200).
+//
+// AEGIS_DAEMON_IFACE pins daemon-side capture to one Npcap device by
+// exact canonical name or case-insensitive description substring
+// (e.g. "VMnet1"). Empty/unset keeps the historical auto-select,
+// byte for byte. A SET but unmatched value FAILS CLOSED (no capture +
+// loud error) -- silently sniffing the wrong interface would blind the
+// operator while reporting healthy.
+//
+// Deliberately NOT AEGIS_CAPTURE_IFACE / AEGIS_NOSE_IFACE: the opener
+// reads those for the Go nose process, and sharing one knob would swing
+// the prod nose onto the lab interface on the next keeper restart.
+pub const DAEMON_IFACE_ENV = "AEGIS_DAEMON_IFACE";
+/// Exact interface selector passed to the Go Nose `--iface` capture process.
+/// Required when the direct lab sensor is enabled; absence means overlap is
+/// unknown and the direct sensor must remain disabled.
+pub const NOSE_IFACE_ENV = "AEGIS_NOSE_IFACE";
+
+/// Pure matcher, unit-tested without Npcap hardware. Empty filter never
+/// matches (unset means auto-select, handled by the caller).
+pub fn deviceMatchesFilter(name: []const u8, desc: []const u8, filter: []const u8) bool {
+    if (filter.len == 0) return false;
+    if (std.mem.eql(u8, name, filter)) return true;
+    var name_lower: [256]u8 = undefined;
+    var desc_lower: [256]u8 = undefined;
+    var filter_lower: [256]u8 = undefined;
+    if (filter.len > filter_lower.len) return std.mem.eql(u8, name, filter);
+    const nl = @min(name.len, name_lower.len);
+    const dl = @min(desc.len, desc_lower.len);
+    _ = std.ascii.lowerString(name_lower[0..nl], name[0..nl]);
+    _ = std.ascii.lowerString(desc_lower[0..dl], desc[0..dl]);
+    _ = std.ascii.lowerString(filter_lower[0..filter.len], filter);
+    const fl = filter_lower[0..filter.len];
+    return std.mem.indexOf(u8, name_lower[0..nl], fl) != null or
+        std.mem.indexOf(u8, desc_lower[0..dl], fl) != null;
+}
+
+/// Prove that two operator-declared interface selectors cannot identify the
+/// same Npcap adapter. The predicate is intentionally conservative: equal or
+/// substring-overlapping selectors are treated as unsafe because daemon-side
+/// selectors may be friendly descriptions while Nose uses an exact name.
+/// Empty means "unknown", so it is never considered disjoint.
+pub fn interfaceSelectorsDisjoint(direct: []const u8, nose: []const u8) bool {
+    if (direct.len == 0 or nose.len == 0) return false;
+    var direct_lower: [256]u8 = undefined;
+    var nose_lower: [256]u8 = undefined;
+    if (direct.len > direct_lower.len or nose.len > nose_lower.len) return false;
+    _ = std.ascii.lowerString(direct_lower[0..direct.len], direct);
+    _ = std.ascii.lowerString(nose_lower[0..nose.len], nose);
+    const d = direct_lower[0..direct.len];
+    const n = nose_lower[0..nose.len];
+    return std.mem.indexOf(u8, d, n) == null and std.mem.indexOf(u8, n, d) == null;
+}
+
+/// One Npcap device as the selection guard sees it.
+pub const DeviceView = struct {
+    name: []const u8,
+    desc: []const u8 = "",
+};
+
+/// Resolve an operator selector to exactly one device index.
+///
+/// Exact canonical name wins first, so a GUID is never reinterpreted as a
+/// substring. Otherwise `deviceMatchesFilter` (the same matcher the pin uses)
+/// must hit exactly one device: zero matches is "not found" and two matches is
+/// ambiguous, and an ambiguous selector is never a selection. Taking the first
+/// match is how a lab ends up silently watching the wrong adapter.
+pub fn resolveSelector(devices: []const DeviceView, selector: []const u8) ?usize {
+    if (selector.len == 0 or selector.len > 256) return null;
+    for (devices, 0..) |dev, i| {
+        if (std.mem.eql(u8, dev.name, selector)) return i;
+    }
+    var found: ?usize = null;
+    var matches: usize = 0;
+    for (devices, 0..) |dev, i| {
+        if (deviceMatchesFilter(dev.name, dev.desc, selector)) {
+            matches += 1;
+            if (found == null) found = i;
+        }
+    }
+    return if (matches == 1) found else null;
+}
+
+/// True only when both selectors resolve to two different devices.
+///
+/// `interfaceSelectorsDisjoint` compares spellings, so it cannot see that
+/// "VMnet1" and `\Device\NPF_{...}` name one adapter. Duplicate ingress is not
+/// a second detection, so the authoritative check is device identity.
+/// Unresolvable or ambiguous selectors are never considered disjoint.
+pub fn selectorsResolveDisjoint(devices: []const DeviceView, direct: []const u8, nose: []const u8) bool {
+    const direct_index = resolveSelector(devices, direct) orelse return false;
+    const nose_index = resolveSelector(devices, nose) orelse return false;
+    return direct_index != nose_index;
+}
+
 pub const NpcapAdapter = struct {
     handle: ?*pcap_t = null,
     device: [256]u8 = [_]u8{0} ** 256,
@@ -107,29 +216,87 @@ pub const NpcapAdapter = struct {
             }
             defer pcap_freealldevs(alldevs);
 
-            var selected: ?[*:0]const u8 = null;
-            var fallback: ?[*:0]const u8 = null;
-            var cur = alldevs;
-            while (cur) |dev| : (cur = dev.next) {
-                if (dev.name) |name| {
-                    // Npcap's first "up" device is frequently WAN Miniport
-                    // (Network Monitor), which opens successfully but carries
-                    // no ordinary host traffic. Prefer a real Wi-Fi/Ethernet
-                    // adapter and retain a non-virtual fallback only.
-                    if (isVirtualOrUnsupportedDescription(dev.description)) continue;
-                    if (fallback == null) fallback = name;
-                    if ((dev.flags & 0x1) == 0 and (dev.flags & 0x6) != 0) {
-                        selected = name;
-                        break;
+            // EVT-200: explicit lab pin. Env-gated and fail-closed; the
+            // historical auto-select below runs byte-identically when unset.
+            var env_buf: [512]u8 = undefined;
+            var env_fba = std.heap.FixedBufferAllocator.init(&env_buf);
+            const env_filter = std.process.getEnvVarOwned(env_fba.allocator(), DAEMON_IFACE_ENV) catch null;
+            if (env_filter) |filter| {
+                if (filter.len > 0) {
+                    // Resolve both selectors against one device table so the
+                    // guard judges the adapter each selector names, not the
+                    // spelling each operator used.
+                    var views_buf: [64]DeviceView = undefined;
+                    var view_count: usize = 0;
+                    var vcur = alldevs;
+                    while (vcur) |vdev| : (vcur = vdev.next) {
+                        if (view_count >= views_buf.len) break;
+                        const vname: []const u8 = if (vdev.name) |vn| std.mem.span(vn) else "";
+                        const vdesc: []const u8 = if (vdev.description) |vd| std.mem.span(vd) else "";
+                        views_buf[view_count] = .{ .name = vname, .desc = vdesc };
+                        view_count += 1;
                     }
+                    const views = views_buf[0..view_count];
+                    const pin_index = resolveSelector(views, filter) orelse {
+                        diag.err("AEGIS_DAEMON_IFACE={s} matches no unique Npcap device -- capture disabled (refusing silent wrong-iface)", .{filter});
+                        return error.CaptureIfaceNotFound;
+                    };
+                    var nose_buf: [512]u8 = undefined;
+                    var nose_fba = std.heap.FixedBufferAllocator.init(&nose_buf);
+                    const nose_selector: []const u8 = blk: {
+                        const value = std.process.getEnvVarOwned(nose_fba.allocator(), NOSE_IFACE_ENV) catch break :blk "";
+                        break :blk value;
+                    };
+                    if (!selectorsResolveDisjoint(views, filter, nose_selector)) {
+                        diag.err("direct Npcap selector {s} and Go Nose selector {s} name the same adapter (or one is unverifiable) -- direct capture disabled before it can duplicate canonical events", .{ filter, nose_selector });
+                        return error.CaptureIfaceOverlapsNose;
+                    }
+                    var pinned: ?[*:0]const u8 = null;
+                    var pcur = alldevs;
+                    var pindex: usize = 0;
+                    while (pcur) |pdev| : (pcur = pdev.next) {
+                        if (pindex == pin_index) {
+                            pinned = pdev.name;
+                            break;
+                        }
+                        pindex += 1;
+                    }
+                    const pinned_name = pinned orelse {
+                        diag.err("AEGIS_DAEMON_IFACE={s} resolved but the device vanished -- capture disabled", .{filter});
+                        return error.CaptureIfaceNotFound;
+                    };
+                    const pinned_slice = std.mem.span(pinned_name);
+                    if (pinned_slice.len >= device.len) return error.PcapDeviceNameTooLong;
+                    @memset(&device, 0);
+                    @memcpy(device[0..pinned_slice.len], pinned_slice);
+                    diag.info("Npcap pinned device via {s}: {s}", .{ DAEMON_IFACE_ENV, pinned_slice });
                 }
             }
-            const selected_name = selected orelse fallback orelse return error.PcapNoDevices;
-            const selected_slice = std.mem.span(selected_name);
-            if (selected_slice.len >= device.len) return error.PcapDeviceNameTooLong;
-            @memset(&device, 0);
-            @memcpy(device[0..selected_slice.len], selected_slice);
-            diag.info("Npcap auto-selected device: {s}", .{selected_slice});
+            if (std.mem.sliceTo(&device, 0).len == 0) {
+                var selected: ?[*:0]const u8 = null;
+                var fallback: ?[*:0]const u8 = null;
+                var cur = alldevs;
+                while (cur) |dev| : (cur = dev.next) {
+                    if (dev.name) |name| {
+                        // Npcap's first "up" device is frequently WAN Miniport
+                        // (Network Monitor), which opens successfully but carries
+                        // no ordinary host traffic. Prefer a real Wi-Fi/Ethernet
+                        // adapter and retain a non-virtual fallback only.
+                        if (isVirtualOrUnsupportedDescription(dev.description)) continue;
+                        if (fallback == null) fallback = name;
+                        if ((dev.flags & 0x1) == 0 and (dev.flags & 0x6) != 0) {
+                            selected = name;
+                            break;
+                        }
+                    }
+                }
+                const selected_name = selected orelse fallback orelse return error.PcapNoDevices;
+                const selected_slice = std.mem.span(selected_name);
+                if (selected_slice.len >= device.len) return error.PcapDeviceNameTooLong;
+                @memset(&device, 0);
+                @memcpy(device[0..selected_slice.len], selected_slice);
+                diag.info("Npcap auto-selected device: {s}", .{selected_slice});
+            }
         }
 
         var ad = NpcapAdapter{ .device = device };
@@ -170,19 +337,31 @@ pub const NpcapAdapter = struct {
         self.running.store(true, .release);
         diag.info("capture loop starting on {s}", .{std.mem.sliceTo(&self.device, 0)});
         while (self.running.load(.acquire)) {
-            var hdr: pcap_pkthdr = undefined;
-            var data_ptr: [*]const u8 = undefined;
-            const rc = pcap_next_ex(h, &hdr, &data_ptr);
+            // EVT-216: both out-params are pointers the DLL publishes;
+            // read through them, never from a local header struct.
+            var hdr_ptr: ?*const pcap_pkthdr = null;
+            var data_ptr: ?[*]const u8 = null;
+            const rc = pcap_next_ex(h, &hdr_ptr, &data_ptr);
             if (rc == 0) continue; // timeout, no packet
             if (rc < 0) {
                 diag.err("pcap_next_ex returned {d}", .{rc});
                 self.packets_dropped += 1;
                 break;
             }
-            const slice = data_ptr[0..hdr.caplen];
+            // rc == 1: both pointers are set. A missing one is a drop,
+            // not a reason to slice stale memory.
+            const hdr = hdr_ptr orelse {
+                self.packets_dropped += 1;
+                continue;
+            };
+            const data = data_ptr orelse {
+                self.packets_dropped += 1;
+                continue;
+            };
+            const slice = data[0..hdr.caplen];
             self.packets_captured += 1;
             diag.metrics.packets_captured.inc();
-            cb(ctx, &hdr, slice);
+            cb(ctx, hdr, slice);
         }
     }
 
@@ -259,10 +438,90 @@ test "CaptureConfig defaults are sane" {
     try std.testing.expect(cfg.buffer_size >= 1024 * 1024);
 }
 
+test "deviceMatchesFilter pins lab selection without hardware" {
+    const guid = "\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F}";
+    const desc = "VMware Virtual Ethernet Adapter for VMnet1";
+    // Exact canonical name always wins.
+    try std.testing.expect(deviceMatchesFilter(guid, desc, guid));
+    // Case-insensitive description substring (operator-friendly).
+    try std.testing.expect(deviceMatchesFilter(guid, desc, "vmnet1"));
+    try std.testing.expect(deviceMatchesFilter(guid, desc, "VMNET1"));
+    // Non-matches and the empty (unset) filter never match.
+    try std.testing.expect(!deviceMatchesFilter(guid, desc, "VMnet2"));
+    try std.testing.expect(!deviceMatchesFilter(guid, desc, "Wi-Fi"));
+    try std.testing.expect(!deviceMatchesFilter(guid, desc, ""));
+    // Overlong filters fall back to exact compare only (no truncation).
+    var long: [300]u8 = [_]u8{'x'} ** 300;
+    try std.testing.expect(!deviceMatchesFilter(guid, desc, &long));
+}
+
+test "interfaceSelectorsDisjoint fails closed for missing or overlapping selectors" {
+    try std.testing.expect(!interfaceSelectorsDisjoint("VMnet1", ""));
+    try std.testing.expect(!interfaceSelectorsDisjoint("", "Ethernet 2"));
+    try std.testing.expect(!interfaceSelectorsDisjoint("VMnet1", "vmNET1"));
+    try std.testing.expect(!interfaceSelectorsDisjoint("VMnet1", "VMnet"));
+    try std.testing.expect(!interfaceSelectorsDisjoint("Ethernet 2", "Ethernet"));
+    try std.testing.expect(interfaceSelectorsDisjoint("VMnet1", "Ethernet 2"));
+    try std.testing.expect(interfaceSelectorsDisjoint("Wi-Fi", "Ethernet"));
+}
+
+test "resolveSelector refuses ambiguity and never guesses" {
+    const devices = [_]DeviceView{
+        .{ .name = "\\Device\\NPF_{WIFI}", .desc = "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter" },
+        .{ .name = "\\Device\\NPF_{WIFIDIRECT}", .desc = "Microsoft Wi-Fi Direct Virtual Adapter" },
+        .{ .name = "\\Device\\NPF_{VMNET1}", .desc = "VMware Virtual Ethernet Adapter for VMnet1" },
+    };
+    try std.testing.expectEqual(@as(?usize, 2), resolveSelector(&devices, "VMnet1"));
+    try std.testing.expectEqual(@as(?usize, 2), resolveSelector(&devices, "\\Device\\NPF_{VMNET1}"));
+    try std.testing.expectEqual(
+        @as(?usize, 0),
+        resolveSelector(&devices, "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter"),
+    );
+    // "Wi-Fi" names two adapters: an ambiguous selector is not a selection.
+    try std.testing.expectEqual(@as(?usize, null), resolveSelector(&devices, "Wi-Fi"));
+    try std.testing.expectEqual(@as(?usize, null), resolveSelector(&devices, "VMnet9"));
+    try std.testing.expectEqual(@as(?usize, null), resolveSelector(&devices, ""));
+}
+
+test "device identity, not selector spelling, decides disjointness" {
+    const devices = [_]DeviceView{
+        .{ .name = "\\Device\\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}", .desc = "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter" },
+        .{ .name = "\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F}", .desc = "VMware Virtual Ethernet Adapter for VMnet1" },
+    };
+    // The string predicate says these are disjoint; they are one adapter.
+    try std.testing.expect(interfaceSelectorsDisjoint("VMnet1", "\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F}"));
+    try std.testing.expect(!selectorsResolveDisjoint(&devices, "VMnet1", "\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F}"));
+    try std.testing.expect(!selectorsResolveDisjoint(&devices, "\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F}", "\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F}"));
+    try std.testing.expect(selectorsResolveDisjoint(&devices, "VMnet1", "\\Device\\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}"));
+    // Unresolvable or missing selectors are never disjoint.
+    try std.testing.expect(!selectorsResolveDisjoint(&devices, "VMnet1", ""));
+    try std.testing.expect(!selectorsResolveDisjoint(&devices, "VMnet9", "\\Device\\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}"));
+}
+
 test "Windows pcap_pkthdr matches Npcap ABI" {
     // timeval (long sec + long usec) + caplen + len = 16 bytes on Win64,
     // because Windows long remains 32-bit even for a 64-bit process.
     try std.testing.expectEqual(@as(usize, 16), @sizeOf(pcap_pkthdr));
     try std.testing.expectEqual(@as(usize, 8), @offsetOf(pcap_pkthdr, "caplen"));
     try std.testing.expectEqual(@as(usize, 12), @offsetOf(pcap_pkthdr, "len"));
+}
+
+test "pcap_next_ex declaration matches Npcap C ABI (EVT-216)" {
+    // Npcap SDK pcap/pcap.h:574:
+    //   int pcap_next_ex(pcap_t *, struct pcap_pkthdr **, const u_char **);
+    // The DLL writes ITS pointers into the caller's variables. This pin
+    // exists because RB-021's 1500-byte window over-read came from this
+    // declaration being one indirection short (see the declaration
+    // comment): a future "simplification" back to *pcap_pkthdr must fail
+    // to compile right here.
+    comptime {
+        const P = @typeInfo(@TypeOf(pcap_next_ex)).Fn.params;
+        if (P.len != 3) @compileError("pcap_next_ex arity changed (Npcap pcap/pcap.h:574)");
+        if (P[1].type.? != *?*const pcap_pkthdr) @compileError(
+            "pcap_next_ex header out-param must be *?*const pcap_pkthdr (struct pcap_pkthdr **)",
+        );
+        if (P[2].type.? != *?[*]const u8) @compileError(
+            "pcap_next_ex data out-param must be *?[*]const u8 (const u_char **)",
+        );
+    }
 }

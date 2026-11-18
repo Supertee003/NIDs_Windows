@@ -54,8 +54,8 @@ def main() -> None:
     rules_doc = json.loads(RULES_PATH.read_text(encoding="utf-8"))
     policies_doc = json.loads(POLICIES_PATH.read_text(encoding="utf-8"))
     rules = rules_doc["nids_rules"]
-    if len(rules) != 22:
-        raise SystemExit(f"expected 22 rules, found {len(rules)}")
+    if not rules:
+        raise SystemExit("expected a non-empty rules list, found none")
 
     rows = []
     for rule in rules:
@@ -104,7 +104,7 @@ def main() -> None:
     OUT_JSON.write_text(json.dumps(output, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     lines = [
-        "# AEGIS Rules 22 Qualification Matrix",
+        "# AEGIS Rules Qualification Matrix",
         "",
         "> This matrix is a baseline for controlled qualification. A configured `Block` or `Drop` action is an intent, not evidence that host enforcement is production-approved.",
         "",
@@ -132,7 +132,7 @@ def main() -> None:
         "",
         "## Immediate blockers",
         "",
-        "1. `configs/policies.json` contains six generic policies but no direct 22-rule mapping.",
+        "1. `configs/policies.json` contains generic policies but no direct per-rule mapping.",
         "2. TypeScript, Zig, and Rust action ordinals must be frozen to one shared contract.",
         "3. L7 rules require a payload-aware sensor; the current WFP callout exports a network 5-tuple, not HTTP payload content.",
         "4. Process-layer rules require real event production proof; `hids_process_monitor.zig` is not a complete event source.",

@@ -4,6 +4,7 @@ This adapter mirrors the essential fields of the Zig receipt contract while
 keeping alert-only execution explicit. It never claims a host effect and never
 calls PEP, C++, WFP, or a subprocess.
 """
+# SEAM-STATUS: not wired to the production entrypoint (brain/windows_brain.py); exercised by brain tests.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass

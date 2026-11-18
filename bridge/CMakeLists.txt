@@ -26,6 +26,11 @@ else()
 endif()
 
 # ====== Output to dist/ (MUST be set BEFORE add_library/add_executable) ======
+# BRIDGE-OUTDIR-001: on a clean checkout `../dist` does not exist, and the MSVC
+# linker cannot create it - the build died with
+# `LNK1104: cannot open file 'D:\NIDs_Windows\dist\aegis_ipc.dll'`.
+# Configure-time creation is what makes a from-scratch build work.
+file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/../dist")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/../dist)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/../dist)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/../dist)

@@ -1,5 +1,9 @@
 """AEGIS Pro Control Center console.
 
+SUPERSEDED by 'python tools/aegisctl.py console --role admin' (EVT-165):
+role gating and read-only views merged there. This file stays for
+reference only.
+
 This is an operator control surface, not a second runtime authority.
 Read-only views use aegisctl snapshot/health. Mutations are restricted to
 Admin mode and are routed through the existing launcher/control contract.
@@ -27,6 +31,16 @@ RED = "\033[91m"
 BLUE = "\033[94m"
 DIM = "\033[2m"
 
+
+COMPONENT_LABELS = {
+    "control": "CONTROL DAEMON",
+    "cpp": "C++ BRIDGE",
+    "forensic": "FORENSIC PLANE",
+    "go": "GO NOSE",
+    "rust_pep": "RUST MOUTH / PEP",
+    "tier3": "PYTHON BRAIN / TIER3",
+    "zig": "ZIG CORE",
+}
 
 def color(text: str, code: str) -> str:
     return f"{code}{text}{RESET}"
@@ -103,7 +117,7 @@ def print_overview(data: dict) -> None:
     state = str(health.get("state", "UNKNOWN"))
     degraded = bool(health.get("degraded", True))
     print(f"Runtime       : {status_word(state, not degraded)}")
-    print(f"Overall gate  : {status_word('DEGRADED' if degraded else 'READY', not degraded)}")
+    print(f"Runtime readiness : {status_word('DEGRADED' if degraded else 'READY', not degraded)}")
     print(f"PID / version : {health.get('pid', '-')} / {health.get('version', '-')}")
     print(f"Uptime        : {health.get('uptime_ms', 0)} ms")
     workers = health.get("workers", {})
@@ -116,7 +130,39 @@ def print_overview(data: dict) -> None:
     print(f"Exactly once  : duplicate={data_plane.get('nose_duplicate_event_ids', 0)} non_monotonic={data_plane.get('nose_non_monotonic_event_ids', 0)}")
     forensic = data.get("forensic", {})
     print(f"Forensics     : {forensic.get('integrity', 'unknown')} | records={forensic.get('records', 0)}")
+    print(f"Rules         : active={health.get('rules_loaded', 0)} | policies={health.get('policies_loaded', 0)}")
 
+
+
+def print_enforcement(data: dict) -> None:
+    """Render daemon-authoritative enforcement state without upgrading claims."""
+    enforcement = data.get("enforcement") or {}
+    authority = data.get("authority") or {}
+    presentation = data.get("presentation") or {}
+    operator = data.get("operator") or {}
+
+    print("\nENFORCEMENT AUTHORITY")
+    print("-" * 78)
+    print(f"Canonical authority : {authority.get('canonical', 'UNKNOWN')}")
+    print(f"Authority invariant : {authority.get('invariant', 'UNKNOWN')}")
+    print(f"PEP available       : {enforcement.get('pep_available', False)}")
+    print(f"Tier3               : {enforcement.get('tier3', 'UNKNOWN')}")
+    print(f"Tier3 ready         : {enforcement.get('tier3_ready', False)}")
+    print(f"Provider ready      : {enforcement.get('provider_ready', False)}")
+    print(f"Host effect capable : {enforcement.get('host_effect_capable', False)}")
+    print(
+        "Prevention gate     : "
+        f"{str(enforcement.get('prevention_gate', 'closed')).upper()}"
+    )
+    print(
+        "Enforcement mode    : "
+        f"{str(enforcement.get('enforcement_mode', 'unknown')).upper()}"
+    )
+    print(f"Host effect         : {presentation.get('host_effect', 'NOT_PROVEN')}")
+    print(f"Presentation mode   : {presentation.get('mode', 'OBSERVE_ONLY')}")
+    errors = operator.get("contract_errors") or presentation.get("contract_errors") or []
+    if errors:
+        print(color(f"POSTURE CONTRACT   : VIOLATION ({', '.join(map(str, errors))})", RED))
 
 def print_components(data: dict) -> None:
     health = health_payload(data)
@@ -126,8 +172,9 @@ def print_components(data: dict) -> None:
     for name, item in (health.get("subsystems") or {}).items():
         if not isinstance(item, dict):
             continue
+        label = COMPONENT_LABELS.get(name, name.upper())
         state = str(item.get("state", "UNKNOWN"))
-        print(f"{name:<16} {state:<23} {str(item.get('pid') or '-'):<10} {str(item.get('version') or '-'):<10} {item.get('error') or '-'}")
+        print(f"{label:<24} {state:<14} {str(item.get('pid') or '-'):<10} {str(item.get('version') or '-'):<10} {item.get('error') or '-'}")
 
 
 def print_mouth_nose(data: dict) -> None:
@@ -141,7 +188,11 @@ def print_mouth_nose(data: dict) -> None:
     print(f"         connected={health.get('data_plane', {}).get('nose_connected', False)}")
     print(f"         frames read={health.get('data_plane', {}).get('nose_frames_read', 0)} submitted={health.get('data_plane', {}).get('nose_frames_submitted', 0)}")
     print(f"MOUTH  : {subsystems.get('rust_pep', {}).get('state', 'UNKNOWN')} | Tier3={health.get('tier3', {}).get('state', 'UNKNOWN')}")
-    print(f"         enforcement capability={health.get('capabilities', {}).get('wfp', False)}")
+    enforcement = data.get("enforcement") or {}
+    print(
+        f"         provider_ready={enforcement.get('provider_ready', False)} "
+        f"host_effect_capable={enforcement.get('host_effect_capable', False)}"
+    )
     print("Path    : NOSE ingress -> canonical event -> detection -> policy -> MOUTH/PEP -> forensic")
 
 
@@ -183,6 +234,7 @@ def menu(role: str, interval: float) -> None:
         data = snapshot()
         print_header(role)
         print_overview(data)
+        print_enforcement(data)
         print_mouth_nose(data)
         print("\nCOMMANDS")
         print("  1  Refresh authoritative snapshot")

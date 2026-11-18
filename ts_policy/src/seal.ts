@@ -73,10 +73,11 @@ function canonicalIRBytes(ir: PolicyIR): Buffer {
  *
  * The `signer` argument is treated as a pre-shared identifier (16-char
  * zero-padded, mirroring `core/policy_signing.zig::SignerIdentity`).
- * In production, the signing key never appears in TypeScript — it
- * lives in the Rust signing service. The TS-side seal is a SHA-256
- * HMAC over the IR + signer name; it is NOT a replacement for
- * Ed25519 signing (next tier).
+ * In production, signing keys are never generated or stored in
+ * TypeScript — operator tooling holds them offline and passes bytes
+ * transiently to `ed25519.ts` (which retains nothing). The TS-side seal
+ * here is a SHA-256 HMAC over the IR + signer name; it is NOT a
+ * replacement for Ed25519 signing (see `ed25519.ts`).
  */
 export function seal(
   ir: PolicyIR,

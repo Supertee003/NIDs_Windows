@@ -1,4 +1,5 @@
 """Deterministic routing for policy-neutral DetectionResult values."""
+# SEAM-STATUS: not wired to the production entrypoint (brain/windows_brain.py); exercised by brain tests.
 from __future__ import annotations
 
 from dataclasses import dataclass

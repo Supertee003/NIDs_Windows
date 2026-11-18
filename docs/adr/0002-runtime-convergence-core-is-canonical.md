@@ -1,8 +1,14 @@
 # ADR-0002: Runtime Convergence — `core/` is the canonical production runtime
 
-**Status:** Accepted  
+**Status:** Accepted — HISTORICAL in part  
 **Date:** 2026-09-07  
 **Supersedes:** the implicit `src/`-as-entrypoint build reality (build.zig currently builds `src/main.zig`)
+
+> **Current-state note (2026-11-09):** the canonical runtime is `src/`, the
+> canonical PEP crate is `rust-src/lib.rs`, and the product is detection-only:
+> there is no enforcement authority or host-effect path (RETIRE-HOST-EFFECT-001,
+> issue #25). The `shield/` merge plan below is historical and must not be read
+> as current authority.
 
 ## Context
 
