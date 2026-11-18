@@ -1,5 +1,12 @@
 # PROJECT SCAN — what is still not done (2026-11-18)
 
+> **Update, later the same day.** Item 3 (forensic search) is done and proven
+> live: `payload_contains` now answers by payload text (8/8 canary records, 0 for
+> a nonsense value) and the gap is closed. Item 4's diagnosis is finished and
+> sharper than the note here: process-create rows carry a 61-byte image path and
+> are routed to the *file* layer, so `R2001–R2005` are dead on this host for two
+> independent reasons — filed as `PROCESS-CMDLINE-001` with the fix options.
+
 **HEAD at scan:** `ef728b3` on `codex/o2-etw-context`
 **Purpose:** one ordered list of everything still missing before this project can be
 called closed. Ordered by the time it takes, shortest first, soak last.
