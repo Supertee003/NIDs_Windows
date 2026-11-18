@@ -4056,8 +4056,8 @@
     },
     {
       "path": "tools/release_candidate.py",
-      "size": 11493,
-      "sha256": "71dc2a68d2d3bde5d45f9c22caba4961235a81f7c58a7d63e874c0d085902acd",
+      "size": 11986,
+      "sha256": "9561824c0f50bd30761710a4030a00bf2831eda264d9f481cc735f82f58d055e",
       "language": "python/cython"
     },
     {
