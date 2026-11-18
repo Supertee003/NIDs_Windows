@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-18T10:28:52.624564+00:00",
+  "generated_at": "2026-11-18T11:52:03.800666+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 2484,
+  "total_files": 2486,
   "by_class": {
-    "canonical-docs": 469,
+    "canonical-docs": 471,
     "canonical-build": 261,
     "unclassified": 21,
     "canonical-source": 1307,
@@ -909,6 +909,12 @@
       "size": 8758
     },
     {
+      "path": "analysis/current-head/QLOSS-DELFILTER-STORM-20261118.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5225
+    },
+    {
       "path": "analysis/current-head/QLoss-E5-STEADY-WINDOW-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -925,6 +931,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 5773
+    },
+    {
+      "path": "analysis/current-head/QLOSS-FIM-STORM-20261118.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6270
     },
     {
       "path": "analysis/current-head/R1005-HOSTS-E5-20261114.md",
@@ -2802,7 +2814,7 @@
       "path": "docs/BACKLOG-v1.1.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10749
+      "size": 11299
     },
     {
       "path": "docs/BASELINE_20260906.md",
@@ -3828,7 +3840,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1435009
+      "size": 1459871
     },
     {
       "path": "FLOW_MAP.json",
@@ -3936,7 +3948,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 389372
+      "size": 389539
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4194,7 +4206,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9574
+      "size": 10041
     },
     {
       "path": "pytest.ini",
@@ -4212,7 +4224,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 316970
+      "size": 317103
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -10176,7 +10188,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23219
+      "size": 23767
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -11316,7 +11328,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 164341
+      "size": 164717
     },
     {
       "path": "src/control/protocol.zig",
@@ -11796,7 +11808,7 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 59030
+      "size": 59139
     },
     {
       "path": "src/pipeline/event_queue.zig",
@@ -11832,13 +11844,13 @@
       "path": "src/pipeline/runtime_state.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 24086
+      "size": 24480
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 52507
+      "size": 52915
     },
     {
       "path": "src/platform/win32_pipe.zig",
@@ -12780,13 +12792,13 @@
       "path": "src/windows/fim.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 13401
+      "size": 14277
     },
     {
       "path": "src/windows/fim_native.c",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 9572
+      "size": 10599
     },
     {
       "path": "src/windows/hids_engine.zig",
@@ -14919,5 +14931,5 @@
       "size": 624
     }
   ],
-  "source_commit": "b600a25"
+  "source_commit": "aa42fca"
 }

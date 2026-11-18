@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-18T10:28:52.628162+00:00",
+  "generated_at": "2026-11-18T11:52:03.804362+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 2484,
+  "total_files": 2486,
   "by_role": {
-    "documentation": 454,
+    "documentation": 456,
     "build-config": 250,
     "other": 21,
     "lockfile": 6,
@@ -920,6 +920,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/QLOSS-DELFILTER-STORM-20261118.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/QLoss-E5-STEADY-WINDOW-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -929,6 +933,10 @@
       "role": "documentation"
     },
     "analysis/current-head/QLOSS-ETW-WRITEFILTER-001-20261112.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/QLOSS-FIM-STORM-20261118.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -10261,5 +10269,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "b600a25"
+  "source_commit": "aa42fca"
 }
