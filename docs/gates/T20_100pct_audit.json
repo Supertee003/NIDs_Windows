@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "50986b3",
+  "commit": "1e2da48",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE"
@@ -41,7 +41,7 @@
         "id": "truth_artifacts",
         "ok": true,
         "owner": "none",
-        "detail": "TRUTH_VALID — artifacts carry build source efe6b6f (ancestor of HEAD; source history and worktree clean)"
+        "detail": "TRUTH_VALID — artifacts carry build source aa42fca (ancestor of HEAD; source history and worktree clean)"
       },
       {
         "id": "component_audit",
@@ -53,7 +53,7 @@
         "id": "release_signature",
         "ok": false,
         "owner": "owner",
-        "detail": "release\\T20-final\\ad7948c\\signatures.json was built from ad7948c, which does not contain the current runtime commit efe6b6faa4b9d61b8b633082a0962537cf7f0041; the signed tree predates the shipped runtime"
+        "detail": "release\\T20-final\\ad7948c\\signatures.json was built from ad7948c, which does not contain the current runtime commit aa42fcaf65c9b2272cad34cb06ebf622180cdb0a; the signed tree predates the shipped runtime"
       },
       {
         "id": "clean_host_e5",

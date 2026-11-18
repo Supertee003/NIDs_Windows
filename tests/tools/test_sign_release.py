@@ -49,6 +49,9 @@ def _gate(tree: Path, repo: Path) -> dict:
     facts = []
     sums = tree / "SHA256SUMS"
     data = json.loads((tree / "signatures.json").read_text(encoding="utf-8"))
+    verified = final_audit.verify_detached_signature(
+        data, sums.read_bytes(), data.get("public_key")
+    )
     facts.append({
         "path": str((tree / "signatures.json").relative_to(repo)),
         "signature": data.get("signature"),
@@ -66,6 +69,8 @@ def _gate(tree: Path, repo: Path) -> dict:
         "commit_in_history": True,
         "commit_contains_runtime": True,
         "runtime_commit": "deadbee",
+        **verified,
+        "signature_error": verified.get("error"),
     })
     return final_audit.evaluate_signature(facts)
 
@@ -112,6 +117,18 @@ def test_verify_rejects_a_flipped_signature(release_tree: Path, tmp_path: Path) 
     record["signature"] = base64.b64encode(bytes(raw)).decode("ascii")
     record_path.write_text(json.dumps(record), encoding="utf-8")
     assert sign_release.verify(release_tree) == 3
+    assert not _gate(release_tree, tmp_path)["ok"]
+
+
+def test_gate_rejects_a_valid_signature_without_owner_trust_anchor(
+    release_tree: Path, tmp_path: Path,
+) -> None:
+    key = _key(tmp_path)
+    assert sign_release.sign(release_tree, key) == 0
+    data = json.loads((release_tree / "signatures.json").read_text(encoding="utf-8"))
+    verified = final_audit.verify_detached_signature(data, (release_tree / "SHA256SUMS").read_bytes())
+    assert verified["cryptographic_verified"] is True
+    assert verified["trust_anchor_verified"] is False
 
 
 def test_verify_rejects_an_unsigned_record(release_tree: Path) -> None:

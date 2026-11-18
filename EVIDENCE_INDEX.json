@@ -7968,7 +7968,7 @@
       "component": "release/T20-final/9ebee9b, tools/release_candidate.py, tools/sign_release.py",
       "title": "The release candidate was rebuilt from the patched tree, signed and verified",
       "description": "RC-STALE-001 recorded that the signed candidate at release/T20-final/7234d7a predated CLI-STATE-001 and the post-soak patches, so its tools and binaries were older than HEAD. `zig build` rebuilt aegis_nids.exe from the patched source (5,247,488 B, 16:13), then tools/release_candidate.py produced release/T20-final/9ebee9b from HEAD (302 files in the tree, 204 of them tracked once .gitignore drops binaries, matching the previous candidate's tracked shape exactly and adding no binary to version control), regenerating SBOM.json and SHA256SUMS. tools/sign_release.py signed SHA256SUMS with the ed25519 key at .keys/aegis-release.ed25519 and --verify passed against signatures.json (digest 9F87BF36D28149F5FEF22B997DC6928C8846A69D5468D1BD3D5E91367A6931BC). The tree carries the current bin/aegis_nids.exe, so the candidate's runtime now matches the source it names.",
-      "evidence_artifact": "analysis/current-head/RC-STALE-001-20261114.md",
+      "evidence_artifact": "analysis/current-head/POST-SOAK-PATCHES-20261114.md",
       "artifacts": [
         "release/T20-final/9ebee9b/SHA256SUMS",
         "release/T20-final/9ebee9b/signatures.json",
@@ -8706,6 +8706,37 @@
       "limitations": [
         "E2 only: makensis was not exercised here, so no installer was built with the new label on this host; the pins and the template are what changed.",
         "The product/runtime version is deliberately still 5.0.0; if the owner wants the product line bumped too, that is a separate change with its own version-truth updates."
+      ]
+    },
+    {
+      "id": "CAPTURE-SELECT-001-20261118",
+      "head_sha": "aa42fca",
+      "timestamp": "2026-11-18",
+      "level": "E2",
+      "flow_id": "RB-022",
+      "component": "src/capture/npcap_adapter.zig, src/daemon.zig, tools/capture_select.py, docs/runbooks/RB-023-capture-segment-selection.md",
+      "title": "Capture selection is decided on resolved device identity; ambiguity and overlap fail closed",
+      "description": "The direct-reader guard compared selector spellings, so nose=\\Device\\NPF\\{CE375996...\\} and daemon=VMnet1 were judged disjoint although they name one adapter: two readers on one segment produce duplicate canonical events, not a second detection. src/capture/npcap_adapter.zig now exposes DeviceView, resolveSelector (exact canonical name, else a unique case-insensitive name/description substring; zero or two matches resolve to nothing) and selectorsResolveDisjoint (compares resolved indices). NpcapAdapter.open resolves both env selectors against one pcap_findalldevs table and returns CaptureIfaceOverlapsNose before opening a handle. tools/capture_select.py turns the operator decision into one validated command (--list/--show/--plan/--apply/--clear/--verify): it refuses ambiguous selectors, refuses resolved-device overlap, pins canonical names, writes only the two machine-scope variables with --apply, and never restarts a service. RB-023 documents switching between Wi-Fi (RB-022) and host-only VMnet1 (RB-021). Live read-only measurement on this host: nose pinned to the Killer Wi-Fi adapter (target 192.168.1.39), daemon pinned to VMnet1, direct capture enabled, ingress advancing +54 frames, verdict CAPTURE_SELECT_OK.",
+      "evidence_artifact": "analysis/current-head/CAPTURE-SELECT-001-20261118.md",
+      "artifacts": [
+        "src/capture/npcap_adapter.zig",
+        "src/daemon.zig",
+        "tools/capture_select.py",
+        "tests/tools/test_capture_select.py",
+        "docs/runbooks/RB-023-capture-segment-selection.md",
+        "docs/runbooks/README.md"
+      ],
+      "commands": [
+        "zig test -ltdh -ladvapi32 -lntdll -laegis_etw_helper -laegis_fim_helper -laegis_pep -OReleaseSafe -target x86_64-windows -mcpu baseline -L target/helpers -L target/release -Mroot=src/capture/npcap_adapter.zig -lc",
+        "python -m pytest -q tests/tools/test_capture_select.py tests/tools/test_runbooks.py",
+        "python tools/capture_select.py --show",
+        "python tools/capture_select.py --verify"
+      ],
+      "result": "PASS",
+      "limitations": [
+        "E2 plus one read-only host measurement: no elevated window was available, so --apply (machine-scope write) and the service restart were not exercised on this host.",
+        "The installed runtime predates this change until the release build is installed; the running binary keeps the spelling-level pre-check, and the adapter-level refusal is proven by unit tests and zig build.",
+        "Full-suite zig build test still ends with the known full-suite-only crash reported at xdr.xdr_engine.test.XdrEngine prune; the same 11 XDR tests pass in isolation."
       ]
     }
   ],
@@ -15358,14 +15389,14 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 24,
-    "E2_count": 127,
+    "E2_count": 128,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 109,
+    "E5_count": 113,
     "E6_count": 1,
     "E7_count": 2,
-    "E5_with_artifact_count": 59,
-    "known_gaps_count": 285
+    "E5_with_artifact_count": 63,
+    "known_gaps_count": 286
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
 }

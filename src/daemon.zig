@@ -735,7 +735,11 @@ pub fn runDaemon() !void {
         // metadata-only (lengths+hashes, no payload bytes) while direct
         // capture pushes full packets -- L7 Tier-1 can only match here.
         // AEGIS_NOSE_IFACE must also name the exact selector passed to the Go
-        // Nose --iface process. Missing/overlapping selectors fail closed.
+        // Nose --iface process. Missing or spelling-overlapping selectors fail
+        // closed here; the adapter then resolves both against pcap_findalldevs
+        // and refuses when they name the same adapter (AEGIS_NOSE_IFACE may be
+        // a GUID while the lab pin is a description, and a duplicate ingress
+        // stream is not a second detection).
         // Unset keeps the historical disabled behavior byte-identically.
         // A set-but-unmatched value fails closed inside NpcapAdapter.open.
         const lab_iface = std.process.getEnvVarOwned(std.heap.page_allocator, npcap.DAEMON_IFACE_ENV) catch null;
@@ -747,7 +751,7 @@ pub fn runDaemon() !void {
                 if (nose_iface == null or nose_iface.?.len == 0) {
                     diag.err("{s} is set but {s} is missing -- refusing direct Npcap because Go Nose interface is unknown", .{ npcap.DAEMON_IFACE_ENV, npcap.NOSE_IFACE_ENV });
                 } else if (!directNpcapSelectorsAllowed(filter, nose_iface)) {
-                    diag.err("direct Npcap selector {s} overlaps Go Nose selector {s} -- direct capture disabled", .{ filter, nose_iface.? });
+                    diag.err("direct Npcap selector {s} shares a spelling with Go Nose selector {s} -- direct capture disabled (device identity is re-checked in the adapter)", .{ filter, nose_iface.? });
                 } else {
                     supervisor.direct_capture = std.Thread.spawn(.{}, packet_callback.captureThread, .{}) catch |err| blk: {
                         diag.warn("failed to spawn direct capture thread: {} -- lab capture disabled", .{err});

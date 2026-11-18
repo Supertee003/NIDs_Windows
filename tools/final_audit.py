@@ -40,13 +40,20 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import base64
 import datetime as dt
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
 from pathlib import Path
+
+try:
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+except ImportError:  # pragma: no cover - the release gate reports this as open
+    Ed25519PublicKey = None  # type: ignore[assignment,misc]
 
 REPO = Path(__file__).resolve().parent.parent
 DIMS = [
@@ -346,6 +353,40 @@ def parse_timestamp(value) -> dt.datetime | None:
     return parsed
 
 
+def verify_detached_signature(record: dict, sums_bytes: bytes,
+                              trusted_public_key: str | None = None) -> dict:
+    """Verify signature bytes and, separately, the owner-approved key.
+
+    The signature record is untrusted input.  Cryptographic validity alone is
+    not key custody: the release gate also needs an externally supplied trust
+    anchor (``AEGIS_RELEASE_TRUSTED_PUBLIC_KEY`` in CI or the operator shell).
+    """
+    if Ed25519PublicKey is None:
+        return {"cryptographic_verified": False, "trust_anchor_verified": False,
+                "error": "cryptography package is unavailable"}
+    try:
+        if str(record.get("algorithm") or "").lower() != "ed25519":
+            return {"cryptographic_verified": False, "trust_anchor_verified": False,
+                    "error": "unsupported signature algorithm"}
+        public_key = base64.b64decode(str(record.get("public_key") or ""), validate=True)
+        signature = base64.b64decode(str(record.get("signature") or ""), validate=True)
+        if len(public_key) != 32 or len(signature) != 64:
+            raise ValueError("invalid Ed25519 key or signature length")
+        Ed25519PublicKey.from_public_bytes(public_key).verify(signature, sums_bytes)
+    except Exception as exc:  # noqa: BLE001 - malformed/tampered input is a failed gate
+        return {"cryptographic_verified": False, "trust_anchor_verified": False,
+                "error": f"detached signature verification failed: {exc}"}
+
+    encoded_key = base64.b64encode(public_key).decode("ascii")
+    if not trusted_public_key:
+        return {"cryptographic_verified": True, "trust_anchor_verified": False,
+                "error": "no owner-approved release public key was supplied"}
+    if encoded_key != trusted_public_key.strip():
+        return {"cryptographic_verified": True, "trust_anchor_verified": False,
+                "error": "release public key does not match the owner-approved trust anchor"}
+    return {"cryptographic_verified": True, "trust_anchor_verified": True, "error": None}
+
+
 def evaluate_signature(artifacts: list[dict]) -> dict:
     """The newest release record must be a signature over a current tree.
 
@@ -390,9 +431,17 @@ def evaluate_signature(artifacts: list[dict]) -> dict:
                 "detail": f"{path} was built from {commit or '(unrecorded)'}, which does not "
                           f"contain the current runtime commit {runtime or '(unreadable)'}; "
                           "the signed tree predates the shipped runtime"}
+    if newest.get("cryptographic_verified") is not True:
+        return {"ok": False,
+                "detail": f"{path} has not passed cryptographic Ed25519 verification: "
+                          f"{newest.get('signature_error') or 'verification result is missing'}"}
+    if newest.get("trust_anchor_verified") is not True:
+        return {"ok": False,
+                "detail": f"{path} has no owner-approved trust anchor: "
+                          f"{newest.get('signature_error') or 'trust result is missing'}"}
     return {
         "ok": True,
-        "detail": f"{path} signs SHA256SUMS ({str(actual)[:16]}...) with a "
+        "detail": f"{path} cryptographically signs SHA256SUMS ({str(actual)[:16]}...) with a "
                   f"{newest.get('algorithm') or 'declared'} key; commit {commit[:7]} "
                   f"contains runtime {str(runtime or '')[:7]}",
     }
@@ -665,6 +714,15 @@ def collect_release_facts(repo: Path = REPO) -> dict:
         if data is None:
             continue
         sums = path.parent / "SHA256SUMS"
+        sums_bytes = sums.read_bytes() if sums.is_file() else None
+        signature_result = (
+            verify_detached_signature(
+                data, sums_bytes, os.environ.get("AEGIS_RELEASE_TRUSTED_PUBLIC_KEY")
+            )
+            if sums_bytes is not None else
+            {"cryptographic_verified": False, "trust_anchor_verified": False,
+             "error": "SHA256SUMS is absent"}
+        )
         commit = data.get("commit")
         signatures.append({
             "path": str(path.relative_to(repo)),
@@ -679,6 +737,8 @@ def collect_release_facts(repo: Path = REPO) -> dict:
             "commit_in_history": _is_ancestor(repo, commit, "HEAD"),
             "commit_contains_runtime": _is_ancestor(repo, runtime_commit, commit),
             "runtime_commit": runtime_commit,
+            **signature_result,
+            "signature_error": signature_result.get("error"),
         })
     facts["signatures"] = signatures
 

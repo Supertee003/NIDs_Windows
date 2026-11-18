@@ -4,7 +4,9 @@
 
 
 
-**HEAD:** `aa42fcaf65c9b2272cad34cb06ebf622180cdb0a` (build source commit — ADR-0008)
+**RECORDS HEAD:** `1e2da48dbd1e0068c04da455ab86ea8f9ce3d3af` (records tip at this edit)
+
+**BUILD SOURCE HEAD:** `aa42fcaf65c9b2272cad34cb06ebf622180cdb0a` (last source/build commit — ADR-0008)
 
 **BRANCH:** `codex/o2-etw-context`
 

@@ -53,6 +53,8 @@ def facts(**over) -> dict:
                 "commit_in_history": True,
                 "commit_contains_runtime": True,
                 "runtime_commit": "def5678",
+                "cryptographic_verified": True,
+                "trust_anchor_verified": True,
             }
         ],
         "preflights": [
@@ -98,6 +100,8 @@ def signed(path: str, commit: str, commit_time: str, signed_at: str, **over) -> 
         "commit_in_history": True,
         "commit_contains_runtime": True,
         "runtime_commit": "7c604d5",
+        "cryptographic_verified": True,
+        "trust_anchor_verified": True,
     }
     art.update(over)
     return art

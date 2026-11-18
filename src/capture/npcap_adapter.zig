@@ -146,6 +146,47 @@ pub fn interfaceSelectorsDisjoint(direct: []const u8, nose: []const u8) bool {
     return std.mem.indexOf(u8, d, n) == null and std.mem.indexOf(u8, n, d) == null;
 }
 
+/// One Npcap device as the selection guard sees it.
+pub const DeviceView = struct {
+    name: []const u8,
+    desc: []const u8 = "",
+};
+
+/// Resolve an operator selector to exactly one device index.
+///
+/// Exact canonical name wins first, so a GUID is never reinterpreted as a
+/// substring. Otherwise `deviceMatchesFilter` (the same matcher the pin uses)
+/// must hit exactly one device: zero matches is "not found" and two matches is
+/// ambiguous, and an ambiguous selector is never a selection. Taking the first
+/// match is how a lab ends up silently watching the wrong adapter.
+pub fn resolveSelector(devices: []const DeviceView, selector: []const u8) ?usize {
+    if (selector.len == 0 or selector.len > 256) return null;
+    for (devices, 0..) |dev, i| {
+        if (std.mem.eql(u8, dev.name, selector)) return i;
+    }
+    var found: ?usize = null;
+    var matches: usize = 0;
+    for (devices, 0..) |dev, i| {
+        if (deviceMatchesFilter(dev.name, dev.desc, selector)) {
+            matches += 1;
+            if (found == null) found = i;
+        }
+    }
+    return if (matches == 1) found else null;
+}
+
+/// True only when both selectors resolve to two different devices.
+///
+/// `interfaceSelectorsDisjoint` compares spellings, so it cannot see that
+/// "VMnet1" and `\Device\NPF_{...}` name one adapter. Duplicate ingress is not
+/// a second detection, so the authoritative check is device identity.
+/// Unresolvable or ambiguous selectors are never considered disjoint.
+pub fn selectorsResolveDisjoint(devices: []const DeviceView, direct: []const u8, nose: []const u8) bool {
+    const direct_index = resolveSelector(devices, direct) orelse return false;
+    const nose_index = resolveSelector(devices, nose) orelse return false;
+    return direct_index != nose_index;
+}
+
 pub const NpcapAdapter = struct {
     handle: ?*pcap_t = null,
     device: [256]u8 = [_]u8{0} ** 256,
@@ -182,19 +223,46 @@ pub const NpcapAdapter = struct {
             const env_filter = std.process.getEnvVarOwned(env_fba.allocator(), DAEMON_IFACE_ENV) catch null;
             if (env_filter) |filter| {
                 if (filter.len > 0) {
+                    // Resolve both selectors against one device table so the
+                    // guard judges the adapter each selector names, not the
+                    // spelling each operator used.
+                    var views_buf: [64]DeviceView = undefined;
+                    var view_count: usize = 0;
+                    var vcur = alldevs;
+                    while (vcur) |vdev| : (vcur = vdev.next) {
+                        if (view_count >= views_buf.len) break;
+                        const vname: []const u8 = if (vdev.name) |vn| std.mem.span(vn) else "";
+                        const vdesc: []const u8 = if (vdev.description) |vd| std.mem.span(vd) else "";
+                        views_buf[view_count] = .{ .name = vname, .desc = vdesc };
+                        view_count += 1;
+                    }
+                    const views = views_buf[0..view_count];
+                    const pin_index = resolveSelector(views, filter) orelse {
+                        diag.err("AEGIS_DAEMON_IFACE={s} matches no unique Npcap device -- capture disabled (refusing silent wrong-iface)", .{filter});
+                        return error.CaptureIfaceNotFound;
+                    };
+                    var nose_buf: [512]u8 = undefined;
+                    var nose_fba = std.heap.FixedBufferAllocator.init(&nose_buf);
+                    const nose_selector: []const u8 = blk: {
+                        const value = std.process.getEnvVarOwned(nose_fba.allocator(), NOSE_IFACE_ENV) catch break :blk "";
+                        break :blk value;
+                    };
+                    if (!selectorsResolveDisjoint(views, filter, nose_selector)) {
+                        diag.err("direct Npcap selector {s} and Go Nose selector {s} name the same adapter (or one is unverifiable) -- direct capture disabled before it can duplicate canonical events", .{ filter, nose_selector });
+                        return error.CaptureIfaceOverlapsNose;
+                    }
                     var pinned: ?[*:0]const u8 = null;
-                    var mcur = alldevs;
-                    while (mcur) |mdev| : (mcur = mdev.next) {
-                        if (mdev.name) |mname| {
-                            const mdesc: []const u8 = if (mdev.description) |md| std.mem.span(md) else "";
-                            if (deviceMatchesFilter(std.mem.span(mname), mdesc, filter)) {
-                                pinned = mname;
-                                break;
-                            }
+                    var pcur = alldevs;
+                    var pindex: usize = 0;
+                    while (pcur) |pdev| : (pcur = pdev.next) {
+                        if (pindex == pin_index) {
+                            pinned = pdev.name;
+                            break;
                         }
+                        pindex += 1;
                     }
                     const pinned_name = pinned orelse {
-                        diag.err("AEGIS_DAEMON_IFACE={s} matches no Npcap device -- capture disabled (refusing silent wrong-iface)", .{filter});
+                        diag.err("AEGIS_DAEMON_IFACE={s} resolved but the device vanished -- capture disabled", .{filter});
                         return error.CaptureIfaceNotFound;
                     };
                     const pinned_slice = std.mem.span(pinned_name);
@@ -395,6 +463,39 @@ test "interfaceSelectorsDisjoint fails closed for missing or overlapping selecto
     try std.testing.expect(!interfaceSelectorsDisjoint("Ethernet 2", "Ethernet"));
     try std.testing.expect(interfaceSelectorsDisjoint("VMnet1", "Ethernet 2"));
     try std.testing.expect(interfaceSelectorsDisjoint("Wi-Fi", "Ethernet"));
+}
+
+test "resolveSelector refuses ambiguity and never guesses" {
+    const devices = [_]DeviceView{
+        .{ .name = "\\Device\\NPF_{WIFI}", .desc = "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter" },
+        .{ .name = "\\Device\\NPF_{WIFIDIRECT}", .desc = "Microsoft Wi-Fi Direct Virtual Adapter" },
+        .{ .name = "\\Device\\NPF_{VMNET1}", .desc = "VMware Virtual Ethernet Adapter for VMnet1" },
+    };
+    try std.testing.expectEqual(@as(?usize, 2), resolveSelector(&devices, "VMnet1"));
+    try std.testing.expectEqual(@as(?usize, 2), resolveSelector(&devices, "\\Device\\NPF_{VMNET1}"));
+    try std.testing.expectEqual(
+        @as(?usize, 0),
+        resolveSelector(&devices, "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter"),
+    );
+    // "Wi-Fi" names two adapters: an ambiguous selector is not a selection.
+    try std.testing.expectEqual(@as(?usize, null), resolveSelector(&devices, "Wi-Fi"));
+    try std.testing.expectEqual(@as(?usize, null), resolveSelector(&devices, "VMnet9"));
+    try std.testing.expectEqual(@as(?usize, null), resolveSelector(&devices, ""));
+}
+
+test "device identity, not selector spelling, decides disjointness" {
+    const devices = [_]DeviceView{
+        .{ .name = "\\Device\\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}", .desc = "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter" },
+        .{ .name = "\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F}", .desc = "VMware Virtual Ethernet Adapter for VMnet1" },
+    };
+    // The string predicate says these are disjoint; they are one adapter.
+    try std.testing.expect(interfaceSelectorsDisjoint("VMnet1", "\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F}"));
+    try std.testing.expect(!selectorsResolveDisjoint(&devices, "VMnet1", "\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F}"));
+    try std.testing.expect(!selectorsResolveDisjoint(&devices, "\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F}", "\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F}"));
+    try std.testing.expect(selectorsResolveDisjoint(&devices, "VMnet1", "\\Device\\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}"));
+    // Unresolvable or missing selectors are never disjoint.
+    try std.testing.expect(!selectorsResolveDisjoint(&devices, "VMnet1", ""));
+    try std.testing.expect(!selectorsResolveDisjoint(&devices, "VMnet9", "\\Device\\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}"));
 }
 
 test "Windows pcap_pkthdr matches Npcap ABI" {
