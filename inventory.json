@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-18T09:11:24.102946+00:00",
+  "generated_at": "2026-11-18T09:16:21.114829+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 2483,
@@ -2862,13 +2862,13 @@
       "path": "docs/gates/T20_100pct_audit.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 57531
+      "size": 57666
     },
     {
       "path": "docs/gates/T20_100pct_audit.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 1821
+      "size": 1902
     },
     {
       "path": "docs/gates/T20_final_regression.json",
@@ -3822,7 +3822,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1422129
+      "size": 1423524
     },
     {
       "path": "FLOW_MAP.json",
@@ -3930,7 +3930,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 389371
+      "size": 389372
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4188,7 +4188,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 10041
+      "size": 9693
     },
     {
       "path": "pytest.ini",
@@ -11790,7 +11790,7 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 57884
+      "size": 59030
     },
     {
       "path": "src/pipeline/event_queue.zig",
@@ -14913,5 +14913,5 @@
       "size": 624
     }
   ],
-  "source_commit": "efe6b6f"
+  "source_commit": "bf30df2"
 }
