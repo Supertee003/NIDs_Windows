@@ -33,8 +33,11 @@ true at the same build source commit** (`git_source`, ADR-0008):
 11. On-call owner assigned for the release window and steady state (§4).
 
 As of this document: gates 1, 2, 4, 5, 6, 7, 8 are evidenced; gate 3 (soak) is
-**OPEN** — the fresh window started `2026-11-19T04:38:09` and is due
-`2026-11-20T04:38:09`. Gate 9 is a recorded decision pending owner sign-off.
+**FAIL / NOT closed** — the window that started `2026-11-19T04:38:09` reached a
+terminal `SOAK_FAIL` at 18.03 h on the old signed candidate (`b597e71` / build
+source `f4cde3c`): daemon DEGRADED and `queue_dropped_total` 5177 over the 3500
+budget. A fresh window needs a **new signed candidate** and an owner-named
+baseline. Gate 9 is a recorded decision pending owner sign-off.
 **No tag and no GitHub Release until gate 3 and the board are 6/6.**
 
 ## 2. Scope truth (read before making any release claim)
@@ -54,11 +57,11 @@ As of this document: gates 1, 2, 4, 5, 6, 7, 8 are evidenced; gate 3 (soak) is
 
 | Gate | Test / tool | Evidence (path or ID) | E-level | Current? |
 |---|---|---|---|---|
-| `truth_artifacts` | `python tools/truth.py verify`; `tools/rebuild_truth.py` | `TRUTH_VALID` output; maps at `head_sha=f4cde3c` | E1 | yes |
+| `truth_artifacts` | `python tools/truth.py verify`; `tools/rebuild_truth.py` | `TRUTH_VALID` output; maps at `head_sha=a53eda8` | E1 | yes |
 | `component_audit` | `zig build test --summary all` (3339 pass/10 skip/0 fail); `pytest tests/ -q --ignore=tests/test_e2e.py -m "not host_live"` (1400 pass/4 skip); `tests/runtime` (315/1); `test_aegisctl.py` (46/4 deselected); RULE-LAYER 5/5 | `analysis/current-head/` slice records; `build_manifest.json` | E2 | yes at `f4cde3c` |
 | `release_signature` | `tools/final_audit.py --release-check`; `sign_release.py --verify`; `verify_detached_signature` | `release/T20-final/b597e71/signatures.json` (digest `02562BC9…`); anchor doc `docs/gates/RELEASE_TRUST_ANCHOR.md` | E7 (release verification only) | yes |
 | `clean_host_e5` | `tools/host_preflight.py`; `tools/upgrade_rollback.py`; driver thumbprint check; duplicate-pair probe | `admin-evidence/e5-clean-host-20261119-final/preflight-20261119.json`; `analysis/current-head/RB-024-F4CDE3C-20261119.md`; `RB-024-result.json` (674/674 digests) | E5 | yes |
-| `soak_24h` | `tools/host_soak_check.py --start auto --baseline auto --hours 24 --loss-budget 3500 --shed-budget 20000`; hourly `--start <recorded> --baseline <saved>` rechecks | `soak-24h-f4cde3c-start.json`, `soak-24h-f4cde3c.baseline.json`, `soak-f4cde3c-check-*.log`, `soak-24h-f4cde3c-final.json` (pending) | E5 | **OPEN** — running |
+| `soak_24h` | `tools/host_soak_check.py --start auto --baseline auto --hours 24 --loss-budget 3500 --shed-budget 20000`; hourly `--start <recorded> --baseline <saved>` rechecks | `soak-24h-f4cde3c-delta-20261119-2240.json` (terminal FAIL) | E5 | **FAIL** — NOT closed; needs a new signed candidate + owner-named baseline |
 | `evidence_debt` | `tools/evidence_debt.py`; `tools/check_summary.py` | 0 unnamed product files; `SUMMARY_VALID` | E1 | yes |
 
 Detection evidence references (supports `component_audit`, does not close a gate
