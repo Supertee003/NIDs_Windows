@@ -1,4 +1,10 @@
-# Production Readiness — current HEAD (build source `f4cde3c`)
+# Production Readiness — v1.1 branch (build source `a53eda8`)
+
+> **Provenance.** Gates 1, 2, 4–8 were evidenced at build source `f4cde3c`
+> (candidate `b597e71`). The branch source is now `a53eda8` (additive E2 slices,
+> no host effect); the gate evidence has not been re-run on the host at
+> `a53eda8`, and gate 3 (soak) is **FAIL / NOT closed**. No release claim is
+> made for `a53eda8` until a new signed candidate passes an owner-named window.
 
 > Records-only. This document defines what "production ready" means for this
 > product, maps tests to evidence to gates, and records the operational

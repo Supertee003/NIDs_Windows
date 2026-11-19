@@ -62,6 +62,19 @@ Revert this commit; the ported docs are additive and the edits are textual.
   corrections.
 - `soak_24h` remains NOT closed; no E5 for slices 1-8.
 
+## Follow-up records edits (same patch)
+
+- `docs/gates/T20_100pct_audit.{md,json}` `commit` re-stamped `f7f55ed`→`9d13e71`;
+  the `truth_artifacts` row detail now names build source `a53eda8`. The `soak_24h`
+  row stays **FAIL** (not reverted to OPEN/IN_PROGRESS).
+- `docs/gates/PRODUCTION_READINESS.md` gate-3 narrative, `truth_artifacts` and
+  `soak_24h` rows aligned to the terminal FAIL and `a53eda8`.
+- `docs/DETECTION_VALIDATION.md`, `docs/gates/PRODUCTION_READINESS.md`,
+  `docs/runbooks/RB-020-observability-manual.md`: titles/claims re-scoped from
+  "current HEAD (`f4cde3c`)" to the branch build source `a53eda8` **with an
+  explicit provenance note** that the underlying measurements were taken at
+  `f4cde3c` and have not been re-run on the host at `a53eda8` (no E5 claimed).
+
 ## Completion gate
 
 Records consistent, truth valid, no source change — **PASS (E1)**.

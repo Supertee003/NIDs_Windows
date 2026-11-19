@@ -260,7 +260,12 @@ their own runbooks (RB-009) or re-runnable open commands.
 
 ## Metrics sufficiency for production SRE
 
-Honest assessment at build source `f4cde3c` (records-only; no source change here).
+Honest assessment first written at build source `f4cde3c` (records-only; no
+source change there). The v1.1 branch source is now `a53eda8`, which adds the
+additive observability slices (`RESOURCE-TELEMETRY-001`, `OBSERVABILITY-001`,
+`ALERT-FILE-001`, `FP-FEEDBACK-001`, `POLICY-MUTATE-001`, all E2, no host
+effect); the production-SRE sufficiency call below is unchanged and no E5 is
+claimed at `a53eda8`.
 
 **Adequate for:** operator-pulled diagnosis and the single-host 24 h soak gate.
 The daemon exposes a rich, additive control-plane schema: `metrics.snapshot`

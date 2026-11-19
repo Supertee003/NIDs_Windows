@@ -1,4 +1,11 @@
-# Detection Validation — current HEAD (build source `f4cde3c`)
+# Detection Validation — v1.1 branch (build source `a53eda8`)
+
+> **Provenance.** The 23-rule matrix and FP/FN register below were measured at
+> build source `f4cde3c` (the last host-verified candidate, `b597e71`). The
+> source delta `f4cde3c`→`a53eda8` is additive control-plane/observability work
+> (RULE-COVERAGE-001 … POLICY-MUTATE-001, all E2, no host effect, no wire/codec
+> change). The matrix has **not** been re-measured on the host at `a53eda8`; no
+> E5 is claimed for this branch. See `analysis/current-head/RECONCILE-DOCS-READINESS-20261119.md`.
 
 > Records-only. This document does not change rules, sensors, source, build, or
 > any gate verdict. It states what is actually proven, at which E-level, and
