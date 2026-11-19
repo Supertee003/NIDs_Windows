@@ -134,6 +134,27 @@ def test_degraded_with_no_attributable_component_is_still_named(aegisctl) -> Non
     assert result["failure_reasons"] == ["degraded_without_named_component"]
 
 
+def test_queue_loss_over_budget_is_named_not_anonymous(aegisctl) -> None:
+    """READINESS-CAUSE-002: data-integrity loss over budget must name its cause.
+
+    The daemon folds `queue_dropped_total > loss_budget` into the upstream
+    `degraded` boolean without marking a subsystem. Readiness must surface the
+    counter pair as a named degraded component rather than the anonymous
+    `degraded_without_named_component` marker.
+    """
+    payload = _healthy()
+    payload["degraded"] = True
+    payload["subsystems"] = {}
+    payload["data_integrity"] = {"queue_dropped_total": 5177, "loss_budget": 3500}
+    result = aegisctl.build_readiness(payload)
+    assert result["ready"] is False
+    named = result["degraded_components"]
+    assert len(named) == 1 and named[0]["name"] == "data_integrity", named
+    assert "5177" in named[0]["error"] and "3500" in named[0]["error"], named
+    assert "degraded_without_named_component" not in result["failure_reasons"]
+    assert any("data_integrity" in r for r in result["failure_reasons"]), result["failure_reasons"]
+
+
 @pytest.mark.parametrize(
     "mutation",
     [

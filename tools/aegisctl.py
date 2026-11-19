@@ -803,6 +803,21 @@ def build_readiness(payload: dict) -> dict:
             continue
         if str(status.get("state", "")).upper() in {"DEGRADED", "FAILED", "STOPPED"}:
             degraded_components.append({"name": name, "state": status.get("state"), "error": status.get("error")})
+    # READINESS-CAUSE-002: data-integrity loss is aggregated into the upstream
+    # `degraded` boolean without marking a subsystem, so it used to reach here
+    # as the anonymous `degraded_without_named_component`. Name it from the
+    # counter pair the daemon already publishes, so an operator can act on it.
+    data_integrity = payload.get("data_integrity") or {}
+    if not isinstance(data_integrity, dict):
+        data_integrity = {}
+    dropped = int(data_integrity.get("queue_dropped_total", 0) or 0)
+    loss_budget = int(data_integrity.get("loss_budget", 0) or 0)
+    if loss_budget > 0 and dropped > loss_budget:
+        degraded_components.append({
+            "name": "data_integrity",
+            "state": "DEGRADED",
+            "error": f"queue_dropped_total={dropped}>loss_budget={loss_budget}",
+        })
     worker_gate = not missing_workers and not workers.get("failed", False)
     overall_gate = state == "RUNNING" and not degraded and worker_gate and rules_loaded > 0
 

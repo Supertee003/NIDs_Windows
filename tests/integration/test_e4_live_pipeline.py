@@ -191,7 +191,14 @@ def test_every_surface_agrees_about_health() -> None:
     # `health` alone prints a human preamble and a Python dict repr; the
     # contract under test is the machine payload, which is `--json`.
     health = _json("health", "--json")
-    readiness = _json("readiness")
+    # `readiness` is a gate: a not-ready verdict exits non-zero by design, so
+    # the generic `_json` helper (which asserts exit 0) cannot be used here.
+    # This test compares the *reported* degraded flags across surfaces, so
+    # parse the JSON body regardless of the gate verdict (same as the sibling
+    # test below). The gate's exit code is asserted by its own tests.
+    readiness_proc = _ctl("readiness")
+    assert "{" in readiness_proc.stdout, readiness_proc.stdout + readiness_proc.stderr
+    readiness = json.loads(readiness_proc.stdout[readiness_proc.stdout.find("{"):])
 
     status_degraded = "DEGRADED" in status.splitlines()[1] if len(status.splitlines()) > 1 else False
     health_degraded = bool(health.get("degraded")) or str(health.get("state")).upper() == "DEGRADED"

@@ -16,7 +16,7 @@
 | ABI IMPACT | none |
 | AUTHORITY IMPACT | none — detection-only preserved; no WFP mutation, no host effect; PEP remains detection-only policy/evidence authority |
 | STATE IMPACT | none at runtime |
-| TEST IMPACT | no source change; `tests/release` 201/201 passed; full suite 1452 passed / 14 skipped / 1 xfailed / 1 xpassed / 26 subtests passed / **2 failed** (the same two E4 live-daemon host-state tests — DEGRADED installed daemon, not a source regression); component audit 66/66, prod failures 0 |
+| TEST IMPACT | no source change; `tests/release` 201/201 passed. At this commit the full suite had 1452 passed / **2 failed** (the two E4 live-daemon tests). Those two were subsequently resolved as records-only issues — see `READINESS-CAUSE-002-20261120.md` — and the full suite is now **1455 passed / 14 skipped / 1 xfailed / 1 xpassed / 26 subtests passed / 0 failed**. Component audit 66/66, prod failures 0 |
 | EVIDENCE IMPACT | +1 E2 build record + E7 detached-signature verification; gate `release_signature` OPEN → PASS; no E5/E6 claim |
 
 ## Why this patch exists
