@@ -1,5 +1,7 @@
 # Authority Matrix — Synchronized (Step 6 + 7 Sync Update)
 
+> **HISTORICAL (superseded 2026-11-09, RETIRE-HOST-EFFECT-001 / issue #25):** the product is detection-only. Any enforcement authority / host-effect wording below is a historical design record, not current truth. Current authority: `AUTHORITY_MAP.json`, `analysis/current-head/RUST-FOUNDATION-STATUS-20261119.md`.
+
 **Status:** Synced with Step 3 ADR-RUNTIME-CONVERGENCE.md, Step 4 BUILD-TRUTH.md, Step 5 MANIFEST
 **Date:** 2026-09-08
 **Baseline Commit:** 61f85f6 (after Step 2 cleanup + core restore)

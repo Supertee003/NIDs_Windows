@@ -1,5 +1,7 @@
 # AEGIS Master Target Alignment
 
+> **HISTORICAL (2026-09-14):** "sole privileged authority" below is a pre-retirement design line. Current truth: Rust PEP is a detection-only policy/evidence authority; no host-effect authority exists (RETIRE-HOST-EFFECT-001, issue #25; `analysis/current-head/RUST-FOUNDATION-STATUS-20261119.md`).
+
 **วันที่:** 2026-09-14  
 **Target authority:** `AEGIS_Development_Master_Report_From_Start_To_Final.md`  
 **Repository baseline:** `c9ebc16` ตามรายงานแนบและการตรวจ source ปัจจุบัน

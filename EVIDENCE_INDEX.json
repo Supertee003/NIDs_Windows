@@ -9524,6 +9524,140 @@
         "E2 only; no E5 proof of live operator use on the installed candidate.",
         "FP count is advisory operator feedback, never a suppression signal or a fabricated detector metric."
       ]
+    },
+    {
+      "id": "DOCS-GAP-CLOSURE-PLAN-E1-20261119",
+      "head_sha": "f4cde3c",
+      "timestamp": "2026-11-19",
+      "title": "Owner-approved gap closure plan for rule coverage, visibility, alerting, manageability and backpressure",
+      "level": "E1",
+      "component": "documentation / release engineering",
+      "flow_id": "RELEASE-GATES",
+      "description": "Records-only plan created after owner directed work to start without waiting for the soak. Defines four isolated vertical slices (RULE-COVERAGE-001, VISIBILITY-001, OPERATOR-001, OBSERVABILITY-001), patch-transaction template, evidence targets, and the isolation rule that new source work runs in a separate worktree while the installed candidate and soak remain untouched.",
+      "files_verified": [
+        "analysis/current-head/GAP-CLOSURE-PLAN-20261119.md",
+        "docs/DETECTION_VALIDATION.md",
+        "docs/gates/PRODUCTION_READINESS.md"
+      ],
+      "tests": [
+        "python tools/truth.py verify -> TRUTH_VALID",
+        "python scripts/check_summary.py -> SUMMARY_VALID"
+      ],
+      "result": "PASS_E1",
+      "finding": "Current system is not yet complete; Slice 1 starts with rule coverage and R2003 FP/FN. Board stays 5/6 until soak and new evidence are reconciled.",
+      "evidence_artifact": "analysis/current-head/GAP-CLOSURE-PLAN-20261119.md",
+      "limitations": [
+        "Plan only; no source patch, build, install, restart or gate change authorized by this document."
+      ]
+    },
+    {
+      "id": "DOCS-READINESS-PATCH-E1-20261119",
+      "head_sha": "f4cde3c",
+      "timestamp": "2026-11-19",
+      "title": "Records patch transaction for observability, detection validation, production readiness and Rust foundation clarity",
+      "level": "E1",
+      "component": "documentation / records",
+      "flow_id": "RELEASE-GATES",
+      "description": "Declares PATCH-ID DOCS-READINESS-20261119 with in/out scope, contracts, authority and state impact, verification commands and rollback. Documentation-only: no source, build, signature, service, topology or gate verdict change during the 24 h soak.",
+      "files_verified": [
+        "analysis/current-head/DOCS-READINESS-PATCH-20261119.md",
+        "AGENTS.md",
+        "SYSTEM_MAP.json",
+        "EVIDENCE_INDEX.json",
+        "docs/DETECTION_VALIDATION.md",
+        "docs/gates/PRODUCTION_READINESS.md",
+        "docs/runbooks/RB-020-observability-manual.md"
+      ],
+      "tests": [
+        "python tools/truth.py verify -> TRUTH_VALID",
+        "python scripts/check_summary.py -> SUMMARY_VALID",
+        "python tools/evidence_debt.py -> 0 unnamed product files",
+        "python tools/final_audit.py --release-check (owner anchor supplied) -> 5/6 PASS, soak_24h OPEN"
+      ],
+      "result": "PASS_E1",
+      "finding": "Board remains 5/6 NOT SHIPPABLE until the fresh 24 h window closes; metrics source gaps are documented and deferred, not fixed.",
+      "evidence_artifact": "analysis/current-head/DOCS-READINESS-PATCH-20261119.md",
+      "limitations": [
+        "Records-only; no runtime or release action authorized."
+      ]
+    },
+    {
+      "id": "DOCS-RUST-FOUNDATION-STATUS-E1-20261119",
+      "head_sha": "f4cde3c",
+      "timestamp": "2026-11-19",
+      "title": "Rust foundation status clarified: canonical detection-only PEP, no host-effect authority",
+      "level": "E1",
+      "component": "documentation / authority maps",
+      "flow_id": "FLOW-9-PEP",
+      "description": "Records-only clarification that rust-src/lib.rs remains CANONICAL, built to aegis_pep.dll and on golden-path step 9, while host-effect enforcement was retired by 8c935ff/RETIRE-HOST-EFFECT-001 and confirmed at E5 by aade7a3. Resolves contradictory enforcement wording in AGENTS.md, SYSTEM_MAP.json, AI_CONTEXT.md and LANGUAGE_OWNERSHIP.md.",
+      "files_verified": [
+        "analysis/current-head/RUST-FOUNDATION-STATUS-20261119.md",
+        "AGENTS.md",
+        "SYSTEM_MAP.json",
+        "AI_CONTEXT.md",
+        "docs/architecture/LANGUAGE_OWNERSHIP.md"
+      ],
+      "tests": [
+        "python tools/truth.py verify -> TRUTH_VALID"
+      ],
+      "result": "PASS_E1",
+      "finding": "Rust did not disappear; only the duplicate shield PEP was removed. No source change required.",
+      "evidence_artifact": "analysis/current-head/RUST-FOUNDATION-STATUS-20261119.md",
+      "limitations": [
+        "Documentation-level; does not add runtime Rust capability."
+      ]
+    },
+    {
+      "id": "DOCS-DETECTION-VALIDATION-E1-20261119",
+      "head_sha": "f4cde3c",
+      "timestamp": "2026-11-19",
+      "title": "Detection validation matrix for all 23 rules with honest E-levels and FP/FN register",
+      "level": "E1",
+      "component": "documentation / detection validation",
+      "flow_id": "DETECTION-QUALITY",
+      "description": "Records-only matrix mapping each of the 23 rules to fixture, qualification, proof class and E-level. Only the L4 family has live lab proof; R9006 reaches E5+E6 with a negative control. Records FP-1 (RULE-LAYER-SCOPE-001), FN-1 (R2003 command line), and the E7-is-not-field-release caveat.",
+      "files_verified": [
+        "docs/DETECTION_VALIDATION.md",
+        "analysis/RULE_22_QUALIFICATION_MATRIX.md",
+        "analysis/RULE_22_DETECTION_FIXTURE_MANIFEST.md",
+        "analysis/current-head/DETECT-L4-001-20261116.md",
+        "analysis/current-head/E6-BURST-001-20261114.md",
+        "analysis/current-head/RULE-LAYER-SCOPE-001-20261117.md"
+      ],
+      "tests": [
+        "documentation consistency review"
+      ],
+      "result": "PASS_E1",
+      "finding": "23/23 rules have synthetic fixtures (E1/E2); no file/process/pipe/L7 rule has live positive-path proof. FP/FN budget is proposed, not a gate.",
+      "evidence_artifact": "docs/DETECTION_VALIDATION.md",
+      "limitations": [
+        "Does not change any detection or gate verdict."
+      ]
+    },
+    {
+      "id": "DOCS-PRODUCTION-READINESS-E1-20261119",
+      "head_sha": "f4cde3c",
+      "timestamp": "2026-11-19",
+      "title": "Production readiness definition, test-to-evidence-to-gate map and on-call procedure",
+      "level": "E1",
+      "component": "documentation / release engineering",
+      "flow_id": "RELEASE-GATES",
+      "description": "Records-only definition of done at build source f4cde3c, gate/test/evidence mapping, release-window on-call and escalation triggers, current alert surfaces, and a list of stale/historical records. Keeps soak_24h OPEN until the fresh window returns PASS.",
+      "files_verified": [
+        "docs/gates/PRODUCTION_READINESS.md",
+        "docs/gates/RELEASE_TRUST_ANCHOR.md",
+        "docs/runbooks/RB-020-observability-manual.md",
+        "docs/runbooks/RB-010-telemetry-export-setup.md"
+      ],
+      "tests": [
+        "python tools/truth.py verify -> TRUTH_VALID"
+      ],
+      "result": "PASS_E1",
+      "finding": "Board stays 5/6 NOT SHIPPABLE until the 2026-11-19T04:38:09 window passes and final_audit regenerates it.",
+      "evidence_artifact": "docs/gates/PRODUCTION_READINESS.md",
+      "limitations": [
+        "No gate verdict or tag/publish action is taken by this document."
+      ]
     }
   ],
   "known_gaps": [
@@ -16189,7 +16323,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 32,
+    "E1_count": 37,
     "E2_count": 140,
     "E3_count": 14,
     "E4_count": 4,

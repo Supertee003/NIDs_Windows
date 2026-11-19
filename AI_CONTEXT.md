@@ -24,7 +24,8 @@
 
 ## Current Operational Truth — 2026-11-17
 
-- Production mode is detection-only. Rust PEP remains the sole privileged authority, but production host-effect activation is out of scope; `src/policy/wfp_production.zig` fails closed and is not a production WFP enforcement route.
+- Production mode is detection-only. Rust PEP remains the sole detection-only policy/crypto authority and no host-effect authority exists; `src/policy/wfp_production.zig` fails closed and is not a production WFP enforcement route.
+- Current-head companion documents: `docs/DETECTION_VALIDATION.md` (23-rule coverage/evidence matrix, FP/FN register), `docs/gates/PRODUCTION_READINESS.md` (definition of done, test->evidence->gate map, on-call), `docs/runbooks/RB-020-observability-manual.md` (metric surfaces + production-SRE gaps), `analysis/current-head/RUST-FOUNDATION-STATUS-20261119.md` (Rust authority boundary and retirement commits).
 - Go Nose sends length-prefixed CanonicalEvent frames over `\\.\pipe\aegis_nose` to the Zig reader; C/C++ adapters use separate C ABI contracts.
 - Python Brain inspection is optional. UDP offers are fire-and-forget; opt-in findings return only as advisory sensor events. The Phase-B BrainAdvisor dispatcher is test-harness-only. XDR is advisory recording-only at current HEAD: XDR-WIRE-001 feeds the selected fabric from detection-identity events, and XDR-RECEIPT-002 persists frozen multi-source assessments as IDS Evidence Receipts after forensic hash read-back with replay. The receipt value is discarded; no scoring, policy, PEP, DEFCON, ActionDispatcher, or host-effect consumer exists. Windows E5 for the detection-only path is recorded in `analysis/current-head/PROJECT-CLOSEOUT-20261117.md` (v2.0.0).
 - Current evidence establishes Windows E5 for the shipped detection-only release `v2.0.0` (build source `7c604d5`); it does not establish kernel qualification, production driver signing, or E7. Treat older deployment/evidence narratives below as historical unless their source commit and current-head proof are explicitly verified.
@@ -63,7 +64,7 @@ AEGIS is a **Security Operations Machine** — a Windows-native Network Intrusio
 
 - **Python/Cython** = Intelligence (Brain, RAG, analytics)
 
-- **Rust** = Security (sole PEP/crypto authority; production host-effect activation out of scope)
+- **Rust** = Security (sole detection-only PEP/crypto authority; no host-effect authority exists)
 
 - **TypeScript** = Control (policy authoring, CLI, UI)
 

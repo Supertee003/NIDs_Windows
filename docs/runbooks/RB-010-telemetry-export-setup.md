@@ -63,3 +63,23 @@ is real.
 
 - RB-008 (formats), RB-015 (delivery proof, lab)
 - `scripts/aegis_metrics.py --help`
+
+## Production-sufficiency limits (current HEAD)
+
+- `:9100/metrics` is **log-derived** (`logs/aegis_core.ndjson`), not the live
+  control plane. It emits 8 series and does **not** expose `data_integrity`
+  loss, `queue.stats` depth, or per-stage latency. The module docstring still
+  lists legacy metric names that are not emitted; trust the 8 series in
+  `generate_prometheus_metrics()`.
+- It is opt-in and localhost-only. Stopping the process leaves no port, no
+  queue, no retry. There is no service wrapper, no TSDB, and no retention or
+  downsampling policy.
+- No alerting exists. The only fail-closed thresholds are the soak
+  `--loss-budget 3500` / `--shed-budget 20000` and `aegisctl readiness`.
+- `go/aggregator /api/health` hardcodes `out_events=0` and `dropped=0`; use
+  daemon `health.data_integrity` for loss truth.
+- Counters are cumulative-since-start and reset on daemon restart; there is no
+  in-process boot-id or restart counter.
+- Full surface inventory and the source-vs-doc gap table:
+  `docs/runbooks/RB-020-observability-manual.md`, section
+  "Metrics sufficiency for production SRE".

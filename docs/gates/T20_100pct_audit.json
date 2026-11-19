@@ -38,7 +38,7 @@
         "id": "truth_artifacts",
         "ok": true,
         "owner": "none",
-        "detail": "TRUTH_VALID — artifacts carry build source f4cde3c (ancestor of HEAD; source history and worktree clean)"
+        "detail": "TRUTH_VALID — artifacts carry build source a53eda8 (ancestor of HEAD; source history and worktree clean)"
       },
       {
         "id": "component_audit",

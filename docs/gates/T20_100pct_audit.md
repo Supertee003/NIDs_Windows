@@ -16,7 +16,7 @@
 
 | Gate | State | Owner | Evidence |
 |---|---|---|---|
-| `truth_artifacts` | PASS | none | TRUTH_VALID — artifacts carry build source f4cde3c (ancestor of HEAD; source history and worktree clean) |
+| `truth_artifacts` | PASS | none | TRUTH_VALID — artifacts carry build source a53eda8 (ancestor of HEAD; source history and worktree clean) |
 | `component_audit` | PASS | none | modules 66/66, prod failures 0, part_ii 5/5, golden path declared=True |
 | `release_signature` | PASS | owner | release\T20-final\b597e71\signatures.json cryptographically signs SHA256SUMS (02562BC958AE4516...) with a ed25519 key; commit b597e71 contains runtime f4cde3c |
 | `clean_host_e5` | PASS | owner | admin-evidence\e5-clean-host-20261119-final\preflight-20261119.json PASS with the loader under C:\Program Files\AEGIS NIDS |

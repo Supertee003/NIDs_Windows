@@ -371,7 +371,7 @@
         "parking_lot"
       ],
       "boundary": "PEP ABI â†’ Zig",
-      "is_final_enforcement": true,
+      "is_final_enforcement": false,
       "note": "Rust PEP is a detection-only policy evaluator (RETIRE-HOST-EFFECT-001): it records evidence and never authorizes a host effect. The default build prevention gate is closed, the driver block IOCTL returns STATUS_NOT_SUPPORTED, and PEP/provider presence does not establish host-effect capability.",
       "boundary_ring": "ring1_contract"
     },
