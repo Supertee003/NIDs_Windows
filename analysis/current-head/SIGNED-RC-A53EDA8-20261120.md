@@ -136,18 +136,29 @@ installed host state, service, or key material is touched by the rollback.
   a 24 h stable soak exists for this new candidate.
 - Lab test-signed drivers are not EV/HLK-signed; the installer is not
   Authenticode-signed.
-- `src/control/protocol.zig:248` still marks `policy.verify` as `.operate`
-  while the RB-011 runbook documents it as a read-only report. Recorded as an
-  open authority-wording discrepancy in Signed-IR scope; left untouched here
-  because changing it would move the build source and re-open the gate.
+- `src/control/protocol.zig:248` marks `policy.verify` as `.operate`. **Resolved
+  as NOT a discrepancy on 2026-11-20:** `handlers.policyVerify` is read-only
+  (`verifyEnvelope` only, `marks nothing trusted`, touches no enforcement
+  authority, `is_mutation=false`, `has_postcondition=false`), and `.operate` is
+  the normal role class shared by `forensics.verify`, `enforcement.verify` and
+  `xdr.verify` (verification/diagnostic commands) — not an authority claim.
+  `tests/tools/test_operator_honesty.py` passes (3/3). No source change needed;
+  this is not a STOP-THE-LINE item.
 
 ## Open blockers
 
 - Owner-run E5: install the new candidate on a clean host, run the preflight,
   and record a `PASS` artifact referencing `466a226`.
 - Owner-named 24 h soak window with a real baseline; publish only after PASS.
+  Blocker confirmed 2026-11-20: this shell is **not elevated** (`False`), so
+  install/restart/preflight cannot be run by the agent; the installed daemon is
+  DEGRADED (`queue_dropped_total=5177 > budget 3500`, uptime ~23.8 h), which is
+  the host-state cause of the two E4 failures. `soak_24h` additionally needs
+  24 h of wall clock; no command compresses it.
 - Signed-IR promotion remains STOP-THE-LINE (owner trust anchor + authority
   review); explicitly out of scope.
+- EV/HLK driver signing and installer Authenticode need an external CA; lab
+  test-signing is the honest current state.
 
 ## Completion gate
 
