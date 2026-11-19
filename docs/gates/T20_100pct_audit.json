@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "544b887",
+  "commit": "7371d47",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE"
