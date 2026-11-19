@@ -408,11 +408,16 @@ def test_index_page_has_local_alerts_panel_and_no_egress_claim():
     assert "renderAlerts()" in html
 
 
-def test_api_snapshot_carries_additive_alerts_key():
+def test_api_snapshot_carries_additive_alerts_key(tmp_path, monkeypatch):
+    # Hermetic: a running daemon legitimately writes logs/alerts.ndjson, so the
+    # global path is not a reliable "no alerts" fixture. Point the evidence log
+    # at an absent tmp file to pin the contract (key present, no fabricated
+    # rows) regardless of host state.
+    monkeypatch.setattr(app_module, "ALERT_LOG", tmp_path / "absent.ndjson")
     app_module._reset_snapshot_cache()
     body = app_module.app.test_client().get("/api/snapshot").get_json()
     assert "alerts" in body
-    assert body["alerts"]["records"] == []  # no daemon, no fabricated rows
+    assert body["alerts"]["records"] == []  # no evidence file, no fabricated rows
 
 
 def test_alert_writer_source_has_no_egress_surface():

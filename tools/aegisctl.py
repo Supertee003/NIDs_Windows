@@ -818,6 +818,19 @@ def build_readiness(payload: dict) -> dict:
             "state": "DEGRADED",
             "error": f"queue_dropped_total={dropped}>loss_budget={loss_budget}",
         })
+    # READINESS-CAUSE-003: the kernel telemetry capability is also folded into
+    # `degraded` without a subsystem entry. When the WFP/minifilter services
+    # are down, health reports capabilities.wfp=false and the PEP reports wfp
+    # UNAVAILABLE; name that instead of emitting the anonymous marker.
+    capabilities = payload.get("capabilities") or {}
+    if not isinstance(capabilities, dict):
+        capabilities = {}
+    if degraded and capabilities.get("wfp") is False:
+        degraded_components.append({
+            "name": "wfp",
+            "state": "UNAVAILABLE",
+            "error": "capabilities.wfp=false (WFP/minifilter driver not running)",
+        })
     worker_gate = not missing_workers and not workers.get("failed", False)
     overall_gate = state == "RUNNING" and not degraded and worker_gate and rules_loaded > 0
 
@@ -838,8 +851,12 @@ def build_readiness(payload: dict) -> dict:
     # `degraded` is aggregated upstream from data loss, lifecycle and subsystem
     # states. When it is true and none of the above explained it, say that
     # instead of returning a bare refusal.
+    # A lifecycle state such as `state_degraded` is itself an attributable
+    # cause: it is already in `reasons`, so an extra anonymous marker would be
+    # noise (and would violate "never degrades anonymously" on a live host).
     degradation_named = bool(degraded_components) or state_machine_disagrees or any(
-        r.startswith("worker_") or r in {"worker_failed", "rules_not_loaded"} for r in reasons
+        r.startswith("worker_") or r.startswith("state_")
+        or r in {"worker_failed", "rules_not_loaded"} for r in reasons
     )
     if degraded and not degradation_named:
         reasons.append("degraded_without_named_component")

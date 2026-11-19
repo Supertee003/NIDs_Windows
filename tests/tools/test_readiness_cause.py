@@ -155,6 +155,23 @@ def test_queue_loss_over_budget_is_named_not_anonymous(aegisctl) -> None:
     assert any("data_integrity" in r for r in result["failure_reasons"]), result["failure_reasons"]
 
 
+def test_wfp_capability_loss_is_named_not_anonymous(aegisctl) -> None:
+    """READINESS-CAUSE-003: a down WFP/minifilter driver pair folds into the
+    upstream `degraded` boolean. Readiness must name `wfp`, not emit the
+    anonymous marker."""
+    payload = _healthy()
+    payload["degraded"] = True
+    payload["state"] = "DEGRADED"
+    payload["state_machine_state"] = "DEGRADED"
+    payload["capabilities"] = {"wfp": False}
+    result = aegisctl.build_readiness(payload)
+    assert result["ready"] is False
+    named = result["degraded_components"]
+    assert len(named) == 1 and named[0]["name"] == "wfp", named
+    assert "degraded_without_named_component" not in result["failure_reasons"]
+    assert any("wfp" in r for r in result["failure_reasons"]), result["failure_reasons"]
+
+
 @pytest.mark.parametrize(
     "mutation",
     [

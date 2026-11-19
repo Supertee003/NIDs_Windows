@@ -121,27 +121,52 @@ def test_upgrade_stops_service_and_process_before_overwriting_runtime():
 # ---------------------------------------------------------------------
 
 
-def test_driver_file_lines_use_canonical_build_outputs():
-    """The packaged sources are the exact WDK build outputs the lifecycle
-    scripts deploy (the binaries EVT-231/EVT-232 proved live). The legacy
-    in-tree copy drivers\\wfp_callout\\aegis_wfp.sys is a pre-EVT-231
-    artifact and must never ship as the driver source again."""
+def test_driver_file_lines_use_owner_signed_candidate():
+    """DRIVER-SIGN-PAYLOAD-001: the NSIS payload is the owner-signed driver
+    from the release candidate, never the raw WDK build output. Unsigned
+    images are rejected with 0x241/577; on 2026-11-20 that left both driver
+    services STOPPED and the daemon DEGRADED (E5 preflight FAIL)."""
     mod = _load()
     tpl = mod.NSIS_TEMPLATE
-    assert 'File "/nonfatal" "/oname=aegis_wfp.sys" "build\\x64\\wfp\\aegis_wfp.sys"' in tpl
+    assert 'File "/nonfatal" "/oname=aegis_wfp.sys" "@WFP_DRIVER_SOURCE@"' in tpl
     assert ('File "/nonfatal" "/oname=aegis_minifilter.sys" '
-            '"build\\x64\\minifilter\\aegis_minifilter.sys"') in tpl
+            '"@FIM_DRIVER_SOURCE@"') in tpl
+    assert '"build\\x64\\wfp\\aegis_wfp.sys"' not in tpl
+    assert '"build\\x64\\minifilter\\aegis_minifilter.sys"' not in tpl
     assert "drivers\\wfp_callout\\aegis_wfp.sys" not in tpl
-    assert mod.DRIVER_SOURCES == (
-        ("wfp", "build\\x64\\wfp\\aegis_wfp.sys"),
-        ("minifilter", "build\\x64\\minifilter\\aegis_minifilter.sys"),
-    )
+    sources = dict(mod.signed_driver_sources())
+    assert set(sources) == {"wfp", "minifilter"}
+    for tag, rel in sources.items():
+        assert (REPO / rel.replace("\\", "/")).is_file(), (tag, rel)
+    assert mod.signed_drivers_available() is True
+
+
+def test_package_fails_closed_without_a_verified_signed_candidate(tmp_path, monkeypatch):
+    """No signed candidate => fall back to a NON-EXISTENT staging path, never
+    to the unsigned build outputs, and refuse to package."""
+    mod = _load()
+    monkeypatch.setattr(mod, "RELEASE_ROOT", tmp_path / "no-release")
+    sources = dict(mod.signed_driver_sources())
+    assert sources["wfp"].startswith("release\\signed-drivers\\")
+    assert sources["minifilter"].startswith("release\\signed-drivers\\")
+    assert mod.signed_drivers_available() is False
+
+
+def test_generate_nsi_substitutes_signed_driver_paths(tmp_path):
+    mod = _load()
+    out = tmp_path / "signed.nsi"
+    mod.generate_nsi(out)
+    text = out.read_text(encoding="utf-8")
+    assert "@WFP_DRIVER_SOURCE@" not in text
+    assert "@FIM_DRIVER_SOURCE@" not in text
+    for rel in dict(mod.signed_driver_sources()).values():
+        assert f'"{rel}"' in text, rel
 
 
 def test_driver_sources_match_service_script_defaults():
-    """One contract, two deploy paths: the NSIS install path and the proven
-    scripts (which produced the live services) must agree on the driver
-    source paths."""
+    """The lifecycle scripts still stage raw WDK build outputs; they remain
+    the pre-signing inputs. NSIS now ships the signed candidate payloads
+    (pinned by the tests above), so this test only guards the script side."""
     wfp = (REPO / "scripts" / "wfp_service.ps1").read_text(encoding="utf-8")
     mini = (REPO / "scripts" / "minifilter_service.ps1").read_text(encoding="utf-8")
     assert "build\\x64\\wfp\\aegis_wfp.sys" in wfp
@@ -271,8 +296,8 @@ def test_generate_nsi_annotates_driver_presence(tmp_path):
     out = tmp_path / "drivers.nsi"
     mod.generate_nsi(out)
     text = out.read_text(encoding="utf-8")
-    assert "; kernel driver wfp: build\\x64\\wfp\\aegis_wfp.sys (" in text
-    assert "; kernel driver minifilter: build\\x64\\minifilter\\aegis_minifilter.sys (" in text
+    assert "; kernel driver wfp: " in text
+    assert "; kernel driver minifilter: " in text
     assert "(present)" in text or "(ABSENT - not packaged)" in text
 
 
