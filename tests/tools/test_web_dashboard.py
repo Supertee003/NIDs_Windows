@@ -72,6 +72,32 @@ def test_api_snapshot_answers_without_daemon():
     assert "queue" in body
 
 
+def test_threat_posture_supplies_the_banner_fields():
+    # OPERATOR-001: the per-threat banner consumes only snapshot data the
+    # existing posture helper already produces. Daemon DEFCON wins.
+    posture = app_module._threat_posture([], {"defcon_level": 2, "defcon_label": "SEVERE"})
+    assert posture["defcon"] == 2
+    assert posture["label"] == "SEVERE"
+    assert "critical" in posture and "high" in posture
+    assert "enforcement claim" in posture["basis"]
+
+
+def test_render_banner_has_threat_branch_after_failclosed_branches():
+    source = (TOOLS_DIR / "aegisctl" / "web_dashboard" / "app.py").read_text(encoding="utf-8")
+    assert "OPERATOR-001" in source
+    assert "snap.threat.defcon" in source
+    assert "no enforcement implied" in source
+    # Fail-closed / integrity / no-feed messages must keep precedence: the
+    # threat banner is the LAST branch, never a replacement for them.
+    positions = [
+        source.index(x) for x in (
+            "!c.available", "integrity==='failed'", "feed.available===false",
+            "snap.threat&&",
+        )
+    ]
+    assert positions == sorted(positions)
+
+
 def test_no_wildcard_bind():
     source = (TOOLS_DIR / "aegisctl" / "web_dashboard" / "app.py").read_text(encoding="utf-8")
     assert 'host="127.0.0.1"' in source

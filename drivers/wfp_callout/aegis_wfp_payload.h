@@ -18,6 +18,31 @@
  * On malformed or unsupported outbound headers, return false and zero the
  * outputs; the caller still emits the event header and permits the packet.
  */
+
+/* RULE-COVERAGE-001: the same outbound transport header that carries the
+ * TCP data offset also carries the raw flags byte at offset 13. Inbound WFP
+ * data starts at the L7 payload, so no flags evidence exists there -- an
+ * honest absence, never a fabricated zero. The caller stamps the result in
+ * AEGIS_EVENT_HEADER.reserved using AEGIS_TCP_FLAGS_PRESENT so the Zig
+ * consumer can distinguish "flags observed as 0" from "no evidence".
+ */
+AEGIS_WFP_INLINE int aegis_wfp_tcp_flags_from_header(
+    const unsigned char *data,
+    size_t data_length,
+    unsigned char protocol,
+    unsigned char direction,
+    unsigned char *tcp_flags)
+{
+    if (tcp_flags == NULL) {
+        return 0;
+    }
+    *tcp_flags = 0;
+    if (direction != 1 || protocol != 6 || data == NULL || data_length < 14) {
+        return 0;
+    }
+    *tcp_flags = data[13];
+    return 1;
+}
 AEGIS_WFP_INLINE int aegis_wfp_get_payload_slice(
     const unsigned char *data,
     size_t data_length,

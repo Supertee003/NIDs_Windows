@@ -369,6 +369,7 @@ fn processEvent(
                 ev.rule_id = matched_rule_id;
                 ev.kind = .signature_match;
                 _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
+                state.recordRuleFire(matched_rule_id); // OBSERVABILITY-001
             }
         }
     }
@@ -377,9 +378,14 @@ fn processEvent(
     // own packet metadata (protocol, exact TCP flags, target ports) and never
     // enter the AC. Both Npcap acquisition paths (direct Zig callback and
     // canonical Go Nose through the ContextFlags transport lane) supply
-    // trustworthy flags; other producers leave the sidecar at 0, so a flags
-    // rule cannot accidentally match their zero-filled metadata.
-    if (matched_rule_id == 0 and l4_count > 0 and ev.source == .capture_npcap) {
+    // trustworthy flags. RULE-COVERAGE-001: outbound WFP rows now also carry
+    // kernel-observed flags through the same ContextFlags lane; inbound WFP
+    // has no flags evidence and leaves the sidecar 0. Producers without flag
+    // evidence therefore cannot match exact-flags rules on zero-filled data,
+    // while PROTO: rules (R9002) can evaluate on any network source.
+    if (matched_rule_id == 0 and l4_count > 0 and
+        (ev.source == .capture_npcap or ev.source == .capture_wfp))
+    {
         for (l4_rules[0..l4_count]) |rule| {
             if (!l4.matches(&rule, ev.src_port, ev.dst_port, ev.protocol, qe.tcp_flags)) continue;
 
@@ -403,6 +409,7 @@ fn processEvent(
             ev.rule_id = matched_rule_id;
             ev.kind = .signature_match;
             _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
+            state.recordRuleFire(matched_rule_id); // OBSERVABILITY-001
             break;
         }
     }
@@ -424,6 +431,7 @@ fn processEvent(
                 ev.kind = .protocol_anomaly;
                 ev.severity = @enumFromInt(@min(anomaly.severity, @as(u8, 7)));
                 _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
+                state.recordRuleFire(protocol_anomaly_rule_id); // OBSERVABILITY-001
             }
         }
     }
@@ -447,6 +455,7 @@ fn processEvent(
                 ev.kind = .correlation_match;
                 ev.severity = .alert;
                 _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
+                state.recordRuleFire(corr_rule_id); // OBSERVABILITY-001
                 _ = state.g_pipeline_correlations.fetchAdd(1, .monotonic);
             }
         }

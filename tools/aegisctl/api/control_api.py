@@ -1074,6 +1074,11 @@ def _daemon_data_integrity(daemon_health: Dict[str, Any]) -> Dict[str, int]:
         # LOSS-BUDGET-001: additive; older daemons omit it and the projection
         # simply stays without the field, which is why it is not defaulted to 0.
         "loss_budget",
+        # OBSERVABILITY-001: additive. shed_overload is a budgeted policy
+        # outcome (reported, never a degradation trigger). process_generation_ms
+        # pins counter-reset semantics to one daemon process generation.
+        "shed_overload",
+        "process_generation_ms",
     )
     projected: Dict[str, int] = {}
     for key in keys:

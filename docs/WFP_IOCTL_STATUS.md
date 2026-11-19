@@ -59,18 +59,25 @@ the owner explicitly (`src/capture/source_arbiter.zig`) and reports it in
 
 | mode | condition | Npcap rows | kernel rows |
 |---|---|---|---|
-| `npcap_primary` | Nose connected + ready and producing | submitted | drained, counted as shadow, NOT submitted |
+| `kernel_primary` | `AEGIS_CAPTURE_PRIMARY=kernel` opt-in and a kernel provider exists | **drained at the Nose submit point**, counted in `g_nose_shadow_frames`, NOT submitted | submitted |
+| `npcap_primary` | Nose connected + ready and producing (DEFAULT) | submitted | drained, counted as shadow, NOT submitted |
 | `kernel_fallback` | Nose absent, or Nose submitted-frame count stalled >= 10 s while the kernel keeps seeing rows | submitted if present | submitted (inbound + outbound) |
 | `split_lab` | `AEGIS_CAPTURE_SPLIT=1` opt-in, disjoint interfaces only | submitted | submitted |
 | `none` | neither source available | - | - |
 
-The kernel ring is always drained, even in shadow mode: a 2 MB ring must
-never overflow because the consumer disagreed with the mode. Shadow rows
-are evidence the kernel saw traffic the packet path did not deliver, and
-`g_wfp_shadow_rows` makes that countable instead of silent. Takeover is
-evidence-driven (kernel rows while the Nose submitted-frame counter stands still), so
-an idle network never flaps the mode; a resumed Nose stands the kernel
-back down before the next record is submitted.
+Both rings are always drained, even when their rows are shadowed: a full
+2 MB kernel ring or a blocked Nose pipe must never result from the consumer
+disagreeing with the mode. Shadow rows are evidence the losing source saw
+traffic the owner did not select; `g_wfp_shadow_rows` (kernel side) and
+`g_nose_shadow_frames` (Nose side, VISIBILITY-001) make both countable
+instead of silent. The Nose-side permission is **enforced at the submit
+point** (`packetSubmissionAllowed` in `nose_pipe_reader.zig`), not merely
+logged — an operator topology switch can never create a duplicate detection
+authority. Takeover is evidence-driven (kernel rows while the Nose
+submitted-frame counter stands still), so an idle network never flaps the
+mode; a resumed Nose stands the kernel back down before the next record is
+submitted. `AEGIS_CAPTURE_PRIMARY=kernel` supersedes `AEGIS_CAPTURE_SPLIT=1`
+and fails open to `npcap_primary` when no kernel provider exists.
 
 ## What gates enforcement today (by design)
 

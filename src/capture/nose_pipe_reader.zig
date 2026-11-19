@@ -26,6 +26,37 @@ const std = @import("std");
 const canonical = @import("../contract/canonical_event.zig");
 const pipeline_queue = @import("../pipeline/event_queue.zig");
 const runtime_state = @import("../pipeline/runtime_state.zig");
+const source_arbiter = @import("source_arbiter.zig");
+
+// ============================================================
+// OBSERVABILITY-001: bounded Nose backpressure (PACE-MF-001 pattern)
+// ============================================================
+// The reader used to drop immediately on a full queue share. The Go pipe
+// writer is the natural upstream buffer, so a short bounded pause lets the
+// consumer drain and turns a would-be real loss into a counted wait. The hard
+// bound matters: a stuck consumer must end in a counted drop, never a hung
+// reader. Same strict limits and stop-signal check as the minifilter pacer.
+const NOSE_PACE_MARGIN: u64 = 256;
+const NOSE_PACE_MAX_WAITS_MS: u32 = 5;
+
+/// Pure gate: wait when our own Npcap ingress share is within `margin` of cap.
+pub fn noseShouldPace(occupancy: u64, cap: u64, margin: u64) bool {
+    return occupancy + margin >= cap;
+}
+
+fn paceBeforeSubmit(stopSignal: *std.atomic.Value(bool)) void {
+    var waits: u32 = 0;
+    while (waits < NOSE_PACE_MAX_WAITS_MS and !stopSignal.load(.acquire) and
+        noseShouldPace(
+        pipeline_queue.sourceOccupancy(.capture_npcap),
+        pipeline_queue.SOURCE_OCCUPANCY_CAP,
+        NOSE_PACE_MARGIN,
+    )) {
+        std.time.sleep(1 * std.time.ns_per_ms);
+        waits += 1;
+        _ = runtime_state.g_nose_pace_waits.fetchAdd(1, .monotonic);
+    }
+}
 
 // ============================================================
 // Win32 Pipe Constants
@@ -327,8 +358,7 @@ pub fn runPipeReaderLoop(stopSignal: *std.atomic.Value(bool)) void {
         std.log.info("[NOSE PIPE] client disconnected, waiting for next...", .{});
     }
 
-    std.log.info("[NOSE PIPE] reader loop exiting (read={d} drop={d} submitted={d})",
-        .{ g_reader_stats.frames_read, g_reader_stats.frames_dropped, g_reader_stats.frames_submitted });
+    std.log.info("[NOSE PIPE] reader loop exiting (read={d} drop={d} submitted={d})", .{ g_reader_stats.frames_read, g_reader_stats.frames_dropped, g_reader_stats.frames_submitted });
 }
 
 fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
@@ -418,12 +448,31 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
         g_last_event_id = event.event_id;
         runtime_state.g_nose_last_event_id.store(event.event_id, .monotonic);
 
+        // VISIBILITY-001: enforce the arbiter's packet-side permission AT THE
+        // SUBMIT POINT (it used to be log-only). In kernel-primary ingress the
+        // frame is drained and counted as shadow — visible, never a silent
+        // loss, and never a second detection authority alongside WFP. Every
+        // other mode, including the pre-publish `undecided` state, submits
+        // exactly as before (so the running soak is unaffected).
+        if (source_arbiter.noseFrameIsShadowed(
+            runtime_state.g_capture_mode.load(.acquire),
+            runtime_state.g_wfp_provider_state.load(.acquire),
+        )) {
+            _ = runtime_state.g_nose_shadow_frames.fetchAdd(1, .monotonic);
+            std.log.debug("[NOSE PIPE] frame shadowed (kernel-primary ingress): event_id={d}", .{event.event_id});
+            continue;
+        }
+
         // Submit directly to the queue consumed by event_processor. There is
         // no second acquisition queue between canonical validation and detect.
         // The full DecodedFrame goes in so v2 sidecars survive to the flow
         // stage (V6-FLOW-036) and v3 payload/provenance reaches Zig detection.
         // v1/v2 frames carry no wire payload (metadata-only compatibility);
         // legacy v3-unaware callers still supply an empty slice.
+        // OBSERVABILITY-001: bounded backpressure before the admission attempt.
+        // A pause is not a loss (the Go pipe buffers upstream); after the hard
+        // 5 ms bound the existing counted-drop path below still applies.
+        paceBeforeSubmit(stopSignal);
         if (pipeline_queue.pushDecodedFrame(&frame, frame.payload)) {
             g_reader_stats.frames_submitted += 1;
             _ = runtime_state.g_nose_frames_submitted.fetchAdd(1, .monotonic);
@@ -443,6 +492,18 @@ test "PipeReaderStats default zeros" {
     const stats = PipeReaderStats{};
     try std.testing.expect(stats.frames_read == 0);
     try std.testing.expect(stats.frames_dropped == 0);
+}
+
+test "OBSERVABILITY-001 noseShouldPace gates on the near-full share" {
+    const cap: u64 = 1000;
+    const margin: u64 = NOSE_PACE_MARGIN;
+    // Well below the cap: no backpressure.
+    try std.testing.expect(!noseShouldPace(100, cap, margin));
+    try std.testing.expect(!noseShouldPace(cap - margin - 1, cap, margin));
+    // At/inside the margin: pause. Boundary is inclusive (occupancy+margin>=cap).
+    try std.testing.expect(noseShouldPace(cap - margin, cap, margin));
+    try std.testing.expect(noseShouldPace(cap - 1, cap, margin));
+    try std.testing.expect(noseShouldPace(cap, cap, margin));
 }
 
 test "FRAME_SIZE matches canonical wire payload" {

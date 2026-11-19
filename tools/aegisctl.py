@@ -546,10 +546,17 @@ def _format_queue_rows(response: dict) -> list[str]:
                 row += f" reason={wfp['reason']}"
             if wfp.get("shadow_rows"):
                 row += f" shadow={wfp['shadow_rows']}"
+            # VISIBILITY-001: Nose frames drained by the submit-point guard in
+            # kernel-primary mode. Only rendered when a new daemon reports it,
+            # so older daemons stay byte-identical.
+            if wfp.get("nose_shadow_frames"):
+                row += f" nose_shadow={wfp['nose_shadow_frames']}"
         if state == "unavailable":
             row += " (kernel flow rows absent until provider returns)"
         elif state == "unknown":
             row += " (telemetry loop has not reported)"
+        elif wfp.get("mode") == "kernel_primary":
+            row += " (kernel owns ingress by operator opt-in; Nose frames shadowed, not lost)"
         elif wfp.get("kernel_owned"):
             row += " (kernel owns network ingress; Npcap not delivering)"
         rows.append(row)
@@ -2526,8 +2533,14 @@ def main() -> int:
     policy_sub = policy.add_subparsers(dest="policy_command")
     policy_sub.add_parser("list"); pshow = policy_sub.add_parser("show"); pshow.add_argument("--id", required=True)
     policy_sub.add_parser("verify"); policy_sub.add_parser("validate")
-    preload = policy_sub.add_parser("reload"); pen = policy_sub.add_parser("enable"); pen.add_argument("--id", required=True)
-    pdis = policy_sub.add_parser("disable"); pdis.add_argument("--id", required=True)
+    # OPERATOR-001: these verbs stay REGISTERED so the fail-closed gate stays
+    # testable (tests/runtime/test_gate_e.py), but --help must not advertise an
+    # apply step that does not exist. Real state change is
+    # configs/disabled_rules.json + `rules reload` (privileged, postcondition).
+    _unavail = "UNAVAILABLE (fail-closed, exit 4) — use configs/disabled_rules.json + rules reload"
+    preload = policy_sub.add_parser("reload", help=_unavail)
+    pen = policy_sub.add_parser("enable", help=_unavail); pen.add_argument("--id", required=True)
+    pdis = policy_sub.add_parser("disable", help=_unavail); pdis.add_argument("--id", required=True)
     policy.set_defaults(policy_command="list", func=cmd_policy)
     simulate = sub.add_parser("simulate", help="Generate test traffic")
     sim_sub = simulate.add_subparsers(dest="simulate_command")

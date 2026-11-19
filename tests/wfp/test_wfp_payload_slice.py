@@ -49,4 +49,5 @@ def test_wfp_payload_slice_c_regression(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
     )
-    assert "PASS (5 cases)" in result.stdout
+    # RULE-COVERAGE-001 added the outbound TCP-flags slice case (5 -> 6).
+    assert "PASS (6 cases)" in result.stdout

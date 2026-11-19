@@ -28,15 +28,27 @@ fn CTL_CODE(device_type: u32, function: u32, method: u32, access: u32) u32 {
 }
 
 pub const IOCTL_AEGIS_READ_EVENTS = CTL_CODE(FILE_DEVICE_NETWORK, 0x800, METHOD_BUFFERED, FILE_READ_DATA);
-pub const IOCTL_AEGIS_GET_STATS   = CTL_CODE(FILE_DEVICE_NETWORK, 0x802, METHOD_BUFFERED, FILE_READ_DATA);
+pub const IOCTL_AEGIS_GET_STATS = CTL_CODE(FILE_DEVICE_NETWORK, 0x802, METHOD_BUFFERED, FILE_READ_DATA);
 
 // ============================================================
 // WFP Event Header (must match aegis_wfp.h AEGIS_EVENT_HEADER)
 // EVT-213: 48-byte stride. The kernel writes an explicit reserved2
 // before timestamp so its packed record equals this extern layout:
 // payload_length @20, rule_id @24, severity @28, timestamp @40.
-// Pinned by the layout test at the bottom of this file.
+// RULE-COVERAGE-001: the word at @32 is TCP_FLAGS_META (low 8 bits raw
+// flags, bit8 PRESENT). It is still 4 bytes and still at the same offset,
+// so the packed stride is unchanged. Pinned by the layout test below.
 // ============================================================
+
+pub const WFP_TCP_FLAGS_MASK: u32 = 0x000000FF;
+pub const WFP_TCP_FLAGS_PRESENT: u32 = 0x00000100;
+
+/// Return the TCP flags observed by the kernel sensor, or null when the
+/// producer supplied no flag evidence (inbound WFP, UDP/ICMP, gather fail).
+pub fn wfpTcpFlags(hdr: *align(1) const WfpEventHeader) ?u8 {
+    if ((hdr.tcp_flags_meta & WFP_TCP_FLAGS_PRESENT) == 0) return null;
+    return @truncate(hdr.tcp_flags_meta & WFP_TCP_FLAGS_MASK);
+}
 
 pub const WfpEventHeader = extern struct {
     event_type: u32,
@@ -51,7 +63,7 @@ pub const WfpEventHeader = extern struct {
     payload_length: u32,
     rule_id: u32,
     severity: u32,
-    reserved: u32,
+    tcp_flags_meta: u32,
     timestamp: u64,
 };
 
@@ -127,10 +139,10 @@ pub fn init() bool {
     const handle = CreateFileA(
         WFP_DEVICE_NAME,
         GENERIC_READ, // PEP-001: read-only transport — no write access
-        0,       // no sharing
-        null,    // default security
+        0, // no sharing
+        null, // default security
         OPEN_EXISTING,
-        0,       // no flags
+        0, // no flags
         INVALID_HANDLE_VALUE,
     );
 
@@ -186,7 +198,8 @@ pub fn read_events(out_buf: []u8) u32 {
     const ok = DeviceIoControl(
         g_device.?,
         IOCTL_AEGIS_READ_EVENTS,
-        null, 0,            // no input buffer
+        null,
+        0, // no input buffer
         out_buf.ptr,
         buf_size,
         &bytes_returned,
@@ -220,7 +233,8 @@ pub fn get_stats() ?WfpRingStats {
     const ok = DeviceIoControl(
         g_device.?,
         IOCTL_AEGIS_GET_STATS,
-        null, 0,            // no input buffer
+        null,
+        0, // no input buffer
         @ptrCast(&stats),
         @sizeOf(WfpRingStats),
         &bytes_returned,
@@ -345,5 +359,32 @@ test "EVT-213: WFP event header pins the 48-byte packed kernel stride" {
     try std.testing.expectEqual(@as(usize, 20), @offsetOf(WfpEventHeader, "payload_length"));
     try std.testing.expectEqual(@as(usize, 24), @offsetOf(WfpEventHeader, "rule_id"));
     try std.testing.expectEqual(@as(usize, 28), @offsetOf(WfpEventHeader, "severity"));
+    try std.testing.expectEqual(@as(usize, 32), @offsetOf(WfpEventHeader, "tcp_flags_meta"));
     try std.testing.expectEqual(@as(usize, 40), @offsetOf(WfpEventHeader, "timestamp"));
+}
+
+test "RULE-COVERAGE-001: WFP TCP flags meta distinguishes absence from zero" {
+    var hdr = WfpEventHeader{
+        .event_type = 0,
+        .source_ip = 0,
+        .dest_ip = 0,
+        .source_port = 0,
+        .dest_port = 0,
+        .protocol = 6,
+        .direction = 1,
+        .layer_id = 0,
+        .flags = 0,
+        .payload_length = 0,
+        .rule_id = 0,
+        .severity = 0,
+        .tcp_flags_meta = 0,
+        .timestamp = 0,
+    };
+    try std.testing.expect(wfpTcpFlags(&hdr) == null);
+    hdr.tcp_flags_meta = WFP_TCP_FLAGS_PRESENT; // valid zero flags
+    try std.testing.expectEqual(@as(?u8, 0), wfpTcpFlags(&hdr));
+    hdr.tcp_flags_meta = WFP_TCP_FLAGS_PRESENT | 0x02; // SYN
+    try std.testing.expectEqual(@as(?u8, 0x02), wfpTcpFlags(&hdr));
+    hdr.tcp_flags_meta = 0x02; // flags without PRESENT is not evidence
+    try std.testing.expect(wfpTcpFlags(&hdr) == null);
 }

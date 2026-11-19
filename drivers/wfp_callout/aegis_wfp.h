@@ -182,6 +182,15 @@ typedef struct _AEGIS_WFP_FILTER_STATE {
 #define AEGIS_EVENT_FLAG_V6_SIDECAR 0x01
 #define AEGIS_V6_SIDECAR_SIZE       32  /* src16 (16) ++ dst16 (16) */
 
+/* RULE-COVERAGE-001: AEGIS_EVENT_HEADER.reserved (offset 32) is reused as
+ * TCP_FLAGS_META. Low 8 bits = raw TCP flags byte; bit8 = PRESENT. The
+ * 48-byte record layout and all field offsets are unchanged. Outbound TCP
+ * callouts set PRESENT when the transport header was readable; inbound WFP
+ * rows leave it clear because WFP delivers them starting at the L7 payload.
+ */
+#define AEGIS_TCP_FLAGS_MASK        0x000000FFUL
+#define AEGIS_TCP_FLAGS_PRESENT     0x00000100UL
+
 /* Ring used-space helper (call under spinlock) */
 #define AEGIS_RING_USED() \
     ((g_RingWriteOffset >= g_RingReadOffset) ? \
@@ -208,7 +217,7 @@ typedef struct _AEGIS_EVENT_HEADER {
     UINT32  payload_length; /* EVT-231: payload bytes (0=empty/unavailable/unsupported; <= AEGIS_MAX_PAYLOAD_SIZE) */
     UINT32  rule_id;        /* Matched rule ID (0=none) */
     UINT32  severity;       /* 0=Low 1=Med 2=High 3=Critical */
-    UINT32  reserved;       /* Reserved */
+    UINT32  reserved;       /* RULE-COVERAGE-001: TCP_FLAGS_META (low 8=flags, bit8=PRESENT) */
     UINT32  reserved2;      /* Reserved - aligns timestamp to @40 (EVT-213) */
     UINT64  timestamp;      /* KeQueryPerformanceCounter */
 } AEGIS_EVENT_HEADER;

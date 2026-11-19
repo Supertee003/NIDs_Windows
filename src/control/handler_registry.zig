@@ -698,7 +698,7 @@ const handlers = struct {
         var out = std.ArrayList(u8).init(a);
         errdefer out.deinit();
         var writer = out.writer();
-        writer.print("{{\"queue_size\":{},\"depth\":{},\"depth_peak\":{},\"reserved_network_slots\":{},\"source_occupancy_cap\":{},\"critical_slots\":{},\"critical_pushed_total\":{},\"reserved_tail_shed\":{},\"source_quota_shed\":{},\"pushed_total\":{},\"dropped_total\":{},\"minifilter_pipeline_dropped\":{},\"shed_overload\":{},\"fim_probe\":{{\"batch_records\":{},\"batch_duplicates\":{},\"batch_duplicates_per_pid\":{},\"batch_overflow\":{},\"native_overflow\":{},\"minifilter\":{{\"records\":{},\"duplicates\":{},\"duplicates_per_pid\":{},\"duplicates_same_ts\":{}}},\"native_poll\":{{\"records\":{},\"duplicates\":{}}}}},\"by_source\":[", .{
+        writer.print("{{\"queue_size\":{},\"depth\":{},\"depth_peak\":{},\"reserved_network_slots\":{},\"source_occupancy_cap\":{},\"critical_slots\":{},\"critical_pushed_total\":{},\"reserved_tail_shed\":{},\"source_quota_shed\":{},\"pushed_total\":{},\"dropped_total\":{},\"minifilter_pipeline_dropped\":{},\"shed_overload\":{},\"nose_pace_waits\":{},\"fim_probe\":{{\"batch_records\":{},\"batch_duplicates\":{},\"batch_duplicates_per_pid\":{},\"batch_overflow\":{},\"native_overflow\":{},\"minifilter\":{{\"records\":{},\"duplicates\":{},\"duplicates_per_pid\":{},\"duplicates_same_ts\":{}}},\"native_poll\":{{\"records\":{},\"duplicates\":{}}}}},\"by_source\":[", .{
             event_queue.PIPELINE_QUEUE_SIZE,
             event_queue.queueDepth(),
             event_queue.queuePeakDepth(),
@@ -712,6 +712,7 @@ const handlers = struct {
             dropped_total,
             state_mod.g_minifilter_pipeline_dropped.load(.acquire),
             telemetry.g_shed_overload.load(.acquire),
+            state_mod.g_nose_pace_waits.load(.acquire),
             state_mod.g_fim_batch_records.load(.acquire),
             state_mod.g_fim_batch_duplicates.load(.acquire),
             state_mod.g_fim_batch_duplicates_per_pid.load(.acquire),
@@ -804,7 +805,7 @@ const handlers = struct {
         // network ingress; `shadow_rows` counts kernel rows drained while
         // the packet path owns it (visible, never a silent drop).
         const cap_mode = state_mod.g_capture_mode.load(.acquire);
-        writer.print("\"state\":\"{s}\",\"reads\":{},\"rows\":{},\"last_bytes\":{},\"mode\":\"{s}\",\"reason\":\"{s}\",\"shadow_rows\":{},\"kernel_owned\":{}}}", .{
+        writer.print("\"state\":\"{s}\",\"reads\":{},\"rows\":{},\"last_bytes\":{},\"mode\":\"{s}\",\"reason\":\"{s}\",\"shadow_rows\":{},\"nose_shadow_frames\":{},\"kernel_owned\":{}}}", .{
             providerStateName(state_mod.g_wfp_provider_state.load(.acquire)),
             state_mod.g_wfp_reads.load(.acquire),
             state_mod.g_wfp_rows.load(.acquire),
@@ -812,7 +813,12 @@ const handlers = struct {
             source_arbiter.modeName(cap_mode),
             source_arbiter.reasonName(state_mod.g_capture_reason.load(.acquire)),
             state_mod.g_wfp_shadow_rows.load(.acquire),
-            cap_mode == @intFromEnum(source_arbiter.Mode.kernel_fallback),
+            // VISIBILITY-001: Nose frames drained instead of submitted while
+            // kernel ingress owns the network. Distinct from `shadow_rows`
+            // (kernel side); both must be visible for a topology switch.
+            state_mod.g_nose_shadow_frames.load(.acquire),
+            cap_mode == @intFromEnum(source_arbiter.Mode.kernel_fallback) or
+                cap_mode == @intFromEnum(source_arbiter.Mode.kernel_primary),
         }) catch return null;
         // EVT-230: kernel minifilter host telemetry health (file/process
         // events via \AegisMinifilterPort), stamped by the reader loop.
@@ -851,6 +857,49 @@ const handlers = struct {
             hn.overflow,
             hn.last_poll_ms,
         }) catch return null;
+        // OBSERVABILITY-001: bounded per-rule fire telemetry. Direct-mapped
+        // sample (fixed memory under hot-reload); collisions are counted, never
+        // merged. `confirmed` is the available TP proxy. No FP counter is
+        // fabricated: false-positive ground truth needs analyst labels the
+        // product does not own (an always-zero FP gauge would be a mock).
+        writer.writeAll(",\"rule_fire\":{\"confirmed\":") catch return null;
+        writer.print("{},\"collisions\":{},\"top\":[", .{
+            state_mod.g_confirmed_blocks.load(.acquire) +|
+                state_mod.g_confirmed_quarantines.load(.acquire),
+            state_mod.g_rule_fire_collisions.load(.acquire),
+        }) catch return null;
+        var fire_slots: [state_mod.RULE_FIRE_SLOTS]usize = undefined;
+        var fire_count: usize = 0;
+        for (0..state_mod.RULE_FIRE_SLOTS) |slot_idx| {
+            if (state_mod.g_rule_fire_counts[slot_idx].load(.acquire) == 0) continue;
+            fire_slots[fire_count] = slot_idx;
+            fire_count += 1;
+        }
+        var fs_i: usize = 0;
+        while (fs_i < fire_count) : (fs_i += 1) {
+            var best = fs_i;
+            var fs_j = fs_i + 1;
+            while (fs_j < fire_count) : (fs_j += 1) {
+                if (state_mod.g_rule_fire_counts[fire_slots[fs_j]].load(.acquire) >
+                    state_mod.g_rule_fire_counts[fire_slots[best]].load(.acquire)) best = fs_j;
+            }
+            if (best != fs_i) {
+                const tmp = fire_slots[fs_i];
+                fire_slots[fs_i] = fire_slots[best];
+                fire_slots[best] = tmp;
+            }
+        }
+        const fire_top = @min(fire_count, 10);
+        var first_fire = true;
+        for (fire_slots[0..fire_top]) |idx| {
+            if (!first_fire) writer.writeByte(',') catch return null;
+            first_fire = false;
+            writer.print("{{\"rule_id\":{},\"fires\":{}}}", .{
+                state_mod.g_rule_fire_ids[idx].load(.acquire),
+                state_mod.g_rule_fire_counts[idx].load(.acquire),
+            }) catch return null;
+        }
+        writer.writeAll("]}") catch return null;
         writer.writeByte('}') catch return null;
         return out.toOwnedSlice() catch null;
     }

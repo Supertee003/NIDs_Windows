@@ -640,6 +640,13 @@ function renderBanner(){
   if(!c.available)msg='Control plane unavailable — subsystem data below is diagnostic only (PID/process inspection). Start the AEGIS runtime for authoritative state.';
   else if(snap.forensic&&snap.forensic.integrity==='failed')msg='Forensic integrity check FAILED — hash chain verification failed. Treat forensic records as suspect.';
   else if(snap.feed&&snap.feed.available===false)msg='No evidence log yet (logs/aegis_core.ndjson absent). Detection feed will populate once the runtime writes canonical events.';
+  // OPERATOR-001: per-threat banner from the SAME read-only snapshot the rest
+  // of the page uses. DEFCON 5 (SAFE) shows nothing; no new control call and
+  // no enforcement claim — the daemon counter remains the authority.
+  else if(snap.threat&&Number(snap.threat.defcon||5)<=3){
+    const th=snap.threat;
+    msg='Threat posture '+(th.label||'HIGH')+' (DEFCON '+th.defcon+') — '+(th.critical||0)+' critical, '+(th.high||0)+' high detections recorded. Detection-only; no enforcement implied.';
+  }
   b.textContent=msg;b.classList.toggle('off',!!msg);
 }
 
@@ -826,7 +833,7 @@ function renderKernel(){
   const mState=m?(m.state==='ok'?'<span class="pill ok">OK</span>':`<span class="pill warn">${esc(m.state||'?')}</span>`):'<span class="pill mut">NO DATA</span>';
   const pushed=Number(kp.pushed||0)+Number(kf.pushed||0),dropped=Number(kp.dropped||0)+Number(kf.dropped||0);
   let html='<div class="cards">';
-  const wArb=w&&w.mode?` · ${esc(w.mode)}${w.kernel_owned?' (owner)':''}${Number(w.shadow_rows||0)>0?' · shadow '+num(w.shadow_rows):''}`:'';
+  const wArb=w&&w.mode?` · ${esc(w.mode)}${w.kernel_owned?' (owner)':''}${Number(w.shadow_rows||0)>0?' · shadow '+num(w.shadow_rows):''}${Number(w.nose_shadow_frames||0)>0?' · nose_shadow '+num(w.nose_shadow_frames):''}`:'';
   html+=kpi('WFP payload callout',wState,'',w?`reads ${num(w.reads)} · rows ${num(w.rows)} · last ${num(w.last_bytes)} B${wArb}`:'no wfp block in queue.stats');
   html+=kpi('Minifilter (file/process)',mState,'',m?`reads ${num(m.reads)} · rows ${num(m.rows)} · dropped ${num(m.dropped)}`:'no minifilter block in queue.stats');
   html+=kpi('Kernel ingress pushed',num(pushed),'ok',`wfp ${num(kp.pushed)} · fim ${num(kf.pushed)}`);

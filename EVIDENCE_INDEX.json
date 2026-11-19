@@ -21,6 +21,201 @@
   },
   "evidence": [
     {
+      "id": "OBSERVABILITY-001-E2-20261119",
+      "head_sha": "f0baadf",
+      "timestamp": "2026-11-19",
+      "title": "Honest observability closure: shed_overload + process generation in health, bounded Nose backpressure, bounded per-rule fire telemetry; latency claim recorded STALE",
+      "level": "E2",
+      "component": "state_machine -> runtime_state -> daemon startup -> nose_pipe_reader -> event_processor -> handler_registry -> host_soak_check",
+      "flow_id": "HEALTH-INTEGRITY, NET-INGRESS, DETECTION-METRICS, SOAK-VERDICT",
+      "description": "Slice 4 closed without host effects or wire changes. Added shed_overload to health.data_integrity (deliberately not a DEGRADED trigger; scored by --shed-budget) and process_generation_ms pinned at startup so soak invalidates counter deltas on a restart even when counters did not go backwards. Added bounded <=5ms stop-checked Nose backpressure on a near-full Npcap share (mirrors PACE-MF-001) with g_nose_pace_waits on queue.stats. Added a bounded 256-slot direct-mapped per-rule fire counter with honest collision accounting, fed at the 4 authoritative Zig detection sites and surfaced as queue.stats.rule_fire top-10. Ring counters already existed for disk/ring telemetry. Item 4 (latency 1ns) recorded STALE: all 10 stages already observed, 1ns is the log2 bucket floor, coarse-clock fixed at 02b4e5d/ADR-0013. CPU/RAM gauges and a fabricated FP counter were deliberately NOT added (new native linkage + E5 risk; no runtime FP producer -> mock).",
+      "files_verified": [
+        "analysis/current-head/OBSERVABILITY-001-PATCH.md",
+        "analysis/current-head/LATENCY-STALE-20261119.md",
+        "src/control/state_machine.zig",
+        "src/pipeline/runtime_state.zig",
+        "src/daemon.zig",
+        "src/capture/nose_pipe_reader.zig",
+        "src/pipeline/event_processor.zig",
+        "src/control/handler_registry.zig",
+        "tools/aegisctl/api/control_api.py",
+        "tools/host_soak_check.py"
+      ],
+      "tests": [
+        "zig build -> exit 0",
+        "zig build test --summary all -> 2116 passed / 11 skipped / 0 failed (2127 total)",
+        "pytest soak verdict + health + queue + control_retry -> 74 passed",
+        "OBSERVABILITY-001 noseShouldPace boundary test + recordRuleFire collision test -> PASS"
+      ],
+      "result": "PASS_E2",
+      "finding": "All changes are additive control-plane JSON or read-only counters; no enforcement, no host effect, no wire change. STALE/mock-prone items were closed by documented decision rather than unsafe code.",
+      "evidence_artifact": "analysis/current-head/OBSERVABILITY-001-PATCH.md",
+      "limitations": [
+        "CPU/RAM gauges deferred pending owner decision, native linkage, off-hot-path sampler and E5 proof.",
+        "Per-rule fire counts are a bounded sample; collisions counted, not attributed.",
+        "Board remains 5/6; no tag/publish; fresh soak for final candidate pending."
+      ]
+    },
+    {
+      "id": "OPERATOR-001-HONESTY-E2-20261119",
+      "head_sha": "f0baadf",
+      "timestamp": "2026-11-19",
+      "title": "Operator surfaces tell the truth: per-threat banner from daemon DEFCON; fail-closed verbs and retired notifier stay that way",
+      "level": "E2",
+      "component": "aegisctl web dashboard + CLI help + operator docs",
+      "flow_id": "OPERATOR-VIEW, CONTROL-AUTHORITY, SIEM-OBSERVE",
+      "description": "Slice 3 closed without adding unsafe capability. Added a per-threat dashboard banner rendered from the existing read-only snapshot (snap.threat, daemon-owned DEFCON) with fail-closed/integrity/no-feed branches keeping precedence; SAFE shows nothing. Kept push notifier RETIRED (no egress/secrets/runner), kept policy reload/enable/disable fail-closed with exit 4 (verbs remain registered so the gate stays testable) but made --help state UNAVAILABLE and name the real path, kept rules mutation .privileged with postcondition, and kept ts_policy IR as a verify-only mirror with an observe-only verdict. Corrected stale docs (.operate, policy.verify NOT_IMPLEMENTED). No new authority, no egress, no host effect.",
+      "files_verified": [
+        "analysis/current-head/OPERATOR-001-PATCH.md",
+        "tools/aegisctl/web_dashboard/app.py",
+        "tools/aegisctl.py",
+        "docs/OPERATOR_COMMAND_MAP.md",
+        "docs/runbooks/RB-011-policy-ir-mirror-workflow.md",
+        "tests/tools/test_operator_honesty.py",
+        "tests/tools/test_web_dashboard.py"
+      ],
+      "tests": [
+        "pytest operator honesty + web dashboard + gate E + stale doc sweep -> 48 passed, 9 subtests passed",
+        "aegisctl.py policy --help -> UNAVAILABLE / disabled_rules.json / rules reload",
+        "full worktree suite (before this patch) -> 1394 passed, 35 skipped, 1 xfailed, 1 xpassed"
+      ],
+      "result": "PASS_E2",
+      "finding": "Deliberate safety boundaries are closed by decision, not by implementing egress or authority. SIEM forwarding was already real opt-in (AEGIS_SIEM env); only the view needed work.",
+      "evidence_artifact": "analysis/current-head/OPERATOR-001-PATCH.md",
+      "limitations": [
+        "No push alerting: requires owner decision plus secrets, runner and E5 lab proof.",
+        "siem_config.json is a pinned contract, not a runtime read.",
+        "Board remains 5/6; no tag/publish."
+      ]
+    },
+    {
+      "id": "VISIBILITY-001-KERNEL-PRIMARY-E2-20261119",
+      "head_sha": "f0baadf",
+      "timestamp": "2026-11-19",
+      "title": "Enforced kernel-primary ingress: Nose submit-point guard, provider interlock, startup publication, visible shadow counter",
+      "level": "E2",
+      "component": "source_arbiter -> wfp_telemetry -> daemon startup -> nose_pipe_reader -> queue.stats -> aegisctl",
+      "flow_id": "CAPTURE-ARBITRATION, NET-INGRESS, QUEUE-STATS",
+      "description": "Closes the VISIBILITY-001 blocker: packet_may_submit was log-only, so a WFP-primary mode would have duplicated detection authority. Adds Mode.kernel_primary (append-only ordinal 5), AEGIS_CAPTURE_PRIMARY=kernel opt-in, and noseFrameIsShadowed(mode, provider_state) enforced BEFORE pushDecodedFrame. Denied Nose frames increment g_nose_shadow_frames and are drained (continue), never silently lost. Fails open unless the kernel provider is actually 'ok'; publishes the selected mode at daemon startup before any capture thread spawns, closing the startup duplicate window. Default stays npcap_primary, so the running soak is byte-identical. queue.stats.wfp gains nose_shadow_frames and kernel_owned covers both kernel modes; aegisctl CLI + web dashboard render the new state.",
+      "files_verified": [
+        "analysis/current-head/VISIBILITY-001-PATCH.md",
+        "src/capture/source_arbiter.zig",
+        "src/capture/nose_pipe_reader.zig",
+        "src/capture/wfp_telemetry.zig",
+        "src/daemon.zig",
+        "src/pipeline/runtime_state.zig",
+        "src/control/handler_registry.zig",
+        "tools/aegisctl.py",
+        "tests/wfp/test_capture_source_arbitration.py",
+        "tests/tools/test_aegisctl_queue.py"
+      ],
+      "tests": [
+        "zig build -> PASS",
+        "zig all_tests -> 2114 passed / 11 skipped / 0 failed (2125 total)",
+        "zig out-of-unit -> 1234 passed",
+        "VISIBILITY-001 Zig tests -> 5/5 OK",
+        "pytest wfp arbitration + aegisctl queue -> 24 passed",
+        "python tools/truth.py verify -> TRUTH_INVALID (expected: uncommitted source)"
+      ],
+      "result": "PASS_E2",
+      "finding": "Enforcement is at the submit point with a visible counter; fail-open preserved; default posture unchanged. No E5: no install, restart, service change, topology switch or load injection on the running soak host.",
+      "evidence_artifact": "analysis/current-head/VISIBILITY-001-PATCH.md",
+      "limitations": [
+        "E5 for the new binary pending; fresh soak window owner-approved but not started.",
+        "kernel_primary requires a live WFP provider; absence fails open to Nose by design.",
+        "Board remains 5/6; no tag/publish; no host effect."
+      ]
+    },
+    {
+      "id": "WFP-RULE-SCOPE-E1-20261119",
+      "head_sha": "f0baadf",
+      "timestamp": "2026-11-19",
+      "title": "WFP sensor boundaries stated as rule-scope constraints (4096 B, no reassembly, ciphertext, inbound flags absent)",
+      "level": "E1",
+      "component": "drivers/wfp_callout -> wfp_telemetry -> event_processor rule layers",
+      "flow_id": "CAPTURE-ARBITRATION, DETECTION-L4, DETECTION-L7",
+      "description": "Slice 2 items 3-4. Records that the WFP callout copies at most AEGIS_MAX_PAYLOAD_SIZE=4096 transport bytes (4064 when the 32-byte identity sidecar is present), performs no stream reassembly, and leaves TLS bodies as ciphertext; inbound WFP carries no TCP-flags evidence while outbound does (RULE-COVERAGE-001). Maps those facts to rule evaluability: L4 rules work on all network sources (exact flags outbound only); network-AC L7 rules work only on plaintext bytes within one bounded packet; observe-only protocol anomalies remain Npcap-only; kernel process/file/pipe rules never match wire bytes (FP-1 fix). Catalog coverage 23/23 and evaluable coverage 23/23 remain distinct from per-source coverage.",
+      "files_verified": [
+        "analysis/current-head/WFP-RULE-SCOPE-20261119.md",
+        "drivers/wfp_callout/aegis_wfp.h",
+        "drivers/wfp_callout/aegis_wfp_callout.c",
+        "src/pipeline/event_processor.zig"
+      ],
+      "tests": [
+        "static inspection of AEGIS_MAX_PAYLOAD_SIZE and payload_length contract",
+        "static inspection of ruleLayerIndexForSource / resolveRuleAutomaton / L4 gate / Npcap-only L7 extraction"
+      ],
+      "result": "PASS_E1",
+      "finding": "Sensor boundaries are now explicit; no rule is claimed WFP-verified from a code-level statement. E5 measurement still required.",
+      "evidence_artifact": "analysis/current-head/WFP-RULE-SCOPE-20261119.md",
+      "limitations": [
+        "E1 only; no host measurement of 4096-byte truncation or split-pattern behaviour."
+      ]
+    },
+    {
+      "id": "RULE-COVERAGE-001-RULES-E2-20261119",
+      "head_sha": "f0baadf",
+      "timestamp": "2026-11-19",
+      "title": "23/23 rules catalog-and-evaluable: WFP L4 flags, R2003 command-line path, FP-1 reconciled, regex ownership pinned",
+      "level": "E2",
+      "component": "rules.json -> rule_loader -> layer automata / L4 matcher -> ETW command line",
+      "flow_id": "DETECTION-L4-KERNEL, DETECTION-R2003",
+      "description": "Adds E2 proof that (1) outbound WFP TCP flags reach l4.matches, (2) the ETW CommandLine TLV decodes when a provider supplies it and R2003's kernel_process automaton matches it, (3) wire bytes never receive a KERNEL_PROCESS rule id, (4) all 23 rules have a vector fixture and a shared rule-id hash, and (5) regex_pattern is advisory to Zig and owned by Python Brain Tier-2 only. FP-1 is reconciled as CLOSED-E5 (fixed and host-proven at build source f4cde3c; the stale DETECTION_VALIDATION.md row belongs to the records tree). FN-1 stays OPEN as an honest host-sensor limitation (ProcessStart v0..v4 has no CommandLine on this host).",
+      "files_verified": [
+        "analysis/current-head/RULE-COVERAGE-001-PATCH.md",
+        "analysis/current-head/RULE-COVERAGE-001-MATRIX.md",
+        "src/windows/etw_realtime.zig",
+        "src/pipeline/rule_loader.zig",
+        "tests/security/test_detection_contract_pin.py",
+        "tests/lab/test_kali_script_coverage.py"
+      ],
+      "tests": [
+        "zig build -> PASS",
+        "zig unit suite -> 2109 passed / 11 skipped / 0 failed",
+        "zig out-of-unit suite -> 1234 passed / 0 failed",
+        "pytest contract + vector coverage -> 15 passed / 3 skipped",
+        "python tools/truth.py verify -> TRUTH_INVALID (expected: uncommitted source)"
+      ],
+      "result": "PASS_E2",
+      "finding": "Evaluable coverage 23/23. Host-positive proof unchanged (L4 family only). No WDK build, no E5 for new source, no soak coverage for new binary.",
+      "evidence_artifact": "analysis/current-head/RULE-COVERAGE-001-MATRIX.md",
+      "limitations": [
+        "FN-1 OPEN: this host cannot supply a process command line; no fake positive.",
+        "Inbound WFP delivers packets from L7, so exact TCP-flags rules cannot fire there.",
+        "Board remains 5/6; no tag/publish; no host effect."
+      ]
+    },
+    {
+      "id": "RULE-COVERAGE-001-E2-20261119",
+      "head_sha": "f0baadf",
+      "timestamp": "2026-11-19",
+      "title": "WFP TCP flags reach the L4 matcher: outbound kernel rows can now satisfy FLAGS rules",
+      "level": "E2",
+      "component": "wfp driver -> zig consumer -> event queue -> l4 matcher",
+      "flow_id": "DETECTION-L4-KERNEL",
+      "description": "Additive reuse of AEGIS_EVENT_HEADER.reserved (@32, 48-byte layout unchanged) to carry PRESENT|tcp_flags from outbound TCP callouts, through the existing CanonicalEvent ContextFlags lane and the in-memory queue sidecar, into l4.matches. Inbound WFP and non-TCP rows leave flags absent rather than zero. event_processor now evaluates L4 predicates for .capture_wfp as well as .capture_npcap.",
+      "files_verified": [
+        "drivers/wfp_callout/aegis_wfp.h",
+        "drivers/wfp_callout/aegis_wfp_callout.c",
+        "drivers/wfp_callout/aegis_wfp_payload.h",
+        "src/policy/wfp_ioctl.zig",
+        "src/capture/wfp_telemetry.zig",
+        "src/pipeline/event_processor.zig",
+        "tests/wfp/wfp_payload_slice_test.c",
+        "analysis/current-head/RULE-COVERAGE-001-PATCH.md"
+      ],
+      "tests": [
+        "zig build -> PASS",
+        "zig unit suite -> 2106 passed / 12 skipped / 0 failed",
+        "zig out-of-unit suite -> 1234 passed / 0 failed",
+        "zig cc tests/wfp/wfp_payload_slice_test.c -> 6 cases PASS"
+      ],
+      "result": "PASS_E2",
+      "finding": "E2 only: full WDK driver build and Windows host proof pending; inbound WFP still has no flags evidence; WFP rows remain shadow while Nose is primary.",
+      "evidence_artifact": "analysis/current-head/RULE-COVERAGE-001-PATCH.md",
+      "limitations": ["No E3/E5 claim.", "No host effect or policy change.", "Board remains 5/6; no tag/publish."]
+    },
+    {
       "id": "FIM-NATIVE-OVERFLOW-001-E5-20261118",
       "head_sha": "aa42fca",
       "timestamp": "2026-11-18",
@@ -15840,8 +16035,8 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 31,
-    "E2_count": 131,
+    "E1_count": 32,
+    "E2_count": 136,
     "E3_count": 14,
     "E4_count": 4,
     "E5_count": 118,

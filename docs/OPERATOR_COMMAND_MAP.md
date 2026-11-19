@@ -123,7 +123,8 @@ blocks/quarantine/shutdown privileged-only; the tree carries no secrets
 (gitleaks green). Three accepted costs to know:
 - The repo tree and `configs/Rules.json` are writable by Authenticated
   Users, while the keeper task executes repo scripts as SYSTEM and any
-  authenticated user may trigger `rules.reload` (.operate role). Until
+  authenticated user may trigger `rules.reload` (`.privileged` role, enforced
+  by `src/control/authorization.zig` on the impersonated token). Until
   hardened, ANY local user can reach SYSTEM (via the task path) and
   mute detection (via rules+reload). Harden with the ADMIN icacls block
   in EVT-174 (root RX + logs/ M, backup first), then non-admin pytest

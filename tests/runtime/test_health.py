@@ -423,6 +423,9 @@ class TestControlApiHealthPayload(unittest.TestCase):
             "nose_pipe_errors": 4,
             "minifilter_ring_dropped": 5,
             "minifilter_pipeline_dropped": 6,
+            # OBSERVABILITY-001: additive keys carried through the projection.
+            "shed_overload": 8,
+            "process_generation_ms": 1_700_000_000_000,
         }
         payload = self._payload_for(self._daemon_with(data_integrity=integrity))
         self.assertEqual(payload["data_integrity"], integrity)

@@ -303,6 +303,48 @@ pub var g_fim_batch_duplicates = std.atomic.Value(u64).init(0);
 /// its drop counter (`minifilter_ring_dropped`) is what proves that claim.
 pub var g_fim_pace_waits = std.atomic.Value(u64).init(0);
 pub var g_fim_batch_overflow = std.atomic.Value(u64).init(0);
+/// OBSERVABILITY-001: process-generation identity for counter-reset semantics.
+/// Set once at daemon startup from the wall clock. All loss/shed atomics in
+/// this module reset at process start; a change in this value between a soak
+/// baseline and its delta proves the process restarted, so the delta must be
+/// invalidated. This is a PROCESS token, NOT an OS boot id (no durable source
+/// exists in-tree) — named honestly so readers do not over-claim.
+pub var g_process_generation_ms = std.atomic.Value(u64).init(0);
+/// OBSERVABILITY-001: times the Nose pipe reader paused instead of overflowing
+/// its Npcap ingress share (bounded, mirrors PACE-MF-001). A pause is not a
+/// loss; the pipe is the buffer and `nose_frames_dropped` proves any real loss.
+pub var g_nose_pace_waits = std.atomic.Value(u64).init(0);
+
+// OBSERVABILITY-001: bounded per-rule fire counts. Direct-mapped so memory is
+// fixed (no unbounded map under rule hot-reload). Collisions are counted, never
+// merged into another rule's count, so a slot never over-claims a rule's rate.
+pub const RULE_FIRE_SLOTS: usize = 256;
+pub var g_rule_fire_ids = [_]std.atomic.Value(u32){std.atomic.Value(u32).init(0)} ** RULE_FIRE_SLOTS;
+pub var g_rule_fire_counts = [_]std.atomic.Value(u64){std.atomic.Value(u64).init(0)} ** RULE_FIRE_SLOTS;
+pub var g_rule_fire_collisions = std.atomic.Value(u64).init(0);
+
+/// Record one Zig detection for a rule id. Called only at the authoritative
+/// detection sites in event_processor; upstream-reported rule ids never reach
+/// it (ADR-0001). rule_id 0 (non-detection) is a no-op.
+pub fn recordRuleFire(rule_id: u32) void {
+    if (rule_id == 0) return;
+    const slot = @as(usize, rule_id & (RULE_FIRE_SLOTS - 1));
+    const id_slot = &g_rule_fire_ids[slot];
+    var observed = id_slot.load(.acquire);
+    if (observed == 0) {
+        if (id_slot.cmpxchgStrong(0, rule_id, .acq_rel, .acquire)) |current| {
+            observed = current;
+        } else {
+            observed = rule_id;
+        }
+    }
+    if (observed == rule_id) {
+        _ = g_rule_fire_counts[slot].fetchAdd(1, .monotonic);
+    } else {
+        _ = g_rule_fire_collisions.fetchAdd(1, .monotonic);
+    }
+}
+
 /// Batches the native `ReadDirectoryChangesW` sessions lost to a directory
 /// buffer overflow (ERROR_NOTIFY_ENUM_DIR / zero-byte completion). Distinct
 /// from `g_fim_batch_overflow`, which counts the duplicate probe's own table
@@ -335,6 +377,10 @@ pub var g_nose_frames_read = std.atomic.Value(u64).init(0);
 pub var g_nose_frames_rejected = std.atomic.Value(u64).init(0);
 pub var g_nose_frames_submitted = std.atomic.Value(u64).init(0);
 pub var g_nose_frames_dropped = std.atomic.Value(u64).init(0);
+/// VISIBILITY-001: Nose frames drained (not submitted) because the operator
+/// selected kernel-primary ingress. A visible shadow count, never a silent
+/// loss: distinct from `g_nose_frames_dropped` (queue backpressure).
+pub var g_nose_shadow_frames = std.atomic.Value(u64).init(0);
 pub var g_nose_pipe_errors = std.atomic.Value(u64).init(0);
 pub var g_nose_last_event_id = std.atomic.Value(u64).init(0);
 pub var g_nose_duplicate_event_ids = std.atomic.Value(u64).init(0);
@@ -360,6 +406,25 @@ test "lastEventAgeMs: §4.1 age semantics, clamped (EVT-222)" {
     try std.testing.expectEqual(@as(i64, 250), lastEventAgeMs(1_000, 1_250)); // 250ms ago
     try std.testing.expectEqual(@as(i64, 0), lastEventAgeMs(2_000, 1_500)); // skew -> 0
     try std.testing.expectEqual(@as(i64, 0), lastEventAgeMs(-7, 1_000)); // defensive
+}
+
+test "OBSERVABILITY-001 recordRuleFire is bounded and collisions are honest" {
+    // Use slot 1 with two ids that map to it: 0xF0000001 and 0xF0000101.
+    const slot: usize = 1;
+    g_rule_fire_ids[slot].store(0, .release);
+    g_rule_fire_counts[slot].store(0, .release);
+    const collisions_before = g_rule_fire_collisions.load(.monotonic);
+
+    recordRuleFire(0); // non-detection: no-op
+    recordRuleFire(0xF0000001);
+    recordRuleFire(0xF0000001);
+    try std.testing.expectEqual(@as(u32, 0xF0000001), g_rule_fire_ids[slot].load(.acquire));
+    try std.testing.expectEqual(@as(u64, 2), g_rule_fire_counts[slot].load(.acquire));
+
+    // A different id on the same slot increments collisions, NOT the count.
+    recordRuleFire(0xF0000101);
+    try std.testing.expectEqual(@as(u64, 2), g_rule_fire_counts[slot].load(.acquire));
+    try std.testing.expectEqual(collisions_before + 1, g_rule_fire_collisions.load(.monotonic));
 }
 
 // PATCH-14: Rules reload mechanism.

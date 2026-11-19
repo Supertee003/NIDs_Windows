@@ -59,6 +59,7 @@ const corr_mod = @import("detection/correlator.zig");
 const telemetry = @import("pipeline/telemetry_threads.zig");
 const nose_reader = @import("capture/nose_pipe_reader.zig");
 const wfp_telemetry = @import("capture/wfp_telemetry.zig");
+const source_arbiter = @import("capture/source_arbiter.zig");
 const minifilter_reader = @import("capture/minifilter_reader.zig");
 const pipe_monitor = @import("capture/pipe_monitor.zig");
 const packet_callback = @import("pipeline/packet_callback.zig");
@@ -313,6 +314,10 @@ pub fn runDaemon() !void {
     state.g_wd = watchdog.ReliabilityWatchdog.init(std.heap.page_allocator); // PATCH-29: global watchdog
     defer state.g_wd.deinit();
     state.g_perf = .{}; // PATCH-31: global performance tracker
+    // OBSERVABILITY-001: pin the process generation once, before any capture
+    // thread or control query runs. Exposed on health.data_integrity so a soak
+    // can prove a counter delta belongs to the same process generation.
+    state.g_process_generation_ms.store(@intCast(@max(0, std.time.milliTimestamp())), .release);
 
     // 4a. SIEM forwarder (opt-in, default off). Enabled only with
     // AEGIS_SIEM=1; transport/format/endpoint/destination come from env
@@ -704,6 +709,13 @@ pub fn runDaemon() !void {
         state.g_worker_failed.store(false, .release);
         state.g_worker_failure_kind.store(@intFromEnum(state.WorkerFailureKind.none), .release);
         state.g_worker_failure_mask.store(0, .release);
+
+        // VISIBILITY-001: publish the operator-selected ingress mode BEFORE
+        // any capture thread spawns. The Nose reader starts before the WFP
+        // telemetry loop; without this the first frames could be admitted
+        // under both sources. Enforcement stays fail-open until the kernel
+        // provider actually reports `ok` (see noseFrameIsShadowed).
+        source_arbiter.publishStartupMode(wfp_telemetry.capturePrimaryKernelOptIn());
 
         // REBUILD-003: Named-pipe sensor thread (\\.\pipe\aegis_sensor_pipe_t1).
         // Exits when bridge_init.requestShutdown() is signalled.
