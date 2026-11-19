@@ -1,5 +1,16 @@
 ﻿# RB-024 — Final release window (install → prove → soak)
 
+> **⚠ HISTORICAL PINS — DO NOT EXECUTE THIS RUNBOOK LITERALLY FOR THE ACTIVE
+> RELEASE.** The candidate/installer/digest values below still name the retired
+> `b597e71` / `f4cde3c` window (installer `360B9C06...`). The active signed
+> candidate is **`466a226`** (build source `a53eda8`) and the only current
+> authority is
+> `analysis/current-head/SOAK-WINDOW-466A226-20261120.md` with its
+> `apply-466a226-and-preflight.ps1`, `reset-soak-baseline-466a226.ps1` and
+> `soak-466a226.ps1` helpers. This document is retained only as the **procedure
+> template** (order, 24 h hours, 3500/20000 budgets, baseline semantics).
+> `clean_host_e5` is already PASS; only `soak_24h` remains OPEN.
+
 **Type:** Deployment / Release proof
 **Module:** `release_closeout`
 **Status:** OPERATOR ACTION (needs an elevated session; the soak needs 24 h of wall clock)
