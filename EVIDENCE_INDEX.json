@@ -213,7 +213,11 @@
       "result": "PASS_E2",
       "finding": "E2 only: full WDK driver build and Windows host proof pending; inbound WFP still has no flags evidence; WFP rows remain shadow while Nose is primary.",
       "evidence_artifact": "analysis/current-head/RULE-COVERAGE-001-PATCH.md",
-      "limitations": ["No E3/E5 claim.", "No host effect or policy change.", "Board remains 5/6; no tag/publish."]
+      "limitations": [
+        "No E3/E5 claim.",
+        "No host effect or policy change.",
+        "Board remains 5/6; no tag/publish."
+      ]
     },
     {
       "id": "FIM-NATIVE-OVERFLOW-001-E5-20261118",
@@ -9370,6 +9374,71 @@
       "limitations": [
         "Records/CI only; soak_24h remains OPEN and v1.1 remains untagged."
       ]
+    },
+    {
+      "id": "RESOURCE-TELEMETRY-001-E2-20261119",
+      "head_sha": "f3a5200",
+      "timestamp": "2026-11-19",
+      "level": "E2",
+      "flow_id": "OBS-001",
+      "component": "src/windows/resource_telemetry.zig, src/control/state_machine.zig, tools/aegisctl/api/control_api.py, tools/aegisctl/web_dashboard/app.py",
+      "title": "Honest sampled CPU/RAM gauges, off the event hot path",
+      "description": "Pull-on-query only from healthJson (ADR-0013: never per-event). First CPU sample is null with seeded=false (no fabricated zero); CPU% is normalized to one logical core and labelled as such; NaN/non-monotonic ticks become null. GetProcessTimes via extern kernel32; GetProcessMemoryInfo resolved via DynLib (K32GetProcessMemoryInfo then psapi fallback) so build.zig is untouched. Additive health.resources block is type/finite-validated by the Python projection and rendered as CPU/Memory KPIs on the loopback dashboard with an em dash for unknown. E2: 7 pure Zig tests + 5 health tests + 1 dashboard DOM test.",
+      "evidence_artifact": "analysis/current-head/RESOURCE-TELEMETRY-001-PATCH.md",
+      "artifacts": [
+        "analysis/current-head/RESOURCE-TELEMETRY-001-PATCH.md",
+        "src/windows/resource_telemetry.zig",
+        "src/control/state_machine.zig",
+        "tools/aegisctl/api/control_api.py",
+        "tools/aegisctl/web_dashboard/app.py",
+        "tests/runtime/test_health.py",
+        "tests/tools/test_web_dashboard.py"
+      ],
+      "commands": [
+        "zig build",
+        "zig build test --summary all",
+        "python -m pytest tests/runtime/test_health.py tests/tools/test_web_dashboard.py -q"
+      ],
+      "limitations": [
+        "E2 pure/unit proof only; no E5 Windows host attribution of a specific CPU sample.",
+        "CPU% is a sampled delta of one logical core, not an instantaneous whole-host reading.",
+        "No DEFCON/data-loss coupling; gauges never gate detection or enforcement."
+      ]
+    },
+    {
+      "id": "ALERT-FILE-001-E2-20261119",
+      "head_sha": "183e095",
+      "timestamp": "2026-11-19",
+      "level": "E2",
+      "flow_id": "DET-001",
+      "component": "src/forensic/alert_log.zig, src/pipeline/event_processor.zig, src/control/handler_registry.zig, tools/aegisctl/web_dashboard/app.py",
+      "title": "Local file-only NDJSON alerts, one append line per detection",
+      "description": "Dedicated fixed-path writer (logs/alerts.ndjson) deliberately not reusing the opt-in SIEM forwarder: no env, no endpoint, no transport enum, no socket. Appends a JSON-escaped, bounded alert (no payload bytes) on each detection independently of the evidence log and SIEM. g_alerts_written increments only after a complete line+newline; failures are counted separately in metrics.snapshot.alert_file. Loopback dashboard tails the file read-only and never derives a count from the bounded tail. E2: 4 Zig formatter/append tests + 1 metrics JSON-parse test + 5 dashboard/CLI tests.",
+      "evidence_artifact": "analysis/current-head/ALERT-FILE-001-PATCH.md",
+      "artifacts": [
+        "analysis/current-head/ALERT-FILE-001-PATCH.md",
+        "src/forensic/alert_log.zig",
+        "src/pipeline/event_processor.zig",
+        "src/pipeline/runtime_state.zig",
+        "src/control/handler_registry.zig",
+        "src/daemon.zig",
+        "src/all_tests.zig",
+        "tools/aegisctl/web_dashboard/app.py",
+        "tests/tools/test_web_dashboard.py",
+        "docs/ARCHITECTURE.md",
+        "docs/runbooks/RB-015-siem-delivery-proof.md",
+        "docs/runtime/COMPONENT_MATRIX.md"
+      ],
+      "commands": [
+        "zig build",
+        "zig build test --summary all",
+        "python -m pytest tests/tools/test_web_dashboard.py tests/tools/test_aegisctl_alerts.py tests/security/test_siem_contract.py tests/tools/test_operator_honesty.py tests/tools/test_notifier_retired.py -q"
+      ],
+      "limitations": [
+        "E2 only; no E5 host proof that a live detection produced a line on the installed candidate.",
+        "Alerts are advisory detection labels and never a host-effect or enforcement claim.",
+        "The 24h soak opened on the old signed candidate is VOIDED for this source change; a fresh soak needs a new signed candidate and an owner-named window."
+      ]
     }
   ],
   "known_gaps": [
@@ -16036,7 +16105,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 32,
-    "E2_count": 136,
+    "E2_count": 138,
     "E3_count": 14,
     "E4_count": 4,
     "E5_count": 118,

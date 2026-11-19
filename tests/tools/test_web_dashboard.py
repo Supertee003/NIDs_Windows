@@ -422,3 +422,24 @@ def test_alert_writer_source_has_no_egress_surface():
     # stating there is none.
     for forbidden in ("AEGIS_SIEM", "std.net", "std.http", "pub const Transport", "socket("):
         assert forbidden not in source
+
+
+def test_snapshot_carries_advisory_fp_count_from_local_log(tmp_path, monkeypatch):
+    # FP-FEEDBACK-001: count comes from the local operator file only; never
+    # from detection counters, and never fed back into detection.
+    monkeypatch.setenv("AEGIS_LOGS_DIR", str(tmp_path))
+    (tmp_path / "fp_feedback.ndjson").write_text(
+        '{"schema":"aegis.fp_feedback.v1","ts_ms":1,"event_id":9,"reason":""}\n',
+        encoding="utf-8",
+    )
+    app_module._reset_snapshot_cache()
+    payload = app_module.snapshot()
+    assert payload["fp_feedback"]["count"] == 1
+    assert payload["fp_feedback"]["source"] == "local_log"
+    assert payload["fp_feedback"]["advisory"] is True
+
+
+def test_index_page_labels_fp_marks_as_advisory():
+    html = app_module.app.test_client().get("/").get_data(as_text=True)
+    assert "FP marks (advisory)" in html
+    assert "no detection effect" in html

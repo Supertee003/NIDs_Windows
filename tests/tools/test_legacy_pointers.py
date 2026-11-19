@@ -35,7 +35,9 @@ def _subcommands() -> set:
         cwd=str(REPO), capture_output=True, text=True, timeout=60,
     )
     assert proc.returncode == 0, proc.stderr[-500:]
-    matches = re.findall(r"\{([a-z,]+)\}", proc.stdout)
+    # FP-FEEDBACK-001 adds the hyphenated `mark-fp`; allow '-' in the usage
+    # enumeration so the full subcommand set is still the longest match.
+    matches = re.findall(r"\{([a-z,-]+)\}", proc.stdout)
     assert matches, "usage line must enumerate subcommands"
     longest = max(matches, key=len)
     return set(longest.split(","))

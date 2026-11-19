@@ -44,7 +44,7 @@ pub const Alert = struct {
 pub fn formatIp4(buf: *[15]u8, ip: u32) []const u8 {
     return std.fmt.bufPrint(buf, "{d}.{d}.{d}.{d}", .{
         (ip >> 24) & 0xFF, (ip >> 16) & 0xFF, (ip >> 8) & 0xFF, ip & 0xFF,
-    }) catch "0.0.0.0";
+    }) catch "?"; // never invent a bind address in a detection alert
 }
 
 fn writeJsonEscaped(writer: anytype, s: []const u8) void {

@@ -27,6 +27,8 @@ from flask import Flask, Response, jsonify, render_template_string
 
 from ..api.control_api import get_health_payload, load_rules, query_control
 from ..components import components_status
+# FP-FEEDBACK-001: advisory local-only count, never a detection input.
+from .. import fp_feedback
 from ..contracts import (
     CONFIRMED_BLOCK_STATUS,
     CONFIRMED_EFFECT_STATUSES,
@@ -329,6 +331,13 @@ def _build_snapshot() -> dict[str, Any]:
         # ALERT-FILE-001: additive local-only view; the authoritative count is
         # metrics.alert_file.written (process lifetime), never this tail.
         "alerts": alerts,
+        # FP-FEEDBACK-001: operator marks from a local advisory file. Never
+        # feeds detection, policy, correlation or enforcement.
+        "fp_feedback": {
+            "count": fp_feedback.count(),
+            "source": "local_log",
+            "advisory": True,
+        },
         "incidents": incidents,
         "threat": _threat_posture(incidents, health),
         "rules_runtime": {
@@ -751,6 +760,11 @@ function renderOverview(){
   const ws=(r.working_set_bytes===undefined||r.working_set_bytes===null)?'—':(Number(r.working_set_bytes)/1048576).toFixed(0)+' MB';
   const pv=(r.private_bytes===undefined||r.private_bytes===null)?'—':(Number(r.private_bytes)/1048576).toFixed(0)+' MB';
   out+=kpi('Memory (process)',ws,'',r.available?('private '+pv+' · sampled '+relTime(r.sampled_at_ms)):'unavailable');
+  // FP-FEEDBACK-001: advisory operator marks from a local file. Never a
+  // detection counter and never a suppression signal.
+  const fp=snap.fp_feedback||{};
+  out+=kpi('FP marks (advisory)',(fp.count===undefined?'—':num(fp.count)),'',
+    'operator feedback, local log · no detection effect');
   out+='</div>';
   const strip=Array.from({length:5},(_,i)=>{const lvl=i+1;const active=lvl>=(t.defcon||5);
     const col=[ '','var(--crit)','var(--high)','var(--med)','var(--low)','var(--ok)'][t.defcon||5];

@@ -29,6 +29,8 @@ import time
 from pathlib import Path
 from typing import Dict, Callable
 from aegisctl.contracts import project_operator_state
+# FP-FEEDBACK-001: advisory local feedback only; never consulted by detection.
+from aegisctl import fp_feedback
 
 # Ensure tools/ is on the path
 TOOLS_DIR = Path(__file__).resolve().parent
@@ -1165,6 +1167,43 @@ def cmd_events(args) -> int:
             payload = {"total": len(events), "levels": levels, "source": str(path)}
             print(json.dumps(payload, indent=2) if getattr(args, "json", True) else payload)
             print(note)
+    return 0
+
+
+def cmd_mark_fp(args) -> int:
+    """FP-FEEDBACK-001: record an operator false-positive mark locally.
+
+    Advisory only. This never touches detection, rules, policy, PEP, or the
+    evidence log; it cannot suppress a future detection. The pipe is not
+    contacted. A re-read postcondition proves persistence before success.
+    """
+    try:
+        result = fp_feedback.append_event(args.event_id, getattr(args, "reason", "") or "")
+    except ValueError as exc:
+        print(json.dumps({"ok": False, "error": str(exc), "advisory": True}, sort_keys=True), file=sys.stderr)
+        return 2
+    except (OSError, RuntimeError) as exc:
+        print(json.dumps({"ok": False, "error": str(exc), "advisory": True}, sort_keys=True), file=sys.stderr)
+        return 4
+    print(json.dumps(result, sort_keys=True))
+    return 0
+
+
+def cmd_fp(args) -> int:
+    """FP-FEEDBACK-001: read the advisory local false-positive count/list."""
+    op = getattr(args, "fp_command", "count")
+    records = fp_feedback.read_all()
+    if op == "list":
+        limit = max(1, min(int(getattr(args, "limit", 20) or 20), 200))
+        payload = {
+            "source": "local_log",
+            "count": len(records),
+            "records": records[-limit:][::-1],
+            "advisory": True,
+        }
+    else:
+        payload = {"source": "local_log", "count": len(records), "advisory": True}
+    print(json.dumps(payload, sort_keys=True) if getattr(args, "json", True) else payload)
     return 0
 
 
@@ -2626,6 +2665,24 @@ def main() -> int:
     _iptest_p.set_defaults(func=cmd_iptest)
     sub.add_parser("authority", help="Verify authority invariant").set_defaults(func=cmd_authority)
     sub.add_parser("help", help="Show help").set_defaults(func=cmd_help)
+    # FP-FEEDBACK-001: advisory, local-file-only operator commands.
+    mark_fp = sub.add_parser(
+        "mark-fp",
+        help="Mark an event as false positive (advisory local feedback; no suppression)",
+    )
+    mark_fp.add_argument("event_id", type=int, help="Positive event_id from events/alerts")
+    mark_fp.add_argument("--reason", default="", help="Bounded operator note (sanitized, <=256 chars)")
+    mark_fp.set_defaults(func=cmd_mark_fp)
+    fp = sub.add_parser("fp", help="Show advisory local false-positive feedback")
+    fp_commands = fp.add_subparsers(dest="fp_command")
+    fp_count = fp_commands.add_parser("count", help="Count local FP marks")
+    fp_count.add_argument("--json", action="store_true", default=True, help=argparse.SUPPRESS)
+    fp_count.set_defaults(func=cmd_fp)
+    fp_list = fp_commands.add_parser("list", help="List recent local FP marks")
+    fp_list.add_argument("--limit", type=int, default=20, help="Max rows (1-200, default 20)")
+    fp_list.add_argument("--json", action="store_true", default=True, help=argparse.SUPPRESS)
+    fp_list.set_defaults(func=cmd_fp)
+    fp.set_defaults(fp_command="count", func=cmd_fp)
 
     args = parser.parse_args()
 
@@ -2633,11 +2690,16 @@ def main() -> int:
         parser.print_help()
         return 2
 
-    # Dispatch to the appropriate command handler
-    # All command handlers delegate to control_api for business logic
-    func_name = f"cmd_{args.cmd}"
-    if func_name in globals() and callable(globals()[func_name]):
-        return globals()[func_name](args)
+    # Dispatch to the handler bound by set_defaults(). This also supports
+    # hyphenated command names (mark-fp), which cannot be resolved through
+    # the old `cmd_{args.cmd}` globals lookup (`cmd_mark-fp` is not a valid
+    # identifier). Keep that lookup only as a backward-compatible fallback.
+    func = getattr(args, "func", None)
+    if not callable(func):
+        func_name = f"cmd_{args.cmd}"
+        func = globals().get(func_name)
+    if callable(func):
+        return func(args)
 
     parser.print_help()
     return 2

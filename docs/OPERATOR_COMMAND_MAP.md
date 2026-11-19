@@ -27,6 +27,8 @@ with a pointer, or a support script -- ask before running it on prod.
 |---|---|
 | `events count/tail/stats` | Raw evidence firehose (193K records live) |
 | `alerts` | Filtered alert-level view only (quiet hosts: empty is normal) |
+| `mark-fp <event_id> [--reason ...]` | Advisory local FP mark (FP-FEEDBACK-001); writes `logs/fp_feedback.ndjson`, verified by re-read. Never suppresses detection or touches policy/rules/PEP |
+| `fp count` / `fp list` | Read the advisory local FP marks; count is operator feedback, not a detection counter |
 | `incidents list` | Threat-tracker counters + open-incident detail (highest score first) |
 | `incidents top` | Top firing rules, ring-derived grouping |
 | `xdr list/verify` | Advisory XDR evidence, read-only (never a host action) |
