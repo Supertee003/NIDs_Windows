@@ -52,6 +52,12 @@ pub const Command = enum(u16) {
     policy_validate = 601,
     policy_verify = 602,
     policy_simulate = 603,
+    // POLICY-MUTATE-001: evidence-verdict control only. enable/disable move an
+    // atomic label gate; reload swaps the live PolicySet. None gates detection
+    // or reaches a host effect.
+    policy_enable = 604,
+    policy_disable = 605,
+    policy_reload = 606,
 
     // --- forensics domain ---
     forensics_list = 700,
@@ -105,6 +111,9 @@ pub const Command = enum(u16) {
             .{ .name = "policy.validate", .cmd = .policy_validate },
             .{ .name = "policy.verify", .cmd = .policy_verify },
             .{ .name = "policy.simulate", .cmd = .policy_simulate },
+            .{ .name = "policy.enable", .cmd = .policy_enable },
+            .{ .name = "policy.disable", .cmd = .policy_disable },
+            .{ .name = "policy.reload", .cmd = .policy_reload },
             .{ .name = "forensics.list", .cmd = .forensics_list },
             .{ .name = "forensics.show", .cmd = .forensics_show },
             .{ .name = "forensics.verify", .cmd = .forensics_verify },
@@ -238,6 +247,12 @@ pub fn contract(cmd: Command) CommandContract {
         .policy_validate => .{ .command = cmd, .name = "policy.validate", .required_role = .read, .description = "Validate policies", .is_mutation = false, .has_postcondition = false },
         .policy_verify => .{ .command = cmd, .name = "policy.verify", .required_role = .operate, .description = "Verify policy signatures", .is_mutation = false, .has_postcondition = false },
         .policy_simulate => .{ .command = cmd, .name = "policy.simulate", .required_role = .operate, .description = "Simulate policy execution", .is_mutation = false, .has_postcondition = false },
+        // POLICY-MUTATE-001: privileged because these mutate the live
+        // evidence-verdict gate/set, but the mutation never gates detection
+        // and never authorizes a host effect (postcondition is read-back).
+        .policy_enable => .{ .command = cmd, .name = "policy.enable", .required_role = .privileged, .description = "Enable policy evidence verdicts (no detection or host effect)", .is_mutation = true, .has_postcondition = true },
+        .policy_disable => .{ .command = cmd, .name = "policy.disable", .required_role = .privileged, .description = "Disable policy evidence verdicts (detection unaffected)", .is_mutation = true, .has_postcondition = true },
+        .policy_reload => .{ .command = cmd, .name = "policy.reload", .required_role = .privileged, .description = "Reload configs/policies.json into the live evidence-verdict set", .is_mutation = true, .has_postcondition = true },
 
         // --- forensics domain ---
         .forensics_list => .{ .command = cmd, .name = "forensics.list", .required_role = .read, .description = "List forensic records", .is_mutation = false, .has_postcondition = false },
@@ -316,6 +331,9 @@ test "Command.fromString parses all commands" {
     try std.testing.expectEqual(Command.queue_stats, Command.fromString("queue.stats").?);
     try std.testing.expectEqual(Command.incidents_list, Command.fromString("incidents.list").?);
     try std.testing.expectEqual(Command.policy_simulate, Command.fromString("policy.simulate").?);
+    try std.testing.expectEqual(Command.policy_enable, Command.fromString("policy.enable").?);
+    try std.testing.expectEqual(Command.policy_disable, Command.fromString("policy.disable").?);
+    try std.testing.expectEqual(Command.policy_reload, Command.fromString("policy.reload").?);
     try std.testing.expectEqual(Command.forensics_export, Command.fromString("forensics.export").?);
     try std.testing.expectEqual(Command.enforcement_status, Command.fromString("enforcement.status").?);
     try std.testing.expectEqual(Command.enforcement_two_person, Command.fromString("enforcement.two_person").?);
@@ -361,6 +379,15 @@ test "contracts: read-only commands have correct role" {
     const c_stop = contract(.runtime_stop);
     try std.testing.expectEqual(Role.privileged, c_stop.required_role);
     try std.testing.expect(c_stop.is_mutation);
+}
+
+test "POLICY-MUTATE-001: evidence-verdict verbs are privileged mutations with postconditions" {
+    inline for (.{ Command.policy_enable, Command.policy_disable, Command.policy_reload }) |cmd| {
+        const c = contract(cmd);
+        try std.testing.expectEqual(Role.privileged, c.required_role);
+        try std.testing.expect(c.is_mutation);
+        try std.testing.expect(c.has_postcondition);
+    }
 }
 
 test "contracts: every mutation requires an elevated caller (S1-04)" {

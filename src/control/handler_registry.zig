@@ -307,6 +307,9 @@ pub fn initHandlers() void {
     registerHandler(.policy_validate, handlers.policyValidate);
     registerHandler(.policy_verify, handlers.policyVerify);
     registerHandler(.policy_simulate, handlers.policySimulate);
+    registerHandler(.policy_enable, handlers.policyEnable);
+    registerHandler(.policy_disable, handlers.policyDisable);
+    registerHandler(.policy_reload, handlers.policyReload);
     registerHandler(.forensics_list, handlers.forensicsList);
     registerHandler(.forensics_show, handlers.forensicsShow);
     registerHandler(.forensics_verify, handlers.forensicsVerify);
@@ -1317,6 +1320,107 @@ const handlers = struct {
             return std.fmt.allocPrint(a, "{{\"simulated\":true,\"matched\":true,\"rule_id\":{},\"action\":\"{s}\",\"evaluated\":{}}}", .{ rule_id, @tagName(result.action), result.evaluated_count }) catch null;
         }
         return std.fmt.allocPrint(a, "{{\"simulated\":true,\"matched\":false,\"evaluated\":{}}}", .{result.evaluated_count}) catch null;
+    }
+
+    // POLICY-MUTATE-001 ---------------------------------------------------
+    // These verbs move the EVIDENCE-VERDICT gate only. They never gate a rule
+    // match, never change severity or the forensic record, and never reach a
+    // host effect. The postcondition is a read-back of the atomic flag, not a
+    // local file write or a bumped counter.
+
+    fn policyEnable(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
+        state_mod.g_policy_evaluation_enabled.store(true, .release);
+        if (!state_mod.g_policy_evaluation_enabled.load(.acquire)) return null;
+        return std.fmt.allocPrint(a, "{{\"enabled\":true,\"status\":\"ENABLED\",\"postcondition\":\"ACTIVE\",\"generation\":{}}}", .{
+            state_mod.g_policy_set_generation.load(.acquire),
+        }) catch null;
+    }
+
+    fn policyDisable(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
+        state_mod.g_policy_evaluation_enabled.store(false, .release);
+        if (state_mod.g_policy_evaluation_enabled.load(.acquire)) return null;
+        return std.fmt.allocPrint(a, "{{\"enabled\":false,\"status\":\"DISABLED\",\"postcondition\":\"ACTIVE\",\"generation\":{}}}", .{
+            state_mod.g_policy_set_generation.load(.acquire),
+        }) catch null;
+    }
+
+    fn policyReload(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        // Honest reload: read configs/policies.json, parse a fresh immutable
+        // set, and atomically publish it. Bumping g_policies_loaded alone would
+        // be a fake mutation, so the counter is updated only after the swap.
+        const policy_ir_mod = @import("../policy/policy_ir.zig");
+        const policy_signing = @import("../policy/policy_signing.zig");
+        const runtime_paths = @import("../core/runtime_paths.zig");
+        const root = runtime_paths.resolveRoot(a) catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot resolve runtime root";
+            return null;
+        };
+        defer a.free(root);
+        const path = runtime_paths.configPath(a, root, "policies.json") catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot build policies.json path";
+            return null;
+        };
+        defer a.free(path);
+        const file = std.fs.openFileAbsolute(path, .{}) catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot open policies.json";
+            return null;
+        };
+        defer file.close();
+        const bytes = file.readToEndAlloc(std.heap.page_allocator, 1 * 1024 * 1024) catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot read policies.json";
+            return null;
+        };
+        defer std.heap.page_allocator.free(bytes);
+
+        var loaded = policy_ir_mod.loadPolicySetFromJson(std.heap.page_allocator, bytes);
+        if (loaded.report.loaded == 0) {
+            // Fail closed: keep the currently published set untouched.
+            loaded.deinit();
+            ctx.failure_code = "POLICY_RELOAD_EMPTY";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "reload produced zero loadable policies; previous set retained";
+            return null;
+        }
+        loaded.ps.sortByPriority();
+
+        // Mirror the startup opt-in trust posture exactly. An unverified
+        // envelope leaves policies untrusted (never silently promoted). This
+        // is observe-only: it does not create an enforcement capability.
+        if (std.process.getEnvVarOwned(a, "AEGIS_POLICY_ENFORCE_TRUSTED")) |flag| {
+            defer a.free(flag);
+            if (policy_signing.trustOptIn(flag)) {
+                const rep = policy_signing.verifyEnvelope(a, root, "policies.json", "policies.sig.json");
+                if (rep.doc_present and rep.sidecar_present and rep.valid) {
+                    for (loaded.ps.policies.items) |*p| p.trusted = true;
+                }
+            }
+        } else |_| {}
+
+        const new_count = loaded.report.loaded;
+        const new_set = std.heap.page_allocator.create(policy_ir_mod.LoadedPolicySet) catch {
+            loaded.deinit();
+            ctx.failure_code = "POLICY_RELOAD_OOM";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot allocate replacement policy set";
+            return null;
+        };
+        new_set.* = loaded;
+        loaded = undefined; // ownership moved to new_set; never deinit twice
+
+        const previous = state_mod.g_policies_loaded.load(.acquire);
+        state_mod.publishPolicySet(new_set);
+        state_mod.g_policies_loaded.store(new_count, .monotonic);
+        return std.fmt.allocPrint(a, "{{\"status\":\"reloaded\",\"policies_loaded\":{},\"previous_policies_loaded\":{},\"generation\":{},\"postcondition\":\"ACTIVE\"}}", .{
+            new_count, previous, state_mod.g_policy_set_generation.load(.acquire),
+        }) catch null;
     }
 
     /// One control response must fit inside a single pipe read on every

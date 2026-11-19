@@ -1333,9 +1333,56 @@ def _daemon_rules_count() -> int | None:
         return None
 
 
+def _policy_mutation(op: str) -> int:
+    """POLICY-MUTATE-001: privileged evidence-verdict control with read-back.
+
+    enable/disable move an atomic evidence-label gate; reload swaps the live
+    policy set. Neither gates detection nor causes a host effect. No local
+    state file is written: the only proof is the daemon's postcondition.
+    """
+    command = "policy." + op
+    if not CONTROL_API_AVAILABLE:
+        print(f"{command} failed: control API unavailable", file=sys.stderr)
+        return 4
+    try:
+        response = query_control(command)
+    except Exception as exc:
+        print(f"{command} failed: {type(exc).__name__}", file=sys.stderr)
+        return 3
+    if not isinstance(response, dict):
+        print(f"{command} failed: daemon control pipe unavailable", file=sys.stderr)
+        return 3
+    expected = {"enable": "enabled", "disable": "disabled", "reload": "reloaded"}[op]
+    status = str(response.get("status", "")).lower()
+    postcondition = response.get("postcondition")
+    verified = status == expected and postcondition == "ACTIVE"
+    result = {
+        "command": command,
+        "status": response.get("status"),
+        "postcondition": postcondition,
+        "generation": response.get("generation"),
+        "detection_gated": False,
+        "host_effect": False,
+    }
+    if op == "reload":
+        loaded = int(response.get("policies_loaded", 0) or 0)
+        result["policies_loaded"] = loaded
+        result["previous_policies_loaded"] = response.get("previous_policies_loaded")
+        if loaded <= 0:
+            verified = False
+    else:
+        enabled = response.get("enabled")
+        result["evidence_verdict_enabled"] = enabled
+        if enabled is not (op == "enable"):
+            verified = False
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0 if verified else 1
+
+
 def cmd_policy(args) -> int:
-    if getattr(args, "policy_command", "list") not in {"list", "show", "verify", "validate"}:
-        return _unavailable("policy", "policy_runtime_postcondition_not_connected")
+    op = getattr(args, "policy_command", "list")
+    if op in {"enable", "disable", "reload"}:
+        return _policy_mutation(op)
     rules = _rules()
     # BE-DIS-089: the daemon engine (rule_loader.zig) honors
     # configs/disabled_rules.json on startup + rules.reload. The old
@@ -1368,12 +1415,9 @@ def cmd_policy(args) -> int:
         return _print_control_query("policy.verify", as_json=getattr(args, "json", True))
     if op == "validate":
         return _print_control_query("policy.validate", as_json=getattr(args, "json", True))
-    # LEFTOVER-SWEEP: enable/disable/reload are refused by the fail-closed
-    # guard at the top of this command (never a local write, never a fake
-    # success); pinned by tests/runtime/test_gate_e.py + the capability
-    # matrix. The old unreachable implementations (disabled_rules.json
-    # write + a policy.reload control query; no such control command
-    # exists) and the now-dead local-state helpers were removed here.
+    # POLICY-MUTATE-001: enable/disable/reload are handled above by the
+    # daemon-owned control verbs. This tail is unreachable; never fall back
+    # to a local state write or a fake success.
     return 2
 
 
@@ -2572,14 +2616,15 @@ def main() -> int:
     policy_sub = policy.add_subparsers(dest="policy_command")
     policy_sub.add_parser("list"); pshow = policy_sub.add_parser("show"); pshow.add_argument("--id", required=True)
     policy_sub.add_parser("verify"); policy_sub.add_parser("validate")
-    # OPERATOR-001: these verbs stay REGISTERED so the fail-closed gate stays
-    # testable (tests/runtime/test_gate_e.py), but --help must not advertise an
-    # apply step that does not exist. Real state change is
-    # configs/disabled_rules.json + `rules reload` (privileged, postcondition).
-    _unavail = "UNAVAILABLE (fail-closed, exit 4) — use configs/disabled_rules.json + rules reload"
-    preload = policy_sub.add_parser("reload", help=_unavail)
-    pen = policy_sub.add_parser("enable", help=_unavail); pen.add_argument("--id", required=True)
-    pdis = policy_sub.add_parser("disable", help=_unavail); pdis.add_argument("--id", required=True)
+    # POLICY-MUTATE-001: real privileged control verbs with daemon read-back.
+    # They change the EVIDENCE-VERDICT label only: detection stays pure and no
+    # host effect is possible. `--id` is accepted for compatibility with older
+    # operator scripts but is advisory (the gate is process-wide).
+    policy_sub.add_parser("reload", help="Reload configs/policies.json into the live evidence-verdict set (privileged)")
+    pen = policy_sub.add_parser("enable", help="Enable policy evidence verdicts (privileged, no detection gating)")
+    pen.add_argument("--id", required=False, help="Legacy label only; ignored")
+    pdis = policy_sub.add_parser("disable", help="Disable policy evidence verdicts (privileged, detection unaffected)")
+    pdis.add_argument("--id", required=False, help="Legacy label only; ignored")
     policy.set_defaults(policy_command="list", func=cmd_policy)
     simulate = sub.add_parser("simulate", help="Generate test traffic")
     sim_sub = simulate.add_subparsers(dest="simulate_command")

@@ -49,6 +49,8 @@ with a pointer, or a support script -- ask before running it on prod.
 | `aegis_open.py close [--with-service]` | Stop supervised (service stays unless asked) |
 | `rules validate/reload/list` | Ruleset changes (validate first, always) |
 | `policy verify/validate` | Trust posture (unsigned default is normal) |
+| `policy enable` / `policy disable` | POLICY-MUTATE-001: privileged evidence-verdict label on/off; read-back postcondition; never gates detection, rules, or host effects |
+| `policy reload` | POLICY-MUTATE-001: privileged re-read of `configs/policies.json` + atomic live-set swap; postcondition reports the new generation |
 | `forensic verify` | Ring integrity (~5s, never during measurements) |
 | `upgrade_rollback.py snapshot/report/rollback` | Recovery (RB-004) |
 | `truth.py verify` + `release_engineering.py --verify` | Gates (seconds, read-only) |

@@ -554,13 +554,20 @@ fn processEvent(
     const eval_ctx = policy.EvalContext{ .ev = &ev_copy };
     // Protocol anomalies are evidence-only. A nonzero event rule_id is useful
     // for receipts, but must not by itself authorize policy evaluation.
+    // POLICY-MUTATE-001: the privileged enable/disable gate moves ONLY the
+    // evidence verdict below. The rule match, severity, forensic record and
+    // the PEP assessment branch further down are unchanged whether the verdict
+    // is on or off. A live set published by policy.reload replaces the startup
+    // set; it is immutable while published, so this load cannot race a swap.
     if (matched_rule_id != 0 and !isHostTelemetrySource(ev.source)) {
-        if (ps.evaluate(eval_ctx)) |pol| {
-            matched_policy = pol;
-            policy_action = pol.action;
-            _ = state.g_pipeline_policies_matched.fetchAdd(1, .monotonic);
-            // Record policy match in trace (Policy has no version field; use 1)
-            decision_trace.setPolicy(pol.id, 1);
+        if (state.effectivePolicySet(ps)) |eval_ps| {
+            if (eval_ps.evaluate(eval_ctx)) |pol| {
+                matched_policy = pol;
+                policy_action = pol.action;
+                _ = state.g_pipeline_policies_matched.fetchAdd(1, .monotonic);
+                // Record policy match in trace (Policy has no version field; use 1)
+                decision_trace.setPolicy(pol.id, 1);
+            }
         }
     }
     t_prev = markStage(.correlation_to_policy, t_prev);

@@ -19,22 +19,27 @@ def _read(rel: str) -> str:
     return (REPO / rel).read_text(encoding="utf-8", errors="ignore")
 
 
-def test_policy_mutation_verbs_stay_registered_but_help_says_unavailable():
-    # Registered on purpose: tests/runtime/test_gate_e.py exercises the
-    # fail-closed path through them. Removing the verbs would hide the gate.
+def test_policy_mutation_verbs_are_real_and_honestly_labelled():
+    # POLICY-MUTATE-001 inverted the old pin. The verbs must now describe the
+    # real daemon-owned postcondition, and must NOT advertise a fake local
+    # state write or an unavailable stub.
     source = CLI.read_text(encoding="utf-8")
-    for verb in ("reload", "enable", "disable"):
-        assert f'add_parser("{verb}", help=_unavail)' in source
-    assert "UNAVAILABLE (fail-closed, exit 4)" in source
+    assert "def _policy_mutation" in source
+    assert 'command = "policy." + op' in source
+    for verb in ("enable", "disable", "reload"):
+        assert f'add_parser("{verb}"' in source
 
     out = subprocess.run(
         [sys.executable, str(CLI), "policy", "--help"],
         cwd=REPO, capture_output=True, text=True, timeout=30,
     )
     assert out.returncode == 0, out.stderr
-    assert "UNAVAILABLE" in out.stdout
-    assert "disabled_rules.json" in out.stdout
-    assert "rules reload" in out.stdout
+    help_text = out.stdout
+    assert "evidence verdict" in help_text or "evidence-verdict" in help_text
+    assert "privileged" in help_text
+    assert "UNAVAILABLE (fail-closed" not in help_text
+    # The rule-state apply path is distinct and is not promised by these verbs.
+    assert "disabled_rules.json" not in help_text
 
 
 def test_notifier_stays_retired_no_pushed_transport_wired():

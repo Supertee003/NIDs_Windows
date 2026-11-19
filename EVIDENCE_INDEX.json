@@ -9439,6 +9439,91 @@
         "Alerts are advisory detection labels and never a host-effect or enforcement claim.",
         "The 24h soak opened on the old signed candidate is VOIDED for this source change; a fresh soak needs a new signed candidate and an owner-named window."
       ]
+    },
+    {
+      "id": "POLICY-MUTATE-001-E2-20261119",
+      "head_sha": "683ff20",
+      "timestamp": "2026-11-19",
+      "level": "E2",
+      "flow_id": "CONTROL-001",
+      "component": "src/control/protocol.zig, src/pipeline/runtime_state.zig, src/pipeline/event_processor.zig, src/control/handler_registry.zig, tools/aegisctl.py",
+      "title": "Privileged evidence-verdict control with an honest live policy-set swap",
+      "description": "policy.enable/disable/reload become real privileged commands (IDs 604-606) with read-back postconditions. An atomic g_policy_evaluation_enabled flag suppresses ONLY ps.evaluate; the rule-match condition and PEP branch stay untouched, so detection never gates. reload parses configs/policies.json into an immutable LoadedPolicySet, publishes it atomically, retires the old set and bumps a generation only after the swap; retired sets are freed at shutdown after all workers join. CLI verifies status+postcondition+count and never writes local state. E2: 3 Zig tests, 8 CLI postcondition tests, 3 inverted legacy pins.",
+      "evidence_artifact": "analysis/current-head/POLICY-MUTATE-001-PATCH.md",
+      "artifacts": [
+        "analysis/current-head/POLICY-MUTATE-001-PATCH.md",
+        "src/control/protocol.zig",
+        "src/pipeline/runtime_state.zig",
+        "src/pipeline/event_processor.zig",
+        "src/control/handler_registry.zig",
+        "src/daemon.zig",
+        "tools/aegisctl.py",
+        "shared/protocol/control_protocol.md",
+        "tests/tools/test_policy_mutate.py"
+      ],
+      "commands": [
+        "zig fmt --check",
+        "zig build test --summary all",
+        "python -m pytest tests/tools/test_policy_mutate.py tests/runtime/test_gate_e.py tests/tools/test_operator_honesty.py tests/docs/test_stale_doc_sweep.py -q"
+      ],
+      "limitations": [
+        "E2 only; no E5 proof that a live installed daemon executed these verbs.",
+        "The live-set swap is immutable + deferred-free; it relies on all workers being joined before shutdown cleanup.",
+        "No CanonicalEvent wire/codec change; no host effect and no detection gating."
+      ]
+    },
+    {
+      "id": "SOAK-TERMINAL-FAIL-F4CDE3C-20261119",
+      "head_sha": "f4cde3c",
+      "timestamp": "2026-11-19",
+      "level": "E5",
+      "flow_id": "REL-001",
+      "component": "installed signed candidate b597e71 / build source f4cde3c — 24h soak window",
+      "title": "NEGATIVE E5: terminal SOAK_FAIL on the old signed candidate (gate stays closed)",
+      "description": "The owner-side waiter reached a terminal SOAK_FAIL at 2026-11-19T22:40:04+07:00 after 18.03 h with 2 problems: daemon health DEGRADED while runtime state RUNNING, and queue_dropped_total rising 0 -> 5177 against an owner-approved loss budget of 3500. All four AEGIS services stayed RUNNING with no SCM restarts and all other ingress counters at 0. This is negative host evidence about signed source f4cde3c only; it does not prove any capability and does not close soak_24h. The release board rows were updated from IN_PROGRESS to the terminal FAIL verdict.",
+      "evidence_artifact": "analysis/current-head/SOAK-TERMINAL-FAIL-20261119.md",
+      "artifacts": [
+        "analysis/current-head/SOAK-TERMINAL-FAIL-20261119.md",
+        "docs/gates/T20_100pct_audit.md",
+        "docs/gates/T20_100pct_audit.json"
+      ],
+      "commands": [
+        "powershell -File admin-evidence\\e5-clean-host-20261119-final\\soak-wait-terminal.ps1"
+      ],
+      "limitations": [
+        "Negative evidence (a FAIL verdict), never a capability proof and never a reason to publish.",
+        "Covers only the old signed candidate; the current worktree source is outside this window.",
+        "The raw artifact lives in the owner main tree D:\\NIds_Windows; admin-evidence/ is absent in the worktree.",
+        "A fresh soak needs a new signed candidate and an owner-named baseline window; no tag/push/release."
+      ]
+    },
+    {
+      "id": "FP-FEEDBACK-001-E2-20261119",
+      "head_sha": "683ff20",
+      "timestamp": "2026-11-19",
+      "level": "E2",
+      "flow_id": "EVIDENCE-001",
+      "component": "tools/aegisctl/fp_feedback.py, tools/aegisctl.py, tools/aegisctl/config.py, tools/aegisctl/web_dashboard/app.py",
+      "title": "Advisory operator mark-fp feedback stays local and never suppresses detection",
+      "description": "Operator `mark-fp <event_id> [--reason ...]` appends a bounded, JSON-escaped record to producer-owned logs/fp_feedback.ndjson and verifies persistence by re-read. `fp count/list` read it back. The dashboard projects an explicitly advisory count flag, never a detection counter. No pipe call, no rule/policy/forensic write, no auto-label: duplicate marks are records, and feedback never changes a future detection. E2: 7 CLI tests + 2 dashboard tests.",
+      "evidence_artifact": "analysis/current-head/FP-FEEDBACK-001-PATCH.md",
+      "artifacts": [
+        "tools/aegisctl/fp_feedback.py",
+        "tools/aegisctl.py",
+        "tools/aegisctl/config.py",
+        "tools/aegisctl/web_dashboard/app.py",
+        "tests/tools/test_aegisctl_mark_fp.py",
+        "tests/tools/test_web_dashboard.py",
+        "docs/CLI_COMMANDS.md",
+        "docs/OPERATOR_COMMAND_MAP.md"
+      ],
+      "commands": [
+        "python -m pytest tests/tools/test_aegisctl_mark_fp.py tests/tools/test_web_dashboard.py -q"
+      ],
+      "limitations": [
+        "E2 only; no E5 proof of live operator use on the installed candidate.",
+        "FP count is advisory operator feedback, never a suppression signal or a fabricated detector metric."
+      ]
     }
   ],
   "known_gaps": [
@@ -16105,13 +16190,13 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 32,
-    "E2_count": 138,
+    "E2_count": 140,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 118,
+    "E5_count": 119,
     "E6_count": 1,
     "E7_count": 3,
-    "E5_with_artifact_count": 68,
+    "E5_with_artifact_count": 69,
     "known_gaps_count": 287
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."

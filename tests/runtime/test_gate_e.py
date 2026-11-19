@@ -1,11 +1,13 @@
 """Gate E control-plane contract tests.
 
 Production policy, simulation, and enforcement mutations must not
-write local state or claim host effect. They return a structured UNAVAILABLE
-response until the daemon-owned provider/receipt path is connected.
-Canary run/status/report are the exception: they are implemented
-read-only commands (GATE-E-028, CANARY-QUAR-056) pinned here to stay
-mutation-free and host-effect-free.
+write local state or claim host effect. POLICY-MUTATE-001 made
+policy enable/disable/reload real daemon-owned evidence-verdict verbs, so
+without a daemon they must fail closed (non-zero, no postcondition claim, no
+local file) rather than returning the old structured UNAVAILABLE stub.
+Simulation stays fail-closed. Canary run/status/report are the exception:
+they are implemented read-only commands (GATE-E-028, CANARY-QUAR-056) pinned
+here to stay mutation-free and host-effect-free.
 """
 from __future__ import annotations
 
@@ -69,18 +71,23 @@ class TestPolicyCommands(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("not found", stdout.lower())
 
-    def test_policy_enable_disable_are_fail_closed(self) -> None:
+    def test_policy_enable_disable_fail_closed_without_daemon(self) -> None:
+        # POLICY-MUTATE-001: real verbs, but no daemon means no read-back
+        # postcondition — never a fake success and never a local state write.
         for action in ("enable", "disable"):
             with self.subTest(action=action):
-                _assert_unavailable(self, ("policy", action, "--id", "R0056"))
+                rc, stdout, stderr = _run_aegisctl("policy", action, "--id", "R0056")
+                self.assertNotEqual(rc, 0, "policy mutation must not claim success without a daemon")
+                self.assertNotIn('"postcondition": "ACTIVE"', stdout)
+                self.assertTrue(stdout or stderr)
         self.assertFalse(DISABLED_RULES_FILE.exists())
 
-    def test_policy_reload_requires_daemon(self) -> None:
+    def test_policy_reload_requires_daemon_postcondition(self) -> None:
         rc, stdout, stderr = _run_aegisctl("policy", "reload")
-        if rc == 0:
-            self.assertIn("reloaded", stdout.lower())
-        else:
-            self.assertTrue(stdout or stderr)
+        self.assertNotEqual(rc, 0)
+        self.assertNotIn('"postcondition": "ACTIVE"', stdout)
+        self.assertTrue(stdout or stderr)
+        self.assertFalse(DISABLED_RULES_FILE.exists())
 
 
 class TestSimulationAndCanaryCommands(unittest.TestCase):

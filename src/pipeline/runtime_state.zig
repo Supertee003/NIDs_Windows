@@ -12,6 +12,7 @@ const watchdog = @import("../reliability/watchdog.zig");
 const fault = @import("../reliability/fault_injection.zig");
 const hist = @import("../reliability/latency_histogram.zig");
 const forensic = @import("../forensic/forensic_pipeline.zig");
+const policy_ir = @import("../policy/policy_ir.zig");
 
 /// Set by SCM stop / `daemon.shutdown`. Polled by every worker thread.
 pub var g_stop_requested = std.atomic.Value(bool).init(false);
@@ -135,6 +136,11 @@ test "runtime fail-closed defaults hold (BYTE-ORDER-096 audit)" {
     try std.testing.expect(g_evidence_log_enabled);
     try std.testing.expect(g_policy_ir == null);
     try std.testing.expect(!g_policy_ir_verified.load(.acquire));
+    // POLICY-MUTATE-001: verdict labels start ON with no live override; this
+    // is behaviour-preserving from the pre-slice runtime.
+    try std.testing.expect(g_policy_evaluation_enabled.load(.acquire));
+    try std.testing.expect(g_live_policy_set.load(.acquire) == null);
+    try std.testing.expectEqual(@as(u64, 0), g_policy_set_generation.load(.acquire));
     try std.testing.expect(!g_pipeline_ready.load(.acquire));
     try std.testing.expect(!g_sensor_ready.load(.acquire));
     try std.testing.expect(!g_nose_ready.load(.acquire));
@@ -235,6 +241,69 @@ pub var g_forensic_records_written = std.atomic.Value(u64).init(0);
 // separately so the dashboard never derives a fake count from a bounded tail.
 pub var g_alerts_written = std.atomic.Value(u64).init(0);
 pub var g_alerts_write_failed = std.atomic.Value(u64).init(0);
+
+// POLICY-MUTATE-001 -------------------------------------------------------
+// Evidence-verdict gate. TRUE (the boot default) preserves today's behaviour:
+// a matched policy adds an evidence label to the forensic record. FALSE
+// suppresses ONLY that label. Detection (rule match, severity, forensic
+// record) and the PEP branch are never gated by this flag.
+pub var g_policy_evaluation_enabled = std.atomic.Value(bool).init(true);
+
+// The live policy set used for evidence verdicts. Published atomically by
+// policy.reload; the pipeline loads the pointer once per event. A published
+// set is IMMUTABLE: reload never mutates it, so concurrent evaluation and a
+// swap cannot race on its contents. Superseded sets are retired, never freed
+// while a worker may still hold the pointer, and released at shutdown after
+// every worker thread has been joined.
+pub var g_live_policy_set: std.atomic.Value(?*policy_ir.LoadedPolicySet) =
+    std.atomic.Value(?*policy_ir.LoadedPolicySet).init(null);
+pub var g_policy_set_mutex = std.Thread.Mutex{};
+pub var g_retired_policy_sets = std.ArrayList(*policy_ir.LoadedPolicySet).init(std.heap.page_allocator);
+/// Bumped only after a successful atomic swap; a CLI postcondition reads it so
+/// a no-op cannot masquerade as a reload.
+pub var g_policy_set_generation = std.atomic.Value(u64).init(0);
+
+/// Resolve the policy set an event should evaluate against, or null when the
+/// evidence-verdict gate is OFF. Pure w.r.t. detection: the caller leaves the
+/// rule match and PEP flow untouched when this returns null.
+pub fn effectivePolicySet(fallback: *policy_ir.PolicySet) ?*const policy_ir.PolicySet {
+    if (!g_policy_evaluation_enabled.load(.acquire)) return null;
+    if (g_live_policy_set.load(.acquire)) |live| return &live.ps;
+    return fallback;
+}
+
+/// Publish a freshly loaded set and retire the previous one. The old set stays
+/// alive until freeRetiredPolicySets() runs at shutdown (after thread joins),
+/// so a pipeline holding its pointer can never be freed underneath it.
+pub fn publishPolicySet(set: *policy_ir.LoadedPolicySet) void {
+    g_policy_set_mutex.lock();
+    defer g_policy_set_mutex.unlock();
+    if (g_live_policy_set.load(.acquire)) |old| {
+        // Allocation failure leaks a set rather than risking a use-after-free.
+        g_retired_policy_sets.append(old) catch {};
+    }
+    g_live_policy_set.store(set, .release);
+    _ = g_policy_set_generation.fetchAdd(1, .monotonic);
+}
+
+/// Shutdown-only: called after all worker threads are joined. Never call from
+/// the control thread — a pipeline may still be dereferencing a live set.
+pub fn freeRetiredPolicySets() void {
+    g_policy_set_mutex.lock();
+    defer g_policy_set_mutex.unlock();
+    // Free the currently published set too: this is shutdown-only, after
+    // every worker has been joined, so no pointer can still be in flight.
+    if (g_live_policy_set.load(.acquire)) |live| {
+        g_live_policy_set.store(null, .release);
+        live.deinit();
+        std.heap.page_allocator.destroy(live);
+    }
+    for (g_retired_policy_sets.items) |set| {
+        set.deinit();
+        std.heap.page_allocator.destroy(set);
+    }
+    g_retired_policy_sets.clearRetainingCapacity();
+}
 pub var g_forensic_ring: ?*forensic.ForensicRing = null;
 pub var g_pipeline_audit_id = std.atomic.Value(u64).init(0); // monotonic audit trail counter
 pub var g_pep_request_id = std.atomic.Value(u64).init(0); // unique PEP request ID counter
@@ -499,3 +568,56 @@ pub var g_wd_registry_slot: ?usize = null;
 /// host-telemetry watchdog from its own loop and is not part of the startup
 /// readiness barrier.
 pub var g_wd_hostnet_slot: ?usize = null;
+
+test "POLICY-MUTATE-001: gate suppresses only the evidence verdict" {
+    const prev = g_policy_evaluation_enabled.load(.acquire);
+    defer g_policy_evaluation_enabled.store(prev, .release);
+
+    var fallback = policy_ir.PolicySet.init(std.testing.allocator);
+    defer fallback.deinit();
+
+    g_policy_evaluation_enabled.store(true, .release);
+    try std.testing.expectEqual(&fallback, effectivePolicySet(&fallback).?);
+
+    // Disabling the verdict must not remove the caller's rule set: detection
+    // keeps its own match path, it only loses the evidence label.
+    g_policy_evaluation_enabled.store(false, .release);
+    try std.testing.expect(effectivePolicySet(&fallback) == null);
+    try std.testing.expectEqual(@as(usize, 0), fallback.policies.items.len);
+}
+
+test "POLICY-MUTATE-001: publish swaps the live set, retires the old one" {
+    // Single-threaded proof of the lifetime contract: two sets are published,
+    // the first is retired (still valid), and both are released only by the
+    // shutdown-only cleaner. No set is freed while a pointer is published.
+    const gen_before = g_policy_set_generation.load(.acquire);
+    defer {
+        freeRetiredPolicySets();
+        g_policy_evaluation_enabled.store(true, .release);
+    }
+    g_policy_evaluation_enabled.store(true, .release);
+
+    var fallback = policy_ir.PolicySet.init(std.testing.allocator);
+    defer fallback.deinit();
+
+    const first = std.heap.page_allocator.create(policy_ir.LoadedPolicySet) catch unreachable;
+    first.* = policy_ir.LoadedPolicySet{ .ps = policy_ir.PolicySet.init(std.heap.page_allocator) };
+    const second = std.heap.page_allocator.create(policy_ir.LoadedPolicySet) catch unreachable;
+    second.* = policy_ir.LoadedPolicySet{ .ps = policy_ir.PolicySet.init(std.heap.page_allocator) };
+
+    try std.testing.expectEqual(&fallback, effectivePolicySet(&fallback).?);
+    publishPolicySet(first);
+    try std.testing.expectEqual(&first.ps, effectivePolicySet(&fallback).?);
+    try std.testing.expectEqual(gen_before + 1, g_policy_set_generation.load(.acquire));
+
+    publishPolicySet(second);
+    try std.testing.expectEqual(&second.ps, effectivePolicySet(&fallback).?);
+    try std.testing.expectEqual(gen_before + 2, g_policy_set_generation.load(.acquire));
+    // Retired set is still readable: no use-after-free on the old pointer.
+    try std.testing.expectEqual(@as(usize, 0), first.ps.policies.items.len);
+    try std.testing.expectEqual(@as(usize, 0), second.ps.policies.items.len);
+
+    freeRetiredPolicySets();
+    try std.testing.expect(g_live_policy_set.load(.acquire) == null);
+    try std.testing.expectEqual(&fallback, effectivePolicySet(&fallback).?);
+}

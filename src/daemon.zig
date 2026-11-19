@@ -247,6 +247,12 @@ fn lifecycleLoop(stop: *const std.atomic.Value(bool)) void {
 }
 
 pub fn runDaemon() !void {
+    // POLICY-MUTATE-001: release any live/retired evidence-verdict set only
+    // after this function's worker-join defers have run (LIFO: this defer is
+    // registered first, so it executes last). Nothing is published at startup
+    // — the pipeline falls back to the stack PolicySet until the first honest
+    // policy.reload swap.
+    defer state.freeRetiredPolicySets();
     // Install the sink before any startup work so failures before the control
     // pipe exists are still visible to the console/service harness.
     diag.Logger.setSink(diag.StderrSink.init());
