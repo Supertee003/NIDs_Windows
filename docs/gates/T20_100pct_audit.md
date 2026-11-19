@@ -5,8 +5,8 @@
 > release; the two are reported separately and never merged.
 
 - Component audit: **COMPLETE**
-- Release: **NOT SHIPPABLE** — open gates: clean_host_e5, soak_24h
-- Commit: `466a226`
+- Release: **NOT SHIPPABLE** — open gates: soak_24h
+- Commit: `6bb98a5`
 - Part I modules: 66/66 pass
 - Part I production failures: 0
 - Part II holds: 5/5
@@ -19,7 +19,7 @@
 | `truth_artifacts` | PASS | none | TRUTH_VALID — artifacts carry build source a53eda8 (ancestor of HEAD; source history and worktree clean) |
 | `component_audit` | PASS | none | modules 66/66, prod failures 0, part_ii 5/5, golden path declared=True |
 | `release_signature` | PASS | owner | release\T20-final\466a226\signatures.json cryptographically signs SHA256SUMS (A053C048C8B373CF...) with a ed25519 key; commit 466a226 contains runtime a53eda8 |
-| `clean_host_e5` | OPEN | owner | no post-install preflight artifact exists |
+| `clean_host_e5` | PASS | owner | admin-evidence\e5-clean-host-20261120-final\preflight-20261120.json PASS with the loader under C:\Program Files\AEGIS NIDS |
 | `soak_24h` | OPEN | time | no soak artifact declares a 24 h requirement |
 | `evidence_debt` | PASS | none | unnamed product files 0 <= baseline 0 |
 
