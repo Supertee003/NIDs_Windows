@@ -230,6 +230,11 @@ pub var g_rules_loaded = std.atomic.Value(u32).init(0);
 pub var g_policies_loaded = std.atomic.Value(u32).init(0);
 pub var g_pipeline_policies_matched = std.atomic.Value(u64).init(0);
 pub var g_forensic_records_written = std.atomic.Value(u64).init(0);
+// ALERT-FILE-001: file-only local alert counters. g_alerts_written increments
+// only after a complete NDJSON line + newline is appended; failures are counted
+// separately so the dashboard never derives a fake count from a bounded tail.
+pub var g_alerts_written = std.atomic.Value(u64).init(0);
+pub var g_alerts_write_failed = std.atomic.Value(u64).init(0);
 pub var g_forensic_ring: ?*forensic.ForensicRing = null;
 pub var g_pipeline_audit_id = std.atomic.Value(u64).init(0); // monotonic audit trail counter
 pub var g_pep_request_id = std.atomic.Value(u64).init(0); // unique PEP request ID counter

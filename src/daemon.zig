@@ -349,6 +349,16 @@ pub fn runDaemon() !void {
     }
     defer @import("forensic/forensic_log.zig").shutdown();
 
+    // 4a3. ALERT-FILE-001: local file-only alerts (always on, fixed path).
+    // No env, no endpoint, no transport — one append line per detection to
+    // logs/alerts.ndjson. The fixed path means no config can turn this into
+    // an egress path; the loopback dashboard tails it read-only.
+    {
+        const alert_log = @import("forensic/alert_log.zig");
+        alert_log.init();
+        diag.info("[ALERT] local NDJSON alerts enabled (logs/alerts.ndjson)", .{});
+    }
+
     // 4b. Tier-2 brain inspection loop (opt-in, default off). AEGIS_BRAIN=1
     // lets the pipeline offer detections to the brain over UDP for deep
     // inspection; findings return via the opt-in sensor pipe (T2-BRAIN-023).

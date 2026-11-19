@@ -2258,7 +2258,7 @@ const handlers = struct {
         // consumers (Python int, Rust as_u64) take full width; JS Number
         // stays precise to 2^53, unreachable in practice.
         return std.fmt.allocPrint(a,
-            \\{{"uptime_sec":{},"rules_loaded":{},"rule_layer_unavailable_events":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"confirmed_blocks":{},"confirmed_quarantines":{},"errors":{},"siem":{{"enabled":{},"forwarded":{},"failed":{},"spooled":{},"batches":{},"retries":{}}},"policy_ir":{{"loaded":{},"rules":{},"hash":"{s}","verified":{}}}}}
+            \\{{"uptime_sec":{},"rules_loaded":{},"rule_layer_unavailable_events":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"confirmed_blocks":{},"confirmed_quarantines":{},"errors":{},"siem":{{"enabled":{},"forwarded":{},"failed":{},"spooled":{},"batches":{},"retries":{}}},"policy_ir":{{"loaded":{},"rules":{},"hash":"{s}","verified":{}}},"alert_file":{{"path":"logs/alerts.ndjson","written":{},"failed":{}}}}}
         , .{
             uptime_sec,
             state_mod.g_rules_loaded.load(.acquire),
@@ -2284,6 +2284,11 @@ const handlers = struct {
             pir_rules,
             pir_hash,
             pir_verified,
+            // ALERT-FILE-001: process-lifetime local alert counters. Written
+            // increments only after a complete line is appended; failed is
+            // non-zero when any append failed (never folded into written).
+            state_mod.g_alerts_written.load(.acquire),
+            state_mod.g_alerts_write_failed.load(.acquire),
         }) catch null;
     }
 
@@ -2499,6 +2504,20 @@ test "metricsSnapshot exposes SIEM durability counters" {
     // operator-visible without relying on a stderr diagnostic stream.
     try std.testing.expect(std.mem.indexOf(u8, out, "\"confirmed_blocks\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"confirmed_quarantines\"") != null);
+}
+
+test "ALERT-FILE-001: metrics expose parseable local alert counters" {
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 91, .caller_role = .read, .caller_pid = 0 };
+    const out = handlers.metricsSnapshot(std.testing.allocator, .{ .null = {} }, &ctx).?;
+    defer std.testing.allocator.free(out);
+    // Parse the real output: a brace slip in the additive block would make
+    // every metrics.snapshot query fail closed (successEnvelope re-parses).
+    const parsed = try std.json.parseFromSlice(std.json.Value, std.testing.allocator, out, .{});
+    defer parsed.deinit();
+    const alert_file = parsed.value.object.get("alert_file").?;
+    try std.testing.expectEqualStrings("logs/alerts.ndjson", alert_file.object.get("path").?.string);
+    try std.testing.expect(alert_file.object.get("written") != null);
+    try std.testing.expect(alert_file.object.get("failed") != null);
 }
 
 test "RULE-LAYER-FAILCLOSED: metrics expose unavailable-layer payload count" {

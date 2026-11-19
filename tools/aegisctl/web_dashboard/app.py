@@ -65,6 +65,12 @@ def _select_evidence_log(candidates: list[Path]) -> Path:
 EVIDENCE_LOG = _select_evidence_log(
     [SERVICE_EVIDENCE_LOG, REPO_ROOT / "logs" / "aegis_core.ndjson"]
 )
+# ALERT-FILE-001: local file-only alerts. Same newest-wins resolution as the
+# evidence log; read-only tail on the loopback dashboard, never a writer.
+SERVICE_ALERT_LOG = Path(r"C:\Windows\System32\logs\alerts.ndjson")
+ALERT_LOG = _select_evidence_log(
+    [SERVICE_ALERT_LOG, REPO_ROOT / "logs" / "alerts.ndjson"]
+)
 FEED_LIMIT = 50
 FEED_SCAN_BYTES = 262_144
 # Statuses that may only be shown when a receipt validates; anything else
@@ -164,6 +170,59 @@ def _read_detection_feed() -> dict[str, Any]:
     }
 
 
+def _read_alert_feed() -> dict[str, Any]:
+    """Tail the fixed-path LOCAL alert file (read-only, bounded).
+
+    ALERT-FILE-001. The count shown by the operator comes from the daemon's
+    process-lifetime `metrics.alert_file.written` counter, NOT from this
+    bounded tail. Malformed lines are skipped; unknown keys are ignored.
+    """
+    if not ALERT_LOG.is_file():
+        return {"available": False, "path": str(ALERT_LOG), "records": [], "total_scanned": 0}
+    try:
+        size = ALERT_LOG.stat().st_size
+        with ALERT_LOG.open("rb") as handle:
+            handle.seek(max(0, size - FEED_SCAN_BYTES))
+            tail = handle.read()
+    except OSError:
+        return {"available": False, "path": str(ALERT_LOG), "records": [], "total_scanned": 0}
+    records: list[dict[str, Any]] = []
+    total_scanned = 0
+    for line in tail.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            raw = json.loads(line.decode("utf-8", errors="replace"))
+        except (ValueError, UnicodeDecodeError):
+            continue
+        if not isinstance(raw, dict) or raw.get("schema") != "aegis.alert.v1":
+            continue
+        total_scanned += 1
+        records.append({
+            "event_id": raw.get("event_id"),
+            "rule_id": raw.get("rule_id"),
+            "severity": raw.get("severity"),
+            "action": raw.get("action"),
+            "status": raw.get("status"),
+            "src_ip": raw.get("src_ip"),
+            "dst_ip": raw.get("dst_ip"),
+            "src_port": raw.get("src_port"),
+            "dst_port": raw.get("dst_port"),
+            "protocol": raw.get("protocol"),
+            "trace_id": raw.get("trace_id"),
+            "audit_id": raw.get("audit_id"),
+            "timestamp_ms": raw.get("ts_ms", 0),
+        })
+    records.sort(key=lambda item: item.get("timestamp_ms") or 0)
+    return {
+        "available": True,
+        "path": str(ALERT_LOG),
+        "records": records[-FEED_LIMIT:][::-1],
+        "total_scanned": total_scanned,
+    }
+
+
 def _severity_order(value: Any) -> int:
     return {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}.get(str(value).lower(), 5)
 
@@ -244,6 +303,7 @@ def _build_snapshot() -> dict[str, Any]:
     incident_counters = _read("incidents.list")
     forensic = _read_forensic_cached()
     feed = _read_detection_feed()
+    alerts = _read_alert_feed()
     incidents = [incident_from_record(x) for x in feed["records"]]
     rules = load_rules()
     return {
@@ -266,6 +326,9 @@ def _build_snapshot() -> dict[str, Any]:
         "incident_counters": incident_counters,
         "forensic": forensic,
         "feed": {"available": feed["available"], "path": feed["path"], "total_scanned": feed["total_scanned"]},
+        # ALERT-FILE-001: additive local-only view; the authoritative count is
+        # metrics.alert_file.written (process lifetime), never this tail.
+        "alerts": alerts,
         "incidents": incidents,
         "threat": _threat_posture(incidents, health),
         "rules_runtime": {
@@ -542,7 +605,7 @@ footer{color:var(--muted);font-size:11.5px;text-align:center;margin-top:26px}
   <span id="hdrMode" class="pill mut">—</span>
   <span class="sub" id="hdrUpdated"></span>
   <nav>
-    <a href="#overview">Overview</a><a href="#detection">Detection</a>
+    <a href="#overview">Overview</a><a href="#detection">Detection</a><a href="#alerts">Alerts</a>
     <a href="#kernel">Kernel</a>
     <a href="#rules">Rules</a><a href="#enforcement">Enforcement</a><a href="#system">System</a>
   </nav>
@@ -567,6 +630,12 @@ footer{color:var(--muted);font-size:11.5px;text-align:center;margin-top:26px}
       <span class="small muted" id="feedCount"></span>
     </div>
     <div id="feedTable"></div>
+  </div>
+
+  <div id="alerts" class="panel">
+    <h2>Local Alerts <span class="muted small" id="alertMeta"></span></h2>
+    <div class="receipt-note">Local file only (<code>logs/alerts.ndjson</code>). No egress, no transport, no secrets. The count is process-lifetime successful appends from the daemon, not a bounded tail. Advisory: an alert is a detection label, never a host-effect claim.</div>
+    <div id="alertTable"></div>
   </div>
 
   <div id="kernel" class="panel">
@@ -724,6 +793,29 @@ function renderFeed(){
   html+='</tbody></table>';$('feedTable').innerHTML=html;
 }
 
+function renderAlerts(){
+  // ALERT-FILE-001: additive local-only view. Never claim enforcement from
+  // an alert row; severity/action are advisory detection labels.
+  const a=snap.alerts||{},m=(snap.metrics||{}).alert_file||{};
+  // Older daemons have no alert_file counter: show —, never a fabricated 0.
+  const written=(m.written===undefined||m.written===null)?'—':num(m.written);
+  $('alertMeta').textContent=a.available?`· ${esc(a.path)} · ${a.total_scanned} scanned · ${written} written this process${m.failed?` · ${num(m.failed)} failed`:''}`:'· no local alert file yet';
+  const rows=a.records||[];
+  if(!rows.length){$('alertTable').innerHTML='<div class="feed-empty">No local alerts yet — this file fills from detections as the runtime runs.</div>';return}
+  let html='<table><thead><tr><th>Time</th><th>Rule</th><th>Severity</th><th>Source → Dest</th><th>Status</th><th>Event</th></tr></thead><tbody>';
+  for(const r of rows){
+    const dst=r.dst_ip||(r.dst_port?('port '+r.dst_port):'—');
+    html+=`<tr>
+      <td class="small" title="${fmtTime(r.timestamp_ms)}">${fmtTime(r.timestamp_ms)}<div class="muted">${relTime(r.timestamp_ms)}</div></td>
+      <td>${esc(r.rule_id??'—')}</td>
+      <td><span class="chip ${sevClass(r.severity)}">${sevLabel(r.severity)}</span></td>
+      <td class="small">${esc(r.src_ip||'—')} → ${esc(dst)}</td>
+      <td><span class="pill st-${esc(r.status||'observed')}">${esc(r.status||'observed')}</span></td>
+      <td class="small muted">#${esc(r.event_id??'—')}${r.action?' · '+esc(r.action):''}</td></tr>`;
+  }
+  html+='</tbody></table>';$('alertTable').innerHTML=html;
+}
+
 function renderRules(){
   const q=$('ruleQ').value.trim().toLowerCase();
   const rows=(snap.rules||[]).filter(r=>!q||[r.rule_id,r.name,r.category,r.severity,r.action].join(' ').toLowerCase().includes(q));
@@ -871,7 +963,7 @@ async function refreshKernel(){
 function render(){
   if(!snap)return;
   mode='online';
-  renderHeader();renderBanner();renderOverview();renderFeed();renderKernel();renderRules();renderEnforcement();renderSystem();renderComponents();
+  renderHeader();renderBanner();renderOverview();renderFeed();renderAlerts();renderKernel();renderRules();renderEnforcement();renderSystem();renderComponents();
 }
 
 async function refresh(){

@@ -30,6 +30,7 @@ const clock = @import("../reliability/monotonic_clock.zig");
 const state = @import("runtime_state.zig");
 const queue = @import("event_queue.zig");
 const siem_mod = @import("../forensic/siem_forwarder.zig");
+const alert_log = @import("../forensic/alert_log.zig");
 const brain_mod = @import("../core/bridge_init.zig");
 const xdr_runtime = @import("../xdr/xdr_runtime.zig");
 const xdr_evidence_flow = @import("../xdr/xdr_evidence_flow.zig");
@@ -705,6 +706,43 @@ fn processEvent(
     if (detection_rule_id != 0 and state.g_evidence_log_enabled) {
         evidenceLog(ev, detection_rule_id, ev_severity, policy_action, matched_policy, confirmed_effect, pep_decision, receipt_filter_id, pep_req_id, decision_trace.trace_id, audit_id, qe.payload[0..qe.payload_len], qe.src_ipv6, qe.dst_ipv6, ids_evidence_receipt);
     }
+
+    // 11. ALERT-FILE-001: one LOCAL NDJSON alert line per detection.
+    // Independent of evidence-log and SIEM (both may be off); fixed file path
+    // only, no egress. Advisory: never a host-effect or enforcement claim.
+    if (detection_rule_id != 0) {
+        alertAppend(ev, detection_rule_id, ev_severity, policy_action, decision_trace.trace_id, audit_id, qe.src_ipv6, qe.dst_ipv6);
+    }
+}
+
+/// Project one detection onto the local alert file. Bounded fields only;
+/// no payload bytes are emitted. ALERT-FILE-001.
+fn alertAppend(ev: *const event.IpcEvent, rule_id: u32, severity: event.EventSeverity, action: policy.Action, trace_id: u64, audit_id: u64, src6: ?[16]u8, dst6: ?[16]u8) void {
+    if (rule_id == 0) return;
+    var src_buf: [48]u8 = undefined;
+    var dst_buf: [48]u8 = undefined;
+    // Both IPv4 buffers must live at function scope: the slices passed to
+    // append() point into them and are used after the if/else resolves.
+    var ip4_src_buf: [15]u8 = undefined;
+    var ip4_dst_buf: [15]u8 = undefined;
+    const src = if (src6) |s6| formatIp6(s6, &src_buf) else alert_log.formatIp4(&ip4_src_buf, ev.src_ip);
+    const dst = if (dst6) |d6| formatIp6(d6, &dst_buf) else alert_log.formatIp4(&ip4_dst_buf, ev.dst_ip);
+    _ = alert_log.append(.{
+        .ts_ms = @intCast(@min(ev.timestamp_ns / 1_000_000, @as(u64, @intCast(std.math.maxInt(i64))))),
+        .event_id = ev.event_id,
+        .rule_id = rule_id,
+        .severity = @intFromEnum(severity),
+        .action = @tagName(action),
+        .status = "observed",
+        .src_ip = src,
+        .dst_ip = dst,
+        .src_port = ev.src_port,
+        .dst_port = ev.dst_port,
+        .protocol = ev.protocol,
+        .evidence = "local detection alert; no host effect",
+        .trace_id = trace_id,
+        .audit_id = audit_id,
+    });
 }
 
 /// Project one detection onto the evidence NDJSON log (BE-EVI-097).

@@ -371,3 +371,54 @@ def test_resource_telemetry_kpis_render_without_fabricating_cpu():
     assert "CPU (process)" in html and "Memory (process)" in html
     assert "no previous sample" in html
     assert "1 core = 100%" in html
+
+
+def test_alert_feed_reads_local_file_readonly(tmp_path, monkeypatch):
+    # ALERT-FILE-001: the dashboard tails a fixed local file only. All writes
+    # stay in tmp_path; no daemon call and no tree state touched.
+    path = tmp_path / "alerts.ndjson"
+    path.write_text(
+        '{"schema":"aegis.alert.v1","ts_ms":100,"event_id":1,"rule_id":9006,'
+        '"severity":3,"status":"observed","src_ip":"10.0.0.1"}\n'
+        + "not-json\n"
+        + '{"schema":"other","event_id":2}\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(app_module, "ALERT_LOG", path)
+    result = app_module._read_alert_feed()
+    assert result["available"] is True
+    assert result["total_scanned"] == 1  # malformed + unknown schema skipped
+    assert result["records"][0]["event_id"] == 1
+    assert result["records"][0]["rule_id"] == 9006
+
+
+def test_alert_feed_missing_file_degrades_honestly(tmp_path, monkeypatch):
+    monkeypatch.setattr(app_module, "ALERT_LOG", tmp_path / "absent.ndjson")
+    result = app_module._read_alert_feed()
+    assert result["available"] is False
+    assert result["records"] == []
+    assert result["total_scanned"] == 0
+
+
+def test_index_page_has_local_alerts_panel_and_no_egress_claim():
+    html = app_module.app.test_client().get("/").get_data(as_text=True)
+    assert 'id="alerts"' in html and 'href="#alerts"' in html
+    assert "Local Alerts" in html
+    assert "No egress, no transport, no secrets" in html
+    assert "renderAlerts()" in html
+
+
+def test_api_snapshot_carries_additive_alerts_key():
+    app_module._reset_snapshot_cache()
+    body = app_module.app.test_client().get("/api/snapshot").get_json()
+    assert "alerts" in body
+    assert body["alerts"]["records"] == []  # no daemon, no fabricated rows
+
+
+def test_alert_writer_source_has_no_egress_surface():
+    source = (TOOLS_DIR.parent / "src" / "forensic" / "alert_log.zig").read_text(encoding="utf-8")
+    assert 'ALERT_PATH = "logs/alerts.ndjson"' in source
+    # Scan for actual egress APIs, not the word "endpoint" in a comment
+    # stating there is none.
+    for forbidden in ("AEGIS_SIEM", "std.net", "std.http", "pub const Transport", "socket("):
+        assert forbidden not in source
