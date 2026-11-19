@@ -1,7 +1,7 @@
 {
   "head_sha": "a53eda8344a20f86ad4f4e4001e9b3d648067671",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-19",
+  "last_updated_at": "2026-11-20",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -9658,6 +9658,38 @@
       "limitations": [
         "No gate verdict or tag/publish action is taken by this document."
       ]
+    },
+    {
+      "id": "CLOSURE-CI-RECONCILE-E1-20261120",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-20",
+      "title": "Reconcile three red release pins and refresh the 674-artifact digest snapshot to build source a53eda8",
+      "level": "E1",
+      "component": "release engineering / CI",
+      "flow_id": "RELEASE-GATES",
+      "description": "Records/tests-only patch: refresh stale digests for the 19 src/tools files changed by slices 1-8 (f4cde3c -> a53eda8); re-check the EVT-039 WFP importer closure against the current tree (pure wire helpers in wfp_telemetry allowed, device transport still PEP-only); update the stale drivers-WDK CI pin to the deliberate CI-GREY-GATES design. Plus local-only staging of the three C helpers and the IPC bridge so runtime/installer tests get a true signal. No source, host, signed-candidate or soak change.",
+      "files_verified": [
+        "build_manifest.json",
+        "tests/release/test_ci_gates.py",
+        "tests/release/test_historical_closures.py",
+        "analysis/current-head/CLOSURE-CI-RECONCILE-20261120.md",
+        "analysis/current-head/CI-GREY-GATES-CLOSEOUT-20261119.md"
+      ],
+      "tests": [
+        "python tools/release_engineering.py --verify -> OK 674/674 (source_commit=a53eda8)",
+        "python -m pytest tests/release -q -> 201 passed",
+        "python -m pytest tests/runtime/test_harness_integration.py -q -> 3 passed, 2 skipped",
+        "python tools/truth.py verify -> TRUTH_VALID",
+        "python -m pytest -q -> 1434 passed, 29 skipped, 1 xfailed, 1 xpassed, 2 failed (E4 live-daemon host state only)"
+      ],
+      "result": "PASS_E1",
+      "finding": "All release/CI pins green at a53eda8; the two remaining E4 failures probe the installed DEGRADED daemon and are host-state evidence, not a source regression. soak_24h remains FAIL / NOT closed and the release stays NOT SHIPPABLE.",
+      "evidence_artifact": "analysis/current-head/CLOSURE-CI-RECONCILE-20261120.md",
+      "limitations": [
+        "No E5: no signed candidate installed, no fresh soak, no WDK driver build on host.",
+        "Native helper/bridge builds are local untracked staging only; no host effect.",
+        "check_summary.py cannot resolve admin-evidence pointers in this worktree (raw artifacts live in D:\\\\NIds_Windows)."
+      ]
     }
   ],
   "known_gaps": [
@@ -16323,7 +16355,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 37,
+    "E1_count": 38,
     "E2_count": 140,
     "E3_count": 14,
     "E4_count": 4,

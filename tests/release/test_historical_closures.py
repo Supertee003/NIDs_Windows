@@ -80,11 +80,40 @@ def test_evt_024_the_rust_pep_verifies_with_real_crypto() -> None:
 
 
 def test_the_pep_is_still_the_only_importer_of_the_bridge() -> None:
-    """EVT-039: 'only rust_pep.zig imports wfp_ioctl (read-only functions only)'."""
+    """EVT-039: 'only rust_pep.zig imports wfp_ioctl (read-only functions only)'.
+
+    CLOSURE-RECHECK-002 (2026-11-20, RULE-COVERAGE-001).  The WFP capture layer
+    now reads the kernel-observed TCP flags from the same 48-byte header, so
+    `src/capture/wfp_telemetry.zig` imports `wfp_ioctl.zig`.  That import is
+    confined to the pure wire-format helpers (`WfpEventHeader`, `wfpTcpFlags`,
+    `WFP_TCP_FLAGS_PRESENT`); `wfp_ioctl.zig` remains read-only by construction
+    (the two EVT-039 pins above: zero writable IOCTLs, GENERIC_READ-only open).
+    The security-relevant invariant is device ownership, so this re-check now
+    asserts the import allow-list *and* that only the PEP touches the device.
+    """
+    allowed = {"src/core/rust_pep.zig", "src/capture/wfp_telemetry.zig"}
     importers = []
     for path in (ROOT / "src").rglob("*.zig"):
         if path.name in {"all_tests.zig", "wfp_ioctl.zig"}:
             continue  # test aggregator and the module itself
         if re.search(r'@import\("[^"]*wfp_ioctl\.zig"\)', path.read_text(encoding="utf-8", errors="replace")):
             importers.append(path.relative_to(ROOT).as_posix())
-    assert importers == ["src/core/rust_pep.zig"], f"unexpected importers of wfp_ioctl: {importers}"
+    assert set(importers) == allowed, f"unexpected importers of wfp_ioctl: {importers}"
+
+    # The transport (device open/read/stats) stays PEP-only: no other module
+    # may reference the device functions, not even one that imports the module
+    # for its pure helpers.
+    device_calls = (
+        "wfp_ioctl.init", "wfp_ioctl.shutdown", "wfp_ioctl.isConnected",
+        "wfp_ioctl.read_events", "wfp_ioctl.get_stats",
+    )
+    foreign = []
+    for path in (ROOT / "src").rglob("*.zig"):
+        rel = path.relative_to(ROOT).as_posix()
+        if rel in {"src/core/rust_pep.zig", "src/policy/wfp_ioctl.zig"}:
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for call in device_calls:
+            if call in text:
+                foreign.append(f"{rel}:{call}")
+    assert not foreign, f"non-PEP device transport use: {foreign}"
