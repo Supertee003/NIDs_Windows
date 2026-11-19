@@ -1,17 +1,17 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-18T18:08:25.310759+00:00",
+  "generated_at": "2026-11-19T14:10:14.198850+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 2908,
+  "total_files": 2925,
   "by_role": {
-    "documentation": 474,
+    "documentation": 490,
     "build-config": 284,
     "other": 23,
     "lockfile": 6,
     "rust-build": 4,
     "source": 1330,
     "architecture-decision": 13,
-    "test-artifact": 383,
+    "test-artifact": 384,
     "config-data": 58,
     "step-document": 2,
     "go-source": 8,
@@ -584,6 +584,14 @@
       "class": "canonical-docs",
       "role": "architecture-decision"
     },
+    "analysis/current-head/AI-HANDOFF-AUDIT-20261119.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/AI-WORK-FINAL-DISPOSITION-20261119.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/BOOT-MODEL-002-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -621,6 +629,18 @@
       "role": "documentation"
     },
     "analysis/current-head/CAPTURE-SELECT-001-20261118.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/CI-CODEX-002-20261119.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/CI-ENCODING-BOM-20261119.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/CI-GREY-GATES-CLOSEOUT-20261119.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -884,6 +904,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/LATENCY-STALE-20261119.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/LEGACY-INERT-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -897,6 +921,18 @@
       "role": "documentation"
     },
     "analysis/current-head/NOSE-TOOLCHAIN-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/OBSERVABILITY-001-PATCH.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/OPERATOR-001-PATCH.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/OWNER-DECISION-20261119.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -956,6 +992,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/RB-024-F4CDE3C-20261119.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/RC-7D91E30-20261118.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -997,6 +1037,18 @@
       "role": "documentation"
     },
     "analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/RULE-COVERAGE-001-MATRIX.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/RULE-COVERAGE-001-PATCH.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/RULE-LAYER-FAILCLOSED-001-20261119.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -1104,11 +1156,23 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/VISIBILITY-001-BLOCKER-E1-20261119.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/VISIBILITY-001-PATCH.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/wfp-filter-audit-20261109.json": {
       "class": "canonical-build",
       "role": "build-config"
     },
     "analysis/current-head/WFP-READINESS-REFRESH-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/WFP-RULE-SCOPE-20261119.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -11396,6 +11460,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/tools/test_operator_honesty.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/tools/test_package_signature_gate.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -11957,5 +12025,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "f4cde3c"
+  "source_commit": "5c1b119"
 }
