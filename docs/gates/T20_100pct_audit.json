@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "7371d47",
+  "commit": "3f27b80",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE"
@@ -24,16 +24,13 @@
     "shippable": false,
     "shippable_with_waiver": false,
     "open": [
-      "clean_host_e5",
       "soak_24h"
     ],
     "waived": [],
     "unwaived": [
-      "clean_host_e5",
       "soak_24h"
     ],
     "owners": [
-      "owner",
       "time"
     ],
     "gates": [
@@ -57,9 +54,9 @@
       },
       {
         "id": "clean_host_e5",
-        "ok": false,
+        "ok": true,
         "owner": "owner",
-        "detail": "the PASS artifacts predate the installer/driver hash binding (re-run host_preflight.py with the current tool)"
+        "detail": "admin-evidence\\e5-clean-host-20261120-final\\preflight-20261120.json PASS with the loader under C:\\Program Files\\AEGIS NIDS, bound to the pinned installer/runtime/driver hashes"
       },
       {
         "id": "soak_24h",
