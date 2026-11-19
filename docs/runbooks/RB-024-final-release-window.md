@@ -9,7 +9,9 @@
 > `apply-466a226-and-preflight.ps1`, `reset-soak-baseline-466a226.ps1` and
 > `soak-466a226.ps1` helpers. This document is retained only as the **procedure
 > template** (order, 24 h hours, 3500/20000 budgets, baseline semantics).
-> `clean_host_e5` is already PASS; only `soak_24h` remains OPEN.
+> `clean_host_e5` was re-opened by the hash-binding change and is re-closed by
+> the mandatory `reset-soak-baseline-466a226.ps1`; after that only `soak_24h`
+> remains. Do not infer the current gate count from anything below this banner.
 
 **Type:** Deployment / Release proof
 **Module:** `release_closeout`

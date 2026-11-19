@@ -461,19 +461,44 @@ def evaluate_clean_host(artifacts: list[dict]) -> dict:
         match = re.search(r"(20\d{6})", path)
         return (match.group(1) if match else "", path)
 
-    for art in sorted(passing, key=date_key, reverse=True):
-        loader = str(art.get("loader") or "")
-        if INSTALL_DIR.lower() in loader.lower():
-            return {
-                "ok": True,
-                "detail": f"{art.get('path')} PASS with the loader under {INSTALL_DIR}",
-            }
-    if passing:
+    required = {
+        "image_hash_runtime", "image_hash_wfp", "image_hash_minifilter", "installer_hash",
+    }
+    ordered = sorted(passing, key=date_key, reverse=True)
+    installed_loader = [
+        a for a in ordered if INSTALL_DIR.lower() in str(a.get("loader") or "").lower()
+    ]
+    if passing and not installed_loader:
         return {
             "ok": False,
             "detail": "the only PASS artifacts have a boot-task loader outside the install "
                       "directory, i.e. they describe a hand-fixed lab host, not an install",
         }
+    bound = [
+        a for a in installed_loader
+        if required.issubset(a.get("binding_checks") or {})
+        and all(a["binding_checks"][k] for k in required)
+    ]
+    if bound:
+        art = bound[0]
+        return {
+            "ok": True,
+            "detail": f"{art.get('path')} PASS with the loader under {INSTALL_DIR}, "
+                      "bound to the pinned installer/runtime/driver hashes",
+        }
+    if installed_loader:
+        missing_binding = any(
+            not required.issubset(a.get("binding_checks") or {})
+            for a in installed_loader
+        )
+        detail = (
+            "the PASS artifacts predate the installer/driver hash binding "
+            "(re-run host_preflight.py with the current tool)"
+            if missing_binding else
+            "the PASS artifacts have wrong or unreadable installer/driver hashes; "
+            "the installed bytes are not the signed candidate"
+        )
+        return {"ok": False, "detail": detail}
     names = ", ".join(str(a.get("path")) for a in artifacts[:3])
     failed = next((a.get("failed") for a in artifacts if a.get("failed")), [])
     return {
@@ -762,6 +787,14 @@ def collect_release_facts(repo: Path = REPO) -> dict:
             "verdict": data.get("verdict"),
             "failed": data.get("failed") or [],
             "loader": boot.get("task_to_run"),
+            # PREFLIGHT-BINDING-001: a verdict without these checks predates the
+            # hash binding and cannot prove which bytes were installed.
+            "binding_checks": {
+                str(c.get("id")): bool(c.get("ok"))
+                for c in (data.get("checks") or [])
+                if isinstance(c, dict)
+                and str(c.get("id") or "").startswith(("image_hash_", "installer_hash"))
+            },
         })
     facts["preflights"] = preflights
 

@@ -57,6 +57,12 @@ def installed_facts(**over) -> dict:
             "data_integrity": {"loss_budget": 3500, "minifilter_ring_dropped": 0},
         },
         "status": {"state": "RUNNING", "uptime_ms": 5 * 60_000},
+        "images": {
+            "runtime": load_tool().INSTALLED_IMAGE_PINS["runtime"][1],
+            "wfp": load_tool().INSTALLED_IMAGE_PINS["wfp"][1],
+            "minifilter": load_tool().INSTALLED_IMAGE_PINS["minifilter"][1],
+            "installer": load_tool().INSTALLER_SHA256,
+        },
     }
     facts.update(over)
     return facts
@@ -87,8 +93,31 @@ def test_a_correct_install_passes_every_check() -> None:
         "daemon_health",
         "daemon_loss_budget",
         "minifilter_ring_clean",
+        "image_hash_runtime",
+        "image_hash_wfp",
+        "image_hash_minifilter",
+        "installer_hash",
         "daemon_uptime",
     }
+
+
+def test_wrong_installer_images_fail_closed() -> None:
+    """PREFLIGHT-BINDING-001: the main-tree installer's old runtime and unsigned
+    drivers must never earn a PASS, even with every service RUNNING."""
+    for key in ("runtime", "wfp", "minifilter", "installer"):
+        facts = installed_facts()
+        facts["images"] = dict(facts["images"], **{key: "0" * 64})
+        failed = failed_ids(load_tool().evaluate(facts, loss_budget=3500))
+        expected = "installer_hash" if key == "installer" else f"image_hash_{key}"
+        assert failed == {expected}, (key, failed)
+
+
+def test_missing_image_hash_fails_closed() -> None:
+    facts = installed_facts()
+    facts["images"] = dict(facts["images"], minifilter=None)
+    assert "image_hash_minifilter" in failed_ids(
+        load_tool().evaluate(facts, loss_budget=3500)
+    )
 
 
 def test_auto_start_daemon_fails_with_the_reason() -> None:

@@ -63,6 +63,12 @@ def facts(**over) -> dict:
                 "verdict": "PASS",
                 "failed": [],
                 "loader": f'powershell.exe -File "{INSTALL}\\scripts\\boot-sequence.ps1"',
+                "binding_checks": {
+                    "image_hash_runtime": True,
+                    "image_hash_wfp": True,
+                    "image_hash_minifilter": True,
+                    "installer_hash": True,
+                },
             }
         ],
         "soaks": [
@@ -274,6 +280,20 @@ def test_a_lab_host_pass_does_not_close_the_clean_host_gate() -> None:
     gate = opened["clean_host_e5"]
     assert gate["ok"] is False
     assert "outside the install directory" in gate["detail"]
+
+
+def test_an_unbound_pass_does_not_close_the_clean_host_gate() -> None:
+    """PREFLIGHT-BINDING-001: a verdict written before the installer/driver hash
+    binding cannot prove which bytes were installed, even with a good loader."""
+    opened = gates(preflights=[{
+        "path": "admin-evidence/e5-clean-host-20261120-final/preflight-20261120.json",
+        "verdict": "PASS",
+        "failed": [],
+        "loader": f'powershell.exe -File "{INSTALL}\\scripts\\boot-sequence.ps1"',
+    }])
+    gate = opened["clean_host_e5"]
+    assert gate["ok"] is False
+    assert "predate the installer/driver hash binding" in gate["detail"]
 
 
 def test_a_failed_preflight_names_the_open_check() -> None:

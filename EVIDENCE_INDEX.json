@@ -9726,6 +9726,105 @@
         "Driver signing is lab test signing only (no EV/HLK/Microsoft attestation); installer remains NotSigned.",
         "Signed tree tracks text files only; SHA256SUMS covers artifact-tree binaries that git intentionally ignores."
       ]
+    },
+    {
+      "id": "PREFLIGHT-BINDING-001-E2-20261120",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-20",
+      "title": "Post-install preflight now binds its PASS to the exact signed installer/runtime/driver bytes",
+      "level": "E2",
+      "component": "release engineering / host preflight",
+      "flow_id": "RELEASE-GATES",
+      "description": "A PASS previously proved only that some boot loader ran. host_preflight.py now hashes the installed runtime, WFP and minifilter images plus the worktree installer, compares case-insensitively against pinned SHA-256 values, and fails closed on a missing/unreadable value. final_audit.py reads those checks from the artifact and refuses a verdict that lacks them, so the 2026-11-20 wrong-installer incident cannot recur silently. Non-elevated read-only probe on the current host: all four hashes match; daemon_health remains DEGRADED (dirty baseline) by design until the owner reset.",
+      "files_verified": [
+        "tools/host_preflight.py",
+        "tools/final_audit.py",
+        "tests/release/test_host_preflight.py",
+        "tests/release/test_release_board.py"
+      ],
+      "tests": [
+        "python -m pytest -q tests/release/test_host_preflight.py tests/release/test_release_candidate_packaging.py tests/release/test_release_board.py -> 56 passed",
+        "python tools/host_preflight.py --json <temp> -> binding checks all ok; daemon_health/minifilter_ring_clean fail on the known dirty baseline"
+      ],
+      "result": "PASS_E2",
+      "finding": "The previously recorded preflight artifact predates this binding, so final_audit now honestly re-opens clean_host_e5 until reset-soak-baseline-466a226.ps1 re-runs preflight with the current tool.",
+      "evidence_artifact": "tools/host_preflight.py",
+      "limitations": [
+        "Hash pins are release-specific and must be updated with the next signed candidate.",
+        "The probe is read-only; no host state was changed and no elevated action was taken."
+      ]
+    },
+    {
+      "id": "RC-VERIFY-PIN-001-E2-20261120",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-20",
+      "title": "A bare release-candidate --verify can no longer choose a stale tree by sort order",
+      "level": "E2",
+      "component": "release engineering / candidate tooling",
+      "flow_id": "REL-002",
+      "description": "release_candidate.py used sorted(RELEASE_ROOT.glob('*/'))[-1], which verified an obsolete candidate at the current head and reported a false FAIL. It now accepts an explicit --dir, otherwise only a single unambiguous candidate, and refuses with exit 2 on ambiguity. The current active tree remains release/T20-final/466a226.",
+      "files_verified": [
+        "tools/release_candidate.py",
+        "tests/release/test_release_candidate_packaging.py"
+      ],
+      "tests": [
+        "python -m pytest -q tests/release/test_release_candidate_packaging.py -> passed (explicit/single/ambiguous cases)"
+      ],
+      "result": "PASS_E2",
+      "finding": "Ambiguity is now a refusal, never a guess; the signed candidate digest is unchanged.",
+      "evidence_artifact": "tools/release_candidate.py",
+      "limitations": [
+        "Explicit --dir release/T20-final/466a226 is still the recommended operator form."
+      ]
+    },
+    {
+      "id": "MANIFEST-VERIFY-RECONCILE-001-E2-20261120",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-20",
+      "title": "build_manifest digests recomputed with the gate's own normalized-byte rule",
+      "level": "E2",
+      "component": "release engineering / manifest",
+      "flow_id": "REL-001",
+      "description": "A prior audit compared raw bytes and called three entries drifted. verify_manifest() actually hashes CRLF-normalized LF bytes; recomputing with release_engineering.file_size/file_sha256 showed runtime_manifest.json was already correct and only tools/aegisctl.py and tools/installer.py were stale. Those two entries were refreshed from the files, not hand-typed.",
+      "files_verified": [
+        "build_manifest.json",
+        "tools/release_engineering.py"
+      ],
+      "tests": [
+        "python tools/release_engineering.py --verify -> OK 674/674 (source_commit=a53eda8)"
+      ],
+      "result": "PASS_E2",
+      "finding": "Manifest verification is green; no source or build artifact changed.",
+      "evidence_artifact": "build_manifest.json",
+      "limitations": [
+        "Records-only; the signed release tree is untouched."
+      ]
+    },
+    {
+      "id": "PRE-SOAK-RESET-001-E1-20261120",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-20",
+      "title": "Mandatory elevated clean-baseline reset before the 466a226 soak clock",
+      "level": "E1",
+      "component": "release engineering / host window",
+      "flow_id": "RELEASE-GATES",
+      "description": "Adds an absolute-path, run-from-anywhere operator script that verifies the installed image hashes, disables AC/DC standby and hibernate, stops the daemon and unloads the minifilter driver (whose cumulative kernel ring counter survives a daemon-only restart), restarts in boot order, waits for a stable zero-loss RUNNING state, and re-runs preflight into the gate's evidence root. It also stamps a do-not-use banner on the stale RB-024 runbook and refreshes the soak-window gate status.",
+      "files_verified": [
+        "analysis/current-head/reset-soak-baseline-466a226.ps1",
+        "analysis/current-head/SOAK-WINDOW-466A226-20261120.md",
+        "docs/runbooks/RB-024-final-release-window.md"
+      ],
+      "tests": [
+        "PowerShell Parser::ParseFile -> PARSE_OK",
+        "python tools/truth.py verify -> TRUTH_VALID"
+      ],
+      "result": "PASS_E1",
+      "finding": "The script is prepared but NOT executed by the agent (no elevation). The owner must run it and see BASELINE CLEAN before -Mode start.",
+      "evidence_artifact": "analysis/current-head/reset-soak-baseline-466a226.ps1",
+      "limitations": [
+        "E1 only: no host effect has been applied and no clean-baseline result is claimed here.",
+        "Does not install anything, hand-copy drivers, or alter any pinned hash."
+      ]
     }
   ],
   "known_gaps": [
@@ -16391,8 +16490,8 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 38,
-    "E2_count": 140,
+    "E1_count": 39,
+    "E2_count": 143,
     "E3_count": 14,
     "E4_count": 4,
     "E5_count": 119,

@@ -3654,8 +3654,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 122626,
-      "sha256": "1a55dd2afbc077c68b3ec41746e1a5718b4f4c8609ae74e613faacf551c9d426",
+      "size": 124393,
+      "sha256": "789ac536e7ea38ac3f8da5e78a5baf9ec181ab4a7b3d68b16cef1d0e56c27c27",
       "language": "python/cython"
     },
     {
@@ -3828,8 +3828,8 @@
     },
     {
       "path": "tools/installer.py",
-      "size": 27671,
-      "sha256": "6c1c01c6d645e6729ef0b807f2738abc64bdeef767f53b886ba88075b6cfd229",
+      "size": 32207,
+      "sha256": "f06e00beaefb36afd6da493b5ec92b19775174d8b909729f878d584d5b3119e8",
       "language": "python/cython"
     },
     {

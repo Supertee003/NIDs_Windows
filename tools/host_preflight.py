@@ -35,6 +35,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import pathlib
 import re
@@ -46,6 +47,30 @@ TASK_NAME = "AegisBootSequence"
 SERVICE = "AegisNids"
 EXPECTED_DRIVERS = ("AegisWfp", "AegisMinifilter")
 LOADER_NAME = "boot-sequence.ps1"
+
+# PREFLIGHT-BINDING-001: a PASS used to prove only that *some* loader ran. The
+# 2026-11-20 window showed why that is not enough: the main-tree installer was
+# run from the wrong directory and silently deployed the old runtime plus
+# unsigned drivers. These pins bind the verdict to the exact signed bytes.
+INSTALLED_IMAGE_PINS = {
+    "runtime": (
+        r"C:\Program Files\AEGIS NIDS\runtime\aegis_nids.exe",
+        "FBD9BDB3456C9C7DAFCBF1B0C3FBDAD9778F61C3186167856E373CC376185474",
+    ),
+    "wfp": (
+        r"C:\Windows\System32\drivers\aegis_wfp.sys",
+        "B26AC754C92B7BD0616EEBD73EB2A153A25C77C04FD7B5EF00B81FCE8C287877",
+    ),
+    "minifilter": (
+        r"C:\Windows\System32\drivers\aegis_minifilter.sys",
+        "C836A981AC74074B222CC9456BC7C6AD0960F7FD88B51220353A1D2D62AA3107",
+    ),
+}
+INSTALLER_NAME = "aegis_setup_6.0.0_trial.exe"
+INSTALLER_SHA256 = "D2267E720266807D6CB0EDBF5B83F6C6648FF75B4448D433117CDEA6031C3B83"
+BINDING_CHECK_IDS = (
+    "image_hash_runtime", "image_hash_wfp", "image_hash_minifilter", "installer_hash",
+)
 
 
 # ── collectors ─────────────────────────────────────────────────────────────
@@ -172,6 +197,26 @@ def daemon_status() -> dict:
         return {"error": f"{type(exc).__name__}: {exc}"}
 
 
+def image_hashes(repo_root: pathlib.Path | None = None) -> dict:
+    """Hash the exact installer and deployed images. Unreadable -> None, which
+    fails closed in evaluate(); no value is ever inferred from a path alone.
+    """
+    root = repo_root or pathlib.Path(__file__).resolve().parents[1]
+    found: dict[str, str | None] = {}
+    for name, (path, _want) in INSTALLED_IMAGE_PINS.items():
+        try:
+            f = pathlib.Path(path)
+            found[name] = hashlib.sha256(f.read_bytes()).hexdigest() if f.is_file() else None
+        except OSError:
+            found[name] = None
+    try:
+        f = root / "dist" / INSTALLER_NAME
+        found["installer"] = hashlib.sha256(f.read_bytes()).hexdigest() if f.is_file() else None
+    except OSError:
+        found["installer"] = None
+    return found
+
+
 # ── verdict ────────────────────────────────────────────────────────────────
 
 def evaluate(
@@ -180,6 +225,7 @@ def evaluate(
     loss_budget: int,
     install_dir: str = DEFAULT_INSTALL_DIR,
     min_uptime_min: float = 0.0,
+    images: dict | None = None,
 ) -> list[dict]:
     """Return one record per check: {id, ok, detail}. Pure, so it is testable."""
     checks: list[dict] = []
@@ -261,6 +307,27 @@ def evaluate(
             f"minifilter_ring_dropped is {ring if ring is not None else 'unreadable'}",
         )
 
+    # PREFLIGHT-BINDING-001: service state alone cannot distinguish the correct
+    # signed payload from an old installer's unsigned images. Bind the verdict
+    # to the exact bytes; an unreadable/missing value fails closed.
+    hashes = images if isinstance(images, dict) else {}
+    if not hashes and isinstance(facts.get("images"), dict):
+        hashes = facts["images"]
+    for name, (path, want) in INSTALLED_IMAGE_PINS.items():
+        got = str(hashes.get(name) or "").lower() or None
+        add(
+            f"image_hash_{name}",
+            got == want.lower(),
+            f"{path} sha256 is {got or 'unreadable'} (expected {want.lower()})",
+        )
+    got_installer = str(hashes.get("installer") or "").lower() or None
+    add(
+        "installer_hash",
+        got_installer == INSTALLER_SHA256.lower(),
+        f"{INSTALLER_NAME} sha256 is {got_installer or 'unreadable'} "
+        f"(expected {INSTALLER_SHA256.lower()})",
+    )
+
     status = facts.get("status") or {}
     uptime_ms = status.get("uptime_ms")
     if not isinstance(uptime_ms, (int, float)):
@@ -289,6 +356,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", type=pathlib.Path, default=None)
     args = parser.parse_args(argv)
 
+    images = image_hashes()
     facts = {
         "service": service_config(),
         "env": service_environment(),
@@ -296,12 +364,14 @@ def main(argv: list[str] | None = None) -> int:
         "services": states(EXPECTED_DRIVERS + (SERVICE,)),
         "health": daemon_health(),
         "status": daemon_status(),
+        "images": images,
     }
     checks = evaluate(
         facts,
         loss_budget=args.loss_budget,
         install_dir=args.install_dir,
         min_uptime_min=args.min_uptime_min,
+        images=images,
     )
     failed = [c for c in checks if not c["ok"]]
     report = {
