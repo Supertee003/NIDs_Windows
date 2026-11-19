@@ -9690,6 +9690,42 @@
         "Native helper/bridge builds are local untracked staging only; no host effect.",
         "check_summary.py cannot resolve admin-evidence pointers in this worktree (raw artifacts live in D:\\\\NIds_Windows)."
       ]
+    },
+    {
+      "id": "SIGNED-RC-A53EDA8-E7-20261120",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-20",
+      "title": "Rebuild all components at a53eda8 and sign a fresh release candidate with the owner-approved existing Ed25519 key",
+      "level": "E7",
+      "component": "release engineering / signing",
+      "flow_id": "REL-002",
+      "description": "Rebuilt Zig runtime, Rust PEP, shield/mouth support, Go nose, Cython support and both WDK drivers at build source a53eda8; test-signed the drivers with the existing pinned lab certs (no new key); assembled release/T20-final/466a226 (238 checksummed files) and Ed25519-signed its SHA256SUMS with the pre-existing owner key whose public half equals the approved anchor txigrGWz... . No re-key, no Signed-IR promotion, no source/host/soak/publish change.",
+      "files_verified": [
+        "release/T20-final/466a226/SHA256SUMS",
+        "release/T20-final/466a226/signatures.json",
+        "release/T20-final/466a226/SBOM.json",
+        "docs/gates/T20_100pct_audit.json",
+        "docs/gates/T20_100pct_audit.md",
+        "docs/gates/RELEASE_TRUST_ANCHOR.md",
+        "analysis/current-head/SIGNED-RC-A53EDA8-20261120.md"
+      ],
+      "tests": [
+        "zig build; cargo build --release; shield/mouth cargo builds; nose go build; cython build_ext --inplace; wdk_build_production.ps1; wdk_build_minifilter.ps1 -> all exit 0",
+        "stage_helpers.py --check -> OK (3 C helpers)",
+        "Get-AuthenticodeSignature build/x64/{wfp,minifilter}/*.sys -> Valid with pinned lab thumbprints",
+        "python tools/release_candidate.py -> RC PASS; release_candidate.verify(release/T20-final/466a226) -> True, 0 errors",
+        "python tools/sign_release.py --verify --dir release/T20-final/466a226 -> PASS (A053C048C8B373CF...), key = owner anchor",
+        "AEGIS_RELEASE_TRUSTED_PUBLIC_KEY=txigr... python tools/final_audit.py --release-check -> release_signature PASS (2/6 gates open)"
+      ],
+      "result": "PASS_E7_SIGNATURE_GATE",
+      "finding": "release_signature gate flips OPEN -> PASS: the newest signed tree 466a226 contains runtime a53eda8 and verifies cryptographically against the owner anchor with no key rotation. Release as a whole stays NOT SHIPPABLE (2/6 open): clean_host_e5 and soak_24h remain owner/time gates for the new candidate.",
+      "evidence_artifact": "analysis/current-head/SIGNED-RC-A53EDA8-20261120.md",
+      "limitations": [
+        "E5 not claimed: no fresh install or post-install preflight for the new candidate; the b597e71 E5 evidence does not apply to this tree.",
+        "E6/24h soak not claimed and deliberately deferred to last per owner instruction.",
+        "Driver signing is lab test signing only (no EV/HLK/Microsoft attestation); installer remains NotSigned.",
+        "Signed tree tracks text files only; SHA256SUMS covers artifact-tree binaries that git intentionally ignores."
+      ]
     }
   ],
   "known_gaps": [
@@ -16361,7 +16397,7 @@
     "E4_count": 4,
     "E5_count": 119,
     "E6_count": 1,
-    "E7_count": 3,
+    "E7_count": 4,
     "E5_with_artifact_count": 69,
     "known_gaps_count": 287
   },

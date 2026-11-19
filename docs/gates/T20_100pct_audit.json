@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "77cdf97",
+  "commit": "466a226",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE"
@@ -24,13 +24,16 @@
     "shippable": false,
     "shippable_with_waiver": false,
     "open": [
+      "clean_host_e5",
       "soak_24h"
     ],
     "waived": [],
     "unwaived": [
+      "clean_host_e5",
       "soak_24h"
     ],
     "owners": [
+      "owner",
       "time"
     ],
     "gates": [
@@ -50,19 +53,19 @@
         "id": "release_signature",
         "ok": true,
         "owner": "owner",
-        "detail": "release\\T20-final\\b597e71\\signatures.json cryptographically signs SHA256SUMS (02562BC958AE4516...) with a ed25519 key; commit b597e71 contains runtime f4cde3c"
+        "detail": "release\\T20-final\\466a226\\signatures.json cryptographically signs SHA256SUMS (A053C048C8B373CF...) with a ed25519 key; commit 466a226 contains runtime a53eda8"
       },
       {
         "id": "clean_host_e5",
-        "ok": true,
+        "ok": false,
         "owner": "owner",
-        "detail": "admin-evidence\\e5-clean-host-20261119-final\\preflight-20261119.json PASS with the loader under C:\\Program Files\\AEGIS NIDS"
+        "detail": "no post-install preflight artifact exists"
       },
       {
         "id": "soak_24h",
         "ok": false,
         "owner": "time",
-        "detail": "admin-evidence\\e5-clean-host-20261119-final\\soak-24h-f4cde3c-delta-20261119-2240.json reached terminal SOAK_FAIL at 18.03 h (verdict FAIL, 2 problems): daemon DEGRADED and queue_dropped_total grew 5177 over the owner-approved loss budget 3500. No SCM restarts; 4 services RUNNING. Covers signed source f4cde3c only; newer worktree source is outside its window. soak_24h NOT closed - fresh window needs a new signed candidate and an owner-named baseline."
+        "detail": "no soak artifact declares a 24 h requirement"
       },
       {
         "id": "evidence_debt",
