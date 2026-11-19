@@ -361,3 +361,13 @@ def test_web002_index_page_has_kernel_section():
     assert "kernelSensors" in html and "kernelFeeds" in html
     assert "/api/kernel" in html
     assert 'href="#kernel"' in html
+
+
+def test_resource_telemetry_kpis_render_without_fabricating_cpu():
+    # RESOURCE-TELEMETRY-001: gauges come from the daemon health block only;
+    # a missing/null cpu renders as —, never 0%.
+    client = app_module.app.test_client()
+    html = client.get("/").get_data(as_text=True)
+    assert "CPU (process)" in html and "Memory (process)" in html
+    assert "no previous sample" in html
+    assert "1 core = 100%" in html

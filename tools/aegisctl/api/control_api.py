@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import ipaddress
+import math
 import os
 import socket
 import subprocess
@@ -1089,6 +1090,40 @@ def _daemon_data_integrity(daemon_health: Dict[str, Any]) -> Dict[str, int]:
     return projected
 
 
+def _daemon_resources(daemon_health: Dict[str, Any]) -> Dict[str, Any]:
+    """Project the additive sampled resources block from daemon health.
+
+    RESOURCE-TELEMETRY-001. cpu_percent is a float OR null (null = no previous
+    sample, never coerce to 0.0); byte fields and sampled_at_ms are non-negative
+    ints. A missing/malformed block stays empty rather than inventing a gauge.
+    """
+    raw = daemon_health.get("resources")
+    if not isinstance(raw, dict):
+        return {}
+    out: Dict[str, Any] = {}
+    for key in ("available", "seeded"):
+        value = raw.get(key)
+        if isinstance(value, bool):
+            out[key] = value
+    for key in ("working_set_bytes", "private_bytes", "sampled_at_ms"):
+        value = raw.get(key)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            continue
+        # sampled_at_ms == 0 is the producer's "no sample yet" sentinel.
+        if key == "sampled_at_ms" and value == 0:
+            continue
+        out[key] = value
+    if "cpu_percent" in raw:
+        value = raw["cpu_percent"]
+        if value is None:
+            out["cpu_percent"] = None
+        elif isinstance(value, (int, float)) and not isinstance(value, bool):
+            fvalue = float(value)
+            if math.isfinite(fvalue) and fvalue >= 0.0:
+                out["cpu_percent"] = fvalue
+    return out
+
+
 def get_health_payload() -> Dict[str, Any]:
     """Get the health check payload conforming to RUNTIME_CONTRACT.md §4.1.
 
@@ -1311,6 +1346,9 @@ def get_health_payload() -> Dict[str, Any]:
             "workers": workers,
             "data_plane": data_plane,
             "data_integrity": _daemon_data_integrity(daemon_health),
+            # RESOURCE-TELEMETRY-001: sampled off the hot path; additive and
+            # empty on older daemons (no fabricated zero gauges).
+            "resources": _daemon_resources(daemon_health),
             "endpoint_ownership": summarize_endpoint_ownership(get_endpoint_ownership_cached()),
             "exactly_once": exactly_once,
         }

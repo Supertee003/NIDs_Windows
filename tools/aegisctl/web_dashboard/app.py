@@ -672,6 +672,16 @@ function renderOverview(){
   out+=kpi('Forensic Integrity',esc(fText),fState,`records ${num(f.records)}`);
   out+=kpi('Control Plane',snap.control?.available?'LIVE':'DIAGNOSTIC',snap.control?.available?'ok':'warn',
     snap.control?.available?'authoritative daemon data':'subsystem data is diagnostic only');
+  // RESOURCE-TELEMETRY-001: sampled gauges. A missing/null CPU is shown as —,
+  // never 0 (which would fabricate a measurement). 1 core = 100% by definition.
+  const r=h.resources||{};
+  const cpu=(r.cpu_percent===null||r.cpu_percent===undefined)?'—':Number(r.cpu_percent).toFixed(1)+'%';
+  const cpuCls=(r.cpu_percent===null||r.cpu_percent===undefined)?'':(r.cpu_percent>=80?'bad':(r.cpu_percent>=50?'warn':'ok'));
+  const cpuSub=r.seeded?'sampled · 1 core = 100%':'no previous sample';
+  out+=kpi('CPU (process)',cpu,cpuCls,cpuSub);
+  const ws=(r.working_set_bytes===undefined||r.working_set_bytes===null)?'—':(Number(r.working_set_bytes)/1048576).toFixed(0)+' MB';
+  const pv=(r.private_bytes===undefined||r.private_bytes===null)?'—':(Number(r.private_bytes)/1048576).toFixed(0)+' MB';
+  out+=kpi('Memory (process)',ws,'',r.available?('private '+pv+' · sampled '+relTime(r.sampled_at_ms)):'unavailable');
   out+='</div>';
   const strip=Array.from({length:5},(_,i)=>{const lvl=i+1;const active=lvl>=(t.defcon||5);
     const col=[ '','var(--crit)','var(--high)','var(--med)','var(--low)','var(--ok)'][t.defcon||5];

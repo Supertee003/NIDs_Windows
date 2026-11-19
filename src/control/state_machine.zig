@@ -12,6 +12,9 @@
 const std = @import("std");
 const runtime_state = @import("../pipeline/runtime_state.zig");
 const telemetry = @import("../pipeline/telemetry_threads.zig");
+// RESOURCE-TELEMETRY-001: sampled CPU/memory gauges. Pulled only from
+// healthJson (a control query) — never from the event pipeline (ADR-0013).
+const resource_telemetry = @import("../windows/resource_telemetry.zig");
 const defcon = @import("defcon.zig");
 const diag = @import("../core/diagnostics.zig");
 
@@ -456,7 +459,7 @@ pub const RuntimeState = struct {
         // between soak baseline and delta makes the delta meaningless. It is a
         // PROCESS generation token (not an OS reboot id) — older readers ignore
         // both keys.
-        try writer.print("\"data_integrity\":{{\"queue_dropped_total\":{},\"nose_frames_rejected\":{},\"nose_frames_dropped\":{},\"nose_pipe_errors\":{},\"minifilter_ring_dropped\":{},\"minifilter_pipeline_dropped\":{},\"loss_budget\":{},\"shed_overload\":{},\"process_generation_ms\":{}}},\"deps\":[", .{
+        try writer.print("\"data_integrity\":{{\"queue_dropped_total\":{},\"nose_frames_rejected\":{},\"nose_frames_dropped\":{},\"nose_pipe_errors\":{},\"minifilter_ring_dropped\":{},\"minifilter_pipeline_dropped\":{},\"loss_budget\":{},\"shed_overload\":{},\"process_generation_ms\":{}}},", .{
             queue_drops,
             nose_rejected,
             nose_dropped,
@@ -467,6 +470,14 @@ pub const RuntimeState = struct {
             shed_overload,
             runtime_state.g_process_generation_ms.load(.acquire),
         });
+        // RESOURCE-TELEMETRY-001: additive, sampled off the hot path. Written
+        // through the pure json() helper so escaped-brace errors cannot truncate
+        // the health payload (successEnvelope re-parses it).
+        try writer.writeAll("\"resources\":");
+        const resources_json = try resource_telemetry.json(a, resource_telemetry.current());
+        defer a.free(resources_json);
+        try writer.writeAll(resources_json);
+        try writer.writeAll(",\"deps\":[");
 
         try writer.print("{{\"name\":\"bridge\",\"state\":\"{s}\"}},{{\"name\":\"pipeline\",\"state\":\"{s}\"}}],\"subsystems\":[", .{
             if (bridge_ready) "RUNNING" else "DEGRADED",

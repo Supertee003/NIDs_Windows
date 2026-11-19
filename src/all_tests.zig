@@ -73,6 +73,8 @@ comptime {
     _ = @import("tests/windows/fim.zig");
     _ = @import("tests/windows/registry_monitor.zig");
     _ = @import("tests/windows/host_net.zig");
+    // RESOURCE-TELEMETRY-001: pure cpuPercent/json tests + Windows stub.
+    _ = @import("windows/resource_telemetry.zig");
     _ = @import("tests/windows/injection_detector.zig");
     _ = @import("tests/windows/host_telemetry.zig");
     _ = @import("windows/adapter_contract.zig");
