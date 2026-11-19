@@ -1024,3 +1024,21 @@ See `analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md` and
 - The eight slices have no E5: the worktree source is outside the old soak
   window and no new signed candidate is installed. `docs/gates/T20_100pct_audit.*`
   carry build source `a53eda8`; `tools/truth.py verify` = TRUTH_VALID.
+
+### Continuation - release-gate pin reconciliation (2026-11-20)
+
+- PATCH-ID CLOSURE-CI-RECONCILE-20261120 (records/tests only, build source still
+  `a53eda8`). Three red release pins closed: stale 674-artifact digest snapshot
+  refreshed to `a53eda8` (fixes `test_ac3_verify_mode_detects_drift` and all
+  three `fresh_deploy` plan tests); EVT-039 importer closure re-checked as a
+  pure-helper allow-list plus a stronger device-owner assertion (the PEP is
+  still the only caller of the WFP device transport); the drivers-WDK CI pin
+  updated to the deliberate CI-GREY-GATES design (`windows-2022`, authoritative
+  WDK scripts, no legacy .bat, no `workflow_dispatch` gate).
+- Native helpers + IPC bridge were built and staged locally only (gitignored)
+  so the runtime/installer tests get a true signal; no source, host, signed
+  candidate or soak change.
+- `tests/release`: 201 passed. Full suite: 1434 passed, 29 skipped,
+  1 xfailed, 1 xpassed, 2 failed - the same two E4 live-daemon tests, which
+  probe the installed DEGRADED daemon (host state, not a source regression).
+  `tools/truth.py verify` = TRUTH_VALID at `a53eda8`.
