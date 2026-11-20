@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "3f27b80",
+  "commit": "3caad73",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE"
@@ -62,7 +62,7 @@
         "id": "soak_24h",
         "ok": false,
         "owner": "time",
-        "detail": "no soak artifact declares a 24 h requirement"
+        "detail": "admin-evidence\\e5-clean-host-20261120-final\\soak-24h-delta-start.json is IN_PROGRESS at 0.0/24.0 h"
       },
       {
         "id": "evidence_debt",

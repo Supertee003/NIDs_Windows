@@ -1,7 +1,7 @@
 {
   "head_sha": "a53eda8344a20f86ad4f4e4001e9b3d648067671",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-20",
+  "last_updated_at": "2026-11-21",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -9825,6 +9825,32 @@
         "E1 only: no host effect has been applied and no clean-baseline result is claimed here.",
         "Does not install anything, hand-copy drivers, or alter any pinned hash."
       ]
+    },
+    {
+      "id": "SOAK-VOID-466A226-E5-20261121",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-21",
+      "title": "NEGATIVE E5: first 466a226 soak window voided by in-window file I/O, not by a source defect",
+      "level": "E5",
+      "component": "release engineering / host soak",
+      "flow_id": "RELEASE-GATES",
+      "description": "The owner started the 24 h window at 2026-11-20T05:08:54 from a verified zero-loss baseline (process generation 1795125491259, all services RUNNING). A read-only check at 21.08 h returned FAIL: daemon DEGRADED, queue_dropped_total 292514, minifilter_ring_dropped 7352102 and minifilter_pipeline_dropped 100814 against a 3500 budget. scm_restarts was empty and the generation was unchanged, so the loss occurred inside the window. Attribution: gaming plus browser/OneDrive/TeamViewer file activity during the window. No gate, budget, checker or artifact was altered; a fresh 24 h window on a quiet host is required.",
+      "files_verified": [
+        "analysis/current-head/SOAK-VOID-466A226-20261121.md",
+        "analysis/current-head/SOAK-WINDOW-466A226-20261120.md",
+        "tools/host_soak_check.py",
+        "tools/final_audit.py"
+      ],
+      "tests": [
+        "python tools/host_soak_check.py --start 2026-11-20T05:08:54 --hours 24 --loss-budget 3500 --shed-budget 20000 --baseline <window baseline> --json <temp> -> FAIL, problems: DEGRADED + 3 counters over budget"
+      ],
+      "result": "FAIL_WINDOW_VOID",
+      "finding": "soak_24h stays OPEN; release stays NOT SHIPPABLE. Counters are cumulative and cannot be repaired without a fresh window.",
+      "evidence_artifact": "analysis/current-head/SOAK-VOID-466A226-20261121.md",
+      "limitations": [
+        "Negative evidence only: this window is not scored as a release gate result.",
+        "The raw window artifacts are local-only under admin-evidence/soak-void-20261120-466a226/ per the 2026-11-06 retention policy."
+      ]
     }
   ],
   "known_gaps": [
@@ -16494,10 +16520,10 @@
     "E2_count": 143,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 119,
+    "E5_count": 120,
     "E6_count": 1,
     "E7_count": 4,
-    "E5_with_artifact_count": 69,
+    "E5_with_artifact_count": 70,
     "known_gaps_count": 287
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
