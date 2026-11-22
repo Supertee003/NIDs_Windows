@@ -9879,6 +9879,34 @@
         "Raw host artifacts are local-only under admin-evidence/ per the 2026-11-06 retention policy.",
         "Detection-only: no WFP enforcement, host effect, Signed-IR promotion or driver attestation is claimed."
       ]
+    },
+    {
+      "id": "V1.1-PUBLISHED-ASSET-VERIFICATION-E7-20261122",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-22",
+      "title": "Published v1.1 release assets downloaded from GitHub and re-verified against the signed 466a226 tree",
+      "level": "E7",
+      "component": "release engineering / distribution verification",
+      "flow_id": "REL-001",
+      "description": "All four release assets were downloaded back from the public v1.1 release with gh release download and hashed locally. Installer d2267e72..., bundle afd4109e..., standalone SHA256SUMS a053c048... and signatures.json 683943dc... match the locally verified originals. The standalone SHA256SUMS/signatures.json are byte-identical to the copies inside the downloaded bundle. Detached Ed25519 verification of the downloaded bundle and digest verification both PASS with the owner-pinned trust anchor. No published asset was modified.",
+      "files_verified": [
+        "analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md",
+        "release/T20-final/466a226/SHA256SUMS",
+        "release/T20-final/466a226/signatures.json",
+        "dist/aegis_setup_6.0.0_trial.exe"
+      ],
+      "tests": [
+        "gh release download v1.1 -> 4/4 assets, SHA-256 match local originals",
+        "python tools/sign_release.py --verify --dir <downloaded bundle> -> PASS",
+        "python tools/verify_release_digest.py --tree <downloaded bundle> -> MATCH (as-stored)"
+      ],
+      "result": "PASS",
+      "finding": "The bytes served by GitHub are the signed candidate 466a226 (build source a53eda8). E7 release verification is complete; no retag, re-sign, re-key or artifact rewrite was performed.",
+      "evidence_artifact": "analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md",
+      "limitations": [
+        "GitHub asset digests reported by the API were cross-checked against local SHA-256; no independent third-party mirror was used.",
+        "Detection-only release; no WFP enforcement or host effect is claimed."
+      ]
     }
   ],
   "known_gaps": [
@@ -16553,7 +16581,7 @@
     "E4_count": 4,
     "E5_count": 121,
     "E6_count": 1,
-    "E7_count": 4,
+    "E7_count": 5,
     "E5_with_artifact_count": 71,
     "known_gaps_count": 287
   },

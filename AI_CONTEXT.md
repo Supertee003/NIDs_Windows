@@ -14,6 +14,13 @@
 
 **GENERATOR:** Manus + `tools/rebuild_truth.py` (ADR-0008 source-commit stamp)
 
+> **RELEASE UPDATE (2026-11-22):** `v1.1` was published from signed candidate
+> `466a226` (build source `a53eda8`) with all six gates PASS and a genuine
+> 36.52 h soak PASS. `a53eda8` descends from the earlier v2.0.0 build source
+> `7c604d5`; the lower version string is a retained closure-line name, not a
+> rollback. v2.0.0 statements below are HISTORICAL for release identity.
+> Authority: `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`.
+
 > HISTORY REWRITE (2026-11-06): published history was rewritten to remove
 > `aegis-audit-*/` (13.8 GB of scan dumps) and the local-only
 > `admin-evidence/`. Pre-rewrite SHAs cited in older evidence remain
