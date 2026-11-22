@@ -390,9 +390,11 @@ jobs:
     needs: [zig-build-test, rust-pep-build, c-native-build,
             python-tests, go-nose-build-test, drivers-wdk-build]
     runs-on: windows-latest
-    # Build + SBOM verification runs on every push so this check is never
-    # grey. Publishing stays tag-only through the Release step's own guard:
-    # no branch push can create a GitHub Release or publish an installer.
+    # Installer-script generation + SBOM run on every push so this check is
+    # never grey. Full NSIS packaging stays tag-only: the installer fails
+    # closed without the owner-signed driver payloads, which are deliberately
+    # not tracked in git and therefore cannot exist in a clean checkout.
+    # Publishing stays tag-only through the Release step's own guard.
     # `success()` preserves the default `needs` gate.
     if: ${{ success() }}
     steps:
@@ -451,9 +453,19 @@ jobs:
           Write-Host "OK: canonical runtime layout staged"
       - name: Install NSIS
         run: choco install nsis -y
-      - name: Build installer
+      - name: Generate installer script (every push)
+        run: python tools/installer.py --generate --nsi installer.generated.nsi
+      - name: Verify generated installer script
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "installer.generated.nsi")) { throw "installer script not generated" }
+          if ((Get-Item "installer.generated.nsi").Length -le 0) { throw "empty installer script" }
+          Write-Host "OK: installer script generated"
+      - name: Build installer (tag only; owner-signed payloads required)
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
         run: python tools/installer.py --package --output aegis_setup.exe
       - name: Verify installer output
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
         shell: pwsh
         run: |
           if (-not (Test-Path "aegis_setup.exe")) { throw "installer not produced" }
