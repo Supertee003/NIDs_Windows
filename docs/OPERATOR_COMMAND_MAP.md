@@ -27,6 +27,8 @@ with a pointer, or a support script -- ask before running it on prod.
 |---|---|
 | `events count/tail/stats` | Raw evidence firehose (193K records live) |
 | `alerts` | Filtered alert-level view only (quiet hosts: empty is normal) |
+| `mark-fp <event_id> [--reason ...]` | Advisory local FP mark (FP-FEEDBACK-001); writes `logs/fp_feedback.ndjson`, verified by re-read. Never suppresses detection or touches policy/rules/PEP |
+| `fp count` / `fp list` | Read the advisory local FP marks; count is operator feedback, not a detection counter |
 | `incidents list` | Threat-tracker counters + open-incident detail (highest score first) |
 | `incidents top` | Top firing rules, ring-derived grouping |
 | `xdr list/verify` | Advisory XDR evidence, read-only (never a host action) |
@@ -47,6 +49,8 @@ with a pointer, or a support script -- ask before running it on prod.
 | `aegis_open.py close [--with-service]` | Stop supervised (service stays unless asked) |
 | `rules validate/reload/list` | Ruleset changes (validate first, always) |
 | `policy verify/validate` | Trust posture (unsigned default is normal) |
+| `policy enable` / `policy disable` | POLICY-MUTATE-001: privileged evidence-verdict label on/off; read-back postcondition; never gates detection, rules, or host effects |
+| `policy reload` | POLICY-MUTATE-001: privileged re-read of `configs/policies.json` + atomic live-set swap; postcondition reports the new generation |
 | `forensic verify` | Ring integrity (~5s, never during measurements) |
 | `upgrade_rollback.py snapshot/report/rollback` | Recovery (RB-004) |
 | `truth.py verify` + `release_engineering.py --verify` | Gates (seconds, read-only) |
@@ -123,7 +127,8 @@ blocks/quarantine/shutdown privileged-only; the tree carries no secrets
 (gitleaks green). Three accepted costs to know:
 - The repo tree and `configs/Rules.json` are writable by Authenticated
   Users, while the keeper task executes repo scripts as SYSTEM and any
-  authenticated user may trigger `rules.reload` (.operate role). Until
+  authenticated user may trigger `rules.reload` (`.privileged` role, enforced
+  by `src/control/authorization.zig` on the impersonated token). Until
   hardened, ANY local user can reach SYSTEM (via the task path) and
   mute detection (via rules+reload). Harden with the ADMIN icacls block
   in EVT-174 (root RX + logs/ M, backup first), then non-admin pytest

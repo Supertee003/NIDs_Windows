@@ -7,12 +7,16 @@ callout + minifilter, DEPLOY-120) - preserves user data on upgrade, and
 writes a manifest-derived directive for every component.
 """
 import argparse
+import base64
+import hashlib
 import json
 import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 ROOT = Path(__file__).parent.parent
 MANIFEST_PATH = ROOT / "build_manifest.json"
@@ -27,21 +31,104 @@ STATIC_FILES = {
     "aegis_wfp.sys", "aegis_minifilter.sys",
 }
 
-# Kernel telemetry drivers (DEPLOY-120, detection-only). The source paths are
-# the canonical WDK build outputs that scripts/wfp_service.ps1 and
-# scripts/minifilter_service.ps1 deploy to System32\drivers - the same
-# binaries EVT-231/EVT-232 proved live (payload copy + rule match).
-DRIVER_SOURCES = (
-    ("wfp", "build\\x64\\wfp\\aegis_wfp.sys"),
-    ("minifilter", "build\\x64\\minifilter\\aegis_minifilter.sys"),
+# Kernel telemetry drivers (DEPLOY-120, detection-only). The raw WDK outputs
+# under build\x64\ are NOT signed: Windows refuses them with
+# ERROR_INVALID_IMAGE_HASH (0x241/577), the services stay STOPPED and the
+# daemon reports DEGRADED. The installer must therefore package the exact
+# bytes carried by the owner-signed release candidate (see
+# DRIVER-SIGN-PAYLOAD-001), verified below before they are referenced.
+RELEASE_ROOT = ROOT / "release"
+OWNER_PUBLIC_KEY = "txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o="
+SIGNED_DRIVER_FALLBACK = (
+    ("wfp", "release\\signed-drivers\\aegis_wfp.sys"),
+    ("minifilter", "release\\signed-drivers\\aegis_minifilter.sys"),
 )
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest().upper()
+
+
+def _owner_signed_tree(tree: Path) -> bool:
+    """True only when signatures.json cryptographically signs SHA256SUMS with
+    the owner-approved key. No private key/custody is needed here."""
+    sums, record_path = tree / "SHA256SUMS", tree / "signatures.json"
+    if not (sums.is_file() and record_path.is_file()):
+        return False
+    try:
+        record = json.loads(record_path.read_text(encoding="utf-8"))
+        if str(record.get("public_key") or "") != OWNER_PUBLIC_KEY:
+            return False
+        if str(record.get("algorithm") or "").lower() != "ed25519":
+            return False
+        data = sums.read_bytes()
+        if hashlib.sha256(data).hexdigest().upper() != str(record.get("signed_digest") or "").upper():
+            return False
+        key = Ed25519PublicKey.from_public_bytes(base64.b64decode(record["public_key"]))
+        key.verify(base64.b64decode(record["signature"]), data)
+        return True
+    except Exception:  # noqa: BLE001 - untrusted input; never package on error
+        return False
+
+
+def _sums_hashes(tree: Path) -> dict[str, str]:
+    hashes: dict[str, str] = {}
+    for line in (tree / "SHA256SUMS").read_text(encoding="utf-8").splitlines():
+        parts = line.split()
+        if len(parts) >= 2:
+            hashes[parts[-1].lstrip("*").replace("/", "\\").lower()] = parts[0].upper()
+    return hashes
+
+
+def signed_driver_sources() -> list[tuple[str, str]]:
+    """(tag, NSIS-source-path) for signed driver payloads.
+
+    Picks the newest owner-signed candidate whose two driver files match its
+    signed SHA256SUMS. Falls back to a non-existent canonical staging path
+    (never to the unsigned build outputs) so packaging stays fail-closed.
+    """
+    candidates = []
+    for record_path in [*RELEASE_ROOT.glob("*/signatures.json"),
+                        *RELEASE_ROOT.glob("*/*/signatures.json")]:
+        tree = record_path.parent
+        if not _owner_signed_tree(tree):
+            continue
+        try:
+            sums = _sums_hashes(tree)
+        except OSError:
+            continue
+        sources: dict[str, str] = {}
+        for tag, rel in (("wfp", "drivers/aegis_wfp.sys"),
+                         ("minifilter", "drivers/aegis_minifilter.sys")):
+            payload = tree / rel
+            key = rel.replace("/", "\\")
+            if not payload.is_file() or sums.get(key.lower()) != _sha256(payload):
+                break
+            sources[tag] = str(payload.relative_to(ROOT)).replace("/", "\\")
+        if len(sources) != 2:
+            continue
+        try:
+            signed_at = str(json.loads(record_path.read_text(encoding="utf-8")).get("signed_at") or "")
+        except (OSError, ValueError):
+            signed_at = ""
+        candidates.append((signed_at, str(tree), sources))
+    if not candidates:
+        return list(SIGNED_DRIVER_FALLBACK)
+    _stamp, _tree, sources = max(candidates, key=lambda item: (item[0], item[1]))
+    return [(tag, sources[tag]) for tag in ("wfp", "minifilter")]
+
+
+def signed_drivers_available() -> bool:
+    """Packaging gate: both signed payloads must exist on disk."""
+    return all((ROOT / rel.replace("\\", "/")).is_file()
+               for _tag, rel in signed_driver_sources())
 
 
 def driver_presence() -> list:
     """(tag, nsis-source-path, present-on-disk) for each kernel driver."""
     return [
         (tag, rel, (ROOT / rel.replace("\\", "/")).is_file())
-        for tag, rel in DRIVER_SOURCES
+        for tag, rel in signed_driver_sources()
     ]
 
 
@@ -248,13 +335,17 @@ Section "Install"
   File "zig-out\bin\aegis_etw_helper.dll"
   File "zig-out\bin\aegis_fim_helper.dll"
 
-  ; DEPLOY-120: kernel telemetry drivers from their canonical WDK build
-  ; outputs (build\x64\wfp + build\x64\minifilter). /nonfatal keeps
-  ; packaging possible on hosts that have not built the drivers yet;
-  ; setup then skips the matching service registration below.
+  ; DEPLOY-120 / DRIVER-SIGN-PAYLOAD-001: kernel telemetry drivers come from
+  ; the owner-signed release candidate, hash-verified against its signed
+  ; SHA256SUMS. /nonfatal only covers a host where that candidate is absent;
+  ; --package itself fails closed before makensis in that case.
   SetOutPath "$INSTDIR\drivers"
-  File "/nonfatal" "/oname=aegis_wfp.sys" "build\x64\wfp\aegis_wfp.sys"
-  File "/nonfatal" "/oname=aegis_minifilter.sys" "build\x64\minifilter\aegis_minifilter.sys"
+  ; DRIVER-SIGN-PAYLOAD-001: package the owner-signed candidate bytes, NOT the
+  ; raw build\x64\ outputs. Unsigned images are rejected with 0x241 (577) and
+  ; leave both driver services STOPPED / the daemon DEGRADED. The source paths
+  ; are resolved and hash-verified by signed_driver_sources() at generation.
+  File "/nonfatal" "/oname=aegis_wfp.sys" "@WFP_DRIVER_SOURCE@"
+  File "/nonfatal" "/oname=aegis_minifilter.sys" "@FIM_DRIVER_SOURCE@"
 
   SetOutPath "$INSTDIR"
   File "build_manifest.json"
@@ -519,14 +610,16 @@ def generate_nsi(nsi_path: Path) -> None:
     missing = [tag for tag, _rel, present in presence if not present]
     if missing:
         print(
-            "WARN: kernel driver build output(s) missing: "
+            "WARN: owner-signed kernel driver payload(s) missing: "
             + ", ".join(missing)
-            + " - the installer ships without them and setup skips their "
-            "service registration; build first: "
-            "scripts\\wdk_build_production.ps1 + scripts\\wdk_build_minifilter.ps1",
+            + " - setup will skip their service registration; assemble and "
+            "sign the release candidate before packaging (--package fails closed)",
             file=sys.stderr,
         )
+    sources = dict(signed_driver_sources())
     body = NSIS_TEMPLATE.replace("@AEGIS_COMMIT@", head)
+    body = body.replace("@WFP_DRIVER_SOURCE@", sources["wfp"])
+    body = body.replace("@FIM_DRIVER_SOURCE@", sources["minifilter"])
     # Manifest-derived runtime outputs (DEPLOY-119). The File lines MUST be
     # spliced INSIDE the Install section: NSIS rejects File outside any
     # Section, so the old append-after-SectionEnd shape produced silently
@@ -563,6 +656,15 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.package:
+        if not signed_drivers_available():
+            print(
+                "ERROR: no owner-signed driver payloads verified against a signed "
+                "SHA256SUMS; refusing to package an installer that would deploy "
+                "unsigned images (Windows 0x241/577). Assemble and sign the "
+                "release candidate first.",
+                file=sys.stderr,
+            )
+            return 2
         nsi_path = args.nsi or (ROOT / "installer.generated.nsi")
         generate_nsi(nsi_path)
         makensis = find_makensis()

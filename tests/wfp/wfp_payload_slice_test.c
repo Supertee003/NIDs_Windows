@@ -106,6 +106,34 @@ static void test_malformed_or_unsupported_outbound_data_is_not_payload(void)
     assert(offset == 0 && length == 0);
 }
 
+static void test_tcp_flags_evidence_is_outbound_only(void)
+{
+    uint8_t tcp_header[20] = { 0 };
+    uint8_t flags = 0xAA;
+
+    tcp_header[12] = 0x50;
+    tcp_header[13] = 0x02; /* SYN */
+
+    assert(aegis_wfp_tcp_flags_from_header(tcp_header,
+        sizeof(tcp_header), 6, 1, &flags));
+    assert(flags == 0x02);
+
+    /* Inbound WFP data starts at L7: no TCP header, no flags evidence. */
+    flags = 0xAA;
+    assert(!aegis_wfp_tcp_flags_from_header(tcp_header,
+        sizeof(tcp_header), 6, 0, &flags));
+    assert(flags == 0);
+
+    /* Non-TCP and short buffers are also honest absences. */
+    assert(!aegis_wfp_tcp_flags_from_header(tcp_header,
+        sizeof(tcp_header), 17, 1, &flags));
+    assert(flags == 0);
+    assert(!aegis_wfp_tcp_flags_from_header(tcp_header, 13, 6, 1, &flags));
+    assert(flags == 0);
+    assert(!aegis_wfp_tcp_flags_from_header(NULL, 20, 6, 1, &flags));
+    assert(flags == 0);
+}
+
 int main(void)
 {
     test_inbound_data_starts_at_payload();
@@ -113,6 +141,7 @@ int main(void)
     test_outbound_tcp_skips_options();
     test_outbound_udp_skips_header_and_honors_length();
     test_malformed_or_unsupported_outbound_data_is_not_payload();
-    puts("WFP payload slice tests: PASS (5 cases)");
+    test_tcp_flags_evidence_is_outbound_only();
+    puts("WFP payload slice tests: PASS (6 cases)");
     return 0;
 }

@@ -226,6 +226,31 @@ def test_baseline_counter_going_backwards_fails_closed() -> None:
     assert any("queue_dropped_total went backwards" in p for p in problems)
 
 
+def test_process_generation_change_invalidates_window_even_without_backwards_counter() -> None:
+    # OBSERVABILITY-001: a daemon restart can reset counters and rebuild them
+    # past the baseline before the next probe. The backwards-counter check then
+    # sees nothing, so the process-generation token is the authoritative signal.
+    base = _baseline()
+    base["data_integrity"]["process_generation_ms"] = 1_700_000_000_000
+    live = _live_after_baseline()
+    live["data_integrity"]["process_generation_ms"] = 1_700_000_500_000
+    problems, _ = load_tool().evaluate(
+        **base_kwargs(health=live, queue={"shed_overload": 5_310}, baseline=base)
+    )
+    assert any("process generation changed" in p for p in problems)
+
+
+def test_same_process_generation_does_not_invalidate_window() -> None:
+    base = _baseline()
+    base["data_integrity"]["process_generation_ms"] = 1_700_000_000_000
+    live = _live_after_baseline()
+    live["data_integrity"]["process_generation_ms"] = 1_700_000_000_000
+    problems, _ = load_tool().evaluate(
+        **base_kwargs(health=live, queue={"shed_overload": 5_310}, baseline=base)
+    )
+    assert not any("process generation" in p for p in problems)
+
+
 def test_baseline_missing_a_counter_fails_closed() -> None:
     base = _baseline()
     base["data_integrity"].pop("minifilter_ring_dropped")

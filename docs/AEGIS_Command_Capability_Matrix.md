@@ -34,7 +34,8 @@
 | `block add/remove/clear` | unavailable | ไม่มี PEP/WFP postcondition | ใช้ `list` ได้เฉพาะดู local state |
 | `quarantine add/remove` | unavailable | ไม่มี PEP/WFP postcondition | ใช้ `list` ได้เฉพาะดู local state |
 | `enforce enable/disable/push` | unavailable | ไม่มี PEP runtime postcondition | ใช้ `status` ดู local stateเท่านั้น |
-| `policy enable/disable/reload` | unavailable | ไม่มี active policy postcondition | ใช้ `list/show` ดูข้อมูลเท่านั้น |
+| `policy enable/disable` | available (privileged) | POLICY-MUTATE-001: เปิด/ปิด evidence-verdict label เท่านั้น; อ่านค่า flag กลับเป็น postcondition; ไม่ gate detection ไม่มี host effect |
+| `policy reload` | available (privileged) | POLICY-MUTATE-001: อ่าน `configs/policies.json` ใหม่แล้ว swap live set แบบ atomic; postcondition = generation bump หลัง swap สำเร็จ |
 | `simulate attack/packet/flood/replay` | unavailable | ใช้ event generator ที่ควบคุมได้แทน | ไม่รายงาน success ปลอม |
 | `canary run/status/report` | unavailable | end-to-end runner ยังไม่เชื่อม | ไม่ใช่ end-to-end canary |
 | `alerts` | unavailable | alert query ยังไม่เชื่อม | ใช้ events/forensics แทน |

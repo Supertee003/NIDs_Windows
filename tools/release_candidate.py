@@ -263,20 +263,43 @@ def verify(tree: Path) -> tuple[bool, list[str]]:
     return (not errors), errors
 
 
-def main() -> int:
+def choose_verify_tree(explicit: str | Path | None) -> tuple[Path | None, str]:
+    """Pin the tree that --verify checks.
+
+    RC-VERIFY-PIN-001: `sorted(glob)[-1]` silently verified whichever candidate
+    happened to sort last (an obsolete `bece8f1` at this head), so a bare
+    `--verify` could report FAIL on a healthy candidate or PASS on a stale one.
+    An explicit `--dir` is authority; otherwise only an unambiguous single
+    candidate is accepted. Ambiguity is a refusal, never a guess.
+    """
+    if explicit is not None:
+        return Path(explicit), ""
+    candidates = sorted(
+        p for p in RELEASE_ROOT.glob("*/") if p.is_dir()
+    ) if RELEASE_ROOT.exists() else []
+    if len(candidates) == 1:
+        return candidates[0], ""
+    names = ", ".join(p.name for p in candidates) or "none"
+    return None, (
+        "ambiguous release candidates (%s): pass --dir release/T20-final/<candidate> "
+        "to pin the tree you intend to verify" % names
+    )
+
+
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="T20 release candidate")
     ap.add_argument("--verify", action="store_true",
                     help="re-verify an existing candidate tree")
-    args = ap.parse_args()
+    ap.add_argument("--dir", type=Path, default=None,
+                    help="candidate tree to verify (required when >1 candidate exists)")
+    args = ap.parse_args(argv)
     commit = git("rev-parse", "--short", "HEAD")
 
     if args.verify:
-        candidates = sorted(RELEASE_ROOT.glob("*/")) if RELEASE_ROOT.exists() else []
-        if not candidates:
-            print("no release candidate found under %s" % RELEASE_ROOT,
-                  file=sys.stderr)
-            return 1
-        tree = candidates[-1]
+        tree, error = choose_verify_tree(args.dir)
+        if tree is None:
+            print("RC VERIFY REFUSED: " + error, file=sys.stderr)
+            return 2
         ok, errors = verify(tree)
         print("%s: %s %s" % ("RC VERIFY PASS" if ok else "RC VERIFY FAIL",
                              tree, "" if ok else errors))

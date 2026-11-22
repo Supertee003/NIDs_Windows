@@ -28,11 +28,13 @@ python tools/aegisctl.py events
 python tools/aegisctl.py federation
 python tools/aegisctl.py forensic
 python tools/aegisctl.py forensics
+python tools/aegisctl.py fp
 python tools/aegisctl.py graph
 python tools/aegisctl.py health
 python tools/aegisctl.py help
 python tools/aegisctl.py incidents
 python tools/aegisctl.py iptest
+python tools/aegisctl.py mark-fp
 python tools/aegisctl.py metrics
 python tools/aegisctl.py policy
 python tools/aegisctl.py quarantine

@@ -1,5 +1,7 @@
 # ADR-0009: Kernel IDS Integrity Plane Reuses IPS Safety Invariants
 
+> **HISTORICAL (superseded 2026-11-09, RETIRE-HOST-EFFECT-001 / issue #25):** the product is detection-only. Any enforcement authority / host-effect wording below is a historical design record, not current truth. Current authority: `AUTHORITY_MAP.json`, `analysis/current-head/RUST-FOUNDATION-STATUS-20261119.md`.
+
 **Status:** Accepted for the IDS direction reset  
 **Date:** 2026-10-31  
 **Scope:** Production kernel-level intrusion detection; IPS remains lab/qualification-only

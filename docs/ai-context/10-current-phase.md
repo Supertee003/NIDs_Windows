@@ -1,5 +1,11 @@
 # 10 - Current Phase
 
+> **UPDATE (2026-11-22):** the published release is now `v1.1` (signed candidate
+> `466a226`, build source `a53eda8`, 6/6 gates PASS, genuine 36.52 h soak, 0 open
+> gaps). The v2.0.0 status below is HISTORICAL for release identity; `a53eda8`
+> descends from `7c604d5`. Authority:
+> `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`.
+
 ## Status: CLOSED — v2.0.0 shipped as a detection-only E5 release (2026-11-17)
 
 - **Project status record:** `analysis/current-head/PROJECT-CLOSEOUT-20261117.md`.
@@ -1000,3 +1006,45 @@ passed / 4 skipped.
 - Windows E5 is NOT_PROVEN: the driver is compiled but not deployed or loaded.
 See `analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md` and
 `EVIDENCE_INDEX.json#RETIRE-HOST-EFFECT-001-E2-20261109`.
+
+## Continuation - v1.1 capability gap closure, slices 1-8 (2026-11-19)
+
+- Owner directed the four gap-closure slices (RULE-COVERAGE-001,
+  VISIBILITY-001, OPERATOR-001, OBSERVABILITY-001) plus four more
+  "make-it-real" slices (RESOURCE-TELEMETRY-001, ALERT-FILE-001,
+  FP-FEEDBACK-001, POLICY-MUTATE-001) to proceed without waiting for the soak.
+- All eight are E2 only, detection-only, no wire/codec change, no host effect.
+  Build source moved to `a53eda8`; records rebaselined at `416662f`.
+- POLICY-MUTATE-001 makes `policy enable/disable/reload` real privileged
+  evidence-verdict verbs (protocol IDs 604-606) with a read-back postcondition:
+  an atomic gate wraps ONLY `ps.evaluate`, so rule match, severity, forensic
+  record and the PEP branch are never gated. `reload` parses
+  `configs/policies.json` into an immutable set, swaps it atomically and frees
+  retired sets only at shutdown after worker joins.
+- Soak disposition: the old signed candidate (`b597e71` / build source
+  `f4cde3c`) reached a terminal **SOAK_FAIL** at 18.03 h (daemon DEGRADED,
+  `queue_dropped_total` 5177 over the 3500 budget). Recorded honestly; the
+  release board row moved from OPEN to FAIL. `soak_24h` remains NOT closed and
+  the release stays **NOT SHIPPABLE**. A fresh window needs a new signed
+  candidate and an owner-named baseline.
+- The eight slices have no E5: the worktree source is outside the old soak
+  window and no new signed candidate is installed. `docs/gates/T20_100pct_audit.*`
+  carry build source `a53eda8`; `tools/truth.py verify` = TRUTH_VALID.
+
+### Continuation - release-gate pin reconciliation (2026-11-20)
+
+- PATCH-ID CLOSURE-CI-RECONCILE-20261120 (records/tests only, build source still
+  `a53eda8`). Three red release pins closed: stale 674-artifact digest snapshot
+  refreshed to `a53eda8` (fixes `test_ac3_verify_mode_detects_drift` and all
+  three `fresh_deploy` plan tests); EVT-039 importer closure re-checked as a
+  pure-helper allow-list plus a stronger device-owner assertion (the PEP is
+  still the only caller of the WFP device transport); the drivers-WDK CI pin
+  updated to the deliberate CI-GREY-GATES design (`windows-2022`, authoritative
+  WDK scripts, no legacy .bat, no `workflow_dispatch` gate).
+- Native helpers + IPC bridge were built and staged locally only (gitignored)
+  so the runtime/installer tests get a true signal; no source, host, signed
+  candidate or soak change.
+- `tests/release`: 201 passed. Full suite: 1434 passed, 29 skipped,
+  1 xfailed, 1 xpassed, 2 failed - the same two E4 live-daemon tests, which
+  probe the installed DEGRADED daemon (host state, not a source regression).
+  `tools/truth.py verify` = TRUTH_VALID at `a53eda8`.

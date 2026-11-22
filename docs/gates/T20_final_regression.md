@@ -1,5 +1,7 @@
 # AEGIS Final Regression (T20 AC1, Step 60)
 
+> **HISTORICAL (superseded 2026-11-09, RETIRE-HOST-EFFECT-001 / issue #25):** the product is detection-only. Any enforcement authority / host-effect wording below is a historical design record, not current truth. Current authority: `AUTHORITY_MAP.json`, `analysis/current-head/RUST-FOUNDATION-STATUS-20261119.md`.
+
 - Generated: 2026-09-08T07:16:13.201558+00:00
 - Full pytest suite: **PASS (only pre-existing unrelated test_e2e.py error)**
 - Subsystems: 16 pass / 0 fail / 16 total

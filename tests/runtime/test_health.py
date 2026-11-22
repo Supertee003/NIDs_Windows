@@ -423,6 +423,9 @@ class TestControlApiHealthPayload(unittest.TestCase):
             "nose_pipe_errors": 4,
             "minifilter_ring_dropped": 5,
             "minifilter_pipeline_dropped": 6,
+            # OBSERVABILITY-001: additive keys carried through the projection.
+            "shed_overload": 8,
+            "process_generation_ms": 1_700_000_000_000,
         }
         payload = self._payload_for(self._daemon_with(data_integrity=integrity))
         self.assertEqual(payload["data_integrity"], integrity)
@@ -584,6 +587,55 @@ class TestTrafficGaugesInHealth(unittest.TestCase):
         payload = self._payload_for(self._daemon_with())
         self.assertEqual(payload["packets_captured"], 0)
         self.assertEqual(payload["flows_active"], 0)
+
+
+class TestResourcesInHealth(unittest.TestCase):
+    """RESOURCE-TELEMETRY-001: sampled gauges projected honestly."""
+
+    def _daemon_with(self, **overrides):
+        base = {
+            "state": "RUNNING", "degraded": False, "uptime_ms": 1000,
+            "counters": {"in_events": 1, "out_events": 1, "errors": 0, "dropped": 0},
+            "capabilities": {}, "subsystems": {}, "data_integrity": {},
+        }
+        base.update(overrides)
+        return base
+
+    def _payload_for(self, daemon):
+        with patch.object(control_api, "_query_daemon_retry", return_value=daemon), \
+             patch.object(control_api, "get_all_status", return_value={}), \
+             patch.object(control_api, "compute_health_state", return_value=("RUNNING", False)):
+            return control_api.get_health_payload()
+
+    def test_resources_forwarded_verbatim(self):
+        r = {
+            "available": True, "seeded": True, "cpu_percent": 12.5,
+            "working_set_bytes": 268435456, "private_bytes": 201326592,
+            "sampled_at_ms": 1763550000123,
+        }
+        payload = self._payload_for(self._daemon_with(resources=r))
+        self.assertEqual(payload["resources"], r)
+
+    def test_null_cpu_is_preserved_not_coerced_to_zero(self):
+        r = {"available": True, "seeded": False, "cpu_percent": None}
+        payload = self._payload_for(self._daemon_with(resources=r))
+        self.assertIsNone(payload["resources"]["cpu_percent"])
+        self.assertFalse(payload["resources"]["seeded"])
+
+    def test_missing_resources_block_is_empty(self):
+        payload = self._payload_for(self._daemon_with())
+        self.assertEqual(payload["resources"], {})
+
+    def test_malformed_resources_fields_are_omitted(self):
+        r = {
+            "available": "yes", "seeded": 1,
+            "cpu_percent": float("nan"),
+            "working_set_bytes": -5,
+            "private_bytes": True,
+            "sampled_at_ms": 0,
+        }
+        payload = self._payload_for(self._daemon_with(resources=r))
+        self.assertEqual(payload["resources"], {})
 
 
 if __name__ == "__main__":

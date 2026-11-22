@@ -59,6 +59,7 @@ const corr_mod = @import("detection/correlator.zig");
 const telemetry = @import("pipeline/telemetry_threads.zig");
 const nose_reader = @import("capture/nose_pipe_reader.zig");
 const wfp_telemetry = @import("capture/wfp_telemetry.zig");
+const source_arbiter = @import("capture/source_arbiter.zig");
 const minifilter_reader = @import("capture/minifilter_reader.zig");
 const pipe_monitor = @import("capture/pipe_monitor.zig");
 const packet_callback = @import("pipeline/packet_callback.zig");
@@ -246,6 +247,12 @@ fn lifecycleLoop(stop: *const std.atomic.Value(bool)) void {
 }
 
 pub fn runDaemon() !void {
+    // POLICY-MUTATE-001: release any live/retired evidence-verdict set only
+    // after this function's worker-join defers have run (LIFO: this defer is
+    // registered first, so it executes last). Nothing is published at startup
+    // — the pipeline falls back to the stack PolicySet until the first honest
+    // policy.reload swap.
+    defer state.freeRetiredPolicySets();
     // Install the sink before any startup work so failures before the control
     // pipe exists are still visible to the console/service harness.
     diag.Logger.setSink(diag.StderrSink.init());
@@ -313,6 +320,10 @@ pub fn runDaemon() !void {
     state.g_wd = watchdog.ReliabilityWatchdog.init(std.heap.page_allocator); // PATCH-29: global watchdog
     defer state.g_wd.deinit();
     state.g_perf = .{}; // PATCH-31: global performance tracker
+    // OBSERVABILITY-001: pin the process generation once, before any capture
+    // thread or control query runs. Exposed on health.data_integrity so a soak
+    // can prove a counter delta belongs to the same process generation.
+    state.g_process_generation_ms.store(@intCast(@max(0, std.time.milliTimestamp())), .release);
 
     // 4a. SIEM forwarder (opt-in, default off). Enabled only with
     // AEGIS_SIEM=1; transport/format/endpoint/destination come from env
@@ -343,6 +354,16 @@ pub fn runDaemon() !void {
         }
     }
     defer @import("forensic/forensic_log.zig").shutdown();
+
+    // 4a3. ALERT-FILE-001: local file-only alerts (always on, fixed path).
+    // No env, no endpoint, no transport — one append line per detection to
+    // logs/alerts.ndjson. The fixed path means no config can turn this into
+    // an egress path; the loopback dashboard tails it read-only.
+    {
+        const alert_log = @import("forensic/alert_log.zig");
+        alert_log.init();
+        diag.info("[ALERT] local NDJSON alerts enabled (logs/alerts.ndjson)", .{});
+    }
 
     // 4b. Tier-2 brain inspection loop (opt-in, default off). AEGIS_BRAIN=1
     // lets the pipeline offer detections to the brain over UDP for deep
@@ -704,6 +725,13 @@ pub fn runDaemon() !void {
         state.g_worker_failed.store(false, .release);
         state.g_worker_failure_kind.store(@intFromEnum(state.WorkerFailureKind.none), .release);
         state.g_worker_failure_mask.store(0, .release);
+
+        // VISIBILITY-001: publish the operator-selected ingress mode BEFORE
+        // any capture thread spawns. The Nose reader starts before the WFP
+        // telemetry loop; without this the first frames could be admitted
+        // under both sources. Enforcement stays fail-open until the kernel
+        // provider actually reports `ok` (see noseFrameIsShadowed).
+        source_arbiter.publishStartupMode(wfp_telemetry.capturePrimaryKernelOptIn());
 
         // REBUILD-003: Named-pipe sensor thread (\\.\pipe\aegis_sensor_pipe_t1).
         // Exits when bridge_init.requestShutdown() is signalled.

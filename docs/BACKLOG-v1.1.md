@@ -1,5 +1,12 @@
 # v1.1 backlog — everything left after v2.0.0
 
+> **UPDATE (2026-11-22):** `GAP-QLOSS-ISOLATION-002`, the last open row below, is
+> CLOSED by the genuine 36.52 h owner-run soak; all 287 `EVIDENCE_INDEX` gaps are
+> closed and `v1.1` is published at
+> https://github.com/Supertee003/NIDs_Windows/releases/tag/v1.1. The version
+> decision and downloaded-asset verification are recorded in
+> `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`.
+
 > **HISTORICAL (superseded 2026-11-18).** Current truth is
 > `analysis/current-head/CURRENT-STATUS-20261118.md` and `EVIDENCE_INDEX.json`:
 > `EVI-G2-PEP-CACHE-001-LAB` and `CAPTURE-DUP-WIFI-001` are CLOSED, and the only

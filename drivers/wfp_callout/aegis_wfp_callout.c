@@ -118,6 +118,7 @@ static VOID AegisWfpEmitRecord(AEGIS_EVENT_HEADER *hdr, void *layerData,
     PVOID  payload = NULL;
     PVOID  layerHeader = NULL;
     ULONG  headerBytes = 0;
+    UINT8  tcpFlags = 0;
     BOOLEAN payloadRangeValid = FALSE;
     UINT8  sidecarBuf[AEGIS_V6_SIDECAR_SIZE];
     SIZE_T sidecarLen = 0;
@@ -159,6 +160,20 @@ static VOID AegisWfpEmitRecord(AEGIS_EVENT_HEADER *hdr, void *layerData,
             if (headerBytes > 0 && availableBytes >= headerBytes) {
                 layerHeader = NdisGetDataBuffer(nb, headerBytes,
                     g_PayloadScratch, 1, 0);
+            }
+            /* RULE-COVERAGE-001: stamp the observed TCP flags into the
+             * existing reserved header word. No layout change, no policy
+             * decision here -- the Zig consumer makes the L4 verdict.
+             */
+            if (layerHeader != NULL &&
+                aegis_wfp_tcp_flags_from_header(
+                    (const unsigned char *)layerHeader,
+                    headerBytes,
+                    (unsigned char)hdr->protocol,
+                    (unsigned char)hdr->direction,
+                    &tcpFlags)) {
+                hdr->reserved = AEGIS_TCP_FLAGS_PRESENT |
+                    (UINT32)(tcpFlags & AEGIS_TCP_FLAGS_MASK);
             }
         }
         payloadRangeValid = (BOOLEAN)(aegis_wfp_get_payload_slice(

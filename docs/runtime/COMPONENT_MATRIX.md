@@ -72,6 +72,7 @@ component into `DEGRADED` instead of blocking startup.
 | `metrics`        | `scripts/aegis_metrics.py`    | Python   | core NDJSON, brain log          | Prometheus :9100 /metrics            | `core`*               | `python aegis_metrics.py`      | `127.0.0.1:9100/-/healthy`           | SIGINT → 2s → kill            | no  | C |
 | `notifier`       | `scripts/aegis_notifier.py`   | Python   | aggregator REST                 | email / webhook / syslog             | `aggregator`*         | RETIRED (EVT-152, no runner)   | n/a (retired)                         | n/a                           | no (retired) | C |
 | `dashboard`      | `aegis_dashboard/aegis_dashboard.exe` | Rust | core NDJSON (`logs/aegis_core.ndjson`) | egui window (local viewer; no HTTP server) | `core`* | `aegis_dashboard.exe`          | n/a (no HTTP server) | SIGINT -> 2s -> kill | no  | C |
+| `alert_file` (ALERT-FILE-001) | in-process (`src/forensic/alert_log.zig`) | Zig | one detection per event | `logs/alerts.ndjson` (append-only, fixed path, no egress) | `core`* | daemon startup (always on) | `metrics.snapshot → alert_file.{written,failed}` | daemon stop | no | C |
 
 ---
 

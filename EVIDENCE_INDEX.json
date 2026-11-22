@@ -1,7 +1,7 @@
 {
-  "head_sha": "f4cde3c503fd8b696183751a608b999768caa769",
+  "head_sha": "a53eda8344a20f86ad4f4e4001e9b3d648067671",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-19",
+  "last_updated_at": "2026-11-22",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -20,6 +20,205 @@
     "E7": "Release verification"
   },
   "evidence": [
+    {
+      "id": "OBSERVABILITY-001-E2-20261119",
+      "head_sha": "f0baadf",
+      "timestamp": "2026-11-19",
+      "title": "Honest observability closure: shed_overload + process generation in health, bounded Nose backpressure, bounded per-rule fire telemetry; latency claim recorded STALE",
+      "level": "E2",
+      "component": "state_machine -> runtime_state -> daemon startup -> nose_pipe_reader -> event_processor -> handler_registry -> host_soak_check",
+      "flow_id": "HEALTH-INTEGRITY, NET-INGRESS, DETECTION-METRICS, SOAK-VERDICT",
+      "description": "Slice 4 closed without host effects or wire changes. Added shed_overload to health.data_integrity (deliberately not a DEGRADED trigger; scored by --shed-budget) and process_generation_ms pinned at startup so soak invalidates counter deltas on a restart even when counters did not go backwards. Added bounded <=5ms stop-checked Nose backpressure on a near-full Npcap share (mirrors PACE-MF-001) with g_nose_pace_waits on queue.stats. Added a bounded 256-slot direct-mapped per-rule fire counter with honest collision accounting, fed at the 4 authoritative Zig detection sites and surfaced as queue.stats.rule_fire top-10. Ring counters already existed for disk/ring telemetry. Item 4 (latency 1ns) recorded STALE: all 10 stages already observed, 1ns is the log2 bucket floor, coarse-clock fixed at 02b4e5d/ADR-0013. CPU/RAM gauges and a fabricated FP counter were deliberately NOT added (new native linkage + E5 risk; no runtime FP producer -> mock).",
+      "files_verified": [
+        "analysis/current-head/OBSERVABILITY-001-PATCH.md",
+        "analysis/current-head/LATENCY-STALE-20261119.md",
+        "src/control/state_machine.zig",
+        "src/pipeline/runtime_state.zig",
+        "src/daemon.zig",
+        "src/capture/nose_pipe_reader.zig",
+        "src/pipeline/event_processor.zig",
+        "src/control/handler_registry.zig",
+        "tools/aegisctl/api/control_api.py",
+        "tools/host_soak_check.py"
+      ],
+      "tests": [
+        "zig build -> exit 0",
+        "zig build test --summary all -> 2116 passed / 11 skipped / 0 failed (2127 total)",
+        "pytest soak verdict + health + queue + control_retry -> 74 passed",
+        "OBSERVABILITY-001 noseShouldPace boundary test + recordRuleFire collision test -> PASS"
+      ],
+      "result": "PASS_E2",
+      "finding": "All changes are additive control-plane JSON or read-only counters; no enforcement, no host effect, no wire change. STALE/mock-prone items were closed by documented decision rather than unsafe code.",
+      "evidence_artifact": "analysis/current-head/OBSERVABILITY-001-PATCH.md",
+      "limitations": [
+        "CPU/RAM gauges deferred pending owner decision, native linkage, off-hot-path sampler and E5 proof.",
+        "Per-rule fire counts are a bounded sample; collisions counted, not attributed.",
+        "Board remains 5/6; no tag/publish; fresh soak for final candidate pending."
+      ]
+    },
+    {
+      "id": "OPERATOR-001-HONESTY-E2-20261119",
+      "head_sha": "f0baadf",
+      "timestamp": "2026-11-19",
+      "title": "Operator surfaces tell the truth: per-threat banner from daemon DEFCON; fail-closed verbs and retired notifier stay that way",
+      "level": "E2",
+      "component": "aegisctl web dashboard + CLI help + operator docs",
+      "flow_id": "OPERATOR-VIEW, CONTROL-AUTHORITY, SIEM-OBSERVE",
+      "description": "Slice 3 closed without adding unsafe capability. Added a per-threat dashboard banner rendered from the existing read-only snapshot (snap.threat, daemon-owned DEFCON) with fail-closed/integrity/no-feed branches keeping precedence; SAFE shows nothing. Kept push notifier RETIRED (no egress/secrets/runner), kept policy reload/enable/disable fail-closed with exit 4 (verbs remain registered so the gate stays testable) but made --help state UNAVAILABLE and name the real path, kept rules mutation .privileged with postcondition, and kept ts_policy IR as a verify-only mirror with an observe-only verdict. Corrected stale docs (.operate, policy.verify NOT_IMPLEMENTED). No new authority, no egress, no host effect.",
+      "files_verified": [
+        "analysis/current-head/OPERATOR-001-PATCH.md",
+        "tools/aegisctl/web_dashboard/app.py",
+        "tools/aegisctl.py",
+        "docs/OPERATOR_COMMAND_MAP.md",
+        "docs/runbooks/RB-011-policy-ir-mirror-workflow.md",
+        "tests/tools/test_operator_honesty.py",
+        "tests/tools/test_web_dashboard.py"
+      ],
+      "tests": [
+        "pytest operator honesty + web dashboard + gate E + stale doc sweep -> 48 passed, 9 subtests passed",
+        "aegisctl.py policy --help -> UNAVAILABLE / disabled_rules.json / rules reload",
+        "full worktree suite (before this patch) -> 1394 passed, 35 skipped, 1 xfailed, 1 xpassed"
+      ],
+      "result": "PASS_E2",
+      "finding": "Deliberate safety boundaries are closed by decision, not by implementing egress or authority. SIEM forwarding was already real opt-in (AEGIS_SIEM env); only the view needed work.",
+      "evidence_artifact": "analysis/current-head/OPERATOR-001-PATCH.md",
+      "limitations": [
+        "No push alerting: requires owner decision plus secrets, runner and E5 lab proof.",
+        "siem_config.json is a pinned contract, not a runtime read.",
+        "Board remains 5/6; no tag/publish."
+      ]
+    },
+    {
+      "id": "VISIBILITY-001-KERNEL-PRIMARY-E2-20261119",
+      "head_sha": "f0baadf",
+      "timestamp": "2026-11-19",
+      "title": "Enforced kernel-primary ingress: Nose submit-point guard, provider interlock, startup publication, visible shadow counter",
+      "level": "E2",
+      "component": "source_arbiter -> wfp_telemetry -> daemon startup -> nose_pipe_reader -> queue.stats -> aegisctl",
+      "flow_id": "CAPTURE-ARBITRATION, NET-INGRESS, QUEUE-STATS",
+      "description": "Closes the VISIBILITY-001 blocker: packet_may_submit was log-only, so a WFP-primary mode would have duplicated detection authority. Adds Mode.kernel_primary (append-only ordinal 5), AEGIS_CAPTURE_PRIMARY=kernel opt-in, and noseFrameIsShadowed(mode, provider_state) enforced BEFORE pushDecodedFrame. Denied Nose frames increment g_nose_shadow_frames and are drained (continue), never silently lost. Fails open unless the kernel provider is actually 'ok'; publishes the selected mode at daemon startup before any capture thread spawns, closing the startup duplicate window. Default stays npcap_primary, so the running soak is byte-identical. queue.stats.wfp gains nose_shadow_frames and kernel_owned covers both kernel modes; aegisctl CLI + web dashboard render the new state.",
+      "files_verified": [
+        "analysis/current-head/VISIBILITY-001-PATCH.md",
+        "src/capture/source_arbiter.zig",
+        "src/capture/nose_pipe_reader.zig",
+        "src/capture/wfp_telemetry.zig",
+        "src/daemon.zig",
+        "src/pipeline/runtime_state.zig",
+        "src/control/handler_registry.zig",
+        "tools/aegisctl.py",
+        "tests/wfp/test_capture_source_arbitration.py",
+        "tests/tools/test_aegisctl_queue.py"
+      ],
+      "tests": [
+        "zig build -> PASS",
+        "zig all_tests -> 2114 passed / 11 skipped / 0 failed (2125 total)",
+        "zig out-of-unit -> 1234 passed",
+        "VISIBILITY-001 Zig tests -> 5/5 OK",
+        "pytest wfp arbitration + aegisctl queue -> 24 passed",
+        "python tools/truth.py verify -> TRUTH_INVALID (expected: uncommitted source)"
+      ],
+      "result": "PASS_E2",
+      "finding": "Enforcement is at the submit point with a visible counter; fail-open preserved; default posture unchanged. No E5: no install, restart, service change, topology switch or load injection on the running soak host.",
+      "evidence_artifact": "analysis/current-head/VISIBILITY-001-PATCH.md",
+      "limitations": [
+        "E5 for the new binary pending; fresh soak window owner-approved but not started.",
+        "kernel_primary requires a live WFP provider; absence fails open to Nose by design.",
+        "Board remains 5/6; no tag/publish; no host effect."
+      ]
+    },
+    {
+      "id": "WFP-RULE-SCOPE-E1-20261119",
+      "head_sha": "f0baadf",
+      "timestamp": "2026-11-19",
+      "title": "WFP sensor boundaries stated as rule-scope constraints (4096 B, no reassembly, ciphertext, inbound flags absent)",
+      "level": "E1",
+      "component": "drivers/wfp_callout -> wfp_telemetry -> event_processor rule layers",
+      "flow_id": "CAPTURE-ARBITRATION, DETECTION-L4, DETECTION-L7",
+      "description": "Slice 2 items 3-4. Records that the WFP callout copies at most AEGIS_MAX_PAYLOAD_SIZE=4096 transport bytes (4064 when the 32-byte identity sidecar is present), performs no stream reassembly, and leaves TLS bodies as ciphertext; inbound WFP carries no TCP-flags evidence while outbound does (RULE-COVERAGE-001). Maps those facts to rule evaluability: L4 rules work on all network sources (exact flags outbound only); network-AC L7 rules work only on plaintext bytes within one bounded packet; observe-only protocol anomalies remain Npcap-only; kernel process/file/pipe rules never match wire bytes (FP-1 fix). Catalog coverage 23/23 and evaluable coverage 23/23 remain distinct from per-source coverage.",
+      "files_verified": [
+        "analysis/current-head/WFP-RULE-SCOPE-20261119.md",
+        "drivers/wfp_callout/aegis_wfp.h",
+        "drivers/wfp_callout/aegis_wfp_callout.c",
+        "src/pipeline/event_processor.zig"
+      ],
+      "tests": [
+        "static inspection of AEGIS_MAX_PAYLOAD_SIZE and payload_length contract",
+        "static inspection of ruleLayerIndexForSource / resolveRuleAutomaton / L4 gate / Npcap-only L7 extraction"
+      ],
+      "result": "PASS_E1",
+      "finding": "Sensor boundaries are now explicit; no rule is claimed WFP-verified from a code-level statement. E5 measurement still required.",
+      "evidence_artifact": "analysis/current-head/WFP-RULE-SCOPE-20261119.md",
+      "limitations": [
+        "E1 only; no host measurement of 4096-byte truncation or split-pattern behaviour."
+      ]
+    },
+    {
+      "id": "RULE-COVERAGE-001-RULES-E2-20261119",
+      "head_sha": "f0baadf",
+      "timestamp": "2026-11-19",
+      "title": "23/23 rules catalog-and-evaluable: WFP L4 flags, R2003 command-line path, FP-1 reconciled, regex ownership pinned",
+      "level": "E2",
+      "component": "rules.json -> rule_loader -> layer automata / L4 matcher -> ETW command line",
+      "flow_id": "DETECTION-L4-KERNEL, DETECTION-R2003",
+      "description": "Adds E2 proof that (1) outbound WFP TCP flags reach l4.matches, (2) the ETW CommandLine TLV decodes when a provider supplies it and R2003's kernel_process automaton matches it, (3) wire bytes never receive a KERNEL_PROCESS rule id, (4) all 23 rules have a vector fixture and a shared rule-id hash, and (5) regex_pattern is advisory to Zig and owned by Python Brain Tier-2 only. FP-1 is reconciled as CLOSED-E5 (fixed and host-proven at build source f4cde3c; the stale DETECTION_VALIDATION.md row belongs to the records tree). FN-1 stays OPEN as an honest host-sensor limitation (ProcessStart v0..v4 has no CommandLine on this host).",
+      "files_verified": [
+        "analysis/current-head/RULE-COVERAGE-001-PATCH.md",
+        "analysis/current-head/RULE-COVERAGE-001-MATRIX.md",
+        "src/windows/etw_realtime.zig",
+        "src/pipeline/rule_loader.zig",
+        "tests/security/test_detection_contract_pin.py",
+        "tests/lab/test_kali_script_coverage.py"
+      ],
+      "tests": [
+        "zig build -> PASS",
+        "zig unit suite -> 2109 passed / 11 skipped / 0 failed",
+        "zig out-of-unit suite -> 1234 passed / 0 failed",
+        "pytest contract + vector coverage -> 15 passed / 3 skipped",
+        "python tools/truth.py verify -> TRUTH_INVALID (expected: uncommitted source)"
+      ],
+      "result": "PASS_E2",
+      "finding": "Evaluable coverage 23/23. Host-positive proof unchanged (L4 family only). No WDK build, no E5 for new source, no soak coverage for new binary.",
+      "evidence_artifact": "analysis/current-head/RULE-COVERAGE-001-MATRIX.md",
+      "limitations": [
+        "FN-1 OPEN: this host cannot supply a process command line; no fake positive.",
+        "Inbound WFP delivers packets from L7, so exact TCP-flags rules cannot fire there.",
+        "Board remains 5/6; no tag/publish; no host effect."
+      ]
+    },
+    {
+      "id": "RULE-COVERAGE-001-E2-20261119",
+      "head_sha": "f0baadf",
+      "timestamp": "2026-11-19",
+      "title": "WFP TCP flags reach the L4 matcher: outbound kernel rows can now satisfy FLAGS rules",
+      "level": "E2",
+      "component": "wfp driver -> zig consumer -> event queue -> l4 matcher",
+      "flow_id": "DETECTION-L4-KERNEL",
+      "description": "Additive reuse of AEGIS_EVENT_HEADER.reserved (@32, 48-byte layout unchanged) to carry PRESENT|tcp_flags from outbound TCP callouts, through the existing CanonicalEvent ContextFlags lane and the in-memory queue sidecar, into l4.matches. Inbound WFP and non-TCP rows leave flags absent rather than zero. event_processor now evaluates L4 predicates for .capture_wfp as well as .capture_npcap.",
+      "files_verified": [
+        "drivers/wfp_callout/aegis_wfp.h",
+        "drivers/wfp_callout/aegis_wfp_callout.c",
+        "drivers/wfp_callout/aegis_wfp_payload.h",
+        "src/policy/wfp_ioctl.zig",
+        "src/capture/wfp_telemetry.zig",
+        "src/pipeline/event_processor.zig",
+        "tests/wfp/wfp_payload_slice_test.c",
+        "analysis/current-head/RULE-COVERAGE-001-PATCH.md"
+      ],
+      "tests": [
+        "zig build -> PASS",
+        "zig unit suite -> 2106 passed / 12 skipped / 0 failed",
+        "zig out-of-unit suite -> 1234 passed / 0 failed",
+        "zig cc tests/wfp/wfp_payload_slice_test.c -> 6 cases PASS"
+      ],
+      "result": "PASS_E2",
+      "finding": "E2 only: full WDK driver build and Windows host proof pending; inbound WFP still has no flags evidence; WFP rows remain shadow while Nose is primary.",
+      "evidence_artifact": "analysis/current-head/RULE-COVERAGE-001-PATCH.md",
+      "limitations": [
+        "No E3/E5 claim.",
+        "No host effect or policy change.",
+        "Board remains 5/6; no tag/publish."
+      ]
+    },
     {
       "id": "FIM-NATIVE-OVERFLOW-001-E5-20261118",
       "head_sha": "aa42fca",
@@ -9175,6 +9374,539 @@
       "limitations": [
         "Records/CI only; soak_24h remains OPEN and v1.1 remains untagged."
       ]
+    },
+    {
+      "id": "RESOURCE-TELEMETRY-001-E2-20261119",
+      "head_sha": "f3a5200",
+      "timestamp": "2026-11-19",
+      "level": "E2",
+      "flow_id": "OBS-001",
+      "component": "src/windows/resource_telemetry.zig, src/control/state_machine.zig, tools/aegisctl/api/control_api.py, tools/aegisctl/web_dashboard/app.py",
+      "title": "Honest sampled CPU/RAM gauges, off the event hot path",
+      "description": "Pull-on-query only from healthJson (ADR-0013: never per-event). First CPU sample is null with seeded=false (no fabricated zero); CPU% is normalized to one logical core and labelled as such; NaN/non-monotonic ticks become null. GetProcessTimes via extern kernel32; GetProcessMemoryInfo resolved via DynLib (K32GetProcessMemoryInfo then psapi fallback) so build.zig is untouched. Additive health.resources block is type/finite-validated by the Python projection and rendered as CPU/Memory KPIs on the loopback dashboard with an em dash for unknown. E2: 7 pure Zig tests + 5 health tests + 1 dashboard DOM test.",
+      "evidence_artifact": "analysis/current-head/RESOURCE-TELEMETRY-001-PATCH.md",
+      "artifacts": [
+        "analysis/current-head/RESOURCE-TELEMETRY-001-PATCH.md",
+        "src/windows/resource_telemetry.zig",
+        "src/control/state_machine.zig",
+        "tools/aegisctl/api/control_api.py",
+        "tools/aegisctl/web_dashboard/app.py",
+        "tests/runtime/test_health.py",
+        "tests/tools/test_web_dashboard.py"
+      ],
+      "commands": [
+        "zig build",
+        "zig build test --summary all",
+        "python -m pytest tests/runtime/test_health.py tests/tools/test_web_dashboard.py -q"
+      ],
+      "limitations": [
+        "E2 pure/unit proof only; no E5 Windows host attribution of a specific CPU sample.",
+        "CPU% is a sampled delta of one logical core, not an instantaneous whole-host reading.",
+        "No DEFCON/data-loss coupling; gauges never gate detection or enforcement."
+      ]
+    },
+    {
+      "id": "ALERT-FILE-001-E2-20261119",
+      "head_sha": "183e095",
+      "timestamp": "2026-11-19",
+      "level": "E2",
+      "flow_id": "DET-001",
+      "component": "src/forensic/alert_log.zig, src/pipeline/event_processor.zig, src/control/handler_registry.zig, tools/aegisctl/web_dashboard/app.py",
+      "title": "Local file-only NDJSON alerts, one append line per detection",
+      "description": "Dedicated fixed-path writer (logs/alerts.ndjson) deliberately not reusing the opt-in SIEM forwarder: no env, no endpoint, no transport enum, no socket. Appends a JSON-escaped, bounded alert (no payload bytes) on each detection independently of the evidence log and SIEM. g_alerts_written increments only after a complete line+newline; failures are counted separately in metrics.snapshot.alert_file. Loopback dashboard tails the file read-only and never derives a count from the bounded tail. E2: 4 Zig formatter/append tests + 1 metrics JSON-parse test + 5 dashboard/CLI tests.",
+      "evidence_artifact": "analysis/current-head/ALERT-FILE-001-PATCH.md",
+      "artifacts": [
+        "analysis/current-head/ALERT-FILE-001-PATCH.md",
+        "src/forensic/alert_log.zig",
+        "src/pipeline/event_processor.zig",
+        "src/pipeline/runtime_state.zig",
+        "src/control/handler_registry.zig",
+        "src/daemon.zig",
+        "src/all_tests.zig",
+        "tools/aegisctl/web_dashboard/app.py",
+        "tests/tools/test_web_dashboard.py",
+        "docs/ARCHITECTURE.md",
+        "docs/runbooks/RB-015-siem-delivery-proof.md",
+        "docs/runtime/COMPONENT_MATRIX.md"
+      ],
+      "commands": [
+        "zig build",
+        "zig build test --summary all",
+        "python -m pytest tests/tools/test_web_dashboard.py tests/tools/test_aegisctl_alerts.py tests/security/test_siem_contract.py tests/tools/test_operator_honesty.py tests/tools/test_notifier_retired.py -q"
+      ],
+      "limitations": [
+        "E2 only; no E5 host proof that a live detection produced a line on the installed candidate.",
+        "Alerts are advisory detection labels and never a host-effect or enforcement claim.",
+        "The 24h soak opened on the old signed candidate is VOIDED for this source change; a fresh soak needs a new signed candidate and an owner-named window."
+      ]
+    },
+    {
+      "id": "POLICY-MUTATE-001-E2-20261119",
+      "head_sha": "683ff20",
+      "timestamp": "2026-11-19",
+      "level": "E2",
+      "flow_id": "CONTROL-001",
+      "component": "src/control/protocol.zig, src/pipeline/runtime_state.zig, src/pipeline/event_processor.zig, src/control/handler_registry.zig, tools/aegisctl.py",
+      "title": "Privileged evidence-verdict control with an honest live policy-set swap",
+      "description": "policy.enable/disable/reload become real privileged commands (IDs 604-606) with read-back postconditions. An atomic g_policy_evaluation_enabled flag suppresses ONLY ps.evaluate; the rule-match condition and PEP branch stay untouched, so detection never gates. reload parses configs/policies.json into an immutable LoadedPolicySet, publishes it atomically, retires the old set and bumps a generation only after the swap; retired sets are freed at shutdown after all workers join. CLI verifies status+postcondition+count and never writes local state. E2: 3 Zig tests, 8 CLI postcondition tests, 3 inverted legacy pins.",
+      "evidence_artifact": "analysis/current-head/POLICY-MUTATE-001-PATCH.md",
+      "artifacts": [
+        "analysis/current-head/POLICY-MUTATE-001-PATCH.md",
+        "src/control/protocol.zig",
+        "src/pipeline/runtime_state.zig",
+        "src/pipeline/event_processor.zig",
+        "src/control/handler_registry.zig",
+        "src/daemon.zig",
+        "tools/aegisctl.py",
+        "shared/protocol/control_protocol.md",
+        "tests/tools/test_policy_mutate.py"
+      ],
+      "commands": [
+        "zig fmt --check",
+        "zig build test --summary all",
+        "python -m pytest tests/tools/test_policy_mutate.py tests/runtime/test_gate_e.py tests/tools/test_operator_honesty.py tests/docs/test_stale_doc_sweep.py -q"
+      ],
+      "limitations": [
+        "E2 only; no E5 proof that a live installed daemon executed these verbs.",
+        "The live-set swap is immutable + deferred-free; it relies on all workers being joined before shutdown cleanup.",
+        "No CanonicalEvent wire/codec change; no host effect and no detection gating."
+      ]
+    },
+    {
+      "id": "SOAK-TERMINAL-FAIL-F4CDE3C-20261119",
+      "head_sha": "f4cde3c",
+      "timestamp": "2026-11-19",
+      "level": "E5",
+      "flow_id": "REL-001",
+      "component": "installed signed candidate b597e71 / build source f4cde3c — 24h soak window",
+      "title": "NEGATIVE E5: terminal SOAK_FAIL on the old signed candidate (gate stays closed)",
+      "description": "The owner-side waiter reached a terminal SOAK_FAIL at 2026-11-19T22:40:04+07:00 after 18.03 h with 2 problems: daemon health DEGRADED while runtime state RUNNING, and queue_dropped_total rising 0 -> 5177 against an owner-approved loss budget of 3500. All four AEGIS services stayed RUNNING with no SCM restarts and all other ingress counters at 0. This is negative host evidence about signed source f4cde3c only; it does not prove any capability and does not close soak_24h. The release board rows were updated from IN_PROGRESS to the terminal FAIL verdict.",
+      "evidence_artifact": "analysis/current-head/SOAK-TERMINAL-FAIL-20261119.md",
+      "artifacts": [
+        "analysis/current-head/SOAK-TERMINAL-FAIL-20261119.md",
+        "docs/gates/T20_100pct_audit.md",
+        "docs/gates/T20_100pct_audit.json"
+      ],
+      "commands": [
+        "powershell -File admin-evidence\\e5-clean-host-20261119-final\\soak-wait-terminal.ps1"
+      ],
+      "limitations": [
+        "Negative evidence (a FAIL verdict), never a capability proof and never a reason to publish.",
+        "Covers only the old signed candidate; the current worktree source is outside this window.",
+        "The raw artifact lives in the owner main tree D:\\NIds_Windows; admin-evidence/ is absent in the worktree.",
+        "A fresh soak needs a new signed candidate and an owner-named baseline window; no tag/push/release."
+      ]
+    },
+    {
+      "id": "FP-FEEDBACK-001-E2-20261119",
+      "head_sha": "683ff20",
+      "timestamp": "2026-11-19",
+      "level": "E2",
+      "flow_id": "EVIDENCE-001",
+      "component": "tools/aegisctl/fp_feedback.py, tools/aegisctl.py, tools/aegisctl/config.py, tools/aegisctl/web_dashboard/app.py",
+      "title": "Advisory operator mark-fp feedback stays local and never suppresses detection",
+      "description": "Operator `mark-fp <event_id> [--reason ...]` appends a bounded, JSON-escaped record to producer-owned logs/fp_feedback.ndjson and verifies persistence by re-read. `fp count/list` read it back. The dashboard projects an explicitly advisory count flag, never a detection counter. No pipe call, no rule/policy/forensic write, no auto-label: duplicate marks are records, and feedback never changes a future detection. E2: 7 CLI tests + 2 dashboard tests.",
+      "evidence_artifact": "analysis/current-head/FP-FEEDBACK-001-PATCH.md",
+      "artifacts": [
+        "tools/aegisctl/fp_feedback.py",
+        "tools/aegisctl.py",
+        "tools/aegisctl/config.py",
+        "tools/aegisctl/web_dashboard/app.py",
+        "tests/tools/test_aegisctl_mark_fp.py",
+        "tests/tools/test_web_dashboard.py",
+        "docs/CLI_COMMANDS.md",
+        "docs/OPERATOR_COMMAND_MAP.md"
+      ],
+      "commands": [
+        "python -m pytest tests/tools/test_aegisctl_mark_fp.py tests/tools/test_web_dashboard.py -q"
+      ],
+      "limitations": [
+        "E2 only; no E5 proof of live operator use on the installed candidate.",
+        "FP count is advisory operator feedback, never a suppression signal or a fabricated detector metric."
+      ]
+    },
+    {
+      "id": "DOCS-GAP-CLOSURE-PLAN-E1-20261119",
+      "head_sha": "f4cde3c",
+      "timestamp": "2026-11-19",
+      "title": "Owner-approved gap closure plan for rule coverage, visibility, alerting, manageability and backpressure",
+      "level": "E1",
+      "component": "documentation / release engineering",
+      "flow_id": "RELEASE-GATES",
+      "description": "Records-only plan created after owner directed work to start without waiting for the soak. Defines four isolated vertical slices (RULE-COVERAGE-001, VISIBILITY-001, OPERATOR-001, OBSERVABILITY-001), patch-transaction template, evidence targets, and the isolation rule that new source work runs in a separate worktree while the installed candidate and soak remain untouched.",
+      "files_verified": [
+        "analysis/current-head/GAP-CLOSURE-PLAN-20261119.md",
+        "docs/DETECTION_VALIDATION.md",
+        "docs/gates/PRODUCTION_READINESS.md"
+      ],
+      "tests": [
+        "python tools/truth.py verify -> TRUTH_VALID",
+        "python scripts/check_summary.py -> SUMMARY_VALID"
+      ],
+      "result": "PASS_E1",
+      "finding": "Current system is not yet complete; Slice 1 starts with rule coverage and R2003 FP/FN. Board stays 5/6 until soak and new evidence are reconciled.",
+      "evidence_artifact": "analysis/current-head/GAP-CLOSURE-PLAN-20261119.md",
+      "limitations": [
+        "Plan only; no source patch, build, install, restart or gate change authorized by this document."
+      ]
+    },
+    {
+      "id": "DOCS-READINESS-PATCH-E1-20261119",
+      "head_sha": "f4cde3c",
+      "timestamp": "2026-11-19",
+      "title": "Records patch transaction for observability, detection validation, production readiness and Rust foundation clarity",
+      "level": "E1",
+      "component": "documentation / records",
+      "flow_id": "RELEASE-GATES",
+      "description": "Declares PATCH-ID DOCS-READINESS-20261119 with in/out scope, contracts, authority and state impact, verification commands and rollback. Documentation-only: no source, build, signature, service, topology or gate verdict change during the 24 h soak.",
+      "files_verified": [
+        "analysis/current-head/DOCS-READINESS-PATCH-20261119.md",
+        "AGENTS.md",
+        "SYSTEM_MAP.json",
+        "EVIDENCE_INDEX.json",
+        "docs/DETECTION_VALIDATION.md",
+        "docs/gates/PRODUCTION_READINESS.md",
+        "docs/runbooks/RB-020-observability-manual.md"
+      ],
+      "tests": [
+        "python tools/truth.py verify -> TRUTH_VALID",
+        "python scripts/check_summary.py -> SUMMARY_VALID",
+        "python tools/evidence_debt.py -> 0 unnamed product files",
+        "python tools/final_audit.py --release-check (owner anchor supplied) -> 5/6 PASS, soak_24h OPEN"
+      ],
+      "result": "PASS_E1",
+      "finding": "Board remains 5/6 NOT SHIPPABLE until the fresh 24 h window closes; metrics source gaps are documented and deferred, not fixed.",
+      "evidence_artifact": "analysis/current-head/DOCS-READINESS-PATCH-20261119.md",
+      "limitations": [
+        "Records-only; no runtime or release action authorized."
+      ]
+    },
+    {
+      "id": "DOCS-RUST-FOUNDATION-STATUS-E1-20261119",
+      "head_sha": "f4cde3c",
+      "timestamp": "2026-11-19",
+      "title": "Rust foundation status clarified: canonical detection-only PEP, no host-effect authority",
+      "level": "E1",
+      "component": "documentation / authority maps",
+      "flow_id": "FLOW-9-PEP",
+      "description": "Records-only clarification that rust-src/lib.rs remains CANONICAL, built to aegis_pep.dll and on golden-path step 9, while host-effect enforcement was retired by 8c935ff/RETIRE-HOST-EFFECT-001 and confirmed at E5 by aade7a3. Resolves contradictory enforcement wording in AGENTS.md, SYSTEM_MAP.json, AI_CONTEXT.md and LANGUAGE_OWNERSHIP.md.",
+      "files_verified": [
+        "analysis/current-head/RUST-FOUNDATION-STATUS-20261119.md",
+        "AGENTS.md",
+        "SYSTEM_MAP.json",
+        "AI_CONTEXT.md",
+        "docs/architecture/LANGUAGE_OWNERSHIP.md"
+      ],
+      "tests": [
+        "python tools/truth.py verify -> TRUTH_VALID"
+      ],
+      "result": "PASS_E1",
+      "finding": "Rust did not disappear; only the duplicate shield PEP was removed. No source change required.",
+      "evidence_artifact": "analysis/current-head/RUST-FOUNDATION-STATUS-20261119.md",
+      "limitations": [
+        "Documentation-level; does not add runtime Rust capability."
+      ]
+    },
+    {
+      "id": "DOCS-DETECTION-VALIDATION-E1-20261119",
+      "head_sha": "f4cde3c",
+      "timestamp": "2026-11-19",
+      "title": "Detection validation matrix for all 23 rules with honest E-levels and FP/FN register",
+      "level": "E1",
+      "component": "documentation / detection validation",
+      "flow_id": "DETECTION-QUALITY",
+      "description": "Records-only matrix mapping each of the 23 rules to fixture, qualification, proof class and E-level. Only the L4 family has live lab proof; R9006 reaches E5+E6 with a negative control. Records FP-1 (RULE-LAYER-SCOPE-001), FN-1 (R2003 command line), and the E7-is-not-field-release caveat.",
+      "files_verified": [
+        "docs/DETECTION_VALIDATION.md",
+        "analysis/RULE_22_QUALIFICATION_MATRIX.md",
+        "analysis/RULE_22_DETECTION_FIXTURE_MANIFEST.md",
+        "analysis/current-head/DETECT-L4-001-20261116.md",
+        "analysis/current-head/E6-BURST-001-20261114.md",
+        "analysis/current-head/RULE-LAYER-SCOPE-001-20261117.md"
+      ],
+      "tests": [
+        "documentation consistency review"
+      ],
+      "result": "PASS_E1",
+      "finding": "23/23 rules have synthetic fixtures (E1/E2); no file/process/pipe/L7 rule has live positive-path proof. FP/FN budget is proposed, not a gate.",
+      "evidence_artifact": "docs/DETECTION_VALIDATION.md",
+      "limitations": [
+        "Does not change any detection or gate verdict."
+      ]
+    },
+    {
+      "id": "DOCS-PRODUCTION-READINESS-E1-20261119",
+      "head_sha": "f4cde3c",
+      "timestamp": "2026-11-19",
+      "title": "Production readiness definition, test-to-evidence-to-gate map and on-call procedure",
+      "level": "E1",
+      "component": "documentation / release engineering",
+      "flow_id": "RELEASE-GATES",
+      "description": "Records-only definition of done at build source f4cde3c, gate/test/evidence mapping, release-window on-call and escalation triggers, current alert surfaces, and a list of stale/historical records. Keeps soak_24h OPEN until the fresh window returns PASS.",
+      "files_verified": [
+        "docs/gates/PRODUCTION_READINESS.md",
+        "docs/gates/RELEASE_TRUST_ANCHOR.md",
+        "docs/runbooks/RB-020-observability-manual.md",
+        "docs/runbooks/RB-010-telemetry-export-setup.md"
+      ],
+      "tests": [
+        "python tools/truth.py verify -> TRUTH_VALID"
+      ],
+      "result": "PASS_E1",
+      "finding": "Board stays 5/6 NOT SHIPPABLE until the 2026-11-19T04:38:09 window passes and final_audit regenerates it.",
+      "evidence_artifact": "docs/gates/PRODUCTION_READINESS.md",
+      "limitations": [
+        "No gate verdict or tag/publish action is taken by this document."
+      ]
+    },
+    {
+      "id": "CLOSURE-CI-RECONCILE-E1-20261120",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-20",
+      "title": "Reconcile three red release pins and refresh the 674-artifact digest snapshot to build source a53eda8",
+      "level": "E1",
+      "component": "release engineering / CI",
+      "flow_id": "RELEASE-GATES",
+      "description": "Records/tests-only patch: refresh stale digests for the 19 src/tools files changed by slices 1-8 (f4cde3c -> a53eda8); re-check the EVT-039 WFP importer closure against the current tree (pure wire helpers in wfp_telemetry allowed, device transport still PEP-only); update the stale drivers-WDK CI pin to the deliberate CI-GREY-GATES design. Plus local-only staging of the three C helpers and the IPC bridge so runtime/installer tests get a true signal. No source, host, signed-candidate or soak change.",
+      "files_verified": [
+        "build_manifest.json",
+        "tests/release/test_ci_gates.py",
+        "tests/release/test_historical_closures.py",
+        "analysis/current-head/CLOSURE-CI-RECONCILE-20261120.md",
+        "analysis/current-head/CI-GREY-GATES-CLOSEOUT-20261119.md"
+      ],
+      "tests": [
+        "python tools/release_engineering.py --verify -> OK 674/674 (source_commit=a53eda8)",
+        "python -m pytest tests/release -q -> 201 passed",
+        "python -m pytest tests/runtime/test_harness_integration.py -q -> 3 passed, 2 skipped",
+        "python tools/truth.py verify -> TRUTH_VALID",
+        "python -m pytest -q -> 1434 passed, 29 skipped, 1 xfailed, 1 xpassed, 2 failed (E4 live-daemon host state only)"
+      ],
+      "result": "PASS_E1",
+      "finding": "All release/CI pins green at a53eda8; the two remaining E4 failures probe the installed DEGRADED daemon and are host-state evidence, not a source regression. soak_24h remains FAIL / NOT closed and the release stays NOT SHIPPABLE.",
+      "evidence_artifact": "analysis/current-head/CLOSURE-CI-RECONCILE-20261120.md",
+      "limitations": [
+        "No E5: no signed candidate installed, no fresh soak, no WDK driver build on host.",
+        "Native helper/bridge builds are local untracked staging only; no host effect.",
+        "check_summary.py cannot resolve admin-evidence pointers in this worktree (raw artifacts live in D:\\\\NIds_Windows)."
+      ]
+    },
+    {
+      "id": "SIGNED-RC-A53EDA8-E7-20261120",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-20",
+      "title": "Rebuild all components at a53eda8 and sign a fresh release candidate with the owner-approved existing Ed25519 key",
+      "level": "E7",
+      "component": "release engineering / signing",
+      "flow_id": "REL-002",
+      "description": "Rebuilt Zig runtime, Rust PEP, shield/mouth support, Go nose, Cython support and both WDK drivers at build source a53eda8; test-signed the drivers with the existing pinned lab certs (no new key); assembled release/T20-final/466a226 (238 checksummed files) and Ed25519-signed its SHA256SUMS with the pre-existing owner key whose public half equals the approved anchor txigrGWz... . No re-key, no Signed-IR promotion, no source/host/soak/publish change.",
+      "files_verified": [
+        "release/T20-final/466a226/SHA256SUMS",
+        "release/T20-final/466a226/signatures.json",
+        "release/T20-final/466a226/SBOM.json",
+        "docs/gates/T20_100pct_audit.json",
+        "docs/gates/T20_100pct_audit.md",
+        "docs/gates/RELEASE_TRUST_ANCHOR.md",
+        "analysis/current-head/SIGNED-RC-A53EDA8-20261120.md"
+      ],
+      "tests": [
+        "zig build; cargo build --release; shield/mouth cargo builds; nose go build; cython build_ext --inplace; wdk_build_production.ps1; wdk_build_minifilter.ps1 -> all exit 0",
+        "stage_helpers.py --check -> OK (3 C helpers)",
+        "Get-AuthenticodeSignature build/x64/{wfp,minifilter}/*.sys -> Valid with pinned lab thumbprints",
+        "python tools/release_candidate.py -> RC PASS; release_candidate.verify(release/T20-final/466a226) -> True, 0 errors",
+        "python tools/sign_release.py --verify --dir release/T20-final/466a226 -> PASS (A053C048C8B373CF...), key = owner anchor",
+        "AEGIS_RELEASE_TRUSTED_PUBLIC_KEY=txigr... python tools/final_audit.py --release-check -> release_signature PASS (2/6 gates open)"
+      ],
+      "result": "PASS_E7_SIGNATURE_GATE",
+      "finding": "release_signature gate flips OPEN -> PASS: the newest signed tree 466a226 contains runtime a53eda8 and verifies cryptographically against the owner anchor with no key rotation. Release as a whole stays NOT SHIPPABLE (2/6 open): clean_host_e5 and soak_24h remain owner/time gates for the new candidate.",
+      "evidence_artifact": "analysis/current-head/SIGNED-RC-A53EDA8-20261120.md",
+      "limitations": [
+        "E5 not claimed: no fresh install or post-install preflight for the new candidate; the b597e71 E5 evidence does not apply to this tree.",
+        "E6/24h soak not claimed and deliberately deferred to last per owner instruction.",
+        "Driver signing is lab test signing only (no EV/HLK/Microsoft attestation); installer remains NotSigned.",
+        "Signed tree tracks text files only; SHA256SUMS covers artifact-tree binaries that git intentionally ignores."
+      ]
+    },
+    {
+      "id": "PREFLIGHT-BINDING-001-E2-20261120",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-20",
+      "title": "Post-install preflight now binds its PASS to the exact signed installer/runtime/driver bytes",
+      "level": "E2",
+      "component": "release engineering / host preflight",
+      "flow_id": "RELEASE-GATES",
+      "description": "A PASS previously proved only that some boot loader ran. host_preflight.py now hashes the installed runtime, WFP and minifilter images plus the worktree installer, compares case-insensitively against pinned SHA-256 values, and fails closed on a missing/unreadable value. final_audit.py reads those checks from the artifact and refuses a verdict that lacks them, so the 2026-11-20 wrong-installer incident cannot recur silently. Non-elevated read-only probe on the current host: all four hashes match; daemon_health remains DEGRADED (dirty baseline) by design until the owner reset.",
+      "files_verified": [
+        "tools/host_preflight.py",
+        "tools/final_audit.py",
+        "tests/release/test_host_preflight.py",
+        "tests/release/test_release_board.py"
+      ],
+      "tests": [
+        "python -m pytest -q tests/release/test_host_preflight.py tests/release/test_release_candidate_packaging.py tests/release/test_release_board.py -> 56 passed",
+        "python tools/host_preflight.py --json <temp> -> binding checks all ok; daemon_health/minifilter_ring_clean fail on the known dirty baseline"
+      ],
+      "result": "PASS_E2",
+      "finding": "The previously recorded preflight artifact predates this binding, so final_audit now honestly re-opens clean_host_e5 until reset-soak-baseline-466a226.ps1 re-runs preflight with the current tool.",
+      "evidence_artifact": "tools/host_preflight.py",
+      "limitations": [
+        "Hash pins are release-specific and must be updated with the next signed candidate.",
+        "The probe is read-only; no host state was changed and no elevated action was taken."
+      ]
+    },
+    {
+      "id": "RC-VERIFY-PIN-001-E2-20261120",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-20",
+      "title": "A bare release-candidate --verify can no longer choose a stale tree by sort order",
+      "level": "E2",
+      "component": "release engineering / candidate tooling",
+      "flow_id": "REL-002",
+      "description": "release_candidate.py used sorted(RELEASE_ROOT.glob('*/'))[-1], which verified an obsolete candidate at the current head and reported a false FAIL. It now accepts an explicit --dir, otherwise only a single unambiguous candidate, and refuses with exit 2 on ambiguity. The current active tree remains release/T20-final/466a226.",
+      "files_verified": [
+        "tools/release_candidate.py",
+        "tests/release/test_release_candidate_packaging.py"
+      ],
+      "tests": [
+        "python -m pytest -q tests/release/test_release_candidate_packaging.py -> passed (explicit/single/ambiguous cases)"
+      ],
+      "result": "PASS_E2",
+      "finding": "Ambiguity is now a refusal, never a guess; the signed candidate digest is unchanged.",
+      "evidence_artifact": "tools/release_candidate.py",
+      "limitations": [
+        "Explicit --dir release/T20-final/466a226 is still the recommended operator form."
+      ]
+    },
+    {
+      "id": "MANIFEST-VERIFY-RECONCILE-001-E2-20261120",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-20",
+      "title": "build_manifest digests recomputed with the gate's own normalized-byte rule",
+      "level": "E2",
+      "component": "release engineering / manifest",
+      "flow_id": "REL-001",
+      "description": "A prior audit compared raw bytes and called three entries drifted. verify_manifest() actually hashes CRLF-normalized LF bytes; recomputing with release_engineering.file_size/file_sha256 showed runtime_manifest.json was already correct and only tools/aegisctl.py and tools/installer.py were stale. Those two entries were refreshed from the files, not hand-typed.",
+      "files_verified": [
+        "build_manifest.json",
+        "tools/release_engineering.py"
+      ],
+      "tests": [
+        "python tools/release_engineering.py --verify -> OK 674/674 (source_commit=a53eda8)"
+      ],
+      "result": "PASS_E2",
+      "finding": "Manifest verification is green; no source or build artifact changed.",
+      "evidence_artifact": "build_manifest.json",
+      "limitations": [
+        "Records-only; the signed release tree is untouched."
+      ]
+    },
+    {
+      "id": "PRE-SOAK-RESET-001-E1-20261120",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-20",
+      "title": "Mandatory elevated clean-baseline reset before the 466a226 soak clock",
+      "level": "E1",
+      "component": "release engineering / host window",
+      "flow_id": "RELEASE-GATES",
+      "description": "Adds an absolute-path, run-from-anywhere operator script that verifies the installed image hashes, disables AC/DC standby and hibernate, stops the daemon and unloads the minifilter driver (whose cumulative kernel ring counter survives a daemon-only restart), restarts in boot order, waits for a stable zero-loss RUNNING state, and re-runs preflight into the gate's evidence root. It also stamps a do-not-use banner on the stale RB-024 runbook and refreshes the soak-window gate status.",
+      "files_verified": [
+        "analysis/current-head/reset-soak-baseline-466a226.ps1",
+        "analysis/current-head/SOAK-WINDOW-466A226-20261120.md",
+        "docs/runbooks/RB-024-final-release-window.md"
+      ],
+      "tests": [
+        "PowerShell Parser::ParseFile -> PARSE_OK",
+        "python tools/truth.py verify -> TRUTH_VALID"
+      ],
+      "result": "PASS_E1",
+      "finding": "The script is prepared but NOT executed by the agent (no elevation). The owner must run it and see BASELINE CLEAN before -Mode start.",
+      "evidence_artifact": "analysis/current-head/reset-soak-baseline-466a226.ps1",
+      "limitations": [
+        "E1 only: no host effect has been applied and no clean-baseline result is claimed here.",
+        "Does not install anything, hand-copy drivers, or alter any pinned hash."
+      ]
+    },
+    {
+      "id": "SOAK-VOID-466A226-E5-20261121",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-21",
+      "title": "NEGATIVE E5: first 466a226 soak window voided by in-window file I/O, not by a source defect",
+      "level": "E5",
+      "component": "release engineering / host soak",
+      "flow_id": "RELEASE-GATES",
+      "description": "The owner started the 24 h window at 2026-11-20T05:08:54 from a verified zero-loss baseline (process generation 1795125491259, all services RUNNING). A read-only check at 21.08 h returned FAIL: daemon DEGRADED, queue_dropped_total 292514, minifilter_ring_dropped 7352102 and minifilter_pipeline_dropped 100814 against a 3500 budget. scm_restarts was empty and the generation was unchanged, so the loss occurred inside the window. Attribution: gaming plus browser/OneDrive/TeamViewer file activity during the window. No gate, budget, checker or artifact was altered; a fresh 24 h window on a quiet host is required.",
+      "files_verified": [
+        "analysis/current-head/SOAK-VOID-466A226-20261121.md",
+        "analysis/current-head/SOAK-WINDOW-466A226-20261120.md",
+        "tools/host_soak_check.py",
+        "tools/final_audit.py"
+      ],
+      "tests": [
+        "python tools/host_soak_check.py --start 2026-11-20T05:08:54 --hours 24 --loss-budget 3500 --shed-budget 20000 --baseline <window baseline> --json <temp> -> FAIL, problems: DEGRADED + 3 counters over budget"
+      ],
+      "result": "FAIL_WINDOW_VOID",
+      "finding": "soak_24h stays OPEN; release stays NOT SHIPPABLE. Counters are cumulative and cannot be repaired without a fresh window.",
+      "evidence_artifact": "analysis/current-head/SOAK-VOID-466A226-20261121.md",
+      "limitations": [
+        "Negative evidence only: this window is not scored as a release gate result.",
+        "The raw window artifacts are local-only under admin-evidence/soak-void-20261120-466a226/ per the 2026-11-06 retention policy."
+      ]
+    },
+    {
+      "id": "SOAK-24H-PASS-466A226-E5-20261122",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-22",
+      "title": "Owner-run 36.52 h clean-host soak PASS closes soak_24h for signed candidate 466a226",
+      "level": "E5",
+      "component": "release engineering / Windows host soak",
+      "flow_id": "RELEASE-GATES",
+      "description": "The owner ran soak-466a226.ps1 -Mode final from an elevated PowerShell on the installed 6.0.0 bundle. The final artifact reports verdict=PASS, elapsed 36.52/24.0 h, problems=[], scm_restarts=[], four AEGIS services RUNNING, daemon state/health RUNNING, process_generation_ms 1795206470719 identical to the recorded baseline, and all seven loss/shed counters 0 against unchanged owner-approved budgets 3500/20000. A prior 21.08 h window was voided for in-window file I/O and is not reused. One owner-approved stale temp-file deletion during the window left every counter at 0 and is disclosed separately.",
+      "files_verified": [
+        "analysis/current-head/SOAK-PASS-466A226-20261122.md",
+        "admin-evidence/e5-clean-host-20261120-final/soak-24h-delta-final.json",
+        "admin-evidence/e5-clean-host-20261120-final/soak-24h.baseline.json",
+        "analysis/current-head/SOAK-VOID-466A226-20261121.md",
+        "analysis/current-head/SOAK-WINDOW-DISK-HYGIENE-20261121.md"
+      ],
+      "tests": [
+        "powershell -File analysis/current-head/soak-466a226.ps1 -Mode final -> verdict PASS, elapsed_hours 36.52, problems []",
+        "python tools/final_audit.py --release-check -> SHIPPABLE (0/6 gates open)"
+      ],
+      "result": "PASS",
+      "finding": "soak_24h PASS at E5 on the real Windows host. Release is SHIPPABLE with all six gates closed; no gate, budget, checker, artifact or source file was altered to produce the result.",
+      "evidence_artifact": "analysis/current-head/SOAK-PASS-466A226-20261122.md",
+      "limitations": [
+        "Raw host artifacts are local-only under admin-evidence/ per the 2026-11-06 retention policy.",
+        "Detection-only: no WFP enforcement, host effect, Signed-IR promotion or driver attestation is claimed."
+      ]
+    },
+    {
+      "id": "V1.1-PUBLISHED-ASSET-VERIFICATION-E7-20261122",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-22",
+      "title": "Published v1.1 release assets downloaded from GitHub and re-verified against the signed 466a226 tree",
+      "level": "E7",
+      "component": "release engineering / distribution verification",
+      "flow_id": "REL-001",
+      "description": "All four release assets were downloaded back from the public v1.1 release with gh release download and hashed locally. Installer d2267e72..., bundle afd4109e..., standalone SHA256SUMS a053c048... and signatures.json 683943dc... match the locally verified originals. The standalone SHA256SUMS/signatures.json are byte-identical to the copies inside the downloaded bundle. Detached Ed25519 verification of the downloaded bundle and digest verification both PASS with the owner-pinned trust anchor. No published asset was modified.",
+      "files_verified": [
+        "analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md",
+        "release/T20-final/466a226/SHA256SUMS",
+        "release/T20-final/466a226/signatures.json",
+        "dist/aegis_setup_6.0.0_trial.exe"
+      ],
+      "tests": [
+        "gh release download v1.1 -> 4/4 assets, SHA-256 match local originals",
+        "python tools/sign_release.py --verify --dir <downloaded bundle> -> PASS",
+        "python tools/verify_release_digest.py --tree <downloaded bundle> -> MATCH (as-stored)"
+      ],
+      "result": "PASS",
+      "finding": "The bytes served by GitHub are the signed candidate 466a226 (build source a53eda8). E7 release verification is complete; no retag, re-sign, re-key or artifact rewrite was performed.",
+      "evidence_artifact": "analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md",
+      "limitations": [
+        "GitHub asset digests reported by the API were cross-checked against local SHA-256; no independent third-party mirror was used.",
+        "Detection-only release; no WFP enforcement or host effect is claimed."
+      ]
     }
   ],
   "known_gaps": [
@@ -15441,11 +16173,14 @@
         "RB-021-style preflight for the next deploy window (this one used a hash-verified rollback copy but skipped the preflight)"
       ],
       "tracking": "GitHub issue #29 (QLOSS-HEALTH-001 overload; DATA_LOSS_REMAINS)",
-      "status": "OPEN",
-      "closed_at": "2026-11-08",
+      "status": "CLOSED",
+      "closed_at": "2026-11-22",
       "evidence": "QLOSS-ISOLATION-002-E5-20261108: both host sources reach their full 7,168 share on the deployed daemon with reserved_tail_shed 0 and all 206,999 refusals attributed to source_quota_shed.",
-      "next_step": "Only the 24 h soak remains. RB-024 steps 1-6 are complete on the installed 6.0.0 bundle from corrected signed candidate 7d91e30 (preflight PASS, both capture paths verified, rollback drill PASS, soak_started=false). Run the soak last with --loss-budget 3500 --shed-budget 20000 per RB-024.",
-      "current_observation": "2026-11-18: ETW delete storm (20k files) -> 8,801 filtered, 2 aggregate rows, 0 queue/ring loss, R1002 canary PASS before and after. FIM-half storm with AEGIS_FIM_PROOF_ROOT -> 41,520 FIM rows, 0 dropped, 0 quota/tail shed, R1002 PASS. 2026-11-14 soak: queue dropped 0, shed_overload 0, loss_budget 3500 over 2.5 h; no loss observed under current load 2026-11-18: RB-024 steps 1-6 PASS on the installed 7d91e30 bundle; Wi-Fi ratio counter 66/1084 pairs but byte-level probe 0/1084 identical-byte pairs, so the item stays open."
+      "next_step": "None. Closed at E5 by the genuine 466a226 soak PASS.",
+      "current_observation": "2026-11-18: ETW delete storm (20k files) -> 8,801 filtered, 2 aggregate rows, 0 queue/ring loss, R1002 canary PASS before and after. FIM-half storm with AEGIS_FIM_PROOF_ROOT -> 41,520 FIM rows, 0 dropped, 0 quota/tail shed, R1002 PASS. 2026-11-14 soak: queue dropped 0, shed_overload 0, loss_budget 3500 over 2.5 h; no loss observed under current load 2026-11-18: RB-024 steps 1-6 PASS on the installed 7d91e30 bundle; Wi-Fi ratio counter 66/1084 pairs but byte-level probe 0/1084 identical-byte pairs, so the item stays open.",
+      "closed_by": "SOAK-24H-PASS-466A226-E5-20261122",
+      "resolution": "CLOSED 2026-11-22. Option A (delete filter + per-window aggregate) held both E5 lanes: ETW 8,801/37,108 deletes filtered with 2 aggregate rows and 0 queue/ring loss; FIM 41,520 rows with 0 drops, 0 quota/tail shed, 0 ring loss; R1002 canary passed before and after. Option B (batching) was measured and rejected rather than implemented because its ~14x gain needs an integrity-contract change. The sole remaining criterion, the owner-run 24 h clean-host soak, returned PASS at 36.52 h with all seven counters at 0 and an unchanged process generation.",
+      "closure_note": "The old required_evidence rows 1-2 described an FIM coalescing change that was measured (QLOSS-B-MEASURE-001-E2) and deliberately rejected; they are superseded by the Option A E5 measurements and are not marked DONE. Row 3 (RB-021-style preflight) is satisfied by preflight-20261120.json, which is hash-bound to the installed installer/runtime/drivers and passed 16/16."
     },
     {
       "id": "GAP-FIM-NATIVE-OVERFLOW-003",
@@ -15840,14 +16575,14 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 31,
-    "E2_count": 131,
+    "E1_count": 39,
+    "E2_count": 143,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 118,
+    "E5_count": 121,
     "E6_count": 1,
-    "E7_count": 3,
-    "E5_with_artifact_count": 68,
+    "E7_count": 5,
+    "E5_with_artifact_count": 71,
     "known_gaps_count": 287
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."

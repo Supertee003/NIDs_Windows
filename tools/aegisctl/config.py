@@ -56,6 +56,10 @@ SUBSYSTEMS = [
 LOGS_DIR = Path(os.environ.get("AEGIS_LOGS_DIR") or (REPO_ROOT / "logs"))
 PID_DIR = LOGS_DIR / "pids"
 NDJSON_LOG = LOGS_DIR / "aegis_core.ndjson"
+# FP-FEEDBACK-001: advisory operator marks only. Never read by detection,
+# policy, PEP or rules; tools/aegisctl/fp_feedback.py resolves the path at
+# call time so tests can redirect writes to tmp_path.
+FP_FEEDBACK_LOG = LOGS_DIR / "fp_feedback.ndjson"
 ANOMALOUS_LOG = LOGS_DIR / "anomalous.json"
 DAEMON_LOG = LOGS_DIR / "daemon.log"
 BLOCKED_IPS_FILE = LOGS_DIR / "blocked_ips.json"

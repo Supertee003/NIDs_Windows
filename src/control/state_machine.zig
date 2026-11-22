@@ -11,6 +11,10 @@
 
 const std = @import("std");
 const runtime_state = @import("../pipeline/runtime_state.zig");
+const telemetry = @import("../pipeline/telemetry_threads.zig");
+// RESOURCE-TELEMETRY-001: sampled CPU/memory gauges. Pulled only from
+// healthJson (a control query) — never from the event pipeline (ADR-0013).
+const resource_telemetry = @import("../windows/resource_telemetry.zig");
 const defcon = @import("defcon.zig");
 const diag = @import("../core/diagnostics.zig");
 
@@ -412,6 +416,12 @@ pub const RuntimeState = struct {
         const nose_pipe_errors = runtime_state.g_nose_pipe_errors.load(.acquire);
         const minifilter_ring_dropped = runtime_state.g_minifilter_dropped.load(.acquire);
         const minifilter_pipeline_dropped = runtime_state.g_minifilter_pipeline_dropped.load(.acquire);
+        // OBSERVABILITY-001: the soak tool reads this health payload, but
+        // `shed_overload` used to exist only on queue.stats (recorded honesty
+        // gap). Report the same counter here. It is deliberately NOT part of
+        // `data_loss_observed`: a shed-only storm (dropped=0) is a budgeted
+        // policy outcome, scored separately by `--shed-budget`, not DEGRADED.
+        const shed_overload = telemetry.g_shed_overload.load(.acquire);
         // RC-CLOSEOUT: the owner-approved envelope. A counter at or below the
         // budget is inside the declared loss envelope and must not flip the
         // runtime to DEGRADED; above it, the strict behaviour returns.
@@ -442,7 +452,14 @@ pub const RuntimeState = struct {
         try writer.print(
             \\{{"component":"core","version":"{s}","state":"{s}","runtime_state":"{s}","pid":{} ,"uptime_ms":{},"last_event_ms":{},"degraded":{},"rules_loaded":{},"policies_loaded":{},"defcon_level":{},"defcon_label":"{s}","capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},"data_plane":{{"nose_connected":{},"nose_frames_read":{},"nose_frames_rejected":{},"nose_frames_submitted":{},"nose_frames_dropped":{},"nose_pipe_errors":{},"nose_last_event_id":{},"nose_duplicate_event_ids":{},"nose_non_monotonic_event_ids":{}}},"packets_captured":{},"flows_active":{},"counters":{{"in_events":{},"out_events":{},"errors":{},"dropped":{}}},
         , .{ ver, operational_state, ss.toString(), pid, uptime, runtime_state.lastEventAgeMs(runtime_state.g_last_event_ms.load(.acquire), std.time.milliTimestamp()), health_degraded, runtime_state.g_rules_loaded.load(.acquire), runtime_state.g_policies_loaded.load(.acquire), defcon_level, defcon.labelFor(defcon_level), wfp_ready, cpp_ready, udp_ready, runtime_state.g_nose_connected.load(.acquire), runtime_state.g_nose_frames_read.load(.acquire), runtime_state.g_nose_frames_rejected.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), runtime_state.g_nose_frames_dropped.load(.acquire), runtime_state.g_nose_pipe_errors.load(.acquire), runtime_state.g_nose_last_event_id.load(.acquire), runtime_state.g_nose_duplicate_event_ids.load(.acquire), runtime_state.g_nose_non_monotonic_event_ids.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), diag.metrics.flows_active.get(), runtime_state.g_nose_frames_read.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), runtime_state.g_nose_pipe_errors.load(.acquire), runtime_state.g_nose_frames_dropped.load(.acquire) });
-        try writer.print("\"data_integrity\":{{\"queue_dropped_total\":{},\"nose_frames_rejected\":{},\"nose_frames_dropped\":{},\"nose_pipe_errors\":{},\"minifilter_ring_dropped\":{},\"minifilter_pipeline_dropped\":{},\"loss_budget\":{}}},\"deps\":[", .{
+        // OBSERVABILITY-001: additive keys inside data_integrity. `shed_overload`
+        // was recorded only on queue.stats before (soak reads health, hence the
+        // honesty gap). `process_generation_ms` is captured once at daemon start:
+        // monotonic counters reset at process start, so a generation change
+        // between soak baseline and delta makes the delta meaningless. It is a
+        // PROCESS generation token (not an OS reboot id) — older readers ignore
+        // both keys.
+        try writer.print("\"data_integrity\":{{\"queue_dropped_total\":{},\"nose_frames_rejected\":{},\"nose_frames_dropped\":{},\"nose_pipe_errors\":{},\"minifilter_ring_dropped\":{},\"minifilter_pipeline_dropped\":{},\"loss_budget\":{},\"shed_overload\":{},\"process_generation_ms\":{}}},", .{
             queue_drops,
             nose_rejected,
             nose_dropped,
@@ -450,7 +467,17 @@ pub const RuntimeState = struct {
             minifilter_ring_dropped,
             minifilter_pipeline_dropped,
             loss_budget,
+            shed_overload,
+            runtime_state.g_process_generation_ms.load(.acquire),
         });
+        // RESOURCE-TELEMETRY-001: additive, sampled off the hot path. Written
+        // through the pure json() helper so escaped-brace errors cannot truncate
+        // the health payload (successEnvelope re-parses it).
+        try writer.writeAll("\"resources\":");
+        const resources_json = try resource_telemetry.json(a, resource_telemetry.current());
+        defer a.free(resources_json);
+        try writer.writeAll(resources_json);
+        try writer.writeAll(",\"deps\":[");
 
         try writer.print("{{\"name\":\"bridge\",\"state\":\"{s}\"}},{{\"name\":\"pipeline\",\"state\":\"{s}\"}}],\"subsystems\":[", .{
             if (bridge_ready) "RUNNING" else "DEGRADED",

@@ -227,6 +227,17 @@ def evaluate(
             )
         integrity = health.get("data_integrity") or {}
         base_integrity = (baseline or {}).get("data_integrity") or {}
+        # OBSERVABILITY-001: counter deltas are only meaningful within one
+        # process generation. The daemon publishes process_generation_ms once at
+        # startup; a changed value (older baselines omit it and are skipped)
+        # proves a restart even if the counters happened not to go backwards.
+        base_gen = base_integrity.get("process_generation_ms")
+        now_gen = integrity.get("process_generation_ms")
+        if isinstance(base_gen, (int, float)) and isinstance(now_gen, (int, float)) and base_gen != now_gen:
+            problems.append(
+                f"daemon process generation changed inside the window "
+                f"({int(base_gen)} -> {int(now_gen)}): counter deltas are meaningless"
+            )
         for key in LOSS_COUNTERS:
             problems.extend(
                 _counter_problems(

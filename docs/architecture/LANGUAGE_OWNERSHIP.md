@@ -19,7 +19,7 @@
 
 **Forbidden**:
 - Independent policy authority
-- Direct enforcement (must go through Rust PEP)
+- Direct enforcement (none exists: product is detection-only, RETIRE-HOST-EFFECT-001)
 - Brain/RAG logic (Python owns this)
 
 **Authority files**: `core/dispatcher.zig`, `core/lifecycle.zig`, `core/canonical_event.zig`
@@ -81,24 +81,27 @@
 
 ---
 
-## Rust - Security Boundary (PEP)
+## Rust - Security Boundary (detection-only PEP)
 
 **Owns**:
-- Security boundary (policy verification)
-- PEP (Policy Enforcement Point)
-- Enforcement execution
-- Privileged state management
-- Rollback (deferred queue, retry)
+- Crypto and trust: Ed25519 policy/payload signature verification, TLS/federation
+- Detection-only PEP evaluation (`aegis_pep_enforce`, `aegis_pep_assess`)
+- Authorization *evidence* and receipts (decision/reason/filter_id)
+- Offline key ceremony (`rust-src/bin/aegis_keygen.rs`)
 
-**Forbidden**:
-- Policy decisions (Zig decides, Rust executes)
-- Detection logic
-- Brain/RAG logic
+**Does NOT own**:
+- Host effects, WFP mutation, filter installation, block/unblock execution
+- Policy decisions (Zig owns detection and policy decision)
+- Detection logic, Brain/RAG logic
 
-**Authority files**: `rust-src/`, `shield/` (SUPPORT only)
+**Authority files**: root `Cargo.toml` + `rust-src/lib.rs` (CANONICAL, golden-path
+step 9, linked into `aegis_nids.exe`); `shield/` payload screening (SUPPORT);
+`mouth/` and `aegis_dashboard/` (OPTIONAL).
 
-**Rule**: Rust is the **detection-only policy evaluation authority**. It records
-evidence and never authorizes a host effect. No bypass allowed.
+**Rule**: Rust is the **sole detection-only policy/crypto authority**. It records
+evidence and never authorizes a host effect (RETIRE-HOST-EFFECT-001, issue #25;
+AUTHORITY_MAP.json). Earlier wording "Zig decides, Rust executes" is HISTORICAL:
+no language executes a host effect in this product.
 
 **PEP validation** (before classification):
 - policy
@@ -177,7 +180,7 @@ evidence and never authorizes a host effect. No bypass allowed.
 
 2. **Cross-language vectors**: Treated as contract tests (validated in CI)
 
-3. **No language can bypass Rust PEP** for enforcement
+3. **No component may authorize a host effect**; Rust PEP is a detection-only evidence authority
 
 4. **No language can modify CanonicalEvent** after observation
 
@@ -191,7 +194,7 @@ evidence and never authorizes a host effect. No bypass allowed.
 |--------------|------|-------------|
 | CMake | C/C++ native components | `CMakeLists.txt` |
 | Zig build | Core runtime | `build.zig` |
-| Cargo | Rust components (shield, mouth) | `shield/Cargo.toml`, `mouth/Cargo.toml` |
+| Cargo | Rust canonical PEP + SUPPORT/OPTIONAL crates | `Cargo.toml`/`rust-src/lib.rs` (CANONICAL), `shield/Cargo.toml` (SUPPORT), `mouth/Cargo.toml` and `aegis_dashboard/Cargo.toml` (OPTIONAL) |
 | Go | Nose/Aggregator | `nose/go.mod`, `go/aggregator/go.mod` |
 | Python/Cython | Brain | `brain/requirements.txt`, `brain/setup.py` |
 

@@ -97,6 +97,15 @@ def test_format_queue_rows_tolerates_missing_keys():
     assert rows == ["queue ?/? pushed=? dropped=? shed_overload=?"]
 
 
+def test_format_queue_rows_tolerates_observability_fields():
+    # OBSERVABILITY-001: additive queue.stats keys must not break the CLI view.
+    response = dict(SAMPLE)
+    response["nose_pace_waits"] = 12
+    response["rule_fire"] = {"confirmed": 3, "collisions": 1, "top": [{"rule_id": 9002, "fires": 7}]}
+    rows = cli._format_queue_rows(response)
+    assert rows[0] == "queue 12/4096 pushed=100 dropped=3 shed_overload=?"
+
+
 def test_format_queue_rows_renders_wfp_health_row():
     response = dict(SAMPLE)
     response["wfp"] = {"state": "ok", "reads": 42, "rows": 7, "last_bytes": 256}
@@ -158,6 +167,26 @@ def test_format_queue_rows_labels_kernel_owned_ingress():
         "mode=kernel_fallback reason=nose_absent (kernel owns network ingress; "
         "Npcap not delivering)" in rows
     )
+
+
+def test_format_queue_rows_renders_kernel_primary_shadowing():
+    # VISIBILITY-001: an operator-selected kernel-primary switch must say so,
+    # and show that drained Nose frames are counted (not silently dropped).
+    response = dict(SAMPLE)
+    response["wfp"] = {
+        "state": "ok", "reads": 90, "rows": 120, "last_bytes": 512,
+        "mode": "kernel_primary", "reason": "kernel_primary",
+        "shadow_rows": 0, "nose_shadow_frames": 37, "kernel_owned": True,
+    }
+    rows = cli._format_queue_rows(response)
+    assert any("nose_shadow=37" in row for row in rows)
+    assert any(
+        "kernel owns ingress by operator opt-in; Nose frames shadowed, not lost" in row
+        for row in rows
+    )
+    # The kernel-fallback wording is wrong here: Npcap IS delivering, it is
+    # deliberately shadowed, so it must not appear.
+    assert not any("Npcap not delivering" in row for row in rows)
 
 
 def test_format_queue_rows_omits_wfp_when_absent():

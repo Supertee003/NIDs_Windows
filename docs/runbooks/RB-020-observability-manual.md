@@ -71,7 +71,7 @@ One-shot `dashboard` probes deep like `components`; `dashboard
   `python tools/aegisctl.py bridge`
   `python tools/aegisctl.py brain` (counters + inbox tail, labeled)
   `python tools/aegisctl.py metrics` (detections vs anomalies)
-- Tier-3 (Rust PEP, enforcement; gate closed = detection-only):
+- Tier-3 (Rust PEP, detection-only policy/evidence authority; no host effect):
   `python tools/aegisctl.py enforce status`
   `python tools/aegisctl.py block list`
   `python tools/aegisctl.py enforce simulate` (projection, never touches PEP)
@@ -257,3 +257,51 @@ their own runbooks (RB-009) or re-runnable open commands.
   query); it is documented, not displayed.
 - A quiet host shows empty alerts: generate lab traffic (RB-019) to
   see the detection path fire end to end.
+
+## Metrics sufficiency for production SRE
+
+Honest assessment first written at build source `f4cde3c` (records-only; no
+source change there). The v1.1 branch source is now `a53eda8`, which adds the
+additive observability slices (`RESOURCE-TELEMETRY-001`, `OBSERVABILITY-001`,
+`ALERT-FILE-001`, `FP-FEEDBACK-001`, `POLICY-MUTATE-001`, all E2, no host
+effect); the production-SRE sufficiency call below is unchanged and no E5 is
+claimed at `a53eda8`.
+
+**Adequate for:** operator-pulled diagnosis and the single-host 24 h soak gate.
+The daemon exposes a rich, additive control-plane schema: `metrics.snapshot`
+(`aegisctl metrics`), `queue.stats` (`aegisctl queue` — depth/peak, per-source and
+per-source-kind attribution, `fim_probe`, `etw`, `wfp`, `minifilter`, `host_net`,
+and per-stage `p50/p95/p99/mean/max`), `system.health` (`aegisctl health` —
+including `data_integrity` loss counters), plus `events.*`, `incidents.list`,
+forensics and `readiness`. `tools/host_soak_check.py` genuinely consumes the
+real loss counters with fail-closed baseline deltas.
+
+**Not adequate for production SRE (blocking gaps):**
+
+| Gap | Reality | Fix class |
+|---|---|---|
+| Always-on time series | No runtime scrape/TSDB pipeline. `scripts/aegis_metrics.py` is opt-in, loopback-only `:9100`, and **log-derived** — it does not reflect `data_integrity`/`queue.stats` loss. The Zig `MetricsExporter` is build/test-only. | source/config |
+| Alerting | No alert rules or notification. Only fail-closed thresholds are `--loss-budget 3500`, `--shed-budget 20000`, and `aegisctl readiness`. Dashboard colours are visual only. | source/config |
+| Resource metrics | CPU/RAM/disk/pcap-ring utilisation absent from daemon surfaces; only the Go nose TUI reads CPU/GC/heap. | source |
+| Latency SLOs | 6 of 10 stages report `p50=p95=1 ns` (clock floor) — percentiles are not usable as SLO inputs. | source |
+| Restart/availability | Counters are cumulative-since-start and reset on restart; restarts are inferred externally by the soak's SCM check. No in-process boot-id. | source |
+| `shed_overload` in health | Present in `queue.stats`, absent from `system.health`; a health-only consumer misses policy-shed loss. | source (deferred) |
+| Detection effectiveness | No aggregated TP/FP or per-rule fire-rate metric (`false_positive` exists only as incident state). See `docs/DETECTION_VALIDATION.md`. | source |
+| Exposed-but-unused | `by_source_kind`, `ingress_authority`, `fim_probe` detail, `etw.*`, `pipeline.p99/mean` are in JSON but not in any gate/alert/dashboard; CLI text shows only p50/p95/max. | consumer-side source |
+
+**Retention/reset semantics:** counters are in-memory, cumulative since process
+start, and reset on daemon restart. There is no downsampling or retention policy
+because there is no TSDB. Persist the hourly soak JSON artifacts if a historical
+record is needed. Go nose and Python brain counters are process-local and reach
+gates only through daemon-side projections — they are not exporters.
+
+**Aggregator caveat:** `go/aggregator` `/api/health` reports hardcoded
+`out_events=0` and `dropped=0`; do not use it as a loss signal. Use daemon
+`health.data_integrity` instead.
+
+**OTLP/syslog-CEF:** still not built (see RB-010). Do not configure endpoints
+for sinks that do not exist.
+
+Fixing gaps in the table above requires `src/`, CLI, or exporter changes and is
+**forbidden while the 24 h soak is running**. They are release-follow-up work,
+not blockers for the current detection-only release gate.

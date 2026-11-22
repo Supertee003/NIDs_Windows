@@ -29,6 +29,8 @@ import time
 from pathlib import Path
 from typing import Dict, Callable
 from aegisctl.contracts import project_operator_state
+# FP-FEEDBACK-001: advisory local feedback only; never consulted by detection.
+from aegisctl import fp_feedback
 
 # Ensure tools/ is on the path
 TOOLS_DIR = Path(__file__).resolve().parent
@@ -546,10 +548,17 @@ def _format_queue_rows(response: dict) -> list[str]:
                 row += f" reason={wfp['reason']}"
             if wfp.get("shadow_rows"):
                 row += f" shadow={wfp['shadow_rows']}"
+            # VISIBILITY-001: Nose frames drained by the submit-point guard in
+            # kernel-primary mode. Only rendered when a new daemon reports it,
+            # so older daemons stay byte-identical.
+            if wfp.get("nose_shadow_frames"):
+                row += f" nose_shadow={wfp['nose_shadow_frames']}"
         if state == "unavailable":
             row += " (kernel flow rows absent until provider returns)"
         elif state == "unknown":
             row += " (telemetry loop has not reported)"
+        elif wfp.get("mode") == "kernel_primary":
+            row += " (kernel owns ingress by operator opt-in; Nose frames shadowed, not lost)"
         elif wfp.get("kernel_owned"):
             row += " (kernel owns network ingress; Npcap not delivering)"
         rows.append(row)
@@ -794,6 +803,34 @@ def build_readiness(payload: dict) -> dict:
             continue
         if str(status.get("state", "")).upper() in {"DEGRADED", "FAILED", "STOPPED"}:
             degraded_components.append({"name": name, "state": status.get("state"), "error": status.get("error")})
+    # READINESS-CAUSE-002: data-integrity loss is aggregated into the upstream
+    # `degraded` boolean without marking a subsystem, so it used to reach here
+    # as the anonymous `degraded_without_named_component`. Name it from the
+    # counter pair the daemon already publishes, so an operator can act on it.
+    data_integrity = payload.get("data_integrity") or {}
+    if not isinstance(data_integrity, dict):
+        data_integrity = {}
+    dropped = int(data_integrity.get("queue_dropped_total", 0) or 0)
+    loss_budget = int(data_integrity.get("loss_budget", 0) or 0)
+    if loss_budget > 0 and dropped > loss_budget:
+        degraded_components.append({
+            "name": "data_integrity",
+            "state": "DEGRADED",
+            "error": f"queue_dropped_total={dropped}>loss_budget={loss_budget}",
+        })
+    # READINESS-CAUSE-003: the kernel telemetry capability is also folded into
+    # `degraded` without a subsystem entry. When the WFP/minifilter services
+    # are down, health reports capabilities.wfp=false and the PEP reports wfp
+    # UNAVAILABLE; name that instead of emitting the anonymous marker.
+    capabilities = payload.get("capabilities") or {}
+    if not isinstance(capabilities, dict):
+        capabilities = {}
+    if degraded and capabilities.get("wfp") is False:
+        degraded_components.append({
+            "name": "wfp",
+            "state": "UNAVAILABLE",
+            "error": "capabilities.wfp=false (WFP/minifilter driver not running)",
+        })
     worker_gate = not missing_workers and not workers.get("failed", False)
     overall_gate = state == "RUNNING" and not degraded and worker_gate and rules_loaded > 0
 
@@ -814,8 +851,12 @@ def build_readiness(payload: dict) -> dict:
     # `degraded` is aggregated upstream from data loss, lifecycle and subsystem
     # states. When it is true and none of the above explained it, say that
     # instead of returning a bare refusal.
+    # A lifecycle state such as `state_degraded` is itself an attributable
+    # cause: it is already in `reasons`, so an extra anonymous marker would be
+    # noise (and would violate "never degrades anonymously" on a live host).
     degradation_named = bool(degraded_components) or state_machine_disagrees or any(
-        r.startswith("worker_") or r in {"worker_failed", "rules_not_loaded"} for r in reasons
+        r.startswith("worker_") or r.startswith("state_")
+        or r in {"worker_failed", "rules_not_loaded"} for r in reasons
     )
     if degraded and not degradation_named:
         reasons.append("degraded_without_named_component")
@@ -1161,6 +1202,43 @@ def cmd_events(args) -> int:
     return 0
 
 
+def cmd_mark_fp(args) -> int:
+    """FP-FEEDBACK-001: record an operator false-positive mark locally.
+
+    Advisory only. This never touches detection, rules, policy, PEP, or the
+    evidence log; it cannot suppress a future detection. The pipe is not
+    contacted. A re-read postcondition proves persistence before success.
+    """
+    try:
+        result = fp_feedback.append_event(args.event_id, getattr(args, "reason", "") or "")
+    except ValueError as exc:
+        print(json.dumps({"ok": False, "error": str(exc), "advisory": True}, sort_keys=True), file=sys.stderr)
+        return 2
+    except (OSError, RuntimeError) as exc:
+        print(json.dumps({"ok": False, "error": str(exc), "advisory": True}, sort_keys=True), file=sys.stderr)
+        return 4
+    print(json.dumps(result, sort_keys=True))
+    return 0
+
+
+def cmd_fp(args) -> int:
+    """FP-FEEDBACK-001: read the advisory local false-positive count/list."""
+    op = getattr(args, "fp_command", "count")
+    records = fp_feedback.read_all()
+    if op == "list":
+        limit = max(1, min(int(getattr(args, "limit", 20) or 20), 200))
+        payload = {
+            "source": "local_log",
+            "count": len(records),
+            "records": records[-limit:][::-1],
+            "advisory": True,
+        }
+    else:
+        payload = {"source": "local_log", "count": len(records), "advisory": True}
+    print(json.dumps(payload, sort_keys=True) if getattr(args, "json", True) else payload)
+    return 0
+
+
 def cmd_forensic(args) -> int:
     """Query forensic evidence through the authenticated control daemon."""
     if not CONTROL_API_AVAILABLE:
@@ -1287,9 +1365,56 @@ def _daemon_rules_count() -> int | None:
         return None
 
 
+def _policy_mutation(op: str) -> int:
+    """POLICY-MUTATE-001: privileged evidence-verdict control with read-back.
+
+    enable/disable move an atomic evidence-label gate; reload swaps the live
+    policy set. Neither gates detection nor causes a host effect. No local
+    state file is written: the only proof is the daemon's postcondition.
+    """
+    command = "policy." + op
+    if not CONTROL_API_AVAILABLE:
+        print(f"{command} failed: control API unavailable", file=sys.stderr)
+        return 4
+    try:
+        response = query_control(command)
+    except Exception as exc:
+        print(f"{command} failed: {type(exc).__name__}", file=sys.stderr)
+        return 3
+    if not isinstance(response, dict):
+        print(f"{command} failed: daemon control pipe unavailable", file=sys.stderr)
+        return 3
+    expected = {"enable": "enabled", "disable": "disabled", "reload": "reloaded"}[op]
+    status = str(response.get("status", "")).lower()
+    postcondition = response.get("postcondition")
+    verified = status == expected and postcondition == "ACTIVE"
+    result = {
+        "command": command,
+        "status": response.get("status"),
+        "postcondition": postcondition,
+        "generation": response.get("generation"),
+        "detection_gated": False,
+        "host_effect": False,
+    }
+    if op == "reload":
+        loaded = int(response.get("policies_loaded", 0) or 0)
+        result["policies_loaded"] = loaded
+        result["previous_policies_loaded"] = response.get("previous_policies_loaded")
+        if loaded <= 0:
+            verified = False
+    else:
+        enabled = response.get("enabled")
+        result["evidence_verdict_enabled"] = enabled
+        if enabled is not (op == "enable"):
+            verified = False
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0 if verified else 1
+
+
 def cmd_policy(args) -> int:
-    if getattr(args, "policy_command", "list") not in {"list", "show", "verify", "validate"}:
-        return _unavailable("policy", "policy_runtime_postcondition_not_connected")
+    op = getattr(args, "policy_command", "list")
+    if op in {"enable", "disable", "reload"}:
+        return _policy_mutation(op)
     rules = _rules()
     # BE-DIS-089: the daemon engine (rule_loader.zig) honors
     # configs/disabled_rules.json on startup + rules.reload. The old
@@ -1322,12 +1447,9 @@ def cmd_policy(args) -> int:
         return _print_control_query("policy.verify", as_json=getattr(args, "json", True))
     if op == "validate":
         return _print_control_query("policy.validate", as_json=getattr(args, "json", True))
-    # LEFTOVER-SWEEP: enable/disable/reload are refused by the fail-closed
-    # guard at the top of this command (never a local write, never a fake
-    # success); pinned by tests/runtime/test_gate_e.py + the capability
-    # matrix. The old unreachable implementations (disabled_rules.json
-    # write + a policy.reload control query; no such control command
-    # exists) and the now-dead local-state helpers were removed here.
+    # POLICY-MUTATE-001: enable/disable/reload are handled above by the
+    # daemon-owned control verbs. This tail is unreachable; never fall back
+    # to a local state write or a fake success.
     return 2
 
 
@@ -2526,8 +2648,15 @@ def main() -> int:
     policy_sub = policy.add_subparsers(dest="policy_command")
     policy_sub.add_parser("list"); pshow = policy_sub.add_parser("show"); pshow.add_argument("--id", required=True)
     policy_sub.add_parser("verify"); policy_sub.add_parser("validate")
-    preload = policy_sub.add_parser("reload"); pen = policy_sub.add_parser("enable"); pen.add_argument("--id", required=True)
-    pdis = policy_sub.add_parser("disable"); pdis.add_argument("--id", required=True)
+    # POLICY-MUTATE-001: real privileged control verbs with daemon read-back.
+    # They change the EVIDENCE-VERDICT label only: detection stays pure and no
+    # host effect is possible. `--id` is accepted for compatibility with older
+    # operator scripts but is advisory (the gate is process-wide).
+    policy_sub.add_parser("reload", help="Reload configs/policies.json into the live evidence-verdict set (privileged)")
+    pen = policy_sub.add_parser("enable", help="Enable policy evidence verdicts (privileged, no detection gating)")
+    pen.add_argument("--id", required=False, help="Legacy label only; ignored")
+    pdis = policy_sub.add_parser("disable", help="Disable policy evidence verdicts (privileged, detection unaffected)")
+    pdis.add_argument("--id", required=False, help="Legacy label only; ignored")
     policy.set_defaults(policy_command="list", func=cmd_policy)
     simulate = sub.add_parser("simulate", help="Generate test traffic")
     sim_sub = simulate.add_subparsers(dest="simulate_command")
@@ -2613,6 +2742,24 @@ def main() -> int:
     _iptest_p.set_defaults(func=cmd_iptest)
     sub.add_parser("authority", help="Verify authority invariant").set_defaults(func=cmd_authority)
     sub.add_parser("help", help="Show help").set_defaults(func=cmd_help)
+    # FP-FEEDBACK-001: advisory, local-file-only operator commands.
+    mark_fp = sub.add_parser(
+        "mark-fp",
+        help="Mark an event as false positive (advisory local feedback; no suppression)",
+    )
+    mark_fp.add_argument("event_id", type=int, help="Positive event_id from events/alerts")
+    mark_fp.add_argument("--reason", default="", help="Bounded operator note (sanitized, <=256 chars)")
+    mark_fp.set_defaults(func=cmd_mark_fp)
+    fp = sub.add_parser("fp", help="Show advisory local false-positive feedback")
+    fp_commands = fp.add_subparsers(dest="fp_command")
+    fp_count = fp_commands.add_parser("count", help="Count local FP marks")
+    fp_count.add_argument("--json", action="store_true", default=True, help=argparse.SUPPRESS)
+    fp_count.set_defaults(func=cmd_fp)
+    fp_list = fp_commands.add_parser("list", help="List recent local FP marks")
+    fp_list.add_argument("--limit", type=int, default=20, help="Max rows (1-200, default 20)")
+    fp_list.add_argument("--json", action="store_true", default=True, help=argparse.SUPPRESS)
+    fp_list.set_defaults(func=cmd_fp)
+    fp.set_defaults(fp_command="count", func=cmd_fp)
 
     args = parser.parse_args()
 
@@ -2620,11 +2767,16 @@ def main() -> int:
         parser.print_help()
         return 2
 
-    # Dispatch to the appropriate command handler
-    # All command handlers delegate to control_api for business logic
-    func_name = f"cmd_{args.cmd}"
-    if func_name in globals() and callable(globals()[func_name]):
-        return globals()[func_name](args)
+    # Dispatch to the handler bound by set_defaults(). This also supports
+    # hyphenated command names (mark-fp), which cannot be resolved through
+    # the old `cmd_{args.cmd}` globals lookup (`cmd_mark-fp` is not a valid
+    # identifier). Keep that lookup only as a backward-compatible fallback.
+    func = getattr(args, "func", None)
+    if not callable(func):
+        func_name = f"cmd_{args.cmd}"
+        func = globals().get(func_name)
+    if callable(func):
+        return func(args)
 
     parser.print_help()
     return 2

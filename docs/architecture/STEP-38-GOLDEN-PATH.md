@@ -1,5 +1,7 @@
 # Step 38 — Windows Golden Path (Part I Exit Gate)
 
+> **HISTORICAL (superseded 2026-11-09, RETIRE-HOST-EFFECT-001 / issue #25):** the product is detection-only. Any enforcement authority / host-effect wording below is a historical design record, not current truth. Current authority: `AUTHORITY_MAP.json`, `analysis/current-head/RUST-FOUNDATION-STATUS-20261119.md`.
+
 **Status:** STUB (S2 framework — framework verified structurally; exit gate requires full chain verification from Steps 0-38 — requires Steps 6-37 complete for production verification; requires Steps 54-55 (IPS Canaries + Real IPS) + STEP 57 (Security Decision Trace) + STEP 61 (Final Regression) + STEP 62 (Current-Head Golden Path) for exit gate declaration)
 **Files:** `tests/e2e/test_t14_windows_golden_path.py` (restored in Step 2 Round 2; framework present; real Windows Golden Path evidence unverified per Part I exit criteria)
 **Exit Gate Reference:** `docs/Complete_Code_Implementation_Requirements_Report.md` (Section 38 — Windows Golden Path; requires Part I PASS criteria: ONE runtime, ONE build, ONE event model, ONE policy authority, ONE enforcement authority, Go acquisition integrated, C++ native adapters integrated, Zig runtime integrated, Python Brain integrated, Cython measured, TypeScript policy integrated, Rust PEP integrated, Real Windows Telemetry verified)

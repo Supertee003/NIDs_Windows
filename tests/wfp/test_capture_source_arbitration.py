@@ -32,6 +32,7 @@ def test_arbiter_states_are_explicit_and_named() -> None:
         "kernel_fallback",
         "split_lab",
         "none",
+        "kernel_primary",
     ):
         assert f"{mode} = " in text
     # The control plane renders names, never a bare ordinal.
@@ -73,8 +74,49 @@ def test_telemetry_drains_but_shadows_when_packet_path_owns_ingress() -> None:
 
 def test_runtime_state_carries_arbitration_for_the_control_plane() -> None:
     text = _read(RUNTIME_STATE)
-    for field in ("g_capture_mode", "g_capture_reason", "g_wfp_shadow_rows"):
+    for field in (
+        "g_capture_mode", "g_capture_reason", "g_wfp_shadow_rows",
+        "g_nose_shadow_frames",
+    ):
         assert field in text
+
+
+def test_packet_side_permission_is_ENFORCED_at_the_nose_submit_point() -> None:
+    # VISIBILITY-001: `packet_may_submit` used to be log-only, which would
+    # make an operator-selected WFP-primary mode a duplicate authority.
+    arbiter = _read(ARBITER)
+    assert "pub fn packetSubmissionAllowed" in arbiter
+    # Only kernel_primary may deny; undecided must stay permissive.
+    assert "mode != @intFromEnum(Mode.kernel_primary)" in arbiter
+
+    assert "pub fn noseFrameIsShadowed" in arbiter
+    assert "WfpProviderState.ok" in arbiter  # fail-open without a kernel
+    assert "pub fn publishStartupMode" in arbiter
+
+    reader = _read(REPO_ROOT / "src" / "capture" / "nose_pipe_reader.zig")
+    assert "noseFrameIsShadowed" in reader
+    assert "g_nose_shadow_frames.fetchAdd(1" in reader
+    # The guard must run BEFORE the frame reaches the pipeline queue.
+    guard = reader.index("noseFrameIsShadowed(")
+    submit = reader.index("pipeline_queue.pushDecodedFrame(")
+    assert guard < submit, "permission check must precede submission"
+    # A denied frame is drained via `continue`, never pushed anyway.
+    assert "continue;" in reader[guard:submit]
+
+    # Startup publication must happen before the first capture thread spawns.
+    daemon = _read(REPO_ROOT / "src" / "daemon.zig")
+    startup = daemon.index("publishStartupMode(")
+    first_spawn = daemon.index("std.Thread.spawn", startup)
+    assert startup < first_spawn
+
+
+def test_kernel_primary_is_an_explicit_opt_in_that_fails_open() -> None:
+    telemetry = _read(TELEMETRY)
+    assert "AEGIS_CAPTURE_PRIMARY" in telemetry
+    assert 'eqlIgnoreCase(v, "kernel")' in telemetry
+    assert telemetry.count(".kernel_primary = kernel_primary,") == 3
+    arbiter = _read(ARBITER)
+    assert "in.kernel_primary and in.kernel_available" in arbiter
 
 
 def test_queue_stats_states_mode_reason_and_shadow_rows() -> None:
@@ -82,7 +124,10 @@ def test_queue_stats_states_mode_reason_and_shadow_rows() -> None:
     assert 'mode\\":' in text
     assert 'reason\\":' in text
     assert 'shadow_rows\\":' in text
+    assert 'nose_shadow_frames\\":' in text
     assert "kernel_owned" in text
+    # kernel_owned must reflect the operator-selected mode too.
+    assert "Mode.kernel_primary" in text
 
 
 def test_docs_name_the_acquisition_states() -> None:

@@ -143,6 +143,9 @@ mutation/postcondition flags.
 | `policy.validate` | READ | no | Validate policies |
 | `policy.verify` | OPERATE | no | Verify policy signatures |
 | `policy.simulate` | OPERATE | no | Simulate policy execution |
+| `policy.enable` | PRIVILEGED | yes | Enable policy evidence verdicts; gates only the evidence label, never detection or a host effect (read-back postcondition) |
+| `policy.disable` | PRIVILEGED | yes | Disable policy evidence verdicts; detection, forensic records and PEP branch are unchanged (read-back postcondition) |
+| `policy.reload` | PRIVILEGED | yes | Re-read `configs/policies.json` and atomically swap the live evidence-verdict set; counter moves only after the swap |
 | `forensics.list` | READ | no | List forensic records |
 | `forensics.show` | READ | no | Show forensic record |
 | `forensics.verify` | OPERATE | no | Verify forensic integrity |

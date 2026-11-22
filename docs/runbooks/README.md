@@ -5,6 +5,8 @@ Production operation is observe-only: the prevention gate is closed and no runbo
 may be used to activate host enforcement. RB-001, RB-012, and RB-013 are retained
 as historical/lab references only and are not production procedures.
 
+Canonical companion documents (current HEAD): `docs/DETECTION_VALIDATION.md` (per-rule evidence and E-levels), `docs/gates/PRODUCTION_READINESS.md` (definition of done, gate/test/evidence map, on-call), `docs/runbooks/RB-020-observability-manual.md` (metric surfaces and their production-sufficiency limits), and `analysis/current-head/RUST-FOUNDATION-STATUS-20261119.md` (Rust authority boundary). Detection-validation evidence is E-level graded: a synthetic fixture is E1 and "golden path declared" is not E4 end-to-end proof.
+
 ## Runbook Index
 
 | ID | Type | Title | Module | Status |

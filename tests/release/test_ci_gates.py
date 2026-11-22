@@ -132,17 +132,29 @@ def test_operator_tool_jobs_build_and_test_the_real_manifests():
     assert "cargo build --release --manifest-path aegis_dashboard/Cargo.toml" in dash
 
 
-def test_drivers_job_is_manual_only_until_a_run_is_verified():
-    """The WDK build cannot be PR-gated yet: needs WDK + test-signing, and
-    no hosted run has been observed green. A manual job keeps the driver
-    sources under bit-rot watch without adding an unverified red signal."""
+def test_drivers_job_runs_the_canonical_wdk_build_ungated():
+    """CI-GREY-GATES (2026-11-19): the WDK job was permanently grey because the
+    old `windows-latest` image ships no standalone WDK headers/libs
+    (actions/runner-images#14263). A grey required gate is unverified, so the
+    job now runs on every push on `windows-2022` (the image that still ships
+    the WDK) using the authoritative `build_truth.json` scripts and fails
+    closed when either canonical `build\\x64` output is missing or empty. The
+    legacy `build_drivers.bat` (which exits 0 on a failed compile and writes to
+    the wrong path) is gone. See
+    `analysis/current-head/CI-GREY-GATES-CLOSEOUT-20261119.md`."""
     drivers = _job_block("drivers-wdk-build")
-    cond = re.search(r"^    if:\s*(.+)$", drivers, re.M)
-    assert cond, "drivers job must declare a top-level `if:`"
-    assert "workflow_dispatch" in cond.group(1), (
-        "drivers job must be manual-only (workflow_dispatch) until verified"
+    assert "windows-2022" in drivers, "drivers job must run on the WDK-capable image"
+    assert re.search(r"^    if:", drivers, re.M) is None, (
+        "drivers job must run on push, not stay gated to workflow_dispatch"
     )
-    assert "build_drivers.bat" in drivers
+    assert "wdk_build_production.ps1" in drivers
+    assert "wdk_build_minifilter.ps1" in drivers
+    assert "build_drivers.bat" not in drivers, (
+        "the legacy .bat exits 0 on a failed compile; it must not come back"
+    )
+    assert r"build\x64\wfp\aegis_wfp.sys" in drivers
+    assert r"build\x64\minifilter\aegis_minifilter.sys" in drivers
+    assert "kernel_drivers" in drivers
 
 
 def test_every_required_coverage_project_reaches_the_gate():

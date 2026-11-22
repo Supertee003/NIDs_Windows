@@ -1,15 +1,16 @@
-"""S2-05: every packaging path ships the same driver, from the build output.
+"""S2-05 / DRIVER-SIGN-PAYLOAD-001: one driver source per packaging stage.
 
 The tree once had two answers to "which aegis_wfp.sys do I install": the NSIS
 path pointed at ``drivers\\wfp_callout\\aegis_wfp.sys`` (an Oct-16 image that no
-build target refreshes) while ``tools/installer.py``, ``scripts/package_release.ps1``
-and the release candidate tool shipped ``build\\x64\\wfp\\aegis_wfp.sys``. Whichever
-entry point an operator picked decided which kernel image went onto the host, and
-the shipped image carried no relationship to the source commit.
+build target refreshes) while the build/staging paths shipped
+``build\\x64\\wfp\\aegis_wfp.sys``. Later, the NSIS generator still packaged the
+raw WDK output, which is unsigned: Windows rejects it with 0x241/577, both
+driver services stay STOPPED and the daemon reports DEGRADED.
 
-These tests pin the invariant instead of the file list: a driver source is a
-build output under ``build\\x64\\``, and no packaging entry point names the stale
-tree copy. They fail on a new entry point that reintroduces the old path.
+The invariant now has two stages, never mixed: CI/CMake produce the raw build
+outputs under ``build\\x64\\`` (the signing input), and the *installer* packages
+only the hash-verified, owner-signed payload from the release candidate. No
+packaging entry point may name the stale tree copy.
 """
 from __future__ import annotations
 
@@ -83,14 +84,20 @@ def test_no_entry_point_ships_the_stale_tree_image() -> None:
     )
 
 
-def test_installers_ship_the_canonical_wfp_image() -> None:
+def test_installers_ship_the_signed_wfp_image() -> None:
+    """NSIS generation must resolve owner-signed payloads; the raw build
+    output is the signing *input*, never a shippable driver image."""
+    code = _code_only(_text("tools/installer.py"))
+    for marker in ("signed_driver_sources()", "signed_drivers_available()",
+                   "OWNER_PUBLIC_KEY", "@WFP_DRIVER_SOURCE@", "@FIM_DRIVER_SOURCE@"):
+        assert marker in code, f"installer.py no longer enforces signed payloads: {marker}"
     missing = [
         rel
-        for rel in ("installer/aegis.nsi", "tools/installer.py", "scripts/package_release.ps1")
+        for rel in ("installer/aegis.nsi", "scripts/package_release.ps1")
         if CANONICAL_DRIVERS["aegis_wfp.sys"] not in _text(rel)
     ]
     assert not missing, (
-        "these entry points no longer name the WDK build output "
+        "pre-signing staging paths no longer name the WDK build output "
         f"{CANONICAL_DRIVERS['aegis_wfp.sys']}: {missing}"
     )
 

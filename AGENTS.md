@@ -2,7 +2,7 @@
 ## Version 2.0 — Current-HEAD Vertical Slice Workflow
 
 **RECORDS HEAD:** `git rev-parse HEAD` at read time (records-only commits do not move the build source; see ADR-0008)
-**BUILD SOURCE HEAD:** `f4cde3c503fd8b696183751a608b999768caa769` (last commit touching the source/build tree after RULE-LAYER-FAILCLOSED-001; see ADR-0008)
+**BUILD SOURCE HEAD:** `a53eda8344a20f86ad4f4e4001e9b3d648067671` (last commit touching the source/build tree after RULE-LAYER-FAILCLOSED-001; see ADR-0008)
 **Applies to:** All human + AI agents contributing to AEGIS NIDS Windows
 
 ---
@@ -98,6 +98,12 @@ cd ts_policy && npm run typecheck && npm run test:all   → (advisory only, no o
 
 **ONE production runtime. No duplicates.**
 
+Rust PEP (`cargo build --release` -> `aegis_pep.dll`) is built, linked and on
+the canonical detection path (FLOW_MAP step 9), but it is a **detection-only
+policy/evidence authority**: no component in this product authorizes a host
+effect (RETIRE-HOST-EFFECT-001, issue #25; AUTHORITY_MAP.json). Historical
+enforcement language in older ADRs/docs is marked HISTORICAL, not current truth.
+
 ---
 
 ## LANGUAGE OWNERSHIP
@@ -108,7 +114,7 @@ cd ts_policy && npm run typecheck && npm run test:all   → (advisory only, no o
 | Go | Packet acquisition (Nose), collectors, I/O | Policy, enforcement |
 | C++ | Windows native adapters (ETW, FIM, Registry, WFP) | Policy decision, enforcement |
 | Python | Brain (Tier-2), analytics, RAG | Privileged OS calls, enforcement |
-| Rust | Crypto, trust, PEP, authorization, WFP/security enforcement | Detection logic |
+| Rust | Crypto, trust, Ed25519/TLS, detection-only PEP evaluation, authorization evidence, federation TLS | Host effects, WFP mutation, detection logic, policy decisions |
 | TypeScript | Policy authoring, simulation, compiler | Enforcement, runtime |
 | Cython | Measured Python hot loops only (after profiling) | New logic |
 

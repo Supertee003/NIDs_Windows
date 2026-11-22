@@ -42,7 +42,8 @@ ML flow detector ─────────────┘        → incidents
 | Phase | Component | ไฟล์ | สถานะ |
 |---|---|---|---|
 | 32 | Npcap capture sensor | `core/npcap_capture.zig` | REAL (field-verified, passive only) |
-| 33 | SIEM forwarder | `core/siem_forwarder.zig` | PARTIAL — file transport เท่านั้น, http/tcp ⏳ |
+| 33 | SIEM forwarder | `src/forensic/siem_forwarder.zig` | REAL send paths for file/http/https/tcp/udp; opt-in (`AEGIS_SIEM`), lab egress only |
+| 33A | Local alert file writer | `src/forensic/alert_log.zig` | REAL (ALERT-FILE-001) — fixed path `logs/alerts.ndjson`, no egress/transport/endpoint; one append line per detection; dashboard tails read-only |
 | 35 | Backup/Recovery | `aegis_backup.ps1` / `aegis_restore.ps1` | REAL (scripts) |
 | 36 | ML flow detector | `core/ml_detector.zig` | REAL inference — model ฝึกจาก **synthetic** data, ยัง**ไม่ได้ wire** เข้า pipeline |
 | 37 | HIDS correlation | `core/host_telemetry.zig` | LOGIC REAL — รอ adapters ป้อน event จริง |

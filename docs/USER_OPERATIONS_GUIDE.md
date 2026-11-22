@@ -49,11 +49,14 @@ python tools\aegisctl.py policy list
 python tools\aegisctl.py policy show --id R0056
 python tools\aegisctl.py policy verify
 python tools\aegisctl.py policy validate
+python tools\aegisctl.py policy enable
+python tools\aegisctl.py policy disable
+python tools\aegisctl.py policy reload
 ```
 
 Rule CRUD is atomic and validates the complete ruleset before replacing the canonical file. Use `rules add`, `rules update`, and `rules delete` only for reviewed changes.
 
-`policy enable/disable/reload` are fail-closed: there is no active-policy postcondition behind them yet, so they return JSON with `available: false` and **exit code 4** instead of reporting success (see `docs/AEGIS_Command_Capability_Matrix.md`). To change rule state today, edit the operator-state file `configs/disabled_rules.json` (untracked, like `policy_trust.json`) and apply it with `python tools\aegisctl.py rules reload`; `policy list` shows the disabled set as a local candidate until the reload lands.
+`policy enable`, `policy disable`, and `policy reload` are real privileged control verbs (POLICY-MUTATE-001). They change only the **evidence verdict**: enable/disable turn the policy-evaluation evidence label on/off, and reload re-reads `configs/policies.json` into the live set via an atomic swap. Each returns a daemon read-back postcondition; without a reachable daemon they fail closed with no local write (**exit code 4** when the control API is unavailable, exit 3/1 when the pipe refuses or the postcondition is unmet). They never gate a detection, never change a rule match or severity, and never cause a host effect. To change *rule* state, edit the operator-state file `configs/disabled_rules.json` (untracked, like `policy_trust.json`) and apply it with `python tools\aegisctl.py rules reload`; `policy list` shows the disabled set as a local candidate until the reload lands. Rules decide what to detect; policy decides what to record about a detection.
 
 ## Observe and investigate
 

@@ -21,9 +21,13 @@ writing this runbook.
 - The daemon loads `configs/policy_ir.json` **at startup only** into a
   **verify-only mirror** (`g_policy_ir`). It never replaces the runtime
   PolicySet and never touches enforcement authority.
-- `policy.verify` on the control plane honestly refuses
-  (`NOT_IMPLEMENTED`): there is no signed-envelope validator in the
-  active loader yet. Do not mistake the mirror for enforcement trust.
+- `policy.verify` is a READ-ONLY signed-envelope report
+  (`BE-RCPT-091`): it reports validity and marks nothing trusted. The daemon
+  records `metrics.snapshot.policy_ir.verified` as an observe-only verdict;
+  `verified:false` is the normal state until key custody is configured.
+  The mirror never replaces the runtime PolicySet — do not mistake a valid
+  signature for enforcement trust. `policy reload/enable/disable` remain
+  fail-closed (exit 4); use `configs/disabled_rules.json` + `rules reload`.
 
 ## Steps
 

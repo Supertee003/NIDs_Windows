@@ -81,6 +81,10 @@ as evidence and file the bug instead of deleting.
 - SIEM forwarding is the ONLY network egress the daemon initiates
   (brain channel excepted when enabled); keep it lab-scoped and say
   so in the test record.
+- ALERT-FILE-001 local alerts are NOT SIEM forwarding: they use a
+  dedicated fixed-path writer (`logs/alerts.ndjson`, `src/forensic/alert_log.zig`)
+  that never reads or writes `AEGIS_SIEM_*`, has no transport enum and no
+  endpoint. Do not point this runbook's sink at the local alert file.
 - Batching means `forwarded` moves in steps of `batch_size` — assert
   divisibility-tolerant equality (>= and congruent), not exact
   per-event increments.

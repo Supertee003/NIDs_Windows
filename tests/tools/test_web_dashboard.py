@@ -72,6 +72,32 @@ def test_api_snapshot_answers_without_daemon():
     assert "queue" in body
 
 
+def test_threat_posture_supplies_the_banner_fields():
+    # OPERATOR-001: the per-threat banner consumes only snapshot data the
+    # existing posture helper already produces. Daemon DEFCON wins.
+    posture = app_module._threat_posture([], {"defcon_level": 2, "defcon_label": "SEVERE"})
+    assert posture["defcon"] == 2
+    assert posture["label"] == "SEVERE"
+    assert "critical" in posture and "high" in posture
+    assert "enforcement claim" in posture["basis"]
+
+
+def test_render_banner_has_threat_branch_after_failclosed_branches():
+    source = (TOOLS_DIR / "aegisctl" / "web_dashboard" / "app.py").read_text(encoding="utf-8")
+    assert "OPERATOR-001" in source
+    assert "snap.threat.defcon" in source
+    assert "no enforcement implied" in source
+    # Fail-closed / integrity / no-feed messages must keep precedence: the
+    # threat banner is the LAST branch, never a replacement for them.
+    positions = [
+        source.index(x) for x in (
+            "!c.available", "integrity==='failed'", "feed.available===false",
+            "snap.threat&&",
+        )
+    ]
+    assert positions == sorted(positions)
+
+
 def test_no_wildcard_bind():
     source = (TOOLS_DIR / "aegisctl" / "web_dashboard" / "app.py").read_text(encoding="utf-8")
     assert 'host="127.0.0.1"' in source
@@ -335,3 +361,90 @@ def test_web002_index_page_has_kernel_section():
     assert "kernelSensors" in html and "kernelFeeds" in html
     assert "/api/kernel" in html
     assert 'href="#kernel"' in html
+
+
+def test_resource_telemetry_kpis_render_without_fabricating_cpu():
+    # RESOURCE-TELEMETRY-001: gauges come from the daemon health block only;
+    # a missing/null cpu renders as —, never 0%.
+    client = app_module.app.test_client()
+    html = client.get("/").get_data(as_text=True)
+    assert "CPU (process)" in html and "Memory (process)" in html
+    assert "no previous sample" in html
+    assert "1 core = 100%" in html
+
+
+def test_alert_feed_reads_local_file_readonly(tmp_path, monkeypatch):
+    # ALERT-FILE-001: the dashboard tails a fixed local file only. All writes
+    # stay in tmp_path; no daemon call and no tree state touched.
+    path = tmp_path / "alerts.ndjson"
+    path.write_text(
+        '{"schema":"aegis.alert.v1","ts_ms":100,"event_id":1,"rule_id":9006,'
+        '"severity":3,"status":"observed","src_ip":"10.0.0.1"}\n'
+        + "not-json\n"
+        + '{"schema":"other","event_id":2}\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(app_module, "ALERT_LOG", path)
+    result = app_module._read_alert_feed()
+    assert result["available"] is True
+    assert result["total_scanned"] == 1  # malformed + unknown schema skipped
+    assert result["records"][0]["event_id"] == 1
+    assert result["records"][0]["rule_id"] == 9006
+
+
+def test_alert_feed_missing_file_degrades_honestly(tmp_path, monkeypatch):
+    monkeypatch.setattr(app_module, "ALERT_LOG", tmp_path / "absent.ndjson")
+    result = app_module._read_alert_feed()
+    assert result["available"] is False
+    assert result["records"] == []
+    assert result["total_scanned"] == 0
+
+
+def test_index_page_has_local_alerts_panel_and_no_egress_claim():
+    html = app_module.app.test_client().get("/").get_data(as_text=True)
+    assert 'id="alerts"' in html and 'href="#alerts"' in html
+    assert "Local Alerts" in html
+    assert "No egress, no transport, no secrets" in html
+    assert "renderAlerts()" in html
+
+
+def test_api_snapshot_carries_additive_alerts_key(tmp_path, monkeypatch):
+    # Hermetic: a running daemon legitimately writes logs/alerts.ndjson, so the
+    # global path is not a reliable "no alerts" fixture. Point the evidence log
+    # at an absent tmp file to pin the contract (key present, no fabricated
+    # rows) regardless of host state.
+    monkeypatch.setattr(app_module, "ALERT_LOG", tmp_path / "absent.ndjson")
+    app_module._reset_snapshot_cache()
+    body = app_module.app.test_client().get("/api/snapshot").get_json()
+    assert "alerts" in body
+    assert body["alerts"]["records"] == []  # no evidence file, no fabricated rows
+
+
+def test_alert_writer_source_has_no_egress_surface():
+    source = (TOOLS_DIR.parent / "src" / "forensic" / "alert_log.zig").read_text(encoding="utf-8")
+    assert 'ALERT_PATH = "logs/alerts.ndjson"' in source
+    # Scan for actual egress APIs, not the word "endpoint" in a comment
+    # stating there is none.
+    for forbidden in ("AEGIS_SIEM", "std.net", "std.http", "pub const Transport", "socket("):
+        assert forbidden not in source
+
+
+def test_snapshot_carries_advisory_fp_count_from_local_log(tmp_path, monkeypatch):
+    # FP-FEEDBACK-001: count comes from the local operator file only; never
+    # from detection counters, and never fed back into detection.
+    monkeypatch.setenv("AEGIS_LOGS_DIR", str(tmp_path))
+    (tmp_path / "fp_feedback.ndjson").write_text(
+        '{"schema":"aegis.fp_feedback.v1","ts_ms":1,"event_id":9,"reason":""}\n',
+        encoding="utf-8",
+    )
+    app_module._reset_snapshot_cache()
+    payload = app_module.snapshot()
+    assert payload["fp_feedback"]["count"] == 1
+    assert payload["fp_feedback"]["source"] == "local_log"
+    assert payload["fp_feedback"]["advisory"] is True
+
+
+def test_index_page_labels_fp_marks_as_advisory():
+    html = app_module.app.test_client().get("/").get_data(as_text=True)
+    assert "FP marks (advisory)" in html
+    assert "no detection effect" in html

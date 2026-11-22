@@ -38,6 +38,7 @@ const canonical = @import("../contract/canonical_event.zig");
 const pipeline_queue = @import("../pipeline/event_queue.zig");
 const runtime_state = @import("../pipeline/runtime_state.zig");
 const rust_pep = @import("../core/rust_pep.zig");
+const wfp_ioctl = @import("../policy/wfp_ioctl.zig");
 const diag = @import("../core/diagnostics.zig");
 const source_arbiter = @import("source_arbiter.zig");
 
@@ -66,6 +67,10 @@ pub const ParsedRecord = struct {
     payload: []const u8,
     src_ipv6: ?[16]u8 = null,
     dst_ipv6: ?[16]u8 = null,
+    /// Raw TCP flags observed by the kernel sensor. Null means no evidence
+    /// (inbound WFP, non-TCP, or a failed transport-header gather), which
+    /// keeps L4 FLAGS rules from matching zero-filled metadata.
+    tcp_flags: ?u8 = null,
 
     /// Ring advance for this record (EVT-213: the 48-byte header plus
     /// everything the header's payload_length claims, always). For v6 rows
@@ -105,6 +110,7 @@ pub fn parseRecord(buf: []const u8) ?ParsedRecord {
         .rule_id = hdr.rule_id,
         .severity = sev,
         .payload = buf[@sizeOf(H)..total],
+        .tcp_flags = wfp_ioctl.wfpTcpFlags(hdr),
     };
     if ((hdr.flags & FLAG_V6_SIDECAR) != 0) {
         // Acceptance is fail-closed: BOTH sidecar halves must be present.
@@ -139,6 +145,11 @@ pub fn decodedFrame(rec: ParsedRecord) canonical.DecodedFrame {
     ce.layer_id = rec.layer_id;
     ce.rule_id = rec.rule_id;
     ce.severity = rec.severity;
+    // RULE-COVERAGE-001: carry the kernel-observed TCP flags through the
+    // existing additive ContextFlags lane. No wire layout change; absence
+    // stays null so the queue sidecar is 0 ("no evidence") and L4 FLAGS
+    // rules cannot fire on a zero-filled field.
+    if (rec.tcp_flags) |flags| canonical.setTcpFlags(&ce, flags);
     if (rec.src_ipv6 != null) {
         ce.version = canonical.EVENT_VERSION_V2;
         ce.context_flags |= canonical.CONTEXT_V6_TRUNCATED;
@@ -160,6 +171,16 @@ fn captureSplitOptIn() bool {
     const v = std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_CAPTURE_SPLIT") catch return false;
     defer std.heap.page_allocator.free(v);
     return v.len > 0 and !std.mem.eql(u8, v, "0") and !std.mem.eql(u8, v, "false");
+}
+
+/// VISIBILITY-001: explicit operator opt-in for kernel-primary ingress.
+/// Default is off — the normal posture remains one authority (Npcap). The
+/// value must name `kernel`; any other value (incl. absent) keeps Nose
+/// primary, so a typo cannot silently change the capture topology.
+pub fn capturePrimaryKernelOptIn() bool {
+    const v = std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_CAPTURE_PRIMARY") catch return false;
+    defer std.heap.page_allocator.free(v);
+    return std.ascii.eqlIgnoreCase(v, "kernel");
 }
 
 fn logModeTransition(last: *source_arbiter.Mode, d: source_arbiter.Decision) void {
@@ -186,6 +207,10 @@ pub fn telemetryLoop(stopSignal: *std.atomic.Value(bool)) void {
     var arbiter = source_arbiter.Arbiter{};
     var last_mode: source_arbiter.Mode = .undecided;
     const split_lab = captureSplitOptIn();
+    const kernel_primary = capturePrimaryKernelOptIn();
+    if (split_lab and kernel_primary) {
+        diag.warn("[WFP TELEMETRY] AEGIS_CAPTURE_PRIMARY=kernel supersedes AEGIS_CAPTURE_SPLIT=1; kernel owns ingress alone", .{});
+    }
     while (!stopSignal.load(.acquire)) {
         switch (rust_pep.read_events_status(&ring)) {
             .no_provider => {
@@ -204,6 +229,7 @@ pub fn telemetryLoop(stopSignal: *std.atomic.Value(bool)) void {
                     .kernel_available = false,
                     .kernel_row = false,
                     .split_lab = split_lab,
+                    .kernel_primary = kernel_primary,
                     .now_ms = std.time.milliTimestamp(),
                 });
                 source_arbiter.publish(d);
@@ -229,6 +255,7 @@ pub fn telemetryLoop(stopSignal: *std.atomic.Value(bool)) void {
                         .kernel_available = true,
                         .kernel_row = false,
                         .split_lab = split_lab,
+                        .kernel_primary = kernel_primary,
                         .now_ms = std.time.milliTimestamp(),
                     });
                     source_arbiter.publish(d);
@@ -250,6 +277,7 @@ pub fn telemetryLoop(stopSignal: *std.atomic.Value(bool)) void {
                             .kernel_available = true,
                             .kernel_row = true,
                             .split_lab = split_lab,
+                            .kernel_primary = kernel_primary,
                             .now_ms = std.time.milliTimestamp(),
                         });
                         source_arbiter.publish(d);
@@ -327,6 +355,30 @@ test "parseRecord rejects truncation instead of partial-submit" {
     var hdr_only: [48]u8 = [_]u8{0} ** 48;
     hdr_only[20] = 8; // claims 8 payload bytes, none present
     try std.testing.expect(parseRecord(&hdr_only) == null);
+}
+
+test "RULE-COVERAGE-001: WFP TCP flags meta reaches the L4 matcher" {
+    const l4 = @import("../pipeline/l4_matcher.zig");
+    while (pipeline_queue.popEvent() != null) {}
+
+    var buf: [48]u8 = [_]u8{0} ** 48;
+    std.mem.writeInt(u32, buf[4..8], 0x0A000001, .little);
+    std.mem.writeInt(u16, buf[14..16], 4444, .little);
+    buf[16] = 6; // TCP
+    buf[17] = 1; // outbound (the only direction with flags evidence)
+    std.mem.writeInt(u32, buf[32..36], wfp_ioctl.WFP_TCP_FLAGS_PRESENT | 0x02, .little);
+
+    const rec = parseRecord(&buf) orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(@as(?u8, 0x02), rec.tcp_flags);
+
+    const frame = decodedFrame(rec);
+    try std.testing.expectEqual(@as(?u8, 0x02), canonical.getTcpFlags(&frame.event));
+    try std.testing.expect(pipeline_queue.pushDecodedFrame(&frame, rec.payload));
+
+    const q = pipeline_queue.popEvent() orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(@as(u8, 0x02), q.tcp_flags);
+    const rule = l4.Rule{ .rule_id = 0x9006, .protocol = 6, .flags_value = 0x02 };
+    try std.testing.expect(l4.matches(&rule, q.ev.src_port, q.ev.dst_port, q.ev.protocol, q.tcp_flags));
 }
 
 test "EVT-213: records advance by the 48-byte wrapped header stride" {
