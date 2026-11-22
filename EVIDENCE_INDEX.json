@@ -1,7 +1,7 @@
 {
   "head_sha": "a53eda8344a20f86ad4f4e4001e9b3d648067671",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-21",
+  "last_updated_at": "2026-11-22",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -9851,6 +9851,34 @@
         "Negative evidence only: this window is not scored as a release gate result.",
         "The raw window artifacts are local-only under admin-evidence/soak-void-20261120-466a226/ per the 2026-11-06 retention policy."
       ]
+    },
+    {
+      "id": "SOAK-24H-PASS-466A226-E5-20261122",
+      "head_sha": "a53eda8",
+      "timestamp": "2026-11-22",
+      "title": "Owner-run 36.52 h clean-host soak PASS closes soak_24h for signed candidate 466a226",
+      "level": "E5",
+      "component": "release engineering / Windows host soak",
+      "flow_id": "RELEASE-GATES",
+      "description": "The owner ran soak-466a226.ps1 -Mode final from an elevated PowerShell on the installed 6.0.0 bundle. The final artifact reports verdict=PASS, elapsed 36.52/24.0 h, problems=[], scm_restarts=[], four AEGIS services RUNNING, daemon state/health RUNNING, process_generation_ms 1795206470719 identical to the recorded baseline, and all seven loss/shed counters 0 against unchanged owner-approved budgets 3500/20000. A prior 21.08 h window was voided for in-window file I/O and is not reused. One owner-approved stale temp-file deletion during the window left every counter at 0 and is disclosed separately.",
+      "files_verified": [
+        "analysis/current-head/SOAK-PASS-466A226-20261122.md",
+        "admin-evidence/e5-clean-host-20261120-final/soak-24h-delta-final.json",
+        "admin-evidence/e5-clean-host-20261120-final/soak-24h.baseline.json",
+        "analysis/current-head/SOAK-VOID-466A226-20261121.md",
+        "analysis/current-head/SOAK-WINDOW-DISK-HYGIENE-20261121.md"
+      ],
+      "tests": [
+        "powershell -File analysis/current-head/soak-466a226.ps1 -Mode final -> verdict PASS, elapsed_hours 36.52, problems []",
+        "python tools/final_audit.py --release-check -> SHIPPABLE (0/6 gates open)"
+      ],
+      "result": "PASS",
+      "finding": "soak_24h PASS at E5 on the real Windows host. Release is SHIPPABLE with all six gates closed; no gate, budget, checker, artifact or source file was altered to produce the result.",
+      "evidence_artifact": "analysis/current-head/SOAK-PASS-466A226-20261122.md",
+      "limitations": [
+        "Raw host artifacts are local-only under admin-evidence/ per the 2026-11-06 retention policy.",
+        "Detection-only: no WFP enforcement, host effect, Signed-IR promotion or driver attestation is claimed."
+      ]
     }
   ],
   "known_gaps": [
@@ -16117,11 +16145,14 @@
         "RB-021-style preflight for the next deploy window (this one used a hash-verified rollback copy but skipped the preflight)"
       ],
       "tracking": "GitHub issue #29 (QLOSS-HEALTH-001 overload; DATA_LOSS_REMAINS)",
-      "status": "OPEN",
-      "closed_at": "2026-11-08",
+      "status": "CLOSED",
+      "closed_at": "2026-11-22",
       "evidence": "QLOSS-ISOLATION-002-E5-20261108: both host sources reach their full 7,168 share on the deployed daemon with reserved_tail_shed 0 and all 206,999 refusals attributed to source_quota_shed.",
-      "next_step": "Only the 24 h soak remains. RB-024 steps 1-6 are complete on the installed 6.0.0 bundle from corrected signed candidate 7d91e30 (preflight PASS, both capture paths verified, rollback drill PASS, soak_started=false). Run the soak last with --loss-budget 3500 --shed-budget 20000 per RB-024.",
-      "current_observation": "2026-11-18: ETW delete storm (20k files) -> 8,801 filtered, 2 aggregate rows, 0 queue/ring loss, R1002 canary PASS before and after. FIM-half storm with AEGIS_FIM_PROOF_ROOT -> 41,520 FIM rows, 0 dropped, 0 quota/tail shed, R1002 PASS. 2026-11-14 soak: queue dropped 0, shed_overload 0, loss_budget 3500 over 2.5 h; no loss observed under current load 2026-11-18: RB-024 steps 1-6 PASS on the installed 7d91e30 bundle; Wi-Fi ratio counter 66/1084 pairs but byte-level probe 0/1084 identical-byte pairs, so the item stays open."
+      "next_step": "None. Closed at E5 by the genuine 466a226 soak PASS.",
+      "current_observation": "2026-11-18: ETW delete storm (20k files) -> 8,801 filtered, 2 aggregate rows, 0 queue/ring loss, R1002 canary PASS before and after. FIM-half storm with AEGIS_FIM_PROOF_ROOT -> 41,520 FIM rows, 0 dropped, 0 quota/tail shed, R1002 PASS. 2026-11-14 soak: queue dropped 0, shed_overload 0, loss_budget 3500 over 2.5 h; no loss observed under current load 2026-11-18: RB-024 steps 1-6 PASS on the installed 7d91e30 bundle; Wi-Fi ratio counter 66/1084 pairs but byte-level probe 0/1084 identical-byte pairs, so the item stays open.",
+      "closed_by": "SOAK-24H-PASS-466A226-E5-20261122",
+      "resolution": "CLOSED 2026-11-22. Option A (delete filter + per-window aggregate) held both E5 lanes: ETW 8,801/37,108 deletes filtered with 2 aggregate rows and 0 queue/ring loss; FIM 41,520 rows with 0 drops, 0 quota/tail shed, 0 ring loss; R1002 canary passed before and after. Option B (batching) was measured and rejected rather than implemented because its ~14x gain needs an integrity-contract change. The sole remaining criterion, the owner-run 24 h clean-host soak, returned PASS at 36.52 h with all seven counters at 0 and an unchanged process generation.",
+      "closure_note": "The old required_evidence rows 1-2 described an FIM coalescing change that was measured (QLOSS-B-MEASURE-001-E2) and deliberately rejected; they are superseded by the Option A E5 measurements and are not marked DONE. Row 3 (RB-021-style preflight) is satisfied by preflight-20261120.json, which is hash-bound to the installed installer/runtime/drivers and passed 16/16."
     },
     {
       "id": "GAP-FIM-NATIVE-OVERFLOW-003",
@@ -16520,10 +16551,10 @@
     "E2_count": 143,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 120,
+    "E5_count": 121,
     "E6_count": 1,
     "E7_count": 4,
-    "E5_with_artifact_count": 70,
+    "E5_with_artifact_count": 71,
     "known_gaps_count": 287
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
