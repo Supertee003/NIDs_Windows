@@ -400,6 +400,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      # tools/installer.py imports Ed25519 from `cryptography`, which is in
+      # requirements.txt. Without this the packaging job fails on a clean
+      # runner even though every other Python job installs the same file.
+      - run: pip install -r requirements.txt
       - name: Download build artifacts
         uses: actions/download-artifact@v4
       - name: Build native bridge (dist/aegis_ipc.dll)

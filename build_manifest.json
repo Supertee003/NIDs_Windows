@@ -198,8 +198,8 @@
   "artifacts": [
     {
       "path": ".github/workflows/ci.yml",
-      "size": 18628,
-      "sha256": "092cb363f241286600aa01b002e9aad34741567afb190d53033ef469fb4f0fc2",
+      "size": 18897,
+      "sha256": "3721e63419eacdcd8a50c171c428f29789a6c3cba46b56bc2129feeaf9c8aaaf",
       "language": "yaml"
     },
     {
