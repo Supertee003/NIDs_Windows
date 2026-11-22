@@ -117,6 +117,74 @@ Any attack result after a blind preflight is a false negative.
 Then bracket the attack with `tools/lab_attack_window.py` (RB-021 or RB-022) so
 the evidence records the same device the preflight proved.
 
+### 6. Loopback self-test binding (`CAPTURE-LOOPBACK-002`)
+
+Loopback is a **self-test** interface, never the production binding. The shipped
+Nose can open `\\Device\\NPF_Loopback` when pinned explicitly; auto-selection
+skips it (`nose/capture.go:firstUpDevice`). On 2026-11-22 the full path was
+proven with an exact 5-tuple at build source `a53eda8` (no source change).
+
+The control pipe is single-owner: stop the running core/orphan first, then start
+the core from the worktree and Nose with an explicit full-capture pin. On hosts
+where `AegisNids` is a service with failure recovery, disable the restart actions
+first or the SCM will re-arm the pipe between the stop and the new core (the new
+core then exits 3 with `[CRIT] control pipe already owned`):
+
+```powershell
+sc.exe failure AegisNids reset= 86400 actions= none     # Admin; prevents SCM re-arm
+sc.exe stop AegisNids
+Stop-Process -Id <orphan-nose-pid> -Force              # only if a stale nose holds aegis_nose
+Get-Process aegis_nids,aegis-nose -ErrorAction SilentlyContinue   # must print nothing
+cd "C:\Users\User\.local\share\opencode\worktree\a6f58a\rule-coverage-20261119"
+Remove-Item Env:AEGIS_DAEMON_IFACE -ErrorAction SilentlyContinue   # direct reader OFF
+.\zig-out\bin\aegis_nids.exe                   # window 1, Admin; wait for "entering main loop"
+nose\aegis-nose.exe -capture -iface '\Device\NPF_Loopback' -require-iface   # window 2, Admin
+```
+
+`-capture-probe` only proves raw frames; it stops before BPF, decode, event
+serialization and pipe delivery. Do not use it as detection evidence. After the
+run, return to the production binding via the rollback steps below and restart
+the service.
+
+Prove the path with attributable evidence, not raw counter deltas (ambient
+traffic moves every counter):
+
+```powershell
+python -m pytest -q tests/integration/test_e6_l4_scan_detection.py tests/integration/test_e6_attack_burst.py
+```
+
+The tests bind a dedicated source (`127.0.0.2`), send 40 SYNs to distinct loopback
+ports, require an R9006 (`rule="1745456278"`) core-log row naming that exact IP
+and a test-owned ephemeral port, and run a 10-port control (`127.0.0.3`) that
+must fire nothing. See
+`analysis/current-head/CAPTURE-LOOPBACK-002-FULLPATH-20261122.md`.
+
+### Closing a full-suite run to zero skips (two phases, no markers edited)
+
+The runtime is single-owner, so `test_core_reaches_running_within_startup_timeout`
+has to start its own core while the loopback tests need the operator's core. One
+pytest process cannot do both. Prove them in two honest phases, not by skipping or
+marking either pass:
+
+```powershell
+# Phase 1 — no daemon running (pipe empty): the test starts its own core
+python -m pytest -q tests/runtime/test_harness_integration.py::TestCoreLifecycle::test_core_reaches_running_within_startup_timeout
+
+# Then start core + loopback nose as above, and run Phase 2
+python -m pytest -q --deselect 'tests/runtime/test_harness_integration.py::TestCoreLifecycle::test_core_reaches_running_within_startup_timeout'
+```
+
+Use forward slashes in `--deselect`; pytest node IDs are POSIX-style even on
+Windows. Phase 1 gives `1 passed`; Phase 2 gives `1470 passed, 1 deselected,
+27 subtests passed`. Combined: **1471 passed, 0 skipped, 0 xfail, 0 xpass**.
+
+On Windows the WFP host tests are enabled by `tests/wfp/conftest.py` when both
+the real PEP DLL (`target/release/aegis_pep.dll`) and the installed signed driver
+(`%SystemRoot%\System32\drivers\aegis_wfp.sys`) exist. They still load the real
+DLL and assert detection-only; hashes are printed in the test output. No env var
+or marker edit is needed on a provisioned host, and CI without the artifacts
+still skips honestly.
+
 ## Verification
 
 | Check | Pass condition |
