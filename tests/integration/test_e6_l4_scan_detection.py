@@ -1,89 +1,68 @@
-"""The loopback SYN scan cannot reach the sensor; the rule path itself is proven.
+"""A loopback SYN scan reaches the sensor and fires the L4 rate rule.
 
-`configs/Rules.json` ships three L4 rules and R9006 is a real rate rule
-(`rate_mode: distinct_dst_ports`, `rate_threshold: 20`, `rate_window_ms: 10000`).
-`src/pipeline/event_processor.zig:307` evaluates them when
-`ev.source == .capture_npcap`, and canonical nose frames map to exactly that
-source, so the code path exists for production traffic.
+`configs/Rules.json` ships R9006 as a real rate rule (`FLAGS:S`,
+`rate_mode: distinct_dst_ports`, `rate_threshold: 20`, `rate_window_ms: 10000`).
+`src/pipeline/event_processor.zig` evaluates it when `ev.source ==
+.capture_npcap`, and canonical Nose frames map to exactly that source.
 
-`DETECT-L4-001` was closed on 2026-11-16 on that canonical path, not here: a
-40-port SYN burst from this host over the Wi-Fi NIC produced one R9006 row and a
-10-port control produced none
-(`admin-evidence/lab-l4-testnet-20261116/`,
-`admin-evidence/lab-l4-testnet-negative-20261116/`, and
-`analysis/current-head/DETECT-L4-001-20261116.md`).
+`DETECT-L4-001` closed the rule path on the Wi-Fi NIC on 2026-11-16 (40 SYNs ->
+one R9006 row, 10 -> none). The loopback half stayed xfail because a raw delta
+could not attribute a row to the scan: CAPTURE-LOOPBACK-001 was a *binding*
+gap, not a missing Npcap feature. With the sensor pinned to
+`\\Device\\NPF_Loopback` the full path is now provable, and this test asserts
+it with an exact 5-tuple instead of an ambient-satisfiable counter delta:
 
-This test still drives `127.0.0.1`, which this install does not capture
-(`CAPTURE-LOOPBACK-001`), so it remains xfail for a *stimulus* reason: an xfail
-here does not say the rule path is broken. It stays as the tripwire for the day
-someone points it at a captured interface - a pass would mean the loopback limit
-is gone. `strict=False` on purpose: both outcomes are informative.
+    Nose full capture -> pipe -> Zig queue -> R9006 -> core NDJSON row
 
-Nothing here is about enforcement: AEGIS is detection-only, and a rule hit would
-only raise a record and a counter.
+The burst uses a dedicated source (127.0.0.2) and requires the R9006 row to
+name that IP *and* an ephemeral source port owned by the test sockets. A
+10-port control from 127.0.0.3 must produce no such row. The canonical ingress
+counter must advance across the burst.
+
+Nothing here is about enforcement: AEGIS is detection-only, so a rule hit only
+raises a record and a counter, and the hit row must carry
+`host_effect_confirmed: false`.
 """
 from __future__ import annotations
 
-import json
 import socket
-import subprocess
-import sys
 import time
-from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2]
-CTL = ROOT / "tools" / "aegisctl.py"
+from loopback_attribution import (
+    LOOPBACK_DST,
+    NEGATIVE_PORTS,
+    NEGATIVE_SRC,
+    POSITIVE_PORTS,
+    POSITIVE_SRC,
+    RATE_WINDOW_SECONDS,
+    SETTLE_SECONDS,
+    ctl_json,
+    ctl,
+    event_log_path,
+    log_offset,
+    npcap_pushed,
+    r9006_hits,
+    rows_since,
+    scan,
+)
 
 pytestmark = pytest.mark.host_live
 
-SCAN_PORTS = 150
-SETTLE_SECONDS = 6.0
-
-
-def _ctl(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        [sys.executable, str(CTL), *args],
-        capture_output=True, text=True, encoding="utf-8", errors="replace",
-        cwd=ROOT, timeout=120,
-    )
-
-
-def _json(*args: str) -> dict:
-    proc = _ctl(*args)
-    assert proc.returncode == 0, (proc.stdout + proc.stderr)[-1500:]
-    return json.loads(proc.stdout[proc.stdout.find("{"):])
+SETTLE_SECONDS_RING = 6.0
 
 
 def _daemon_up() -> bool:
-    return _ctl("status").returncode == 0
+    return ctl("status").returncode == 0
 
 
 needs_daemon = pytest.mark.skipif(not _daemon_up(), reason="no running AEGIS daemon answers the CLI")
 
 
-def _head_seq() -> int:
-    records = _json("forensics", "list", "--limit", "1000", "--all").get("records") or []
-    assert records
-    return max(int(record["record_seq"]) for record in records)
-
-
-def _scan() -> None:
-    for port in range(1, SCAN_PORTS + 1):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(0.05)
-        try:
-            sock.connect(("127.0.0.1", port))
-        except OSError:
-            pass
-        finally:
-            sock.close()
-
-
 @needs_daemon
 def test_the_ring_keeps_accepting_records_before_asking_about_detection() -> None:
-    """Precondition for the scan verdict: the evidence path is writing at all.
+    """Precondition: the evidence path is writing at all.
 
     Measured on the counter, not on a record cursor: with roughly 700 records/s
     the ring keeps only about 23 s of history, and `--after` a cursor that has
@@ -91,50 +70,64 @@ def test_the_ring_keeps_accepting_records_before_asking_about_detection() -> Non
     is a measurement artefact, not a stall (it made an earlier version of this
     guard fail spuriously).
     """
-    before = int(_json("metrics").get("forensic_records") or 0)
-    time.sleep(SETTLE_SECONDS)
-    after = int(_json("metrics").get("forensic_records") or 0)
-    assert after > before, f"nothing was written in {SETTLE_SECONDS}s: {before} -> {after}"
+    before = int(ctl_json("metrics").get("forensic_records") or 0)
+    time.sleep(SETTLE_SECONDS_RING)
+    after = int(ctl_json("metrics").get("forensic_records") or 0)
+    assert after > before, f"nothing was written in {SETTLE_SECONDS_RING}s: {before} -> {after}"
 
 
 @needs_daemon
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "CAPTURE-LOOPBACK-001: this test drives 127.0.0.1, which this install "
-        "does not capture, so the scan cannot be shown to reach the sensor. The "
-        "rule path itself was proven on the Wi-Fi NIC on 2026-11-16 "
-        "(DETECT-L4-001 closed: 40 ports -> one R9006 row, 10 ports -> none). "
-        "Non-strict on purpose: an XPASS would mean loopback capture started "
-        "working, which is worth seeing."
-    ),
-)
 def test_a_syn_scan_is_tagged_by_an_l4_rule() -> None:
-    """Only **sensor** records count: a tagged file or registry record is not the scan.
+    """Attributable R9006 hit on loopback plus a below-threshold negative control.
 
-    The first version counted any tagged record in the window, which produced two
-    XPASSes that could not be attributed to the scan — the daemon also tags file
-    and registry telemetry (R1001-style rules). Attribution is part of the claim,
-    so only `npcap_sensor` records are counted here.
+    The old version counted any `npcap_sensor` row in a window, which could not
+    exclude ambient traffic and was therefore marked xfail. Here the claim is
+    tied to the exact source IP and the exact ephemeral ports the test sockets
+    bound, so an ambient row cannot satisfy it.
     """
-    rounds: list[int] = []
-    sensor_tagged = 0
-    other_tagged = 0
-    for _ in range(3):
-        before = int(_json("metrics").get("detections") or 0)
-        _scan()
-        time.sleep(SETTLE_SECONDS)
-        rounds.append(int(_json("metrics").get("detections") or 0) - before)
-        seq = _head_seq()
-        records = _json("forensics", "list", "--after", str(seq), "--limit", "1000").get("records") or []
-        for record in records:
-            if int(record.get("rule_id") or 0) == 0:
-                continue
-            if record.get("source_name") == "npcap_sensor":
-                sensor_tagged += 1
-            else:
-                other_tagged += 1
-    assert sensor_tagged > 0, (
-        "no sensor record was rule-tagged in three scan rounds "
-        f"(detections deltas {rounds}, tagged non-sensor records {other_tagged})"
+    log = event_log_path()
+    offset = log_offset(log)
+    ingress_before = npcap_pushed()
+
+    sports, dst_ports = scan(POSITIVE_SRC, 24000, POSITIVE_PORTS)
+    assert sports and len(dst_ports) == POSITIVE_PORTS, "the positive scan did not bind its source sockets"
+    time.sleep(SETTLE_SECONDS)
+
+    ingress_after = npcap_pushed()
+    positive_rows = rows_since(log, offset)
+    hits = r9006_hits(positive_rows, POSITIVE_SRC, sports)
+
+    assert ingress_after > ingress_before, (
+        "canonical ingress did not advance during the loopback burst "
+        f"(capture_npcap.pushed {ingress_before} -> {ingress_after}); "
+        "the sensor is not bound to the loopback interface"
     )
+    assert hits, (
+        f"no R9006 row attributed to {POSITIVE_SRC} / test-owned ports "
+        f"{min(sports)}..{max(sports)} in {len(positive_rows)} new log rows; "
+        "loopback capture or the L4 rule path is broken"
+    )
+
+    hit = hits[0]
+    assert hit.get("host_effect_confirmed") is False, (
+        "the R9006 hit reports a host effect; AEGIS is detection-only"
+    )
+
+    # Negative control: same sensor, below the 20-distinct-port threshold, from
+    # a different loopback source. R9006 must not fire for it.
+    time.sleep(RATE_WINDOW_SECONDS)
+    neg_offset = log_offset(log)
+    neg_sports, neg_dst = scan(NEGATIVE_SRC, 24100, NEGATIVE_PORTS)
+    assert neg_sports and len(neg_dst) == NEGATIVE_PORTS, "the negative scan did not bind its source sockets"
+    time.sleep(SETTLE_SECONDS)
+
+    neg_rows = rows_since(log, neg_offset)
+    neg_hits = r9006_hits(neg_rows, NEGATIVE_SRC, neg_sports)
+    assert not neg_hits, (
+        f"R9006 fired for a {NEGATIVE_PORTS}-port control from {NEGATIVE_SRC}; "
+        "the distinct-dst-ports threshold is not being enforced"
+    )
+
+    # Guard against a stimulus that could not possibly reach the loopback sensor.
+    assert dst_ports[0] == 24000 and dst_ports[-1] == 24000 + POSITIVE_PORTS - 1
+    assert LOOPBACK_DST == "127.0.0.1"

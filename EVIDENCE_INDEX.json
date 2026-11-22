@@ -1,7 +1,7 @@
 {
   "head_sha": "a53eda8344a20f86ad4f4e4001e9b3d648067671",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-22",
+  "last_updated_at": "2026-11-23",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -8430,6 +8430,36 @@
       "evidence_artifact": "analysis/current-head/CAPTURE-LOOPBACK-001-20261117.md"
     },
     {
+      "id": "CAPTURE-LOOPBACK-002-FULLPATH-20261122",
+      "head_sha": "a53eda8344a20f86ad4f4e4001e9b3d648067671",
+      "timestamp": "2026-11-22",
+      "title": "Full-path loopback capture proven with exact 5-tuple attribution (Nose -> pipe -> Zig -> R9006 -> core log)",
+      "level": "E5",
+      "component": "nose/aegis-nose.exe -capture -iface \\\\Device\\\\NPF_Loopback -> aegis_nids.exe",
+      "flow_id": "RB-023",
+      "description": "With the canonical Nose sensor pinned to NPF_Loopback (core PID 31340, AEGIS_DAEMON_IFACE unset), a 40-SYN burst from 127.0.0.2 to 127.0.0.1 ports 24000-24039 advanced capture_npcap.pushed (+101) and produced one R9006 (rule=1745456278) core-NDJSON row naming src_ip=127.0.0.2 and a test-owned ephemeral src_port, with host_effect_confirmed=false. A 10-port control from 127.0.0.3 produced zero attributable R9006 rows. Records/test-only slice: no source, wire, rule, or authority change; build source stays a53eda8.",
+      "files_verified": [
+        "analysis/current-head/CAPTURE-LOOPBACK-002-FULLPATH-20261122.md",
+        "tests/integration/loopback_attribution.py",
+        "tests/integration/test_e6_l4_scan_detection.py",
+        "tests/integration/test_e6_attack_burst.py"
+      ],
+      "tests": [
+        "admin-evidence/loopback-fullpath-20261122/proof-run.txt: PROOF PASS (exit 0)",
+        "pytest tests/integration/test_e6_l4_scan_detection.py tests/integration/test_e6_attack_burst.py: 4 passed",
+        "pytest tests/lab/test_kali_script_coverage.py: 3 passed",
+        "full pytest -q -rA (before skip closure): 1467 passed, 4 skipped, 27 subtests passed (0 xfail, 0 xpass)",
+        "WFP host tests via tests/wfp/conftest.py: 4 passed (real PEP DLL + signed driver, detection-only)",
+        "Phase 1 (no daemon): pytest tests/runtime/test_harness_integration.py::TestCoreLifecycle::test_core_reaches_running_within_startup_timeout -> 1 passed in 5.26s",
+        "Phase 2 (daemon up): pytest -q --deselect 'tests/runtime/test_harness_integration.py::TestCoreLifecycle::test_core_reaches_running_within_startup_timeout' -> 1470 passed, 1 deselected, 27 subtests passed (0 skipped, 0 xfail, 0 xpass)",
+        "combined Phase 1 + Phase 2: 1471 passed, 0 skipped, 0 xfail, 0 xpass, 27 subtests passed",
+        "python tools/truth.py verify: TRUTH_VALID"
+      ],
+      "result": "PASS_E5",
+      "finding": "CAPTURE-LOOPBACK full path is closed at current build source a53eda8 when the sensor is pinned to NPF_Loopback. Loopback stays a self-test binding; production keeps the real link. xfail/xpass markers removed only after exact 5-tuple attribution, not ambient counter deltas.",
+      "evidence_artifact": "analysis/current-head/CAPTURE-LOOPBACK-002-FULLPATH-20261122.md"
+    },
+    {
       "id": "E5-RECHECK-STALE-IMAGE-001-E5-20261117",
       "head_sha": "d74ca100d45485103790521c873ca59a0819bc3f",
       "timestamp": "2026-11-17",
@@ -16385,9 +16415,9 @@
       "next_step": "capture on a lab interface (VMnet) with the sensor bound to it; the current install sees no loopback records, idle 162 vs 87 npcap_sensor records per 5 s",
       "head_sha": "d74ca100d45485103790521c873ca59a0819bc3f",
       "timestamp": "2026-11-17",
-      "reverified_by": "CAPTURE-LOOPBACK-001-E5-20261117",
+      "reverified_by": "CAPTURE-LOOPBACK-002-FULLPATH-20261122",
       "closed_note": "The shipped nose captured NPF_Loopback on this host: idle 66 packets/15 s, 2,378 packets/15 s with 200 loopback HTTP requests. The gap was the sensor binding (production Wi-Fi/VMnet1), not a missing capability. Loopback self-tests must pin -iface \\Device\\NPF_Loopback; no restart or source change.",
-      "remaining": "A full Nose -> pipe -> Zig loopback self-test still needs a loopback-pinned sensor instance; that is a runbook choice, not an open capability gap."
+      "remaining": "Full Nose -> pipe -> Zig -> R9006 -> core-log path now proven at build source a53eda8 by CAPTURE-LOOPBACK-002-FULLPATH-20261122 with exact 5-tuple attribution and a below-threshold negative control (loopback-pinned self-test binding). No remaining capability gap; loopback is a self-test binding, not the production default."
     },
     {
       "id": "L7-NO-JOIN-001",
@@ -16579,10 +16609,10 @@
     "E2_count": 143,
     "E3_count": 14,
     "E4_count": 4,
-    "E5_count": 121,
+    "E5_count": 122,
     "E6_count": 1,
     "E7_count": 5,
-    "E5_with_artifact_count": 71,
+    "E5_with_artifact_count": 72,
     "known_gaps_count": 287
   },
   "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
