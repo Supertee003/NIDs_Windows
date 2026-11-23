@@ -113,10 +113,12 @@ diagnostic-only and are not promoted to runtime truth when the control daemon
 is available. Local logs may provide forensic detail but do not override the
 authoritative control response.
 
-A policy action such as `BLOCK` represents an intended policy decision. It
-must not be displayed as a confirmed host block unless a valid,
-receipt-backed postcondition contains `status=ENFORCED` and
-`host_effect_confirmed=true`.
+In historical lab qualification, a policy action such as `BLOCK` represents
+an intended policy decision. It must not be displayed as a confirmed host
+block unless a valid, receipt-backed postcondition contains
+`status=ENFORCED` and `host_effect_confirmed=true`. Production never opens
+the prevention gate, so this receipt path is not reachable in the shipped
+runtime.
 
 The current release is an observe-only, fail-closed Kernel NIDS release.
 Production host enforcement is not a pending feature; it is outside the product scope.
@@ -145,7 +147,7 @@ Network / host activity
         +--> Forensic record, audit trail and operator views
 ```
 
-The Zig daemon is the runtime owner. Production Rust PEP evaluates policy and returns an assessment for evidence; it does not authorize a host effect. The user-mode WFP adapter and kernel WFP callout retain historical lab-only mutation code, but a production build has no reachable path that can create or confirm a host filter. A privileged cleanup command can remove only a pre-existing filter marked with the AEGIS proof-provider GUID; it cannot create one. Those components may observe, analyze, request, or display state, but they must not independently mutate Windows filtering state.
+The Zig daemon is the runtime owner. Production Rust PEP evaluates policy and returns an assessment for evidence; it does not authorize a host effect. The user-mode WFP adapter and kernel WFP callout retain historical lab-only mutation code, but a production build has **no reachable host-effect creation path** (source call-graph reading, E1 — see the [source audit](analysis/current-head/SOURCE_AUDIT-20261123.md)). A privileged cleanup command can remove only a pre-existing filter marked with the AEGIS proof-provider GUID; it cannot create one, and a persistent filter left by an old lab run can be recovered at startup. Those components may observe, analyze, request, or display state, but they must not independently mutate Windows filtering state.
 
 A policy action named `BLOCK` is not evidence that a host block occurred. A confirmed block requires a valid `EnforcementReceipt` with a verified host postcondition.
 
@@ -163,7 +165,8 @@ The architecture is easiest to understand as a sequence of **observation, normal
    Convert source-specific data into CanonicalEvent or IpcEvent
           |
 3. Ingest
-   Zig daemon assigns runtime context, queues the event, and applies backpressure
+   Zig daemon assigns runtime context, queues the event, and drops on full
+   with observable shed counters (not blocking-producer backpressure)
           |
 4. Detect
    Rule engine and Brain produce evidence, rule ID, confidence, and severity
@@ -201,7 +204,7 @@ is outside the production product scope.
 | Normalizer | A valid canonical event was produced | That a policy decision was authorized |
 | Detector | A rule matched and evidence was produced | That the host was changed |
 | Policy | An intended action was selected | That WFP applied the action |
-| Rust PEP | The request was authorized, denied, or unavailable | A host effect without provider evidence |
+| Rust PEP | A policy assessment was returned, or the evaluator was unavailable | A host effect, or a production host-effect authorization, without provider evidence |
 | WFP provider | A filter operation was attempted or returned | A verified postcondition without read-back/verification |
 | Forensics | What the system observed and decided | A failed action was successful |
 | CLI/dashboard | What the authoritative backend attested | A `BLOCK` label is a confirmed block |
@@ -235,7 +238,7 @@ Network activity at a WFP classification layer
   -> canonical pipeline and forensic append
 ```
 
-The Go component is an ingress sensor. It does not own policy and does not call WFP. The WFP driver is a kernel telemetry provider and is not the policy authority. The Zig daemon owns the receiving paths, runtime state, event correlation, and control boundary. Rust PEP is the only component allowed to authorize a privileged host effect. This separation prevents a capture component or low-level adapter from becoming an unreviewed enforcement authority.
+The Go component is an ingress sensor. It does not own policy and does not call WFP. The WFP driver is a kernel telemetry provider and is not the policy authority. The Zig daemon owns the receiving paths, runtime state, event correlation, and control boundary. Rust PEP is a detection-only policy authority: it returns an assessment used as evidence, and no component in the production build can authorize a host effect. This separation prevents a capture component or low-level adapter from becoming an unreviewed enforcement authority.
 
 ### FIM event path
 
@@ -382,7 +385,7 @@ Production release decisions use evidence, not the presence of source files. The
 |---|---|
 | `src/` | Zig runtime, control plane, pipeline, policy boundary, forensic coordination, and Windows adapters |
 | `drivers/` | WFP kernel callout and communication code |
-| `rust-src/`, `shield/`, or Rust PEP build paths | Privileged policy enforcement boundary and native security helpers |
+| `rust-src/`, `shield/`, or Rust PEP build paths | Detection-only policy evaluation, plus native crypto/trust/TLS helpers |
 | `nose/` | Go network ingress and canonical event delivery |
 | `brain/` | Python/Cython detection and analytical support |
 | `ts_policy/` | TypeScript policy authoring and validation |
@@ -690,6 +693,30 @@ AEGIS is marketed and operated as a production Kernel NIDS, not as an IPS. The c
 
 The correct product statement is **Windows-native Kernel NIDS with detection-only, observe-only, and forensic evidence capabilities**. Historical or lab IPS material must not be presented as a production feature.
 
+## Known limitations and open work
+
+This section is deliberately explicit: a portfolio is only as trustworthy as the gaps it
+admits. All items below are from the [source audit](analysis/current-head/SOURCE_AUDIT-20261123.md)
+(E1/E2 source reading, no new build, test run, or host verification) and remain open at the
+current build source `a53eda8`.
+
+| # | Limitation | Evidence boundary |
+|---|---|---|
+| 1 | The WFP block handler is still present in the lab driver binary but is not reachable from production code; WFP is fail-open observe-only telemetry | Source call-graph reading only (not disassembly). An old persistent filter can still be recovered at startup; cleanup can only remove a filter with the AEGIS proof-provider GUID |
+| 2 | TCP stream reassembly exists in `src/capture/stream_reassembly.zig` but has no production caller | Detection runs on single-packet prefixes. Do not claim session-level reassembly |
+| 3 | A `CanonicalEvent` length/version mismatch can cause trailing bytes to be ignored | Code-level risk, not proven reachable by runtime fuzzing. Fix requires a staged one-schema-N-codecs patch (Zig/Go/C/Python + golden vector in the same change) — issue #41 |
+| 4 | Live Zig test counts (`2116/2114/2109 passed, 11 skipped`) are historical at `f0baadf` | Current-source Zig tests were not rerun for the audit; do not present those counts as current — issue #42 |
+| 5 | ABI framing documentation contradicts the implementation (old `125/149 bytes` text) | Current wire format is a 4-byte length prefix + payload (`113/137/169..1193` bytes); tracked as P0 ABI-01 in `analysis/current-head/02-contracts-abi.md` — issue #43 |
+| 6 | Control IPC v2 declares `nonce` and `issued_at_ms` fields but does not enforce replay protection | Token-derived per-command authorization exists; active nonce/replay enforcement does not |
+| 7 | Loopback capture is a self-test binding, not a general live-network proof | The live host-positive proof is the bounded SYN burst from `192.168.1.39` to `192.0.2.1:1..40` on one interface, with a 10-port negative control |
+| 8 | R2003 (PowerShell cradle) is a known false negative | Process telemetry in v0–v4 has no `CommandLine` field; no real command-line source is implemented |
+| 9 | No authoritative MITRE ATT&CK mapping, Splunk content, published fuzz campaign, fixed-rate offered-load ceiling, clean install/uninstall campaign, or full WFP E5 result for the current source | These are future work, not existing evidence |
+| 10 | The current lab snapshot has nonzero drop/shed counters (`minifilter_ring_dropped=1,341,156`, `alert_file.failed=7,028`) | The v1.1 soak measured zero loss **only during its recorded 36.52 h window**; never claim "zero loss ever" on this host |
+
+Source-side comment/capability overclaims are tracked in issue #40. None of these open items
+changes the immutable `v1.1` release or the build source `a53eda8`; they are listed so that a
+reviewer can separate "implemented", "tested at fixture level", and "proven on a live host".
+
 ## Documentation map
 
 **For recruiters and job applications**
@@ -702,6 +729,7 @@ The correct product statement is **Windows-native Kernel NIDS with detection-onl
 
 **For engineers and operators**
 
+- [Source tree structure (current HEAD)](docs/STRUCTURE.md)
 - [Security policy](SECURITY.md)
 - [Security threat model](docs/SECURITY_THREAT_MODEL.md)
 - [Security boundaries and privilege separation](docs/architecture/SECURITY_BOUNDARIES.md)
@@ -710,21 +738,23 @@ The correct product statement is **Windows-native Kernel NIDS with detection-onl
 - [Detection rule catalog](docs/portfolio/DETECTION_CATALOG.md)
 - [Canonical event schema](docs/CANONICAL_EVENT_SCHEMA.md)
 - [Test results](docs/testing/RESULTS.md)
+- [Observed host performance and counters](docs/portfolio/OBSERVED_PERFORMANCE.md)
 - [Source-level interview preparation](docs/portfolio/INTERVIEW_PREP.md)
+- [Source audit (E1/E2)](analysis/current-head/SOURCE_AUDIT-20261123.md)
 - [User operations guide](docs/USER_OPERATIONS_GUIDE.md)
 - [Local runbook](docs/runtime/LOCAL_RUNBOOK.md)
-- [Canonical contracts](docs/architecture/CONTRACTS.md)
+- [Canonical contracts — HISTORICAL](docs/architecture/CONTRACTS.md)
 - [Architecture truth](docs/architecture/ARCHITECTURE-TRUTH.md)
 - [Authority matrix](docs/architecture/authority-matrix.md)
-- [WFP IOCTL status](docs/WFP_IOCTL_STATUS.md)
+- [WFP IOCTL status — HISTORICAL](docs/WFP_IOCTL_STATUS.md)
 - [P0–P2 operator acceptance](docs/P0_P2_OPERATOR_ACCEPTANCE.md)
-- [Production handoff](docs/AEGIS_PRODUCTION_HANDOFF_2026-09-22.md)
+- [Production handoff — HISTORICAL](docs/AEGIS_PRODUCTION_HANDOFF_2026-09-22.md)
 - [Operator contract v1](contracts/operator_contract_v1.json)
 
 ## References
 
 [1]: docs/runtime/LOCAL_RUNBOOK.md "AEGIS Local Runbook"
 [2]: docs/USER_OPERATIONS_GUIDE.md "AEGIS User Operations Guide"
-[3]: docs/architecture/CONTRACTS.md "AEGIS Authoritative Contracts"
+[3]: docs/architecture/CONTRACTS.md "AEGIS Contracts (historical / superseded)"
 [4]: docs/architecture/authority-matrix.md "AEGIS Authority Matrix"
 [5]: docs/P0_P2_OPERATOR_ACCEPTANCE.md "AEGIS P0–P2 Operator Acceptance"

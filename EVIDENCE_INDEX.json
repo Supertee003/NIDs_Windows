@@ -9965,6 +9965,34 @@
         "Static inspection only; no build, test, E5 host run, or disassembly.",
         "Records HEAD differs from build source a53eda8 per ADR-0008."
       ]
+    },
+    {
+      "id": "DOCS-COMPLETENESS-20261123-E1",
+      "head_sha": "118459543f70d5d1f9fa611a0270623bb2b08edb",
+      "timestamp": "2026-11-23",
+      "title": "Source-verified repository documentation rebase: current tree map, README limitations and open issues",
+      "level": "E1",
+      "component": "repository documentation",
+      "flow_id": "N/A",
+      "description": "Rebased docs/STRUCTURE.md onto the tracked source tree at build source a53eda8 (no core/, no root lib.rs); removed remaining README enforcement-authority and backpressure wording; added an explicit known-limitations section mapping issues #40-#43 and the audit's evidence boundaries. Records-only; no source, wire, rule, or build-tree change.",
+      "files_verified": [
+        "README.md",
+        "docs/STRUCTURE.md",
+        "analysis/current-head/SOURCE_AUDIT-20261123.md",
+        "runtime_manifest.json"
+      ],
+      "tests": [
+        "python tools/truth.py verify: TRUTH_VALID (build source a53eda8)",
+        "python D:/aegis-tmp/check_links.py: BAD LINKS none",
+        "python -m pytest tests/release/test_evidence_index_valid.py tests/release/test_known_gap_status.py -q: 9 passed"
+      ],
+      "result": "E1_ONLY",
+      "finding": "Documentation now matches the current tree and the locked detection-only authority model; no new runtime, host, or verification claim is added.",
+      "evidence_artifact": "analysis/current-head/SOURCE_AUDIT-20261123.md",
+      "limitations": [
+        "Static documentation inspection only; no build, test, or E5 verification was performed.",
+        "Records HEAD differs from build source a53eda8 per ADR-0008."
+      ]
     }
   ],
   "known_gaps": [
@@ -16633,7 +16661,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 40,
+    "E1_count": 41,
     "E2_count": 143,
     "E3_count": 14,
     "E4_count": 4,

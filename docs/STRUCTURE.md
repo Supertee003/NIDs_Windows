@@ -1,188 +1,114 @@
-﻿# AEGIS NIDS — Project Structure
+﻿# AEGIS NIDS — Source Tree Structure (current HEAD)
 
-## Overview
+| Field | Value |
+|---|---|
+| Document status | **CURRENT** — rebased on the source tree at build source `a53eda8` (ADR-0008) |
+| Records HEAD at last rebase | `1184595` |
+| Canonical entrypoint | `src/main.zig` (`runtime_manifest.json:4`) |
+| Source of truth for roles | `SYSTEM_MAP.json`, `FLOW_MAP.json`, `AUTHORITY_MAP.json`, `runtime_manifest.json`, `AGENTS.md` |
+| Audit basis | [`analysis/current-head/SOURCE_AUDIT-20261123.md`](../analysis/current-head/SOURCE_AUDIT-20261123.md) (E1/E2) |
 
-```
-NIDs_Windows/
-├── CMakeLists.txt           # C++ Bridge build (cmake)
-├── build.zig                # Zig Core build (zig build)
-├── Cargo.toml               # Rust Tier-3 Shield build (cargo)
-├── Cargo.lock
-├── go.mod                   # Go Nose module
-├── .gitignore
-│
-├── bridge/                  # 🌉 C++ Bridge — IPC Hub
-│   ├── aegis_bridge_main.cpp    # Bridge standalone executable
-│   ├── aegis_ipc.cpp            # IPC shared library implementation
-│   ├── aegis_ipc.hpp            # IPC header (6 C-ABI exports)
-│   ├── aegis_packet_parser.cpp  # Packet parsing engine
-│   ├── aegis_packet_parser.hpp  # Packet parser header
-│   ├── aegis_bridge_test.cpp    # Bridge unit test
-│   ├── aegis_bindings.zig       # Zig FFI bindings for Bridge
-│   ├── aegis_bridge_ffi.rs      # Rust FFI bindings for Bridge
-│   └── aegis_bridge_ctypes.py   # Python ctypes bindings for Bridge
-│
-├── core/                    # ⚙️ Zig Core — Packet Engine
-│   ├── nids_main.zig            # Main entry point (5 threads)
-│   ├── nids_capture.zig         # Npcap packet capture
-│   ├── nids_analyze.zig         # Pattern matching engine
-│   ├── windows_capture.zig      # Windows-specific capture
-│   ├── pipe_monitor.zig         # Named pipe IPC monitor
-│   └── minifilter_reader.zig    # Minifilter event reader
-│
-├── nose/                    # 👃 Go Nose — Headless Performance Collector
-│   └── windows_perf.go          # 3 goroutines: Resource + Traffic + ThreatMap
-│                                  # Output: JSON to stdout (no TUI, no DEFCON)
-│
-├── mouth/                   # 🛡️ Rust Mouth — Sole DEFCON Owner + Security
-│   ├── windows_sec_monitor.rs   # Sole DEFCON TUI binary (single window)
-│   └── aegis_mouth_tui.rs       # Enhanced TUI with ETW/Process monitor stubs
-│
-├── src/                     # 📦 Tier-3 FFI Library (Cargo expects this)
-│   └── lib.rs                   # sec_monitor.dll: validate_payload_safety (4 checks)
-│
-├── brain/                   # 🧠 Python Brain — Detection Engine
-│   ├── windows_brain.py         # Brain process (regex + IPS + Bridge IPC)
-│   └── cython/                  # Cython hot-spot optimization
-│       ├── aegis_hotspot.pyx
-│       ├── aegis_hotspot.pxd
-│       └── setup.py
-│
-├── scripts/                 # 🚀 Launcher & Management
-│   ├── run_aegis.bat            # Full system launcher (5 phases)
-│   ├── stop_aegis.bat           # Graceful shutdown (Brain→Nose→Mouth→Core→Bridge)
-│   ├── aegis_status.bat         # Quick status (--watch, --json)
-│   ├── build_all.bat            # Build all components
-│   ├── build_drivers.bat        # Build kernel drivers
-│   ├── install_drivers.bat      # Install kernel drivers
-│   ├── aegis_console.py         # Command Control Center v7.0 (10 menus)
-│   ├── aegis_daemon.py          # Background daemon
-│   ├── aegis_graph.py           # Forensic evidence graph (control-daemon verified)
-│   ├── Dashboard.py             # Web dashboard
-│   └── tests/                   # Test Suites
-│       ├── aegis_nose_test.py       # Nose-only tests (headless, no DEFCON)
-│       ├── aegis_mouth_test.py      # Mouth TUI tests (daemon DEFCON authority + display)
-│       └── test_e2e.py              # End-to-end integration test
-│
-├── config/                  # ⚙️ Configuration
-│   ├── Rules.json               # Detection rules
-│   └── deployment_profile.example.json  # Portable deployment profile example
-│
-├── drivers/                 # 🔧 Windows Kernel Drivers
-│   ├── minifilter/              # Minifilter (C) — file system monitoring
-│   │   ├── aegis_minifilter.c
-│   │   ├── aegis_minifilter.h
-│   │   ├── aegis_minifilter_comm.c
-│   │   ├── aegis_minifilter_file.c
-│   │   ├── aegis_minifilter_proc.c
-│   │   └── aegis_minifilter.inf
-│   ├── minifilter_cpp/          # Minifilter (C++) — C++ wrapper
-│   ├── wfp_callout/             # WFP Callout (C) — network filtering
-│   └── wfp_callout_cpp/         # WFP Callout (C++) — C++ wrapper
-│
-├── lib/                     # 📚 Third-Party UI Libraries
-│   ├── vis-9.1.2/               # Vis.js network graph
-│   ├── bootstrap-5.0.0-beta3/  # Bootstrap CSS/JS
-│   ├── tom-select/              # Tom Select dropdown
-│   └── bindings/                # JS bindings
-│
-├── ui-vaadin/               # 🖥️ Vaadin Web Dashboard (Java)
-│   ├── pom.xml
-│   └── src/main/
-│       ├── java/com/aegis/nids/  # Java dashboard views
-│       └── rust/                  # Rust WASM module
-│
-├── build/                   # 🔨 C++ Build Output (gitignored)
-├── zig-out/                 # 🔨 Zig Build Output (gitignored)
-│   └── bin/
-│       ├── aegis-nids.exe
-│       ├── sec_monitor.dll
-│       └── aegis_ipc.dll
-├── target/                  # 🔨 Cargo Build Output (gitignored)
-│   └── release/
-│       └── sec_monitor.dll
-├── logs/                    # 📋 Runtime Logs (gitignored)
-│   ├── anomalous.json           # Detected anomalies
-│   └── pids/                    # PID files
-│       ├── bridge.pid
-│       ├── core.pid
-│       ├── brain.pid
-│       ├── nose.pid
-│       ├── mouth.pid
-│       └── dashboard.pid
-│
-└── docs/                    # 📖 Documentation
-    └── STRUCTURE.md             # This file
+> Older project maps that mention `core/*.zig`, `mouth/`, or a root `lib.rs` describe a
+> pre-restructure tree. There is no tracked root `lib.rs` and no tracked `core/` directory today;
+> do not use those documents to decide where to edit code. Root-level dated
+> `AEGIS_*_2026-09*.md` handoff files are historical, not current truth.
+
+---
+
+## 1. Canonical runtime — build and artifacts
+
+| Build command | Artifact | Layer / owner | Source root |
+|---|---|---|---|
+| `zig build` | `aegis_nids.exe` | Tier-1 runtime spine: event, flow, dispatcher, detection, correlation, forensics | `src/` |
+| `cargo build --release` | `aegis_pep.dll` | Tier-3 detection-only policy/crypto authority (no host effects) | `rust-src/` |
+| `cmake -B build && cmake --build build` | 3 native C DLLs | Windows telemetry adapters (WFP/ETW/FIM/Registry) | `bridge/`, `drivers/` user-mode helpers |
+| `cd nose && go build -o aegis-nose.exe .` | `aegis-nose.exe` | Go packet acquisition only | `nose/` |
+| `python brain/windows_brain.py` | interpreted | Tier-2 analytics, advisory regex, RAG | `brain/` |
+| `cd ts_policy && npm run typecheck && npm run test:all` | none | Policy authoring/compiler (advisory) | `ts_policy/` |
+
+There is **one** production runtime. WFP and minifilter kernel drivers are test-signed lab
+artifacts; no EV/HLK signing or Microsoft attestation is claimed.
+
+---
+
+## 2. Directory map
+
+### 2.1 Production source
+
+| Path | Contents | Status |
+|---|---|---|
+| `src/main.zig` | Production entrypoint | Canonical |
+| `src/contract/` | Canonical event codec, event fabric, version dispatch | Canonical; `canonical_event.zig:66` still carries a stale SipHash64 comment (actual hash: FNV-1a) |
+| `src/capture/` | Nose pipe reader, WFP/NPcap readers, flow tracking, protocol parsers | Canonical; `stream_reassembly.zig` is **test-only / unwired** (no production caller) |
+| `src/pipeline/` | Event queue, ingress authority stripping, runtime counters | Canonical |
+| `src/detection/` | Rule engine, correlation, anomaly/proto anomaly rules | Canonical |
+| `src/control/` | v2 control protocol, handler registry, authorizer, state machine | Canonical; `nonce`/`issued_at_ms` are declared but not enforced |
+| `src/policy/` | Policy evaluation, Rust PEP bridge, WFP production boundary | Canonical, detection-only |
+| `src/forensic/` | 4096-byte records, CRC32 + SHA-256 chain, replay verification | Canonical; replay is integrity-only |
+| `src/platform/`, `src/windows/` | Named pipe, service, Windows adapters | Canonical; pipe is single-owner with token-derived roles |
+| `src/federation/`, `src/core/`, `src/operator/`, `src/reliability/`, `src/xdr/`, `src/release/`, `src/lab/`, `src/tests/` | Supporting subsystems, proofs, and lab modules | Lab/test modules are not production host-effect paths |
+| `nose/` | `capture.go`, `canonical.go`, `pipe_writer.go`, TUI/headless collectors | Canonical acquisition plane; TUI telemetry plane contains `Simulated`-labeled data |
+| `drivers/wfp_callout/`, `drivers/minifilter/` | Kernel telemetry, observe-only callbacks, control IOCTLs | Test-signed lab drivers; the block handler is unreachable, `quarantined/aegis_wfp_comm.c` is excluded by convention |
+| `rust-src/`, `shield/` | Rust PEP, trust/Ed25519/TLS helpers | Detection-only authority + crypto; no WFP mutation |
+| `brain/` | `windows_brain.py`, canonical codec, Cython hot loops | Advisory analytics; Python codec is not the production codec |
+| `ts_policy/` | Policy DSL/compiler, tests | Advisory authoring only |
+| `tools/aegisctl.py`, `tools/aegisctl/` | Operator API, CLI, Flask web dashboard | Read-only clients of the Zig control plane |
+| `scripts/` | Build, install, proof, lab stimulus, release automation | Operator tooling; no second runtime authority |
+
+### 2.2 Contracts, configuration, tests
+
+| Path | Contents | Status |
+|---|---|---|
+| `shared/protocol/`, `shared/schema/`, `shared/event/` | Wire documents, C header, canonical event description | Shared contract text; one schema, N codecs |
+| `contracts/` | Machine-readable operator/state contract fixtures | Current |
+| `configs/` | `Rules.json` (23 rules), deployment profile, policy sets | Current configuration |
+| `config/` | Older rule/profile copies | Historical; do not edit for current runtime |
+| `tests/` | Python contract/security/release/integration/host tests, vectors | Current; `host_live` tests are deselected on hosted CI |
+| `pytest.ini`, `build.zig`, `CMakeLists.txt`, `Cargo.toml`, `go.mod` | Test and build roots | Current |
+| `docs/` | Architecture, runbooks, gates, portfolio, audit analyses | Mixed current + explicitly labeled historical |
+
+### 2.3 Records and generated material
+
+| Path | Contents | Status |
+|---|---|---|
+| `SYSTEM_MAP.json`, `FLOW_MAP.json`, `AUTHORITY_MAP.json`, `CONTRACT_MAP.json` | Machine maps carrying the build source commit | Current; CONTRACT-04 is a documented stale v1 control-IPC entry |
+| `EVIDENCE_INDEX.json`, `build_truth.json`, `runtime_manifest.json`, `inventory.json`, `reference_map.json`, `AI_CONTEXT.md` | Evidence index, build truth, entrypoints, file inventory, agent context | Current records (ADR-0008: records commits do not move build source) |
+| `analysis/current-head/` | Source audit, coverage matrix, release closeout, ABI conflict register | Current records; `02-contracts-abi.md` contains P0 ABI-01 (framing doc mismatch) |
+| `admin-evidence/`, `evidence/`, `release/`, `dist/`, `.zig-cache/`, `zig-out/`, `target/`, `build/`, `logs/` | Host evidence, signed release bundles, generated build/runtime state | Generated/operator-owned; not a source of truth for code behavior |
+
+### 2.4 Auxiliary / not in the canonical runtime
+
+These directories are still tracked and may be useful as historical reference, but they are **not**
+part of the one production runtime described in `AGENTS.md` and `runtime_manifest.json`:
+
+| Path | Description |
+|---|---|
+| `bridge/` | Older C++ IPC bridge and selftest harness; current Windows adapters live in `src/windows/` and `drivers/` |
+| `go/aggregator/` | Earlier Go aggregator/console experiment; canonical Go acquisition is `nose/` |
+| `mouth/` | Historical Rust DEFCON/TUI experiment |
+| `lib/` | Vendored dashboard JavaScript/CSS assets |
+| `aegis_dashboard/` | Optional Rust/egui operator dashboard (not the Flask dashboard used for the demo) |
+
+---
+
+## 3. Editing conventions
+
+1. **One schema, N codecs.** A wire change to `CanonicalEvent` must update Zig, Go, C, Python, the golden tuple-map, and the shared `event_v*` vector in the **same** patch.
+2. **No import-time host effects.** Product modules must be importable without binding sockets, serving, printing banners, or calling `sys.exit`.
+3. **Tests never write tracked state.** Use `tmp_path`; result stamps and `logs/*.json` are producer-owned.
+4. **No host effects.** Detection-only means no WFP mutation, no quarantine, and no `BLOCKED_CONFIRMED` claim from a `BLOCK` label.
+5. **Records vs source.** A docs-only commit moves records HEAD only; machine maps keep carrying build source `a53eda8` until source actually changes (ADR-0008).
+6. **Historical labels.** Mark superseded documents `HISTORICAL` rather than deleting evidence.
+
+---
+
+## 4. Verify after any change
+
+```powershell
+python tools/truth.py verify          # TRUTH_VALID; build source a53eda8
+git ls-files | Select-String -Pattern '\.(exe|dll|pdb|obj|o|so|ilk|exp|lib)$'   # empty
+python -m pytest tests/release -q     # release/index consistency gates
 ```
 
-## Subsystem Architecture
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                     AEGIS NIDS v2.0                              │
-│                                                                  │
-│  ┌──────────┐   ┌──────────┐   ┌──────────┐                    │
-│  │  BRIDGE  │   │   CORE   │   │  BRAIN   │                    │
-│  │  (C++)   │   │  (Zig)   │   │ (Python) │                    │
-│  │ IPC Hub  │   │ Engine   │   │ Detection│                    │
-│  └────┬─────┘   └────┬─────┘   └────┬─────┘                    │
-│       │              │              │                            │
-│       └──────┬───────┴──────┬───────┘                            │
-│              │              │                                    │
-│  ┌───────────┴──────┐  ┌───┴──────────────┐                   │
-│  │      NOSE        │  │      MOUTH        │                   │
-│  │      (Go)        │  │     (Rust)        │                   │
-│  │  Headless        │  │  Sole DEFCON      │                   │
-│  │  Collector       │  │  Owner + TUI      │                   │
-│  │  ┌────────────┐ │  │  ┌──────────────┐ │                   │
-│  │  │ Resource   │ │  │  │ DEFCON Calc  │ │                   │
-│  │  │ Traffic    │ │  │  │ TUI Display  │ │                   │
-│  │  │ ThreatMap  │ │  │  │ Tier-3 Shield│ │                   │
-│  │  └────────────┘ │  │  │ ETW (stub)   │ │                   │
-│  │  JSON → stdout  │  │  │ Proc (stub)  │ │                   │
-│  │  (no window)    │  │  └──────────────┘ │                   │
-│  └─────────────────┘  │  (single window)  │                   │
-│                        └────────────────────┘                   │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-## Startup Order
-1. Bridge (C++) — IPC hub, 3s wait
-2. Core (Zig) — NIDS engine, 3s wait
-3. Brain (Python) — Detection rules, 2s wait
-4. Nose (Go) — Headless collector (no window)
-5. Mouth (Rust) — Daemon DEFCON display TUI (single window)
-6. Stabilize — 3s wait
-
-## Shutdown Order
-1. Brain → 2. Nose → 3. Mouth → 4. Core → 5. Bridge (Bridge last as IPC hub)
-
-## Key Design Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| Nose is headless | No TUI, no popup window. Outputs JSON to stdout for Bridge/Brain |
-| Daemon owns DEFCON | Daemon calculates (control/defcon.zig); Mouth/Desktop/Web project it. No overlap with Nose |
-| Nose reads only attack_type | Nose builds ThreatMap only. Does NOT parse severity/policy/tier |
-| Mouth parses all fields (fallback) | Mouth reads severity/policy/tier for the labeled log-derived fallback only |
-| Nose uses `start /B` | Background mode — no console window popup |
-| Mouth uses `start` | Foreground — single TUI console window |
-| kernel >= 3 for DEFCON 1 | Consistent across all Rust files (was inconsistent: mouth_tui had >= 1) |
-
-## Build Commands
-
-| Component | Build Command | Output |
-|-----------|--------------|--------|
-| Bridge (C++) | `cmake -B build && cmake --build build --config Release` | `build/Release/aegis_ipc.dll`, `aegis_bridge.exe` |
-| Core (Zig) | `zig build` | `zig-out/bin/aegis-nids.exe` |
-| Shield (Rust) | `cargo build --release` | `target/release/sec_monitor.dll` |
-| Mouth (Rust) | `rustc -O mouth/windows_sec_monitor.rs -o windows_sec_monitor.exe` | `windows_sec_monitor.exe` |
-| Nose (Go) | `go build -o aegis-nose.exe nose/main.go + model.go + collectors.go + styles.go` | `aegis-nose.exe` |
-
-## Test Commands
-
-| Test | Command | Tests |
-|------|---------|-------|
-| Nose | `python scripts/tests/aegis_nose_test.py` | Resource, Traffic, ThreatMap, No overlap |
-| Mouth | `python scripts/tests/aegis_mouth_test.py` | DEFCON, Tier-3 FFI, No overlap |
-| E2E | `python scripts/tests/test_e2e.py` | Full integration |
+See [`docs/testing/RESULTS.md`](testing/RESULTS.md) for the evidence levels actually claimed and
+[`docs/portfolio/ARCHITECTURE_EN.md`](portfolio/ARCHITECTURE_EN.md) for the plain-language flow.

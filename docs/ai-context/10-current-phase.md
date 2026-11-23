@@ -1065,3 +1065,20 @@ See `analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md` and
   pinned to historical `f0baadf`), #43 (ABI framing doc contradiction tracked as P0 ABI-01).
 - Verification after patch: `TRUTH_VALID`, `BAD LINKS: none`, release-index tests 9/9 PASS,
   pre-commit artifact scan clean. No E5 claim is added by this patch.
+
+## Post-patch rebaseline — documentation completeness rebase (2026-11-23)
+
+- Records HEAD is this docs-only commit; build source remains `a53eda8` (ADR-0008: no source,
+  wire, rule or build-tree file changed, so machine maps stay current).
+- `docs/STRUCTURE.md` rewritten as a source-verified map of the tracked tree at `a53eda8`:
+  `src/main.zig` entrypoint, canonical vs lab paths, `stream_reassembly.zig` unwired, no tracked
+  `core/` or root `lib.rs`, and an explicit auxiliary/not-in-runtime section (`bridge/`,
+  `go/aggregator/`, `mouth/`, `lib/`, `aegis_dashboard/`).
+- `README.md` rebased: removed the last "Rust PEP can authorize a host effect" and
+  "applies backpressure" statements, marked retained enforcement semantics historical,
+  qualified "no reachable host-effect creation path" as E1 call-graph reading, and added a
+  ten-row *Known limitations and open work* table mapping issues #40-#43 plus the audit's
+  evidence boundaries (no MITRE mapping, no nonce enforcement, nonzero lab loss counters).
+- Evidence: EVIDENCE_INDEX gained `DOCS-COMPLETENESS-20261123-E1`; E1_count 40 -> 41.
+- Verification: `TRUTH_VALID`, `BAD LINKS: none`, release-index tests 9/9 PASS. No new build,
+  test-suite run, or E5 claim.
