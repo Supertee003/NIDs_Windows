@@ -1,18 +1,18 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-19T16:06:05.226284+00:00",
+  "generated_at": "2026-11-23T16:30:50.662341+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 2936,
+  "total_files": 3180,
   "by_role": {
-    "documentation": 496,
-    "build-config": 284,
-    "other": 23,
+    "documentation": 533,
+    "build-config": 301,
+    "other": 27,
     "lockfile": 6,
     "rust-build": 4,
-    "source": 1331,
+    "source": 1493,
     "architecture-decision": 13,
-    "test-artifact": 386,
-    "config-data": 58,
+    "test-artifact": 406,
+    "config-data": 62,
     "step-document": 2,
     "go-source": 8,
     "makefile": 1,
@@ -598,6 +598,14 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/apply-466a226-and-preflight.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "analysis/current-head/AUDIT-CLOSE-20261123.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/BOOT-MODEL-002-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -634,6 +642,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/CAPTURE-LOOPBACK-002-FULLPATH-20261122.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/CAPTURE-SELECT-001-20261118.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -659,6 +671,10 @@
       "role": "documentation"
     },
     "analysis/current-head/CLI-STATE-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/CLOSURE-CI-RECONCILE-20261120.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -726,11 +742,19 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/DOCS-READINESS-PATCH-20261119.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/DRIVER-BUILD-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
     "analysis/current-head/DRIVER-PACKAGING-001-20261110.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/DRIVER-SIGN-PAYLOAD-001-20261120.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -819,6 +843,10 @@
       "role": "documentation"
     },
     "analysis/current-head/G2-ENFORCEMENT-RETIRED-20261117.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/GAP-CLOSURE-PLAN-20261119.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -958,6 +986,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/POST-SOAK-CLOSEOUT-466A226.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/POST-SOAK-PATCHES-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -1034,7 +1066,15 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/READINESS-CAUSE-002-20261120.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/READY-PROMOTION-PLAN-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/RECONCILE-DOCS-READINESS-20261119.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -1053,6 +1093,10 @@
     "analysis/current-head/RELEASE-WAIVER-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
+    },
+    "analysis/current-head/reset-soak-baseline-466a226.ps1": {
+      "class": "canonical-source",
+      "role": "source"
     },
     "analysis/current-head/RESOURCE-TELEMETRY-001-PATCH.md": {
       "class": "canonical-docs",
@@ -1078,6 +1122,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/RUST-FOUNDATION-STATUS-20261119.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/SERVICE-EXISTS-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -1087,6 +1135,10 @@
       "role": "documentation"
     },
     "analysis/current-head/SIGN-RELEASE-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/SIGNED-RC-A53EDA8-20261120.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -1102,6 +1154,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/soak-466a226.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "analysis/current-head/SOAK-BASELINE-001-20261114.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -1111,6 +1167,10 @@
       "role": "build-config"
     },
     "analysis/current-head/SOAK-GATE-002-20261110.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/SOAK-PASS-466A226-20261122.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -1126,6 +1186,18 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/SOAK-VOID-466A226-20261121.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/SOAK-WINDOW-466A226-20261120.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/SOAK-WINDOW-DISK-HYGIENE-20261121.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/SOAK2-20261115.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -1135,6 +1207,10 @@
       "role": "documentation"
     },
     "analysis/current-head/SOAK3-PROCESS-20261117.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/SOURCE_AUDIT-20261123.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -1171,6 +1247,10 @@
       "role": "documentation"
     },
     "analysis/current-head/TOOLS-IMPORT-001-20261114.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -2262,6 +2342,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/architecture/SECURITY_BOUNDARIES.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "docs/architecture/SHIELD-AUTHORITY.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -2318,6 +2402,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/CANONICAL_EVENT_SCHEMA.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "docs/CLI_COMMANDS.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -2334,6 +2422,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/DETECTION_VALIDATION.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "docs/ENV_VARS.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -2343,6 +2435,10 @@
       "role": "documentation"
     },
     "docs/GATE_REPORTS.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/gates/PRODUCTION_READINESS.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -2542,6 +2638,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/OPERATIONAL_FAILURE_MATRIX.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "docs/OPERATOR_COMMAND_MAP.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -2571,6 +2671,46 @@
       "role": "documentation"
     },
     "docs/PORTABLE_DEPLOYMENT_AND_WSL2_TESTING.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/portfolio/APPLY_NOW.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/portfolio/ARCHITECTURE_EN.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/portfolio/DEMO.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/portfolio/DETECTION_CATALOG.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/portfolio/images/dashboard.png": {
+      "class": "unclassified",
+      "role": "other"
+    },
+    "docs/portfolio/images/demo.mp4": {
+      "class": "unclassified",
+      "role": "other"
+    },
+    "docs/portfolio/images/social-preview.png": {
+      "class": "unclassified",
+      "role": "other"
+    },
+    "docs/portfolio/INTERVIEW_PREP.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/portfolio/OBSERVED_PERFORMANCE.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/portfolio/RESUME_PROJECT.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -2714,6 +2854,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/SECURITY_THREAT_MODEL.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "docs/SLICE_C_LAB_GATE_DESIGN.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -2727,6 +2871,14 @@
       "role": "documentation"
     },
     "docs/STRUCTURE.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/TECHNOLOGY_DECISIONS.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/testing/RESULTS.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -3299,6 +3451,818 @@
       "role": "documentation"
     },
     "release/aegis-nids-windows-6.0.0-20261017_154714/scripts/install_aegis.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/__init__.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/acceptance_gates.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/aegis_brain_cython/__init__.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/aegis_brain_cython/bridge.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/aegis_brain_cython/fast_scan.c": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/aegis_brain_cython/fast_scan.pyx": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/aegis_brain_cython/README.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "release/T20-final/466a226/brain/aegis_brain_cython/setup.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/aegis_brain_cython/test_fast_scan.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/canonical_event.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/core_routing.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/cython/__init__.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/cython/_py_fallback.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/cython/aegis_hotspot.c": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/cython/aegis_hotspot.pxd": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/cython/aegis_hotspot.pyx": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/cython/bridge_ipc.c": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/cython/bridge_ipc.pyx": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/cython/cython_regex_scan.c": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/cython/cython_regex_scan.pyx": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/cython/sensor_pipe.c": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/cython/sensor_pipe.pyx": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/cython/setup.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/detection_result.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/detection_scan.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/enforcement_pipeline.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/enforcement_receipt.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/forensic_evidence.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/pep_receipt.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/pep_request.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/policy_decision.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/test_acceptance_gates.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/test_brain_envelope.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/test_bridge_fallback.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/test_canonical_event.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/test_core_routing.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/test_detection_result.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/test_detection_scan.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/test_enforcement_path.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/test_enforcement_pipeline.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/test_enforcement_receipt.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/test_forensic_evidence.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/test_pep_receipt.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/test_pep_request.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/test_policy_decision.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/test_py_fallback_contract.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/test_tier_routing.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/brain/tier_routing.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/brain/windows_brain.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/build.zig": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/config/Rules.json": {
+      "class": "canonical-config",
+      "role": "config-data"
+    },
+    "release/T20-final/466a226/configs/canary_tests.json": {
+      "class": "canonical-config",
+      "role": "config-data"
+    },
+    "release/T20-final/466a226/configs/policies.json": {
+      "class": "canonical-config",
+      "role": "config-data"
+    },
+    "release/T20-final/466a226/configs/Rules.json": {
+      "class": "canonical-config",
+      "role": "config-data"
+    },
+    "release/T20-final/466a226/installer/aegis.nsi": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/KNOWN_LIMITATIONS.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "release/T20-final/466a226/requirements.txt": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "release/T20-final/466a226/ROLLBACK.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "release/T20-final/466a226/SBOM.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/scripts/_probe_nose_proc.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/add_web_evidence.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/aegis.bat": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/scripts/aegis.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/aegis_alerts.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/aegis_api.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/aegis_block.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/aegis_console.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/aegis_console_pro.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/aegis_daemon.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/aegis_defcon.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/aegis_event_gen.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/aegis_graph.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/aegis_metrics.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/aegis_notifier.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/aegis_open.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/aegis_rules.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/aegis_status.bat": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/scripts/aegis_status.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/aegis_unblock.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/analyze_existing.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/analyze_vectors.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/attack_demo.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/boot-sequence.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/build_all.bat": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/scripts/build_and_check.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/build_drivers.bat": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/scripts/build_wfp_user_bridge.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/c1_e5_sidecar_proof.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/check_brain.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/check_evidence.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/check_summary.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/check_vec.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/clean_aegis.bat": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/scripts/cleanup_stale_aegis_firewall.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/create_test_vectors.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/scripts/Dashboard.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/deploy_wfp_driver_20261024.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/diag_aegis_dirs.bat": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/scripts/diag_deep.bat": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/scripts/doc_checker.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5-clean-host.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5-o2-remote-sink.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/scripts/e5_arbiter_handback.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_arbiter_redeploy.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_arbiter_swap_test.ps1": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "release/T20-final/466a226/scripts/e5_arbiter_swap_verified.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_cdb_repro.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_cdb_repro2.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_deploy_abi_set.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_driver_swap.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_driver_swap_resume.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_eventlog_probe.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_localdumps_repro.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_nose_parent_probe.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_o2_deploy_candidate.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_o2_direction_verified.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_o2_exit_diagnostic.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_o2_functional_proof.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_o2_payload_offset_proof.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_o2_remote_tcp_sink.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_o2_rollback_candidate.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_outbound_probe.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_pe_export_diff.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_repro_crash.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_rollback_daemon.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/e5_wer_dump.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/fim_rule_canary_scan.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/generate_detection_fixture_manifest.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/generate_phase8_lab_manifest.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/generate_rule_qualification_matrix.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/install-boot-task.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/install_aegis.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/install_drivers.bat": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/scripts/kali_hostonly_probe.sh": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/kali_l7_benign_probe.sh": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/minifilter_service.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/minifilter_sign.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/ml_train.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/package_release.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/pep_analysis.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/pipe_rule_canary_scan.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/pre_attack_readiness_scan.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/process_rule_canary_scan.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/project2_runtime_gate.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/rb021_current_source_preflight.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/read_vectors.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/release_package.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/reload_rules_control.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_22rules_kit.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_aegis.bat": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/scripts/run_control_receipt_probe.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_controlled_proof.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_eight_groups_safe.cmd": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/scripts/run_eight_groups_safe.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_etw_runtime_observe_only_proof.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_fim_real_observe_only_proof.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_fim_runtime_observe_only_proof.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_g2_dupfilter_proof.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_host_production_preflight.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_lifecycle_recovery_proof.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_observe_only_proof.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_phase8_lab_scenarios.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_pipe_native_runtime_observe_only_proof.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_pipe_runtime_observe_only_proof.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_rule_matching_observe_only.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_rules_22_safe.cmd": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/scripts/run_rules_22_safe.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_synthetic_detection_adapters.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_vmware_lab_preflight.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_wfp_hostonly_observe_only.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_wfp_l4_observe_only_proof.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/run_wfp_phase10_preflight.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/setup_aegis.bat": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/scripts/sign_wfp_driver_20261024.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/stop_aegis.bat": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/scripts/summary_detection_path.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/validate_detection_fixture_manifest.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/validate_operator_cli.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/validate_phase8_lab_manifest.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/verify_release.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/wdk_build_minifilter.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/wdk_build_production.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/wfp_s6_cleanup.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/wfp_service.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/wfp_sign.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/wfp_stale_evidence.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/scripts/windows_host_verification.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/SHA256SUMS": {
+      "class": "unclassified",
+      "role": "other"
+    },
+    "release/T20-final/466a226/signatures.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "release/T20-final/466a226/tools/aegisctl/__init__.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/tools/aegisctl/api/__init__.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/tools/aegisctl/api/control_api.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/tools/aegisctl/client.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/tools/aegisctl/components.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/tools/aegisctl/config.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/tools/aegisctl/console.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/tools/aegisctl/contracts.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/tools/aegisctl/fp_feedback.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/tools/aegisctl/graph.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/tools/aegisctl/utils.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/tools/aegisctl/web_dashboard/app.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/tools/aegisctl.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "release/T20-final/466a226/tools/upgrade_rollback.py": {
       "class": "canonical-source",
       "role": "source"
     },
@@ -9406,6 +10370,10 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "SECURITY.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "shared/__init__.py": {
       "class": "canonical-source",
       "role": "source"
@@ -10974,6 +11942,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/integration/loopback_attribution.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "tests/integration/test_driver_build.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -11646,6 +12618,10 @@
       "class": "canonical-build",
       "role": "build-config"
     },
+    "tests/wfp/conftest.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/wfp/test_capture_source_arbitration.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -12070,5 +13046,6 @@
       "class": "canonical-build",
       "role": "build-config"
     }
-  }
+  },
+  "source_commit": "ab0fa17"
 }

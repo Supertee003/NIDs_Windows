@@ -14,7 +14,7 @@
 - Enforced a **detection-only authority boundary**: `prevention_gate=closed`, `tier3_enforcing=false`, `host_effect_capable=false`; a `BLOCK` policy label is recorded as intent, never as a confirmed host effect.
 - Added **hash-chained forensic records and IDS evidence receipts**, plus decision/audit traces, so every finding can be integrity-verified after the fact (replay is integrity-only; it does not re-execute detection).
 - Proved the detection path on a real Windows host: bridged Kali → Windows attribution, R9006 SYN-burst detection with a **10-port negative control**, and a loopback full-path self-test with exact 5-tuple attribution and `host_effect_confirmed=false`.
-- Shipped release `v1.1` as **SHIPPABLE (0/6 gates open)** with an Ed25519-signed manifest (`674/674` artifacts verified), an owner-run **36.52 h / 24 h soak PASS** with zero loss or shed counters, and a full test run of **1,471 passed, 0 skipped**.
+- Shipped release `v1.1` as **SHIPPABLE (0/6 gates open)** with an Ed25519-signed manifest (`674/674` artifacts verified), an owner-run **36.52 h / 24 h soak PASS** with zero loss or shed counters in the recorded soak window, and a **1,471 passed / 0 skipped** Python result that is the sum of two phases at build source `a53eda8`, not a single `pytest` invocation.
 - Produced operator tooling: CLI status/health/forensics, a read-only web dashboard, and machine-readable truth maps that are regenerated and verified against the build source commit after every change.
 
 **Tech:** Zig, Go, Rust, C/C++, Python, TypeScript, Npcap, Windows WFP/ETW, named pipes, Ed25519, hash chains, SSE dashboard, pytest.

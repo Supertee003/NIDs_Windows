@@ -1,5 +1,5 @@
 {
-  "head_sha": "a53eda8344a20f86ad4f4e4001e9b3d648067671",
+  "head_sha": "ab0fa171eb89cecaa826c9256ecc90eb4e2a3bfd",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-23",
   "generator_version": "3.0",
@@ -43,7 +43,7 @@
       ],
       "tests": [
         "zig build -> exit 0",
-        "zig build test --summary all -> 2116 passed / 11 skipped / 0 failed (2127 total)",
+        "zig build test --summary all -> 2116 passed / 11 skipped / 0 failed (2127 total) [historical run @ build source f0baadf; not a current-source result]",
         "pytest soak verdict + health + queue + control_retry -> 74 passed",
         "OBSERVABILITY-001 noseShouldPace boundary test + recordRuleFire collision test -> PASS"
       ],
@@ -111,7 +111,7 @@
       ],
       "tests": [
         "zig build -> PASS",
-        "zig all_tests -> 2114 passed / 11 skipped / 0 failed (2125 total)",
+        "zig all_tests -> 2114 passed / 11 skipped / 0 failed (2125 total) [historical run @ build source f0baadf; not a current-source result]",
         "zig out-of-unit -> 1234 passed",
         "VISIBILITY-001 Zig tests -> 5/5 OK",
         "pytest wfp arbitration + aegisctl queue -> 24 passed",
@@ -171,7 +171,7 @@
       ],
       "tests": [
         "zig build -> PASS",
-        "zig unit suite -> 2109 passed / 11 skipped / 0 failed",
+        "zig unit suite -> 2109 passed / 11 skipped / 0 failed [historical run @ build source f0baadf; not a current-source result]",
         "zig out-of-unit suite -> 1234 passed / 0 failed",
         "pytest contract + vector coverage -> 15 passed / 3 skipped",
         "python tools/truth.py verify -> TRUTH_INVALID (expected: uncommitted source)"
@@ -206,7 +206,7 @@
       ],
       "tests": [
         "zig build -> PASS",
-        "zig unit suite -> 2106 passed / 12 skipped / 0 failed",
+        "zig unit suite -> 2106 passed / 12 skipped / 0 failed [historical run @ build source f0baadf; not a current-source result]",
         "zig out-of-unit suite -> 1234 passed / 0 failed",
         "zig cc tests/wfp/wfp_payload_slice_test.c -> 6 cases PASS"
       ],
@@ -9993,6 +9993,43 @@
         "Static documentation inspection only; no build, test, or E5 verification was performed.",
         "Records HEAD differs from build source a53eda8 per ADR-0008."
       ]
+    },
+    {
+      "id": "AUDIT-CLOSE-20261123-E3",
+      "head_sha": "ab0fa171eb89cecaa826c9256ecc90eb4e2a3bfd",
+      "timestamp": "2026-11-23",
+      "title": "Audit issues #40-#43 closed: exact-length canonical decoding across all codecs and source/comment rebase",
+      "level": "E3",
+      "component": "Zig contract/pipe reader, Go Nose, brain + reference Python codecs, C++ codec, protocol specs",
+      "flow_id": "NET-INGRESS, CANONICAL-DECODE, DETECTION-METRICS",
+      "description": "A version/length disagreement used to be accepted as a metadata-only v1/v2 frame with a silently ignored tail; a corrupted v3 version byte could lose the evidence envelope without incrementing nose_frames_rejected. Every codec now enforces the exact length for the declared version (v1=109, v2=133, v3=165+payload_len) and fails closed. Wire layout, golden .bin vectors, rules and authority maps are unchanged. Source comments claiming stream reassembly/L7 authority, SipHash64, E3 proof from a unit harness, IPS enforcement and active 125-byte Nose framing were corrected or explicitly scoped as legacy WEV1.",
+      "files_verified": [
+        "analysis/current-head/AUDIT-CLOSE-20261123.md",
+        "src/contract/canonical_event.zig",
+        "src/capture/source_arbiter.zig",
+        "src/capture/stream_reassembly.zig",
+        "src/forensic/integration_contract.zig",
+        "nose/canonical.go",
+        "nose/canonical_test.go",
+        "brain/canonical_event.py",
+        "shared/wire/wire_codec.py",
+        "shared/wire/wire_codec.h",
+        "tests/contracts/wire_codec_v3_cpp_check.cpp"
+      ],
+      "tests": [
+        "zig build test --summary all -> 3366 passed / 10 skipped / 0 failed (build success)",
+        "go codec tests (DeserializeDispatch, v3 vectors, envelope guards) -> PASS",
+        "pytest brain + v2/v3 wire + release index -> 47 passed",
+        "g++ -std=c++17 wire_codec_v3_cpp_check.cpp with committed vectors -> PASS"
+      ],
+      "result": "PASS_E3",
+      "finding": "No wire/codec layout change, no rule change, no host effect and no re-key. The live pipe path converts a previously silent decode loss into an observable nose_frames_rejected increment.",
+      "evidence_artifact": "analysis/current-head/AUDIT-CLOSE-20261123.md",
+      "limitations": [
+        "E2/E3 only: no E4/E5 claim, no new soak, no signed-candidate change and no corrupted-frame injection on a Windows host.",
+        "Full Go suite includes an environment-dependent live Npcap capture test; codec correctness is gated by the targeted Go tests above.",
+        "Historical Zig counts in this index are now explicitly labelled as f0baadf runs and are not current-source results."
+      ]
     }
   ],
   "known_gaps": [
@@ -16663,7 +16700,7 @@
     "E0_count": 0,
     "E1_count": 41,
     "E2_count": 143,
-    "E3_count": 14,
+    "E3_count": 15,
     "E4_count": 4,
     "E5_count": 122,
     "E6_count": 1,

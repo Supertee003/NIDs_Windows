@@ -1082,3 +1082,25 @@ See `analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md` and
 - Evidence: EVIDENCE_INDEX gained `DOCS-COMPLETENESS-20261123-E1`; E1_count 40 -> 41.
 - Verification: `TRUTH_VALID`, `BAD LINKS: none`, release-index tests 9/9 PASS. No new build,
   test-suite run, or E5 claim.
+
+## Post-patch rebaseline — audit close #40-#43 (2026-11-23)
+
+- Build source moved from `a53eda8` to `ab0fa17` (`fix(codec): fail closed on canonical
+  version/length mismatch`). The source slice touched Zig, Go, both Python codecs, the C++
+  codec, protocol specs, source comments and the codec tests; no wire layout, golden vector,
+  rule or authority change.
+- Issues closed by this slice: #41 (exact per-version length at every decode boundary, so a
+  corrupted v3 version byte is rejected and counted in `nose_frames_rejected` instead of
+  degrading to metadata-only), #40 (source comments on stream reassembly/L7 authority,
+  rule hash, E3 claim, IPS enforcement), #43 (scope 125-byte WEV1 frame as legacy and state
+  the active 4-byte-length-prefix framing), #42 (historical Zig counts and the two-phase
+  Python sum explicitly labelled).
+- Rebaseline: `python tools/rebuild_truth.py` restamped all machine maps, manifests and
+  `AI_CONTEXT.md` to `ab0fa17`; `AGENTS.md` build-source line updated manually.
+- Verification: `zig build test --summary all` 3366/3376 passed, 10 skipped; Go codec tests
+  PASS; Python codec + release-index tests 47 passed; C++ harness PASS; `truth.py verify`
+  `TRUTH_VALID` at `ab0fa17`.
+- Evidence: `analysis/current-head/AUDIT-CLOSE-20261123.md` and EVIDENCE_INDEX entry
+  `AUDIT-CLOSE-20261123-E3`; E3_count 14 -> 15.
+- E-level: E2/E3 component proof only. No E4/E5 claim, no new soak, no signed-candidate
+  change, no re-key. `v1.1` remains immutable.

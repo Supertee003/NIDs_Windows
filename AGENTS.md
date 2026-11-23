@@ -2,7 +2,7 @@
 ## Version 2.0 — Current-HEAD Vertical Slice Workflow
 
 **RECORDS HEAD:** `git rev-parse HEAD` at read time (records-only commits do not move the build source; see ADR-0008)
-**BUILD SOURCE HEAD:** `a53eda8344a20f86ad4f4e4001e9b3d648067671` (last commit touching the source/build tree after RULE-LAYER-FAILCLOSED-001; see ADR-0008)
+**BUILD SOURCE HEAD:** `ab0fa171eb89cecaa826c9256ecc90eb4e2a3bfd` (last commit touching the source/build tree after AUDIT-CLOSE-20261123; see ADR-0008)
 **Applies to:** All human + AI agents contributing to AEGIS NIDS Windows
 
 ---

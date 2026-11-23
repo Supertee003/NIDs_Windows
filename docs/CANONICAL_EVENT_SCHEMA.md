@@ -50,11 +50,11 @@ Receivers dispatch on `version` and reject unknown versions. All fields are fixe
 pointers, no padding dependency, no `i128`, and explicit field-by-field encoding (never `memcpy`
 of the in-memory struct).
 
-**Known nuance (E1, 2026-11-23; issue #41):** a v1 frame longer than 109 bytes is currently
-accepted by both `nose/canonical.go:673-686` and `src/contract/canonical_event.zig:768-773`;
-bytes past offset 109 are ignored and `nose_frames_rejected` is not incremented. A v3 frame whose
-version byte is corrupted to 1 therefore degrades to metadata-only instead of failing closed. Do
-not read this section as claiming protection against a length/version mismatch.
+**Length/version agreement (AUDIT-002 / issue #41, fixed):** every codec now requires the exact
+wire length for the declared version — v1 = 109, v2 = 133, v3 = `165 + payload_len`. A v3 frame
+whose version byte is corrupted to 1 or 2 is rejected instead of degrading to metadata-only. On
+the live Nose pipe path the decode failure increments `nose_frames_rejected`, so the loss is
+observable in health counters. Wire layout and golden vectors are unchanged.
 
 ## 4. Codec implementation status
 
