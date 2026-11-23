@@ -313,7 +313,7 @@ def main() -> int:
         'notes': {
             'production_entrypoint': 'build.zig -> src/main.zig -> zig build -> zig-out/bin/aegis_nids.exe',
             'production_modules_scope': 'production_modules counts direct non-stdlib imports of src/main.zig; it is not the transitive runtime closure',
-            'legacy_folder': 'core/ (100+ legacy modules from earlier phases; NOT in production build; tracked per user request)',
+            'legacy_folder': 'core/ has NO tracked or filesystem tree; core/* references are manifest module-ID aliases resolving via real_path to src/** (P4-RUNTIME-TRUTH; SYSTEM_MAP.json)',
             'production_subsystem': 'src/core/ (diagnostics.zig, memory_pool.zig - active in build; 2 files)',
             'test_only_entrypoint': 'src/fuzz_entry.zig -> src/tests/fuzz_main.zig (fuzz harness; 1 file)',
             'control_client': 'tools/aegisctl.py (named-pipe client, connects to daemon; not a runtime)',

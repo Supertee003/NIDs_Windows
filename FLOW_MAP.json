@@ -46,7 +46,7 @@
           "output": "Validated CanonicalEvent admitted to EventQueue",
           "file": "nose/pipe_writer.go",
           "consumer_file": "src/capture/nose_pipe_reader.zig",
-          "boundary": "Windows named pipe \\\\.\\pipe\\aegis_nose; loopback TCP is a non-Windows development fallback"
+          "boundary": "Windows named pipe \\\\.\\pipe\\aegis_nose only; no TCP fallback is implemented (P4-RUNTIME-TRUTH: nose/pipe_writer.go dials via os.OpenFile only)"
         },
         {
           "step": 4,

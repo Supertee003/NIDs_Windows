@@ -10396,6 +10396,45 @@
         "E5 entries whose primary pointer is a source/test file are marked operator-attested; no new host artifact was invented.",
         "Six release gates are unchanged in count; the truth gate now fails closed on an invalid evidence index."
       ]
+    },
+    {
+      "id": "P4-RUNTIME-TRUTH-20261124-E2",
+      "head_sha": "661fb768dc1c8eeb0f79e4e437807f2eac08c9ff",
+      "timestamp": "2026-11-24",
+      "title": "Runtime & sensor truth: build-source contradiction, core/ alias claim and enforcement-authority label corrected",
+      "level": "E2",
+      "component": "AGENTS.md, runtime_manifest.json, build_truth.json, FLOW_MAP.json, tools/aegisctl*, scripts/summary_detection_path.py",
+      "flow_id": "REL-001, RUNTIME-TRUTH",
+      "description": "Phase 4 read-only audit of Runtime & Sensor. Two STOP-THE-LINE documentation contradictions were confirmed and fixed: AGENTS.md still named build source ab0fa17 while every current map carries 661fb76 (source-only history confirms 9105ff5 and 661fb76 advanced it); runtime_manifest.json claimed a tracked core/ tree while SYSTEM_MAP.json correctly says core/* are module-ID aliases to src/** and git tracks no core/ path. The generator tools/create_manifest.py was fixed at the same time so rebaseline cannot revert it. build_truth.json's 'synchronized to current HEAD' note was corrected to build-source HEAD (ADR-0008), and FLOW_MAP's unimplemented 'loopback TCP development fallback' was removed. The live control API and CLI no longer publish sole_enforcement_authority / canonical_enforcement_authority: they now publish canonical_detection_policy_authority=rust_pep with authority_model=DETECTION_ONLY_NO_HOST_EFFECT and host_effect_capable=false. The stale claim that the lifecycle is set once was replaced with the real 5 s reconcileLifecycle behavior and both disagreement directions are named. The legacy summary script's WFP enforcement and 38-entry claims are relabelled HISTORICAL and read the evidence count at run time. Frozen release snapshots under release/ and the historical EVT-224 payload quote were deliberately not rewritten.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-P4-20261124.md",
+        "AGENTS.md",
+        "AI_CONTEXT.md",
+        "SYSTEM_MAP.json",
+        "FLOW_MAP.json",
+        "build_truth.json",
+        "runtime_manifest.json",
+        "tools/create_manifest.py",
+        "tools/aegisctl.py",
+        "tools/aegisctl/api/control_api.py",
+        "scripts/summary_detection_path.py",
+        "tests/release/test_runtime_authority_labels.py"
+      ],
+      "tests": [
+        "pytest tests/release/test_runtime_authority_labels.py -> pass",
+        "python tools/truth.py verify -> TRUTH_VALID @ 661fb76",
+        "python tools/release_engineering.py --verify -> 674/674 digests",
+        "python scripts/check_summary.py -> SUMMARY_VALID"
+      ],
+      "result": "PASS_E2",
+      "finding": "Honesty correction only: no wire/rule/authority/host-effect change, no new release artifact, no E4/E5/soak/Windows claim. Six source-level findings (stale core/ comments in Go/Zig, exact-delta pipe counter test, kernel_fallback dual submit, quarantined block_ip header, catch-null detector degradation, unreachable DEFCON confirmed rungs) are documented with exact file:line, replacement direction and acceptance criteria in the audit artifact; they are explicitly NOT fixed by this records-only slice.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P4-20261124.md",
+      "limitations": [
+        "Records-only: no source tree change, no rebuild, no new host verification.",
+        "Deferred source findings remain open and are not claimed as fixed.",
+        "No counter semantics, arbiter ownership or DEFCON ladder behavior was changed.",
+        "Release identity stays v1.1 / 6/6 at signed candidate 466a226 / source a53eda8."
+      ]
     }
   ],
   "known_gaps": [
@@ -17067,7 +17106,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 43,
-    "E2_count": 146,
+    "E2_count": 147,
     "E3_count": 15,
     "E4_count": 4,
     "E5_count": 122,

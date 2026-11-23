@@ -1253,20 +1253,27 @@ def get_health_payload() -> Dict[str, Any]:
         ).upper()
         daemon_health_state = str(daemon_health.get("state", daemon_runtime_state)).upper()
         daemon_degraded = bool(daemon_health.get("degraded", False))
-        # CLI-STATE-001: the daemon owns two different states. `state` is the
-        # health contract, computed from live operational facts (workers,
-        # subsystems, data loss). `runtime_state` is the lifecycle state
-        # machine, which src/daemon.zig sets ONCE at startup and never
-        # re-promotes. The merge below stays fail-closed — a degraded lifecycle
-        # must not promote anything — but a lifecycle that contradicts a fully
-        # healthy health contract is a named condition an operator can act on,
-        # not an unattributable degradation.
+        # CLI-STATE-001 / P4-RUNTIME-TRUTH: the daemon owns two different
+        # states. `state` is the health contract, computed from live facts
+        # (workers, subsystems, cumulative data loss). `runtime_state` is the
+        # lifecycle state machine: src/daemon.zig re-samples it every 5 s via
+        # reconcileLifecycle, but that sample uses FRESH loss since the previous
+        # poll while health uses the cumulative budget. They can therefore
+        # disagree in either direction. Both directions are named below;
+        # the merge stays fail-closed (a degraded surface never promotes).
         state_machine_disagrees = (
             daemon_runtime_state == "DEGRADED"
             and daemon_health_state == "RUNNING"
             and not daemon_degraded
             and workers_ready
             and canonical_subsystems_ready
+        )
+        # Opposite direction of the same gap: health still DEGRADED from a
+        # cumulative loss budget while the 5 s lifecycle sample is RUNNING.
+        health_state_disagrees = (
+            daemon_runtime_state == "RUNNING"
+            and daemon_health_state == "DEGRADED"
+            and not daemon_degraded
         )
         if "FAILED" in {computed_state, daemon_runtime_state, daemon_health_state}:
             effective_state = "FAILED"
@@ -1293,22 +1300,27 @@ def get_health_payload() -> Dict[str, Any]:
             "wfp": "READY" if shield_wfp_ready else "UNAVAILABLE",
             "error": None if shield_running else "rust_shield_not_ready",
         }
-        # `rust_pep` is the canonical enforcement authority.  Keep the old
-        # rust_shield projection only as a compatibility alias for clients
-        # that have not migrated yet; it is not a second subsystem/process.
+        # P4-RUNTIME-TRUTH: Rust PEP is the canonical DETECTION-ONLY policy
+        # evaluation authority. It mints evidence receipts; it never requests
+        # a host effect (AUTHORITY_MAP.json, RETIRE-HOST-EFFECT-001). Keep the
+        # old rust_shield projection only as a compatibility alias — it is not
+        # a second subsystem/process.
         rust_pep = dict(rust_shield)
         rust_pep["canonical"] = True
-        rust_pep["authority"] = "sole_enforcement_authority"
+        rust_pep["authority"] = "detection_only_policy_authority"
+        rust_pep["authority_model"] = "DETECTION_ONLY_NO_HOST_EFFECT"
         rust_shield["canonical"] = False
         rust_shield["alias_of"] = "rust_pep"
         return {
             "component": daemon_health.get("component", "core"),
-            "canonical_enforcement_authority": "rust_pep",
+            "canonical_detection_policy_authority": "rust_pep",
+            "authority_model": "DETECTION_ONLY_NO_HOST_EFFECT",
             "compatibility_aliases": {"rust_shield": "rust_pep"},
             "state": effective_state,
             "runtime_state": daemon_health.get("runtime_state", daemon_health.get("state", "DEGRADED")),
             "state_machine_state": daemon_runtime_state,
             "state_machine_disagrees": state_machine_disagrees,
+            "health_state_disagrees": health_state_disagrees,
             "rules_loaded": int(daemon_health.get("rules_loaded", 0) or 0),
             "policies_loaded": int(daemon_health.get("policies_loaded", 0) or 0),
             # CLI-SHOW-158: forward the daemon traffic gauges for operator
@@ -1383,7 +1395,8 @@ def _diagnostic_health_payload(reason: str) -> Dict[str, Any]:
     }
     return {
         "component": "control_api",
-        "canonical_enforcement_authority": "rust_pep",
+        "canonical_detection_policy_authority": "rust_pep",
+        "authority_model": "DETECTION_ONLY_NO_HOST_EFFECT",
         "compatibility_aliases": {"rust_shield": "rust_pep"},
         "state": "DEGRADED",
         "pid": os.getpid(),
@@ -1408,7 +1421,8 @@ def _diagnostic_health_payload(reason: str) -> Dict[str, Any]:
         "rust_pep": {
             "state": "UNAVAILABLE",
             "canonical": True,
-            "authority": "sole_enforcement_authority",
+            "authority": "detection_only_policy_authority",
+            "authority_model": "DETECTION_ONLY_NO_HOST_EFFECT",
             "pep_ready": False,
             "policy_authority": False,
             "provider_ready": False,

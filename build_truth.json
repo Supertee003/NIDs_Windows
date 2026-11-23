@@ -113,7 +113,7 @@
   "build_truth_status": "TRUTH-001_SYNCED",
   "notes": [
     "Source of truth: build.zig (src/main.zig), Cargo.toml (rust-src/lib.rs), shield/Cargo.toml (shield/src/lib.rs), CMakeLists.txt (src/windows/*.c), bridge/CMakeLists.txt (bridge/*.cpp), nose/go.mod, go/aggregator/go.mod, ts_policy/package.json",
-    "HEAD SHA synchronized to current HEAD (see head_sha above); earlier file revisions referencing other SHAs are HISTORICAL",
+    "head_sha records the current BUILD SOURCE HEAD; records-only commits do not move it (ADR-0008). Earlier revisions referencing other SHAs are HISTORICAL",
     "Earlier revisions of this file referenced ec12182, fdb4c2b, 5f23e4f and 2c7cb30; those are HISTORICAL",
     "SUPPORT builds (shield, aggregator) are built by CI but are NOT on the golden path"
   ]

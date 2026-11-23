@@ -252,9 +252,14 @@ def cmd_status(args) -> int:
             print(f"  State machine: {machine}")
         if health.get("state_machine_disagrees"):
             print(
-                "  [!] state machine reports DEGRADED while every health-contract "
-                "fact is ready (CLI-STATE-001: the daemon never re-promotes the "
-                "lifecycle set at startup)"
+                "  [!] lifecycle DEGRADED while health-contract facts read ready "
+                "(CLI-STATE-001: daemon re-samples every 5 s; the two surfaces "
+                "use different data-loss semantics)"
+            )
+        if health.get("health_state_disagrees"):
+            print(
+                "  [!] health contract DEGRADED while the lifecycle sample reads "
+                "RUNNING (P4-RUNTIME-TRUTH: cumulative budget vs fresh loss)"
             )
         print(f"  Version: {health.get('version', 'unknown')}")
         print(f"  Uptime: {health.get('uptime_ms', 0)} ms")
@@ -687,8 +692,12 @@ def cmd_snapshot(args) -> int:
         "components": components,
         "authority": {
             "canonical": health.get(
-                "canonical_enforcement_authority",
-                "rust_pep",
+                "canonical_detection_policy_authority",
+                "none",
+            ),
+            "model": health.get(
+                "authority_model",
+                "DETECTION_ONLY_NO_HOST_EFFECT",
             ),
             "invariant": "HELD" if authority_held else "VIOLATED",
         },
