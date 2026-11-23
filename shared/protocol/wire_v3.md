@@ -86,13 +86,15 @@ closed (no inferred acceptance, no silent truncation).
 
 ## Decoder rules
 
-- Dispatch on the `version` field.
-- v1: 109+ bytes → frozen path (tail ignored, null sidecars).
-- v2: 133+ bytes → full IPv6 reconstruction; `version == 2` with 109 bytes is
-  malformed.
+- Dispatch on the `version` field, then enforce the exact length for that
+  version (AUDIT-002). Version and length must agree.
+- v1: exactly 109 bytes → frozen path (null sidecars).
+- v2: exactly 133 bytes → full IPv6 reconstruction.
 - v3: exact length `165 + payload_len` → strict envelope validation, then
   expose payload + envelope in the decode product.
-- Anything else → reject. No version fallback, no silent truncation.
+- Anything else → reject. No version fallback, no silent truncation, no
+  ignored tail. On the live pipe path the rejection is counted in
+  `nose_frames_rejected`.
 - `struct_size` stays the producer's in-memory layout tag (128) for every
   live producer, exactly as v2 pins it. It is never the wire length.
 

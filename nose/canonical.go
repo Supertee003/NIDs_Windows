@@ -665,17 +665,19 @@ func DeserializeV3(b []byte) (*CanonicalEvent, error) {
 	return ev, nil
 }
 
-// DeserializeDispatch decodes a length-delimited canonical payload of
-// either version: 109-byte v1 (Src6/Dst6 left zero, truncated semantics
-// unchanged) or 133-byte v2 (full addresses reconstructed). Anything
-// else is rejected; version 2 with 109 bytes is malformed, never
-// silently truncated.
+// DeserializeDispatch decodes a length-delimited canonical payload.
+// Every version is length-exact: v1 = 109, v2 = 133,
+// v3 = 165 + payload_len. A version/length disagreement is malformed
+// and rejected (AUDIT-002), never silently truncated.
 func DeserializeDispatch(b []byte) (*CanonicalEvent, error) {
 	if len(b) < EventWireSize {
 		return nil, errors.New("canonical: short buffer")
 	}
 	ver := binary.LittleEndian.Uint16(b[4:6])
 	if ver == EventSchemaVersion {
+		if len(b) != EventWireSize {
+			return nil, errors.New("canonical: over-length v1 frame")
+		}
 		var fixed [EventWireSize]byte
 		copy(fixed[:], b[:EventWireSize])
 		ev := &CanonicalEvent{}
@@ -690,8 +692,8 @@ func DeserializeDispatch(b []byte) (*CanonicalEvent, error) {
 	if ver != EventSchemaVersionV2 {
 		return nil, errors.New("canonical: unknown version")
 	}
-	if len(b) < EventV2WireSize {
-		return nil, errors.New("canonical: truncated v2 frame")
+	if len(b) != EventV2WireSize {
+		return nil, errors.New("canonical: malformed v2 frame length")
 	}
 	var fixed [EventWireSize]byte
 	copy(fixed[:], b[:EventWireSize])

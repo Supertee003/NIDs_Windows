@@ -1,5 +1,11 @@
-// I10 - TCP Stream Reassembly
-// AEGIS NIDS v5.0+ â€” Per-flow bidirectional TCP stream reassembly
+// I10 - TCP Stream Reassembly (UNWIRED / test-only implementation)
+// Per-flow bidirectional TCP stream reassembly.
+//
+// STATUS: this module has no production caller. It is imported only by the
+// test root (src/all_tests.zig) and a wrapper that asserts it imports
+// cleanly. Live detection uses single-packet payload prefixes from the
+// Nose pipe or the WFP kernel ring; do not read this file as a shipped
+// capability or an L7 authority claim (AUDIT-001 / issue #40).
 //
 // Strategy:
 //   - Track sequence numbers per direction (Aâ†’B and Bâ†’A)

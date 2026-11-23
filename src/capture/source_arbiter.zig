@@ -1,8 +1,9 @@
 //! capture/source_arbiter.zig — PHASE-6 network acquisition arbitration.
 //!
 //! AEGIS has two network acquisition sources:
-//!   1. Npcap through Go Nose -> named pipe -> Zig reader (full packets,
-//!      stream reassembly, L7 payload authority);
+//!   1. Npcap through Go Nose -> named pipe -> Zig reader (single-packet
+//!      frames with bounded payload prefixes; no TCP stream reassembly and
+//!      no L7 parser is wired into production detection);
 //!   2. the WFP kernel ring (5-tuple + bounded transport payload copy,
 //!      real direction byte, sees every interface incl. tunnels).
 //!
@@ -10,8 +11,8 @@
 //! identities, doubled flow packet/byte accounting, doubled rate-rule
 //! observations) — the duplicate-authority defect DP-10 records. Running
 //! only Npcap leaves the host blind whenever Nose is absent, and running
-//! only the kernel gives up payload/reassembly. This module makes the
-//! ownership explicit and stated, never implicit:
+//! only the kernel gives up the bounded payload prefix. This module makes
+//! the ownership explicit and stated, never implicit:
 //!
 //!   | mode            | condition                                  | packet | kernel |
 //!   |-----------------|--------------------------------------------|--------|--------|

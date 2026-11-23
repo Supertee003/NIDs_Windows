@@ -342,6 +342,16 @@ def test_decoder_rejects_trailing_bytes():
     assert WireCodec.decode_event(raw + b"\x00") is None
 
 
+def test_decoder_rejects_v3_frame_forged_as_v1_or_v2():
+    # AUDIT-002: a corrupted version byte must never degrade a v3 evidence
+    # frame into a metadata-only v1/v2 event. Length is exact per version.
+    raw = VEC_007.read_bytes()
+    for forged_version in (1, 2):
+        mutated = bytearray(raw)
+        mutated[4:6] = forged_version.to_bytes(2, "little")
+        assert WireCodec.decode_event(bytes(mutated)) is None, forged_version
+
+
 def test_decoder_rejects_truncated_envelope():
     raw = VEC_009.read_bytes()
     assert WireCodec.decode_event(raw[: WIRE_V3_HEADER_SIZE - V3_ENVELOPE_SIZE]) is None

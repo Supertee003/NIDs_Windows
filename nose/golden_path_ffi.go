@@ -3,7 +3,8 @@
 //! Proves that Go can read the same .bin golden vector fixtures and produce
 //! identical semantic output as Zig, C++, Python, and Rust.
 //!
-//! Evidence level: E3 (component integration across language runtimes)
+//! Verification: E2 unit-level cross-language vector comparison in `go test`.
+//! This file alone does not prove E3 component integration.
 
 package main
 

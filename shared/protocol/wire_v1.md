@@ -159,4 +159,4 @@ Each language's wire codec must pass:
 - `EVENT_MAGIC` (0x41454731) and `WIRE_MAGIC` (0x57455631) are permanent identifiers — never change for v1 events
 - `EVENT_VERSION` (1) and `WIRE_VERSION` (1) bump on schema-breaking changes
 - Receivers MUST validate magic + version before reading any other field
-- `struct_size` field (in canonical event) provides forward compatibility — receivers can skip unknown trailing fields if struct_size > expected
+- `struct_size` is the producer's in-memory layout tag (128), **not** a wire length and not a forward-compatibility escape hatch. Live receivers require the exact wire length for the declared version (109 bytes for v1); unknown trailing bytes are rejected, never skipped (see `shared/event/canonical_event.md` and `wire_v2.md`)

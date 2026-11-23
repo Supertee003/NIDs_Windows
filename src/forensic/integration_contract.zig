@@ -16,8 +16,13 @@ const std = @import("std");
 /// Named pipe path for Go Nose → Zig Core communication.
 pub const NOSE_PIPE_PATH = "\\\\.\\pipe\\aegis_nose";
 
-/// Go Nose sends 125-byte wire frames (16-byte header + 109-byte payload).
-/// Zig Core reads from the named pipe and deserializes.
+/// Legacy WEV1 support contract only: a 125-byte nominal frame
+/// (16-byte header + 109-byte payload). This is NOT the active Nose pipe
+/// framing. The live writer (`nose/pipe_writer.go`) and reader
+/// (`src/capture/nose_pipe_reader.zig`) use a 4-byte little-endian length
+/// prefix plus the canonical frame: v1 = 113, v2 = 137, v3 = 169..1193 bytes
+/// on the wire (AUDIT-004 / issue #43). This struct is retained solely for
+/// legacy WEV1 forensic compatibility tests.
 pub const NoseWireFrame = extern struct {
     header: NoseWireHeader,
     payload: [109]u8,
@@ -368,16 +373,13 @@ test "FFI-002: Go reserved area offsets are correct" {
     try std.testing.expectEqual(@as(usize, 15), GO_RES_OFF_CONFIDENCE);
 }
 
-test "FFI-002: Go Nose wire frame is exactly 125 bytes (16 header + 109 payload)" {
-    // Go: var frame [4 + EventWireSize]byte = [113]byte? No, 4+109=113
-    // Actually Go uses: var frame [4 + EventWireSize]byte where EventWireSize=109
-    // So frame is 113 bytes on Go side
-    // Zig NoseWireFrame is 16 + 109 = 125 bytes nominal, but extern struct
-    // alignment may pad to 128 bytes. The wire format is 125 bytes.
-    // Verify the nominal wire size (header + payload without padding)
+test "FFI-002: legacy WEV1 nominal frame is 125 bytes (16 header + 109 payload)" {
+    // Scope: legacy WEV1 forensic compatibility only. The active Nose pipe
+    // is 4-byte length prefix + canonical frame (113/137/169..1193 bytes).
+    // The WEV1 nominal size is header + payload without padding; extern
+    // struct alignment may inflate the in-memory size.
     const nominal_size = @sizeOf(NoseWireHeader) + 109;
     try std.testing.expectEqual(@as(usize, 125), nominal_size);
-    // The actual struct size may be larger due to alignment
     try std.testing.expect(@sizeOf(NoseWireFrame) >= nominal_size);
 }
 

@@ -63,7 +63,7 @@ pub const CanonicalEvent = extern struct {
     // --- Detection Results ---
     event_type: EventType,  // BLOCK/MATCH/FORWARD/IP_BLOCKED/REJECTED
     severity: u8,           // 0=Low, 1=Medium, 2=High, 3=Critical
-    rule_id: u32,           // Rule hash (SipHash64 from P-04)
+    rule_id: u32,           // Rule ID hash (FNV-1a, src/pipeline/rule_loader.zig)
     ruleset_version: u64,   // Which ruleset version matched
 
     // --- Payload Reference ---
@@ -594,18 +594,20 @@ pub fn serializeV2(event: *const CanonicalEvent, src6: [16]u8, dst6: [16]u8, buf
 
 /// Dispatch on the version field: v1 → frozen path (sidecars null),
 /// v2 → full-address reconstruction, anything else → null.
-/// v2 frames must carry the full tail; version==2 with 109 bytes is
-/// malformed (fail closed, never silently truncate).
+/// Every version is length-exact: v1 = 109, v2 = 133,
+/// v3 = 165 + payload_len. A version/length disagreement is malformed
+/// (fail closed, never silently truncate: AUDIT-002).
 pub fn deserializeDispatch(bytes: []const u8) ?DecodedFrame {
     if (bytes.len < WIRE_PAYLOAD_SIZE) return null;
     const ver = std.mem.readInt(u16, bytes[4..][0..2], .little);
     if (ver == EVENT_VERSION) {
+        if (bytes.len != WIRE_PAYLOAD_SIZE) return null;
         const event = deserializeFromBytes(bytes) orelse return null;
         return .{ .event = event, .src_ipv6 = null, .dst_ipv6 = null };
     }
     if (ver == EVENT_VERSION_V3) return deserializeV3(bytes);
     if (ver != EVENT_VERSION_V2) return null;
-    if (bytes.len < WIRE_V2_PAYLOAD_SIZE) return null;
+    if (bytes.len != WIRE_V2_PAYLOAD_SIZE) return null;
     const event = decodeFields(bytes) orelse return null;
     if (event.magic != EVENT_MAGIC) return null;
     if (event.struct_size != EVENT_SCHEMA_SIZE) return null;
@@ -764,9 +766,9 @@ pub fn serializeToBytes(event: *const CanonicalEvent, buf: []u8) !usize {
 
 /// Deserialize bytes into CanonicalEvent via explicit field-by-field decoding.
 /// STEP 2: No pointer cast, no alignment dependency.
-/// Frozen v1 path: 109-byte frames with version 1 (plus in-memory size).
+/// Frozen v1 path: exactly 109-byte frames with version 1.
 pub fn deserializeFromBytes(bytes: []const u8) ?CanonicalEvent {
-    if (bytes.len < WIRE_PAYLOAD_SIZE) return null;
+    if (bytes.len != WIRE_PAYLOAD_SIZE) return null;
     const event = decodeFields(bytes) orelse return null;
     if (!validate(&event)) return null;
     return event;
@@ -1457,20 +1459,19 @@ test "v3 shared vector 007 encodes byte-identical across languages" {
     try std.testing.expect(validateDecodedFrame(&frame));
 }
 
-test "over-length v1 frame decodes as v1 (version authoritative)" {
-    // Hardening parity with Go/Python/C++: version 1 with trailing bytes
-    // decodes on the frozen v1 path (first 109 bytes, tail ignored).
+test "over-length v1 frame is rejected (exact length authoritative)" {
+    // AUDIT-002: version 1 with trailing bytes is malformed. Accepting it
+    // silently discarded evidence (e.g. a v3 frame whose version byte was
+    // corrupted to 1); the receiver must fail closed and let the pipe
+    // reader count nose_frames_rejected.
     var ev = v6ProbeEvent();
     var buf: [WIRE_PAYLOAD_SIZE]u8 = undefined;
     _ = try serializeToBytes(&ev, &buf);
     var long: [WIRE_V2_PAYLOAD_SIZE]u8 = undefined;
     @memcpy(long[0..WIRE_PAYLOAD_SIZE], &buf);
     for (long[WIRE_PAYLOAD_SIZE..], 0..) |*b, i| b.* = @intCast(i);
-    const frame = deserializeDispatch(&long).?;
-    try std.testing.expectEqual(EVENT_VERSION, frame.event.version);
-    try std.testing.expect(frame.src_ipv6 == null);
-    try std.testing.expect(frame.dst_ipv6 == null);
-    try std.testing.expectEqual(ev.source_ip, frame.event.source_ip);
+    try std.testing.expect(deserializeDispatch(&long) == null);
+    try std.testing.expect(deserializeFromBytes(&long) == null);
 }
 
 test "TCP flags transport lane is valid, exact, and absence-distinct" {

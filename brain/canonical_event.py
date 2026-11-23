@@ -128,18 +128,22 @@ class CanonicalEvent:
 
 
 def decode(buf: bytes) -> CanonicalEvent:
-    """Decode 109+ (v1) or 133+ (v2) wire bytes; validate magic/version/enums."""
+    """Decode an exact-length canonical wire frame; validate magic/version/enums.
+
+    Length is exact per version (v1=109, v2=133, v3=165+payload_len).
+    A version/length disagreement is malformed and rejected (AUDIT-002).
+    """
     if len(buf) < WIRE_SIZE:
         raise ValueError(f"wire frame must be at least {WIRE_SIZE} bytes, got {len(buf)}")
     version = struct.unpack_from("<H", buf, 4)[0]
     if version == EVENT_VERSION:
-        # v1 prefix of either length (parity with Go/Zig decoders, which
-        # read the first 109 bytes and ignore any tail).
+        if len(buf) != WIRE_SIZE:
+            raise ValueError(f"v1 frame must be exactly {WIRE_SIZE} bytes, got {len(buf)}")
         return _decode_v1(buf)
     if version == EVENT_VERSION_V3:
         return _decode_v3(buf)
-    if version != EVENT_VERSION_V2 or len(buf) < WIRE_V2_SIZE:
-        raise ValueError(f"unsupported version {version} (v2 needs 133+ bytes)")
+    if version != EVENT_VERSION_V2 or len(buf) != WIRE_V2_SIZE:
+        raise ValueError(f"malformed v2 frame for version {version} (needs {WIRE_V2_SIZE} bytes)")
     ev = _decode_v1(buf)
     tail = buf[WIRE_SIZE:WIRE_V2_SIZE]
     return replace(

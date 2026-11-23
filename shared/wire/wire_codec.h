@@ -310,9 +310,10 @@ inline size_t aegis_wire_encode_event(uint8_t* buf, size_t buf_len, const Canoni
     return off; // 109
 }
 
-// Decode CanonicalEvent from bytes[0..109]. Returns true on success, false on validation failure.
+// Decode a CanonicalEvent v1 frame: exactly 109 bytes. Returns true on
+// success, false on validation failure (AUDIT-002: no trailing-byte tolerance).
 inline bool aegis_wire_decode_event(const uint8_t* bytes, size_t bytes_len, CanonicalEvent& out) {
-    if (bytes_len < WIRE_PAYLOAD_SIZE) return false;
+    if (bytes_len != WIRE_PAYLOAD_SIZE) return false;
     size_t off = 0;
 
     out.magic          = read_u32_le(bytes + off); off += 4;
@@ -393,7 +394,7 @@ inline size_t aegis_wire_encode_event_v2(uint8_t* buf, size_t buf_len, const Can
 // Decode a v2 frame (133 bytes) with full-address reconstruction.
 // Returns true on success, false on any validation failure.
 inline bool aegis_wire_decode_event_v2(const uint8_t* bytes, size_t bytes_len, CanonicalEvent& out) {
-    if (bytes_len < WIRE_V2_PAYLOAD_SIZE) return false;
+    if (bytes_len != WIRE_V2_PAYLOAD_SIZE) return false;
     // Decode the v1 prefix with the frozen validator, then lift the
     // version gate: decode_event demands schema 1.
     uint8_t prefix[WIRE_PAYLOAD_SIZE];
@@ -541,12 +542,14 @@ inline bool aegis_wire_decode_event_v3(const uint8_t* bytes, size_t bytes_len,
     return true;
 }
 
-// Version-dispatched decode: 109-byte v1 (sidecars zeroed), 133-byte v2, or
-// a bounded v3 frame. For v3 the caller supplies envelope/payload outputs.
+// Version-dispatched decode with exact length per version: v1 = 109,
+// v2 = 133, v3 = 165 + payload_len. A version/length disagreement fails
+// closed (AUDIT-002). For v3 the caller supplies envelope/payload outputs.
 inline bool aegis_wire_decode_event_dispatch(const uint8_t* bytes, size_t bytes_len, CanonicalEvent& out) {
     if (bytes_len < WIRE_PAYLOAD_SIZE) return false;
     uint16_t ver = (uint16_t)bytes[4] | ((uint16_t)bytes[5] << 8);
     if (ver == EVENT_VERSION) {
+        if (bytes_len != WIRE_PAYLOAD_SIZE) return false;
         bool ok = aegis_wire_decode_event(bytes, bytes_len, out);
         if (!ok) return false;
         ::memset(out.src_ipv6, 0, 16);

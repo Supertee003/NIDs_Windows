@@ -98,13 +98,16 @@ def test_v1_still_decodes_with_zero_sidecars():
     assert back.dst_ipv6 == b"\x00" * 16
 
 
-def test_over_length_v1_frame_decodes_as_v1():
-    # Hardening parity with Go/Zig/C++: version 1 with trailing bytes
-    # decodes on the frozen path (first 109 bytes, tail ignored).
+def test_over_length_v1_frame_is_rejected():
+    # AUDIT-002: version 1 with trailing bytes is malformed, not a v1 frame
+    # with an ignorable tail. All codecs fail closed on length/version
+    # disagreement so a corrupted v3 frame cannot degrade to metadata-only.
     e = _v6_event()
     v1 = WireCodec.encode_event(e) + b"\xAB" * 24
-    back = WireCodec.decode_event(v1)
-    assert back is not None
-    assert back.version == 1
-    assert back.src_ipv6 == b"\x00" * 16
-    assert back.dst_ipv6 == b"\x00" * 16
+    assert WireCodec.decode_event(v1) is None
+
+    v3 = (REPO_ROOT / "tests" / "contracts" / "event_vectors" / "event_vectors" / "event_v3_007.bin").read_bytes()
+    for forged_version in (1, 2):
+        mutated = bytearray(v3)
+        mutated[4:6] = forged_version.to_bytes(2, "little")
+        assert WireCodec.decode_event(bytes(mutated)) is None, forged_version

@@ -47,11 +47,14 @@ v2 payload: 133 bytes = v1 109 bytes ++ v6 tail 24 bytes
 
 ## Decoder rules
 
-- Version 1 with 109+ bytes → v1 path (first 109 bytes, tail ignored,
-  frozen behavior). The version field is authoritative, not the length.
-- Version 2 with 133+ bytes → v2 path (validate magic/version/struct_size,
+- Length is exact per version: v1 = 109 bytes, v2 = 133 bytes,
+  v3 = `165 + payload_len` bytes. Version and length must agree.
+- Version 1 with exactly 109 bytes → v1 path (null sidecars, frozen behavior).
+- Version 2 with exactly 133 bytes → v2 path (validate magic/version/struct_size,
   same enum gates as v1, reconstruct full addresses).
-- Anything else → reject. No silent truncation, no version fallback.
+- Anything else → reject. No silent truncation, no version fallback, no
+  ignored trailing bytes (AUDIT-002). On the live pipe path the rejection is
+  counted in `nose_frames_rejected`.
 
 ## Reference codecs (v2 entry points)
 

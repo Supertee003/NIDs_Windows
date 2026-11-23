@@ -62,6 +62,17 @@ def test_brain_rejects_non_zero_reserved_byte():
         ce.decode(bytes(raw))
 
 
+def test_brain_rejects_v3_frame_forged_as_v1_or_v2():
+    # AUDIT-002: a corrupted version byte must not turn an evidence-bearing
+    # v3 frame into a metadata-only v1/v2 event. Length is exact per version.
+    raw = _vector("event_v3_007.bin")
+    for forged_version in (1, 2):
+        mutated = bytearray(raw)
+        mutated[4:6] = forged_version.to_bytes(2, "little")
+        with pytest.raises(ValueError):
+            ce.decode(bytes(mutated))
+
+
 def test_brain_v1_and_v2_vectors_stay_metadata_only():
     v2 = ce.decode(_vector("event_v2_006.bin"))
     assert len(v2.src_ipv6) == 16

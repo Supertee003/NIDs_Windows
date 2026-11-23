@@ -89,7 +89,7 @@ SUBSYSTEMS = [
     },
     {
         "name": "brain",
-        "description": "Brain (Python) -- Tier-2 regex + IPS policy enforcement",
+        "description": "Brain (Python) -- Tier-2 regex analytics (detection-only; no host effects)",
         "start_cmd": None,  # special: uses sys.executable
         "start_args": [str(BASE_DIR / "brain" / "windows_brain.py")],
         "is_shell": False,

@@ -208,6 +208,18 @@ void check_strict_rejections(const std::string& dir) {
                                              &payload, &payload_len),
           "trailing bytes rejected");
 
+    // AUDIT-002: a corrupted v3 version byte must not degrade the frame to a
+    // metadata-only v1/v2 event. Length is exact for every dispatched version.
+    const uint16_t forged_versions[] = {1, 2};
+    for (uint16_t forged : forged_versions) {
+        std::vector<uint8_t> forged_frame = good;
+        forged_frame[4] = static_cast<uint8_t>(forged & 0xFF);
+        forged_frame[5] = static_cast<uint8_t>(forged >> 8);
+        check(!aegis::aegis_wire_decode_event_dispatch(forged_frame.data(),
+                                                       forged_frame.size(), ev),
+              "v3 frame forged as v1/v2 rejected on dispatch");
+    }
+
     // Dirty v6 tail when bit2 is clear (vector 009 is a v4 metadata frame).
     const std::vector<uint8_t> v4 = read_file(join(dir, "event_v3_009.bin"));
     if (!v4.empty() && v4.size() > 140) {

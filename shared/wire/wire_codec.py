@@ -354,22 +354,24 @@ class WireCodec:
 
     @staticmethod
     def decode_event(data: bytes) -> Optional[CanonicalEvent]:
-        """Decode CanonicalEvent from 109 (v1) or 133 (v2) bytes.
+        """Decode an exact-length CanonicalEvent frame.
 
-        Version-dispatched: v1 → frozen path (v6 sidecars stay zero);
-        v2 → full-address reconstruction. Anything else → None.
+        Length is exact per version (v1=109, v2=133, v3=165+payload_len).
+        A version/length disagreement is malformed and rejected (AUDIT-002).
         """
         if len(data) < WIRE_PAYLOAD_SIZE:
             return None
         version = struct.unpack_from("<H", data, 4)[0]
         if version == EVENT_VERSION:
+            if len(data) != WIRE_PAYLOAD_SIZE:
+                return None
             return WireCodec._decode_v1(data)
         if version == EVENT_VERSION_V3:
             return WireCodec._decode_v3(data)
         if version != EVENT_VERSION_V2:
             return None
-        if len(data) < WIRE_V2_PAYLOAD_SIZE:
-            return None  # v2 with 109 bytes is malformed, never truncated
+        if len(data) != WIRE_V2_PAYLOAD_SIZE:
+            return None  # v2 length must be exact, never truncated or over-long
         e = WireCodec._decode_v1(data, EVENT_VERSION_V2)
         if e is None:
             return None

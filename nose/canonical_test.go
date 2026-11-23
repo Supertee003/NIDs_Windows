@@ -516,25 +516,27 @@ func TestCommittedVectorsValidate(t *testing.T) {
 	}
 }
 
-func TestOverLengthV1FrameDecodesAsV1(t *testing.T) {
-	// Hardening parity: a 133-byte frame stamped version 1 decodes on the
-	// frozen v1 path (first 109 bytes, tail ignored, zero sidecars) — the
-	// version field is authoritative, not the length. Zig/Python/C++ agree.
+func TestOverLengthV1FrameRejected(t *testing.T) {
+	// AUDIT-002: a 133-byte frame stamped version 1 is malformed. Accepting
+	// it silently discarded the tail (e.g. a v3 frame whose version byte was
+	// corrupted to 1). All codecs fail closed; the Zig pipe reader counts
+	// the rejection in nose_frames_rejected.
 	gold := goldenBytes()
 	var long [EventV2WireSize]byte
 	copy(long[:], gold[:])
 	for i := EventWireSize; i < EventV2WireSize; i++ {
 		long[i] = byte(i)
 	}
-	back, err := DeserializeDispatch(long[:])
-	if err != nil {
-		t.Fatalf("over-length v1 dispatch: %v", err)
+	if back, err := DeserializeDispatch(long[:]); err == nil {
+		t.Fatalf("over-length v1 frame must be rejected, got %+v", back)
 	}
-	var zero [16]byte
-	if back.Src6 != zero || back.Dst6 != zero {
-		t.Fatalf("v1 version must decode with zero sidecars at any length")
-	}
-	if back.SourceIP != 0xC0A80164 {
-		t.Fatalf("v1 identity must survive trailing bytes")
+
+	// A corrupted v3 frame stamped v1 must also fail, not degrade to
+	// metadata-only. Exercise the committed v3 vector byte-for-byte.
+	v3Wire := readV3Vector(t, "event_v3_007.bin")
+	v3Wire[4] = byte(EventSchemaVersion)
+	v3Wire[5] = 0
+	if back, err := DeserializeDispatch(v3Wire); err == nil {
+		t.Fatalf("v3 frame stamped v1 must be rejected, got %+v", back)
 	}
 }
