@@ -24,8 +24,9 @@ now split, and the second half is computed from recorded artifacts:
   * `clean_host_e5`     — a post-install preflight artifact whose verdict is PASS
     and whose boot-task loader lives under the install directory (owner: needs a
     clean Windows host),
-  * `soak_24h`          — a soak artifact with `required_hours >= 24`, verdict
-    PASS and no problems (time: the current window is in progress),
+  * `soak_24h`          — a soak artifact declaring `required_hours >= 24`,
+    observing `elapsed_hours >= required_hours`, verdict PASS and no problems
+    (V&R-03: a declared 24 h rule is not proof that 24 h were observed),
   * `evidence_debt`     — the unnamed-product-file ratchet has not grown.
 
 Every gate is fail-closed: an absent artifact is an open gate, never a pass, and
@@ -334,10 +335,13 @@ PROD_CLASSES = {"production", "security"}
 INSTALL_DIR = r"C:\Program Files\AEGIS NIDS"
 SOAK_HOURS = 24.0
 # Paths whose change means the runtime a soak measured is no longer this build.
-RUNTIME_PATHS = (
-    "src", "nose", "brain", "ts_policy", "shared", "contracts", "drivers", "go",
-    "build.zig", "CMakeLists.txt", "Cargo.toml", "rust-src",
-)
+# V&R-01: never keep a second boundary here. `tools/truth.py` is the canonical
+# ADR-0008 definition; importing it prevents a future configs/Cargo.lock/WDK
+# change from moving build source without invalidating release freshness.
+TOOLS_DIR = Path(__file__).resolve().parent
+if str(TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLS_DIR))
+from truth import SOURCE_PATHS as RUNTIME_PATHS  # noqa: E402
 
 
 def parse_timestamp(value) -> dt.datetime | None:
@@ -508,10 +512,11 @@ def evaluate_clean_host(artifacts: list[dict]) -> dict:
 
 
 def evaluate_soak(artifacts: list[dict]) -> dict:
-    """A 24 h claim needs a 24 h artifact that is not older than the build."""
+    """A 24 h claim needs 24 observed hours on an artifact covering this build."""
     candidates = [
         art for art in artifacts
         if isinstance(art.get("required_hours"), (int, float))
+        and not isinstance(art.get("required_hours"), bool)
         and art["required_hours"] >= SOAK_HOURS
     ]
     if not candidates:
@@ -523,6 +528,14 @@ def evaluate_soak(artifacts: list[dict]) -> dict:
     problems = newest.get("problems") or []
 
     if str(newest.get("verdict")).upper() == "PASS" and not problems:
+        elapsed = newest.get("elapsed_hours")
+        if (not isinstance(elapsed, (int, float)) or isinstance(elapsed, bool)
+                or elapsed < newest["required_hours"]):
+            return {
+                "ok": False,
+                "detail": (f"{label}, but observed elapsed_hours is not a valid duration "
+                           "at or above the declared requirement"),
+            }
         if newest.get("stale") is True:
             return {"ok": False,
                     "detail": f"{label} but it predates the current runtime source commit; "

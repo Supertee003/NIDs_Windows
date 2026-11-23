@@ -2,8 +2,8 @@
 
 | Field | Value |
 |---|---|
-| Document status | **CURRENT** — rebased on the source tree at build source `ab0fa17` (ADR-0008) |
-| Records HEAD at last rebase | `6540fce` |
+| Document status | **CURRENT** — rebased on the source tree at build source `661fb76` (ADR-0008) |
+| Records HEAD | see `git rev-parse HEAD`; this document is records-only under ADR-0008 |
 | Canonical entrypoint | `src/main.zig` (`runtime_manifest.json:4`) |
 | Source of truth for roles | `SYSTEM_MAP.json`, `FLOW_MAP.json`, `AUTHORITY_MAP.json`, `runtime_manifest.json`, `AGENTS.md` |
 | Audit basis | [`analysis/current-head/SOURCE_AUDIT-20261123.md`](../analysis/current-head/SOURCE_AUDIT-20261123.md) (E1/E2) |
@@ -97,7 +97,7 @@ part of the one production runtime described in `AGENTS.md` and `runtime_manifes
 2. **No import-time host effects.** Product modules must be importable without binding sockets, serving, printing banners, or calling `sys.exit`.
 3. **Tests never write tracked state.** Use `tmp_path`; result stamps and `logs/*.json` are producer-owned.
 4. **No host effects.** Detection-only means no WFP mutation, no quarantine, and no `BLOCKED_CONFIRMED` claim from a `BLOCK` label.
-5. **Records vs source.** A docs-only commit moves records HEAD only; machine maps keep carrying build source `ab0fa17` until source actually changes (ADR-0008).
+5. **Records vs source.** A docs-only commit moves records HEAD only; machine maps keep carrying build source `661fb76` until source actually changes (ADR-0008).
 6. **Historical labels.** Mark superseded documents `HISTORICAL` rather than deleting evidence.
 
 ---
@@ -105,7 +105,7 @@ part of the one production runtime described in `AGENTS.md` and `runtime_manifes
 ## 4. Verify after any change
 
 ```powershell
-python tools/truth.py verify          # TRUTH_VALID; build source ab0fa17
+python tools/truth.py verify          # TRUTH_VALID; build source 661fb76
 git ls-files | Select-String -Pattern '\.(exe|dll|pdb|obj|o|so|ilk|exp|lib)$'   # empty
 python -m pytest tests/release -q     # release/index consistency gates
 ```

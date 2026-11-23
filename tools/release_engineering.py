@@ -304,7 +304,9 @@ def generate_manifest(version: str) -> Dict[str, Any]:
             {"id": "installer", "name": "tools/installer.py", "language": "python", "type": "script",
              "required": True, "ci_job": "package-release", "commit": commit, "source": "tools/installer.py"},
             {"id": "ts-policy", "name": "ts_policy", "language": "typescript", "type": "toolchain",
-             "required": True, "ci_job": "ts-policy-build", "commit": commit, "source": "ts_policy/"},
+             "required": False, "ci_job": "ts-policy-build", "commit": commit, "source": "ts_policy/",
+             "classification": "SUPPORT",
+             "note": "Advisory policy authoring only; no runtime artifact or enforcement authority."},
             {"id": "brain", "name": "brain/aegis_brain_cython/fast_scan.pyx", "language": "cython", "type": "library",
              "required": True, "ci_job": "python-tests", "commit": commit, "source": "brain/"},
             # windows_driver intentionally ABSENT from components: the .sys is
@@ -466,11 +468,12 @@ def verify_manifest() -> int:
 def refresh_digests(commit: str, adopt_missing: bool = False) -> int:
     """Re-record digests for artifacts ALREADY listed in build_manifest.json.
 
-    `--manifest` re-derives the whole artifact set from `collect_artifacts()`,
-    whose directory rules drifted away from the committed manifest: it still
-    lists the non-existent `core/` and `config/` trees, omits `src/` and
-    `configs/`, and picks up gitignored Cython build output. Regenerating today
-    therefore DESTROYS provenance instead of restoring it.
+    `--manifest` re-derives the whole artifact set from `collect_artifacts()`.
+    HISTORICAL (V&R-04): an older collector listed non-existent `core/` and
+    `config/` trees, omitted `src/` and `configs/`, and picked up gitignored
+    Cython output; that rule no longer exists. Full regeneration is still an
+    owner-approved break because it can add or drop provenance entries, so it
+    is not the default refresh path.
 
     This mode is the bounded alternative for a reviewed local change: it keeps
     the recorded artifact set exactly as-is, refreshes only digests/sizes, drops
@@ -538,6 +541,11 @@ def refresh_digests(commit: str, adopt_missing: bool = False) -> int:
         kept.sort(key=lambda a: a["path"])
     manifest["artifacts"] = kept
     manifest["source_commit"] = commit
+    # V&R-02: a component commit is a build-source stamp, not an independent
+    # last-touched value. Leaving stale per-component hashes beside a new
+    # source_commit made the manifest self-refuting and passed digest checks.
+    for component in manifest.get("components", []):
+        component["commit"] = commit
     MANIFEST_PATH.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
                              encoding="utf-8")
     print(f"Refreshed {MANIFEST_PATH}")

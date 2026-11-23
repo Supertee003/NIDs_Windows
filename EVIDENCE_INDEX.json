@@ -10510,6 +10510,45 @@
         "E5/E6 rows remain historical at f4cde3c; no current-source E5 claim.",
         "Release identity stays v1.1 / 6/6 at signed candidate 466a226 / source a53eda8."
       ]
+    },
+    {
+      "id": "P7-VERIFICATION-TRUTH-20261124-E2",
+      "head_sha": "661fb768dc1c8eeb0f79e4e437807f2eac08c9ff",
+      "timestamp": "2026-11-24",
+      "title": "Verification/release truth: single build-source boundary, observed soak hours, consistent manifests and advisory CI labels",
+      "level": "E2",
+      "component": "tools/final_audit.py, tools/release_engineering.py, ci_coverage.json, build_manifest.json, SECURITY.md, docs/STRUCTURE.md, docs/SECURITY_THREAT_MODEL.md, docs/architecture/SECURITY_BOUNDARIES.md",
+      "flow_id": "VER-001, REL-001, CI-TRUTH",
+      "description": "Phase 7 read-only verification/release audit. V&R-01 confirmed a latent STOP-THE-LINE build/runtime boundary divergence: final_audit.RUNTIME_PATHS duplicated but did not match truth.SOURCE_PATHS; both currently resolved to 661fb76, so no present false verdict, but a future configs/Cargo.lock/WDK change could move build source without invalidating release freshness. final_audit now imports the canonical tuple. V&R-03 closed a declared-only soak: evaluate_soak now requires observed elapsed_hours >= required_hours >= 24; the operator artifact remains 36.52/24.0 and no new soak was run. V&R-02 restamped build_manifest component commits to the source_commit and made refresh_digests keep them aligned. V&R-04 replaced the stale refresh docstring with a HISTORICAL note. V&R-05/V&R-06 reclassified security-scan and ts-policy as SUPPORT/non-gating, matching the workflow's exit-code 0 advisory decision and AGENTS.md TypeScript advisory-only authority; both jobs still run and report, and six release gates remain six. V&R-07 rebased four current-facing security/structure docs from superseded ab0fa17 to 661fb76. Tracker issue #46 was filed before the patch. V&R-08 (waiver exit 0 with FAIL banner) and optional soak_start/checked_at ordering remain explicitly open there with exact direction; no claim they are fixed. Frozen release snapshots, historical docs, issue #44/#45 follow-ups and release identity v1.1 / 466a226 / a53eda8 were not changed.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-P7-20261124.md",
+        "tools/final_audit.py",
+        "tools/release_engineering.py",
+        "ci_coverage.json",
+        "build_manifest.json",
+        "SECURITY.md",
+        "docs/STRUCTURE.md",
+        "docs/SECURITY_THREAT_MODEL.md",
+        "docs/architecture/SECURITY_BOUNDARIES.md",
+        "tests/release/test_vr_truth.py"
+      ],
+      "tests": [
+        "pytest tests/release/test_vr_truth.py -> pass",
+        "pytest tests/release/test_release_board.py -> pass",
+        "python tools/ci_coverage.py --json -> no failed_required",
+        "python tools/truth.py verify -> TRUTH_VALID @ 661fb76",
+        "python tools/release_engineering.py --verify -> 674/674 digests after rebaseline",
+        "python scripts/check_summary.py -> SUMMARY_VALID"
+      ],
+      "result": "PASS_E2",
+      "finding": "Gate/tool truth correction only: no wire/ABI bytes, rule, authority behavior, host-effect, release tag, signature or key change; no E4/E5/soak claim. V&R-08 and optional soak timestamp ordering remain open in issue #46; source findings in #44/#45 and P4/P5/P6 audits remain open.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P7-20261124.md",
+      "limitations": [
+        "Records-only: no source tree change, no rebuild, no new host verification.",
+        "V&R-08 waiver exit semantics and soak_start/checked_at ordering are deferred to issue #46.",
+        "E5/E6 rows remain historical at f4cde3c; no current-source E5 claim.",
+        "Release identity stays v1.1 / 6/6 at signed candidate 466a226 / source a53eda8."
+      ]
     }
   ],
   "known_gaps": [
@@ -17181,7 +17220,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 43,
-    "E2_count": 149,
+    "E2_count": 150,
     "E3_count": 15,
     "E4_count": 4,
     "E5_count": 122,

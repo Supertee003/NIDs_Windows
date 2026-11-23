@@ -59,8 +59,9 @@
             "id": "ts-policy",
             "language": "typescript",
             "job": "ts-policy-build",
-            "required": true,
-            "classification": "CANONICAL"
+            "required": false,
+            "classification": "SUPPORT",
+            "note": "Advisory policy authoring only per AGENTS.md; the job runs and is reported but produces no runtime artifact and never gates canonical health."
         },
         {
             "id": "cython-scan",
@@ -122,8 +123,9 @@
             "id": "security-scan",
             "language": "yaml",
             "job": "security-scan",
-            "required": true,
-            "classification": "CANONICAL"
+            "required": false,
+            "classification": "SUPPORT",
+            "note": "Advisory by CI-GATE-107 decision: ci.yml pins Trivy but uses exit-code 0 until a triage SLA exists. The job runs and is reported; it cannot produce a canonical FAIL."
         },
         {
             "id": "ci-matrix",
