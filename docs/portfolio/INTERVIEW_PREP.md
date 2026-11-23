@@ -16,7 +16,7 @@
 | 3 | [`src/platform/win32_pipe.zig`](../../src/platform/win32_pipe.zig) | Named-pipe endpoint, DACL, token impersonation | The control-plane security boundary in code |
 | 4 | [`src/control/protocol.zig`](../../src/control/protocol.zig) | v2 command table and envelope | Active protocol version; note declared-but-unenforced nonce |
 | 5 | [`src/control/handler_registry.zig`](../../src/control/handler_registry.zig) | Per-command dispatch and authorization | Shows role checks and forensic verify/replay semantics |
-| 6 | [`src/contract/canonical_event.zig`](../../src/contract/canonical_event.zig) | Authoritative event struct, serialization, validation | One schema across six languages |
+| 6 | [`src/contract/canonical_event.zig`](../../src/contract/canonical_event.zig) | Authoritative event struct, serialization, validation | One canonical schema with codecs in Zig, Go, C and Python plus the golden tuple map; Rust codec is TBD |
 | 7 | [`src/pipeline/event_processor.zig`](../../src/pipeline/event_processor.zig) | Detection authority; L7 extraction source gating | Sole verdict owner; sensor boundaries |
 | 8 | [`src/pipeline/rule_loader.zig`](../../src/pipeline/rule_loader.zig) | FNV-1a rule-ID hash, layer-filtered automaton | Proves kernel patterns cannot match wire bytes |
 | 9 | [`src/forensic/forensic_pipeline.zig`](../../src/forensic/forensic_pipeline.zig) | 4 KiB records, CRC32, SHA-256 chain, ring wrap | The product's tamper-evidence claim |
@@ -33,16 +33,18 @@
 
 ---
 
-## 2. Five questions you must answer precisely
+## 2. Five interview questions you must answer precisely
 
-### Q1 — "Why six languages instead of one?"
+### Q1 — "Why six language families instead of one?"
 
 Answer as a **component-boundary decision**: Zig owns the runtime and event pipeline (memory
 control, one owner); Go is I/O-bound packet acquisition; C/C++ reach native Windows APIs and WFP;
 Rust supplies a memory-safe, constrained policy/crypto authority; Python does analytics and
 tooling; TypeScript authors validated policy artifacts. The hub-and-spoke shape prevents authority
 sprawl. Then concede the trade-offs openly: more build steps, cross-language contracts, harder
-debugging, larger dependency surface. See [Technology decisions](../TECHNOLOGY_DECISIONS.md).
+debugging, larger dependency surface. "Six language families" groups C and C++ as one adapter
+family (seven toolchains in the tree); TypeScript is advisory-only and emits no runtime artifact.
+See [Technology decisions](../TECHNOLOGY_DECISIONS.md).
 
 ### Q2 — "How do you know detection works?"
 
@@ -109,7 +111,8 @@ re-execute detection. Never say it matched original verdicts.
 > analytics, and TypeScript authors policy. Everything normalizes into one 109-byte canonical event
 > with byte-exact codecs. Detection runs in one tier, findings become hash-chained forensic records,
 > and the authority boundary is explicit: no component can turn a detection into a host block. I
-> published v1.1 with a signed manifest, 674/674 verified artifacts, and a 36.5-hour zero-loss soak.
+> published v1.1 with a signed manifest, 674/674 verified artifacts, and a 36.5-hour owner-run
+> soak PASS with zero loss **during that recorded 36.52 h window**.
 > I'm candid about the gaps — only the L4 family has live positive proof, the Rust codec is still a
 > gap, and the current lab host has loss counters I'd want to investigate."
 

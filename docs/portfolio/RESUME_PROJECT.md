@@ -8,7 +8,7 @@
 ## AEGIS NIDS Windows — Windows Kernel-Assisted Network Intrusion Detection System
 **Detection-only NIDS | Zig · Go · Rust · C/C++ · Python · TypeScript | 2025–2026**
 
-- Built a Windows-native, kernel-assisted **network intrusion detection system** spanning six languages: Zig runtime spine, Go Nose packet capture, C/C++ WFP/ETW/FIM/Registry adapters, Rust detection-only policy/crypto authority, Python analytics, and TypeScript policy authoring.
+- Built a Windows-native, kernel-assisted **network intrusion detection system** spanning six language families (seven toolchains): Zig runtime spine, Go Nose packet capture, C/C++ WFP/ETW/FIM/Registry adapters (two toolchains, one family), Rust detection-only policy/crypto authority, Python analytics, and TypeScript advisory policy authoring.
 - Designed a **hub-and-spoke runtime** in which the Zig daemon is the single authority; every other language connects through C ABI/FFI, preventing language-to-language authority sprawl.
 - Implemented a **canonical event pipeline** — one wire schema with byte-exact codecs in Zig, Go, C, and Python (Rust codec still TBD) — carrying Npcap packets over a length-prefixed named pipe into flow tracking, correlation, and a **23-rule** detection catalog (L4, L7, kernel file/process, and pipe layers).
 - Enforced a **detection-only authority boundary**: `prevention_gate=closed`, `tier3_enforcing=false`, `host_effect_capable=false`; a `BLOCK` policy label is recorded as intent, never as a confirmed host effect.
@@ -25,7 +25,7 @@
 
 ## Short version (LinkedIn headline / ATS summary)
 
-> Windows kernel-assisted NIDS built on a six-language hub-and-spoke runtime (Zig/Go/Rust/C++/Python/TypeScript). Canonical event pipeline, 23 detection rules, hash-chained forensics, and a strict detection-only authority boundary. v1.1 shipped signed and soak-tested; real Windows E5 lab proof with negative controls.
+> Windows kernel-assisted NIDS built on a six-language-family hub-and-spoke runtime (Zig/Go/C/C++/Rust/Python/TypeScript; C/C++ counted as one family). Canonical event pipeline, 23 detection rules, hash-chained forensics, and a strict detection-only authority boundary. v1.1 shipped signed and soak-tested; real Windows E5 lab proof with negative controls.
 
 ---
 

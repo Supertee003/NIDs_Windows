@@ -497,7 +497,7 @@ every log, and dumps them to `logs/diag-<timestamp>.zip`.
 - `docs/runtime/RUNTIME_CONTRACT.md` — states, timeouts, error classes.
 - `docs/runtime/COMPONENT_MATRIX.md` — full component inventory.
 - `docs/runtime/LIFECYCLE.md` — state machine.
-- `docs/architecture/DEPLOYMENT.md` — production deployment guide.
+- `docs/DEPLOYMENT.md` — lab/qualification deployment and observe-only host setup; production blocking deployment is out of scope.
 - `docs/runbooks/RB-001-incident-response.md` — incident response runbook.
 - `docs/runbooks/RB-005-recovery.md` — recovery runbook.
 - `docs/runbooks/RB-010-troubleshooting.md` — extended troubleshooting.

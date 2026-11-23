@@ -10030,6 +10030,45 @@
         "Full Go suite includes an environment-dependent live Npcap capture test (TestCapturePipeDeliversCanonicalEvents); on this host it timed out at 601 s in named-pipe teardown and is not used as a codec gate. Codec correctness is gated by the targeted Go tests above.",
         "Historical Zig counts in this index are now explicitly labelled as f0baadf runs and are not current-source results."
       ]
+    },
+    {
+      "id": "MASTER-AUDIT-P1-20261124-E1",
+      "head_sha": "ab0fa171eb89cecaa826c9256ecc90eb4e2a3bfd",
+      "timestamp": "2026-11-24",
+      "title": "Phase 1 release-truth and README consistency: no release/status claim changed",
+      "level": "E1",
+      "component": "documentation / current-facing truth",
+      "flow_id": "N/A",
+      "description": "Static file-by-file reconciliation of current-facing docs against current source and the generated release board. Fixed: five-vs-six question heading; DEGRADED diagnostic detail described as a rendering of daemon health state rather than its cause; unlinked stale root ARCHITECTURE-TRUTH marked HISTORICAL; broken 'production deployment guide' path replaced; stale 5/6 and soak-FAIL bodies marked as historical snapshots; language count standardised on six language families (seven toolchains, TypeScript advisory-only); canonical-schema codec list corrected to Zig/Go/C/Python plus golden tuple map with Rust codec TBD; soak window qualifiers restored. Release identity v1.1, 6/6 board, 674/674 digests, 23 rules, detection-only authority and all wire/rule/authority maps are unchanged.",
+      "files_verified": [
+        "README.md",
+        "docs/OPERATIONAL_FAILURE_MATRIX.md",
+        "docs/ARCHITECTURE-TRUTH.md",
+        "docs/runtime/LOCAL_RUNBOOK.md",
+        "docs/gates/PRODUCTION_READINESS.md",
+        "docs/runbooks/RB-024-final-release-window.md",
+        "docs/portfolio/INTERVIEW_PREP.md",
+        "docs/portfolio/ARCHITECTURE_EN.md",
+        "docs/portfolio/RESUME_PROJECT.md",
+        "docs/portfolio/APPLY_NOW.md",
+        "tools/aegisctl/api/control_api.py",
+        "tools/final_audit.py",
+        "src/control/state_machine.zig"
+      ],
+      "tests": [
+        "python tools/truth.py verify -> TRUTH_VALID at ab0fa17",
+        "python tools/release_engineering.py --verify -> OK - 674 artifacts match their recorded digests (source_commit=ab0fa17)",
+        "python D:\\aegis-tmp\\check_links.py -> BAD LINKS: none",
+        "python -m pytest tests/release -q -> 207 passed"
+      ],
+      "result": "PASS_E1",
+      "finding": "Documentation-only records patch; no source, wire, rule, authority, release tag, signature or key change. The DEGRADED badge remains visible and truthful; no demotion cause was invented.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P1-20261124.md",
+      "limitations": [
+        "E1 static inspection only: no new build, E4/E5 run, soak, or Windows host verification was performed in this slice.",
+        "The specific demotion trigger for the 2026-11-23 dashboard snapshot was not preserved in the cited evidence and is not inferred here.",
+        "Build source remains ab0fa17 per ADR-0008; records HEAD moves without invalidating the machine maps."
+      ]
     }
   ],
   "known_gaps": [

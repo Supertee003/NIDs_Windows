@@ -17,7 +17,9 @@
 **Module:** `release_closeout`
 **Status:** OPERATOR ACTION (needs an elevated session; the soak needs 24 h of wall clock)
 
-This is the one window that turns `release: 5/6 gates` into a shippable release.
+**Historical procedure value (do not read as current):** this was the one window that turned the
+retired candidate's `release: 5/6 gates` into a shippable release. The current board is
+`docs/gates/T20_100pct_audit.md` (SHIPPABLE, 6/6 PASS, 0 open).
 Everything in it changes the host, so it is done once, in order, and nothing
 else touches the machine until the soak closes.
 
@@ -223,10 +225,10 @@ and both JSON measurements retained.
 
 ## Verification
 
-6/6 PASS is the release condition. Record the final delta path, the preflight
-path and the duplicate-measurement verdict in `EVIDENCE_INDEX.json` in the same
+6/6 PASS was the release condition for that retired candidate. Record the final delta path, the
+preflight path and the duplicate-measurement verdict in `EVIDENCE_INDEX.json` in the same
 commit that flips the board. A window that ends `IN_PROGRESS`, or whose newest
-artifact is a FAIL, is not verification — the board stays at 5/6.
+artifact is a FAIL, is not verification — that historical board stayed at 5/6.
 
 ## Rollback
 

@@ -41,7 +41,10 @@ outside the product scope.
 ## Known current host observation (2026-11-23)
 
 The lab host reported `state=DEGRADED` while all seven subsystems (`zig`, `go`, `cpp`,
-`rust_pep`, `tier3`, `control`, `forensic`) reported `RUNNING`, with the control-pipe responder
-detail `responder state DEGRADED`. This is a real, observable state and is shown unchanged in the
-portfolio dashboard screenshot. It demonstrates the matrix above: a degraded detail is reported,
-not hidden, and enforcement remains closed.
+`rust_pep`, `tier3`, `control`, `forensic`) reported `RUNNING`. The control-pipe diagnostic line
+`responder state DEGRADED` is built by `diagnose_endpoint_ownership()` from `system.health.state`
+(`tools/aegisctl/api/control_api.py:974-980`); it renders the daemon's health state rather than
+causing it. This is a real, observable state and is shown unchanged in the portfolio dashboard
+screenshot. It demonstrates the matrix above: a degraded state is reported, not hidden, and
+enforcement remains closed. The specific counter that triggered demotion in this snapshot was not
+preserved in the cited evidence; do not infer one.

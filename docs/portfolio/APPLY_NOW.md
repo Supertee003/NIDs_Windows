@@ -36,13 +36,14 @@ before you apply. The published `v1.1` release is signed, soak-tested, and detec
 ## LinkedIn headline (pick one)
 
 - `Security Engineer | Windows Kernel-Assisted NIDS | Zig · Go · Rust · C++ · Python`
-- `Detection Engineer | Built a 6-language Windows NIDS with hash-chained forensics`
+- `Detection Engineer | Built a Windows NIDS across six language families with hash-chained forensics`
 - `SOC / Detection Engineering | Windows telemetry, canonical event pipelines, detection-only architecture`
 
 ## LinkedIn "About" section
 
 > I build detection systems for Windows. My flagship project, AEGIS NIDS Windows, is a
-> kernel-assisted network intrusion detection system with a six-language hub-and-spoke runtime:
+> kernel-assisted network intrusion detection system with a six-language-family hub-and-spoke runtime
+> (C and C++ are two toolchains counted as one adapter family):
 > Zig owns the event pipeline, Go captures packets, C/C++ adapters read WFP/ETW/file/registry
 > telemetry, Rust is the detection-only policy and crypto authority, Python handles analytics, and
 > TypeScript authors policy. The design enforces a hard boundary — findings become hash-chained
@@ -64,7 +65,8 @@ before you apply. The published `v1.1` release is signed, soak-tested, and detec
 > I'm a security engineer with a released, signed, detection-only Windows kernel-assisted NIDS you
 > can inspect end-to-end: https://github.com/Supertee003/NIDs_Windows
 >
-> It's a six-language runtime (Zig/Go/Rust/C++/Python/TypeScript) with a canonical event pipeline,
+> It's a six-language-family runtime (Zig/Go/C/C++/Rust/Python/TypeScript; C/C++ counted as one
+> family) with a canonical event pipeline,
 > 23 detection rules, hash-chained forensics, and a strict detection-only authority boundary. The
 > README has a 1-minute summary and a real screenshot; there's a 2:27 demo that goes from traffic
 > to a verified forensic record. v1.1 is signed and soak-tested (36.5 h, zero loss during that

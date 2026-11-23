@@ -17,18 +17,23 @@ It records and explains findings; it never blocks, quarantines, or mutates the h
 
 ![AEGIS NIDS live operator console](docs/portfolio/images/dashboard.png)
 
-*Live, read-only operator console on the lab host. The `DEGRADED` badge is the host's current
-control-pipe responder detail; all runtime subsystems report `RUNNING` and the console is showing
-authoritative daemon data.*
+*Live, read-only operator console on the lab host. This snapshot reports `runtime=DEGRADED`;
+the `responder state DEGRADED` line is the control API echoing that daemon health state
+(`tools/aegisctl/api/control_api.py:974-980`), not an independent root cause. All runtime
+subsystems report `RUNNING` and the console shows authoritative daemon data.*
 
 | Question | Answer |
 |---|---|
 | What does it do? | Packet capture → canonical event → detect → policy evidence → forensic record → operator view |
-| Why is it interesting? | One runtime spanning six languages with a strict boundary: no layer may promote "detected" into "blocked" |
-| Stack | Zig runtime spine · Go packet acquisition · C/C++ WFP/ETW/FIM/Registry adapters · Rust detection-only PEP + crypto · Python analytics · TypeScript policy authoring |
+| Why is it interesting? | One runtime spanning six language families with a strict boundary: no layer may promote "detected" into "blocked" |
+| Stack | Zig runtime spine · Go packet acquisition · C/C++ Windows adapters (C and C++ are two toolchains in one family) · Rust detection-only PEP + crypto · Python analytics · TypeScript advisory policy authoring (no runtime artifact) |
 | Scale | 23 detection rules across L4, L7, kernel file/process, and pipe layers; 12M+ events observed on the current lab host ([measured values](docs/portfolio/OBSERVED_PERFORMANCE.md)) |
 | Proof | [`v1.1` release](https://github.com/Supertee003/NIDs_Windows/releases/tag/v1.1) — SHIPPABLE, 6/6 gates PASS (0 open), 36.52 h owner-run soak PASS, 674/674 signed artifacts; 1,471 Python tests (two-phase run at build source `a53eda8`, 0 skipped) |
 | Boundary | observe-only; prevention gate closed; `host_effect_capable=false`; no WFP enforcement in production |
+
+*Counting convention: "six language families" groups C and C++ as one adapter family. The
+repository contains seven language toolchains (Zig, Go, C, C++, Rust, Python, TypeScript);
+TypeScript is advisory-only and emits no production artifact.*
 
 **Watch the 2:27 demo:** [Traffic → Event → Detection → Dashboard → Forensic Record](docs/portfolio/DEMO.md) · [MP4](docs/portfolio/images/demo.mp4)
 
@@ -107,9 +112,13 @@ The `v1.1` release-gate operator state is:
 | Forensic verification | `true` |
 
 **Current lab-host observation (2026-11-23):** the live daemon reports `runtime=DEGRADED`
-because of a control-pipe responder detail while all subsystems report `RUNNING`; the prevention
-gate remains closed and `host_effect_capable=false`. That is the state shown, unchanged, in the
-screenshot above. See the [failure matrix](docs/OPERATIONAL_FAILURE_MATRIX.md) and
+while all subsystems report `RUNNING`. The diagnostic line `responder state DEGRADED` is produced
+by the control API from the daemon's own health state
+(`tools/aegisctl/api/control_api.py:974-980`); it reports the state rather than causing it.
+The prevention gate remains closed and `host_effect_capable=false`. That is the state shown,
+unchanged, in the screenshot above. The specific counter that triggered demotion in this
+snapshot was not preserved in the cited evidence; do not infer one, and do not read this
+badge as a release-gate result. See the [failure matrix](docs/OPERATIONAL_FAILURE_MATRIX.md) and
 [observed runtime values](docs/portfolio/OBSERVED_PERFORMANCE.md) for the exact counters and the
 distinction between a release-gate result and a current host observation.
 
@@ -313,7 +322,7 @@ event_id
 
 If any link is missing, the incident may still be useful as detection evidence, but it must not be presented as a confirmed enforcement event. This identifier chain is also the basis for replay, cleanup, and post-incident review.
 
-### The five-question model: who, what, where, how, and why
+### The six-question model: who, what, where, how, when, and why
 
 Every AEGIS event should be understandable through the same operational questions. The questions are not a replacement for the event contract; they are a practical way to read the contract and the evidence together.
 

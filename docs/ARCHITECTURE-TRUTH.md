@@ -1,5 +1,11 @@
 # Part II — Production Hardening + Security + IPS + XDR + Release (Steps 39-46)
 
+> **HISTORICAL — superseded by `docs/architecture/ARCHITECTURE-TRUTH.md` and the current
+> machine maps.** This pre-restructure Step 39–46 record is retained for provenance only. Health is
+> computed in `src/control/state_machine.zig:407-434`; `src/main.zig` registers the `health.check`
+> alias only. Any `degraded → false`, "production verification pending", or enforcement wording
+> below is historical and is not current truth.
+
 **Status:** Framework Verified (STUB); Production Verification Pending (Requires Full Chain Audit — STEP 55 + STEP 57 + STEP 60 + STEP 61 + STEP 63 + STEP 65)
 **Documented:** 2026-09-08 (after Step 27 structural fix + Step 43 structural fix + Part I framework verification)
 
@@ -59,7 +65,7 @@
 - `main.zig` `status`: `flows_active` → `metrics.flows_active` (real Gauge from `core/diagnostics.zig`)
 - `main.zig` `status`: `incidents_open` → `metrics.events_emitted` (closest approximation — events emitted; requires full correlation + incident framework verification — STEP 18 dependency)
 - `main.zig` `status`: `watchdog_alerts` → `metrics.errors` (closest approximation — errors represent alerts; requires full reliability framework verification — STEP 7 dependency)
-- `main.zig` `status`: `degraded` → `false` (runtime health; requires full reliability framework — STEP 7 dependency; production health framework requires full reliability verification — STEP 39 dependency)
+- `main.zig` `status`: `degraded` → `false` — **HISTORICAL** (pre-restructure; current health is computed in `src/control/state_machine.zig:407-434`, not hard-coded in `main.zig`; original note: runtime health requires full reliability framework — STEP 7 / STEP 39 dependency)
 - `main.zig` `metrics.snapshot`: `rules_loaded` → `metrics.signatures_matched` (closest approximation — signatures represent rules; full rules registry requires full policy compiler + signing verification — STEP 24-25 dependency)
 - `main.zig` `metrics.snapshot`: `packets_captured` → `metrics.packets_captured` (real)
 - `main.zig` `metrics.snapshot`: `flows_active` → `metrics.flows_active` (real)

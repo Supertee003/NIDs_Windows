@@ -71,7 +71,7 @@ flowchart LR
 
 **The important design rule:** Zig is the hub; every other language is a spoke. Components do
 not talk to each other in a free-for-all. They connect through the Zig runtime via C ABI or FFI.
-This is what makes a six-language codebase auditable: there is one place where authority lives.
+This is what makes the six-language-family architecture auditable: there is one place where authority lives (C and C++ are two toolchains counted as one adapter family).
 
 ---
 
@@ -164,7 +164,7 @@ This is enforced in several independent places:
 ## 7. Verification posture (current, not aspirational)
 
 - Published release `v1.1` is `SHIPPABLE (0/6 gates open)`; trust anchor unchanged; no re-key.
-- Owner-run soak: `36.52 / 24.0 h PASS`, `problems=[]`, loss/shed/drop counters all `0`.
+- Owner-run soak: `36.52 / 24.0 h PASS` with zero loss **during that specific recorded window**, `problems=[]`, loss/shed/drop counters all `0`.
 - Release artifacts: `674/674` verified; signed `SHA256SUMS` digest
   `A053C048C8B373CF93E766D9C54F54D191B33D273627075A6121516591E4996C`.
 - Windows E5 lab proof: bridged Kali → Windows attribution, R9006 SYN-burst detection with a
