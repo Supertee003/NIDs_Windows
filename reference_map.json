@@ -1,17 +1,17 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-23T21:52:47.288242+00:00",
+  "generated_at": "2026-11-23T22:01:54.869756+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 3188,
+  "total_files": 3190,
   "by_role": {
-    "documentation": 539,
+    "documentation": 540,
     "build-config": 301,
     "other": 27,
     "lockfile": 6,
     "rust-build": 4,
     "source": 1493,
     "architecture-decision": 13,
-    "test-artifact": 408,
+    "test-artifact": 409,
     "config-data": 62,
     "step-document": 2,
     "go-source": 8,
@@ -975,6 +975,10 @@
       "role": "documentation"
     },
     "analysis/current-head/MASTER-AUDIT-P4-20261124.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-P5-20261124.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -11927,6 +11931,10 @@
       "role": "test-artifact"
     },
     "tests/cython/test_cython_profile.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/docs/test_detection_truth_labels.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

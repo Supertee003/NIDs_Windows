@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-23T21:52:47.283426+00:00",
+  "generated_at": "2026-11-23T22:01:54.865080+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3188,
+  "total_files": 3190,
   "by_class": {
-    "canonical-docs": 554,
+    "canonical-docs": 555,
     "canonical-build": 312,
     "unclassified": 27,
     "canonical-source": 1791,
-    "canonical-test": 408,
+    "canonical-test": 409,
     "canonical-config": 62,
     "legacy": 34
   },
@@ -264,7 +264,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 59750
+      "size": 59813
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -993,6 +993,12 @@
       "size": 19412
     },
     {
+      "path": "analysis/current-head/MASTER-AUDIT-P5-20261124.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 12014
+    },
+    {
       "path": "analysis/current-head/NATIVE-BUILD-001-20261114.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -1224,7 +1230,7 @@
       "path": "analysis/current-head/RULE-COVERAGE-001-MATRIX.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6511
+      "size": 6834
     },
     {
       "path": "analysis/current-head/RULE-COVERAGE-001-PATCH.md",
@@ -3138,7 +3144,7 @@
       "path": "docs/ARCHITECTURE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7268
+      "size": 7736
     },
     {
       "path": "docs/ARCHITECTURE_BOUNDARY.md",
@@ -3198,7 +3204,7 @@
       "path": "docs/DETECTION_VALIDATION.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9013
+      "size": 9462
     },
     {
       "path": "docs/ENV_VARS.md",
@@ -3594,7 +3600,7 @@
       "path": "docs/portfolio/DETECTION_CATALOG.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7663
+      "size": 8534
     },
     {
       "path": "docs/portfolio/images/dashboard.png",
@@ -4296,7 +4302,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1599559
+      "size": 1602992
     },
     {
       "path": "FLOW_MAP.json",
@@ -4404,7 +4410,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 504558
+      "size": 504881
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4662,7 +4668,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9825
+      "size": 9877
     },
     {
       "path": "pytest.ini",
@@ -4680,7 +4686,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 408176
+      "size": 408431
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -17421,6 +17427,12 @@
       "size": 4315
     },
     {
+      "path": "tests/docs/test_detection_truth_labels.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 2595
+    },
+    {
       "path": "tests/docs/test_stale_doc_sweep.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -18708,7 +18720,7 @@
       "path": "tools/golden_path_evidence.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 12412
+      "size": 13148
     },
     {
       "path": "tools/host_preflight.py",
