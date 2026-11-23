@@ -858,8 +858,8 @@
     },
     {
       "path": "nose/canonical.go",
-      "size": 25901,
-      "sha256": "6e3edca7da1dc868be58839636bf318b9ef39de18f3c505d8b503ca62fa16b17",
+      "size": 26298,
+      "sha256": "c5a6948be517f999c8d1c24838fe765b0dc894a6d2fc10b40c2d490a08b64b18",
       "language": "go"
     },
     {
@@ -960,8 +960,8 @@
     },
     {
       "path": "nose/payload_v3_test.go",
-      "size": 10583,
-      "sha256": "aaa4f59959df28a19074bb4bfb9199eeb064d11b9c4734450b21c46b9a272f88",
+      "size": 11114,
+      "sha256": "4ee80209e81c4109c97262c23db762683666294a568dc3f1923af6ef2d6db62f",
       "language": "go"
     },
     {
@@ -1033,7 +1033,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "cf84de6bbfdecb22f180eca1d0b8ed848c1d68b1780e1d8eb0b92cc13e12f872",
+      "sha256": "524cf849d772f75ff0e5dc6f2a3f66f781f149f3d97bf6bf3461e11771d4043b",
       "language": "json"
     },
     {
@@ -1980,8 +1980,8 @@
     },
     {
       "path": "src/contract/canonical_event.zig",
-      "size": 71692,
-      "sha256": "9764ca6c1acf210010ddc681e242a2c7cb3ad9a5ce254c9e60e9f3c68d6dd74a",
+      "size": 72209,
+      "sha256": "666a85b0db2ac8d1c57e4672a5b33a9d387f4e022ab9f5f5ea07bf903002507d",
       "language": "zig"
     },
     {
