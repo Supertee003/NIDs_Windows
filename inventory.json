@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-23T21:11:30.848847+00:00",
+  "generated_at": "2026-11-23T21:27:31.960224+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3185,
+  "total_files": 3186,
   "by_class": {
-    "canonical-docs": 552,
+    "canonical-docs": 553,
     "canonical-build": 312,
     "unclassified": 27,
     "canonical-source": 1791,
@@ -264,7 +264,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 59766
+      "size": 59750
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -979,6 +979,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 8996
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-P3-20261124.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 14470
     },
     {
       "path": "analysis/current-head/NATIVE-BUILD-001-20261114.md",
@@ -3210,7 +3216,7 @@
       "path": "docs/gates/PRODUCTION_READINESS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10349
+      "size": 10876
     },
     {
       "path": "docs/gates/RELEASE_TRUST_ANCHOR.md",
@@ -3234,7 +3240,7 @@
       "path": "docs/gates/T20_100pct_audit.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 1658
+      "size": 2210
     },
     {
       "path": "docs/gates/T20_final_regression.json",
@@ -4284,7 +4290,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1574177
+      "size": 1595891
     },
     {
       "path": "FLOW_MAP.json",
@@ -4392,7 +4398,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 504068
+      "size": 504394
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4668,7 +4674,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 407789
+      "size": 408047
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -14508,7 +14514,7 @@
       "path": "scripts/check_summary.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 5631
+      "size": 7811
     },
     {
       "path": "scripts/check_vec.py",
@@ -17574,7 +17580,7 @@
       "path": "tests/release/test_evidence_index_valid.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 2409
+      "size": 4022
     },
     {
       "path": "tests/release/test_fim_write_intent.py",
@@ -17616,7 +17622,7 @@
       "path": "tests/release/test_known_gap_status.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 3006
+      "size": 3585
     },
     {
       "path": "tests/release/test_manifest_selection_rule.py",
@@ -17646,7 +17652,7 @@
       "path": "tests/release/test_release_board.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 15249
+      "size": 15908
     },
     {
       "path": "tests/release/test_release_candidate_packaging.py",
@@ -18666,7 +18672,7 @@
       "path": "tools/final_audit.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 46959
+      "size": 48133
     },
     {
       "path": "tools/final_regression.py",
