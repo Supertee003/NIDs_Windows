@@ -38,7 +38,7 @@ deliberately out of scope?" No implementation claim here implies a production ho
 |---|---|---|---|
 | Zig runtime / event pipeline | Yes | Build, unit/integration tests, Windows E5 lab | Yes — runtime owner |
 | Go Nose packet ingress | Yes | Build + Windows E5 capture preflight | Yes — acquisition only |
-| C/C++ WFP / ETW / FIM / Registry adapters | Yes | Observe-only E5 lab proof for WFP; synthetic fixtures for other families | Yes — telemetry evidence |
+| C/C++ WFP / ETW / FIM / Registry adapters | Yes | Observe-only E5 lab proofs for WFP and host-file/FIM telemetry; ETW/Registry coverage is per host profile; other families have synthetic fixtures only | Yes — telemetry evidence |
 | Detection rules (23) | Yes | 23/23 catalog + fixture-level pins; live positive proof on L4/R9006 with negative control; R2003 has an open command-line limitation | Yes — detection only |
 | Correlation / forensics / evidence receipts | Yes | Hash-chain verification on the current host | Yes — evidence only |
 | Release v1.1 | Yes | Signed manifest, 674/674 artifacts, 36.52 h soak PASS | Published, immutable |
@@ -371,7 +371,7 @@ Production release decisions use evidence, not the presence of source files. The
 |---|---:|---:|---:|---:|
 | WFP kernel telemetry | Yes | Yes | Passed on isolated lab path | Not accepted |
 | Go Nose canonical ingress | Yes | Yes | Passed through the control/forensic path | Not applicable |
-| FIM real notifications | Yes | Yes | Proof and normalization in progress | Not applicable |
+| FIM real notifications | Yes | Yes | E5 host-file proof recorded at older source `87e780e`, not re-run at `a53eda8`; a native-watcher silent-overflow gap was found and is compensated by the minifilter lane | Not applicable |
 | ETW and Registry adapters | Yes | Worker paths present | Coverage must be verified per host profile | Not applicable |
 | Rule-22 synthetic qualification | Yes | Yes | Passed for the qualification fixtures | Not applicable |
 | EnforcementReceipt v1 validation | Retained boundary | Guarded | Structural tests passed | Not a production acceptance gate |
