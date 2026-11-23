@@ -1070,6 +1070,10 @@ def _daemon_data_integrity(daemon_health: Dict[str, Any]) -> Dict[str, int]:
         "nose_frames_rejected",
         "nose_frames_dropped",
         "nose_pipe_errors",
+        # OBSERVABILITY-001 (issue #44): defensive pipeline counter, currently
+        # 0 because processEvent is infallible. Older daemons omit it; the
+        # projection stays without the field rather than fabricating a zero.
+        "pipeline_processing_errors",
         "minifilter_ring_dropped",
         "minifilter_pipeline_dropped",
         # LOSS-BUDGET-001: additive; older daemons omit it and the projection

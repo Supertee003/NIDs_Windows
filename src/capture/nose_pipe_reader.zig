@@ -338,6 +338,9 @@ pub fn runPipeReaderLoop(stopSignal: *std.atomic.Value(bool)) void {
                 if (stopSignal.load(.acquire)) break;
                 std.log.err("[NOSE PIPE] ConnectNamedPipe error: {d}", .{err});
                 g_reader_stats.pipe_errors += 1;
+                // OBSERVABILITY-001 (issue #44): local stats are invisible to
+                // health; the authoritative counter must move too.
+                _ = runtime_state.g_nose_pipe_errors.fetchAdd(1, .monotonic);
                 std.time.sleep(100 * std.time.ns_per_ms);
                 continue;
             }
@@ -414,6 +417,11 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
         if (!readExact(server, payload_slice, stopSignal)) {
             std.log.warn("[NOSE PIPE] frame payload read failed: GetLastError={d}", .{GetLastError()});
             g_reader_stats.pipe_errors += 1;
+            // OBSERVABILITY-001 (issue #44): the length header committed us to
+            // a frame, so an aborted payload is both an I/O error and a lost
+            // frame. Same dual accounting as the resync branch above.
+            _ = runtime_state.g_nose_pipe_errors.fetchAdd(1, .monotonic);
+            _ = runtime_state.g_nose_frames_dropped.fetchAdd(1, .monotonic);
             break;
         }
 

@@ -414,6 +414,7 @@ pub const RuntimeState = struct {
         const nose_rejected = runtime_state.g_nose_frames_rejected.load(.acquire);
         const nose_dropped = runtime_state.g_nose_frames_dropped.load(.acquire);
         const nose_pipe_errors = runtime_state.g_nose_pipe_errors.load(.acquire);
+        const pipeline_processing_errors = runtime_state.g_pipeline_processing_errors.load(.acquire);
         const minifilter_ring_dropped = runtime_state.g_minifilter_dropped.load(.acquire);
         const minifilter_pipeline_dropped = runtime_state.g_minifilter_pipeline_dropped.load(.acquire);
         // OBSERVABILITY-001: the soak tool reads this health payload, but
@@ -428,6 +429,7 @@ pub const RuntimeState = struct {
         const loss_budget = runtime_state.g_loss_budget.load(.acquire);
         const data_loss_observed = queue_drops > loss_budget or nose_rejected > loss_budget or
             nose_dropped > loss_budget or nose_pipe_errors > loss_budget or
+            pipeline_processing_errors > loss_budget or
             minifilter_ring_dropped > loss_budget or minifilter_pipeline_dropped > loss_budget;
         const operationally_ready = workers.pipeline and !core_pipeline_failed and bridge_ready and !data_loss_observed;
         const operational_state = if (operationally_ready) "RUNNING" else "DEGRADED";
@@ -459,11 +461,12 @@ pub const RuntimeState = struct {
         // between soak baseline and delta makes the delta meaningless. It is a
         // PROCESS generation token (not an OS reboot id) — older readers ignore
         // both keys.
-        try writer.print("\"data_integrity\":{{\"queue_dropped_total\":{},\"nose_frames_rejected\":{},\"nose_frames_dropped\":{},\"nose_pipe_errors\":{},\"minifilter_ring_dropped\":{},\"minifilter_pipeline_dropped\":{},\"loss_budget\":{},\"shed_overload\":{},\"process_generation_ms\":{}}},", .{
+        try writer.print("\"data_integrity\":{{\"queue_dropped_total\":{},\"nose_frames_rejected\":{},\"nose_frames_dropped\":{},\"nose_pipe_errors\":{},\"pipeline_processing_errors\":{},\"minifilter_ring_dropped\":{},\"minifilter_pipeline_dropped\":{},\"loss_budget\":{},\"shed_overload\":{},\"process_generation_ms\":{}}},", .{
             queue_drops,
             nose_rejected,
             nose_dropped,
             nose_pipe_errors,
+            pipeline_processing_errors,
             minifilter_ring_dropped,
             minifilter_pipeline_dropped,
             loss_budget,
@@ -659,6 +662,44 @@ test "healthJson reports DEGRADED when ingress loss counters are nonzero" {
     try std.testing.expect(std.mem.indexOf(u8, out, "\"state\":\"DEGRADED\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"degraded\":true") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"queue_dropped_total\":1") != null);
+}
+
+test "healthJson exposes pipeline processing errors and degrades on them (issue #44)" {
+    const saved = .{
+        runtime_state.g_queue_drops.load(.acquire),
+        runtime_state.g_nose_frames_rejected.load(.acquire),
+        runtime_state.g_nose_frames_dropped.load(.acquire),
+        runtime_state.g_nose_pipe_errors.load(.acquire),
+        runtime_state.g_pipeline_processing_errors.load(.acquire),
+        runtime_state.g_minifilter_dropped.load(.acquire),
+        runtime_state.g_minifilter_pipeline_dropped.load(.acquire),
+        runtime_state.g_loss_budget.load(.acquire),
+    };
+    defer {
+        runtime_state.g_queue_drops.store(saved[0], .monotonic);
+        runtime_state.g_nose_frames_rejected.store(saved[1], .monotonic);
+        runtime_state.g_nose_frames_dropped.store(saved[2], .monotonic);
+        runtime_state.g_nose_pipe_errors.store(saved[3], .monotonic);
+        runtime_state.g_pipeline_processing_errors.store(saved[4], .monotonic);
+        runtime_state.g_minifilter_dropped.store(saved[5], .monotonic);
+        runtime_state.g_minifilter_pipeline_dropped.store(saved[6], .monotonic);
+        runtime_state.g_loss_budget.store(saved[7], .monotonic);
+    }
+    runtime_state.g_queue_drops.store(0, .monotonic);
+    runtime_state.g_nose_frames_rejected.store(0, .monotonic);
+    runtime_state.g_nose_frames_dropped.store(0, .monotonic);
+    runtime_state.g_nose_pipe_errors.store(0, .monotonic);
+    runtime_state.g_pipeline_processing_errors.store(1, .monotonic);
+    runtime_state.g_minifilter_dropped.store(0, .monotonic);
+    runtime_state.g_minifilter_pipeline_dropped.store(0, .monotonic);
+    runtime_state.g_loss_budget.store(0, .monotonic);
+    var rs = RuntimeState{};
+    const workers = WorkerReadiness{ .pipeline = true, .sensor = true, .nose = true, .etw = true, .fim = true, .registry = true, .failed = false, .failure_reason = "", .failure_mask = 0 };
+    const out = try rs.healthJson(std.testing.allocator, 1234, true, true, true, true, workers);
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"pipeline_processing_errors\":1") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"state\":\"DEGRADED\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"degraded\":true") != null);
 }
 
 test "healthJson accepts loss at or below the owner-approved budget" {

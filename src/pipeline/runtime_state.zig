@@ -444,16 +444,25 @@ pub var g_fim_minifilter_batch_duplicates_per_pid = std.atomic.Value(u64).init(0
 /// means duplication exists below the driver callback, which coalescing
 /// would hide rather than fix.
 pub var g_fim_minifilter_batch_duplicates_same_ts = std.atomic.Value(u64).init(0);
+/// OBSERVABILITY-001 (issue #44): events popped from the queue whose
+/// `processEvent` call returned an error. Defensive only — `processEvent` is
+/// infallible today, so this stays at 0 until an error path is introduced.
+/// Instrumented now so that catch can never become a silent loss later.
+pub var g_pipeline_processing_errors = std.atomic.Value(u64).init(0);
 // Canonical Go Nose -> Zig reader counters. These are deliberately separate
 // from process liveness: RUNNING does not imply that the data plane is active.
 pub var g_nose_connected = std.atomic.Value(bool).init(false);
 pub var g_nose_frames_read = std.atomic.Value(u64).init(0);
 pub var g_nose_frames_rejected = std.atomic.Value(u64).init(0);
 pub var g_nose_frames_submitted = std.atomic.Value(u64).init(0);
+/// Nose frames that reach the reader but are never admitted as events:
+/// framing rejects (absurd/invalid length), aborted payload reads, and
+/// post-decode queue/shape/direction refusals. NOT queue backpressure alone;
+/// the cause is not split here (issue #44 follow-up).
 pub var g_nose_frames_dropped = std.atomic.Value(u64).init(0);
 /// VISIBILITY-001: Nose frames drained (not submitted) because the operator
 /// selected kernel-primary ingress. A visible shadow count, never a silent
-/// loss: distinct from `g_nose_frames_dropped` (queue backpressure).
+/// loss: distinct from `g_nose_frames_dropped` (the admission/loss counter).
 pub var g_nose_shadow_frames = std.atomic.Value(u64).init(0);
 pub var g_nose_pipe_errors = std.atomic.Value(u64).init(0);
 pub var g_nose_last_event_id = std.atomic.Value(u64).init(0);

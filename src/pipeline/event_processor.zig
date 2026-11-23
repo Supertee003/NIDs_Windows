@@ -1256,6 +1256,10 @@ pub fn pipelineLoop(
             // Performance tracking
             const start = clock.nowNs();
             processEvent(&qe, ac, ad, ft, corr, tt, ps, pep_enf, forensic_ring, rules_loaded, hist.Stage.capture_to_decode) catch |err| {
+                // OBSERVABILITY-001 (issue #44): the event is already popped.
+                // Keep the failure visible. `processEvent` is infallible today,
+                // so this counter is defensive and stays at 0 until that changes.
+                _ = state.g_pipeline_processing_errors.fetchAdd(1, .monotonic);
                 diag.warn("pipeline processing error: {}", .{err});
             };
             state.g_perf_mutex.lock();
