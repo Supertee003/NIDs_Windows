@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-23T16:30:50.662341+00:00",
+  "generated_at": "2026-11-23T20:14:41.351578+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 3180,
+  "total_files": 3182,
   "by_role": {
-    "documentation": 533,
+    "documentation": 535,
     "build-config": 301,
     "other": 27,
     "lockfile": 6,
@@ -951,6 +951,14 @@
       "role": "documentation"
     },
     "analysis/current-head/LOSS-BUDGET-001-20261113.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-P1-20261124.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-P2-20261124.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -13047,5 +13055,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "ab0fa17"
+  "source_commit": "9105ff5"
 }

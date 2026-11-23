@@ -1,5 +1,5 @@
 {
-  "head_sha": "ab0fa171eb89cecaa826c9256ecc90eb4e2a3bfd",
+  "head_sha": "9105ff56d3aa223fd7e0ff9c2e6e71b1d93771be",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-23",
   "generator_version": "3.0",
@@ -10069,6 +10069,42 @@
         "The specific demotion trigger for the 2026-11-23 dashboard snapshot was not preserved in the cited evidence and is not inferred here.",
         "Build source remains ab0fa17 per ADR-0008; records HEAD moves without invalidating the machine maps."
       ]
+    },
+    {
+      "id": "MASTER-AUDIT-P2-20261124-E2",
+      "head_sha": "9105ff56d3aa223fd7e0ff9c2e6e71b1d93771be",
+      "timestamp": "2026-11-24",
+      "title": "Issue #44 minimal observability: pipe loss becomes visible in daemon health and control API",
+      "level": "E2",
+      "component": "Zig capture/pipeline/control state, Python control API",
+      "flow_id": "NET-INGRESS, CANONICAL-DECODE, PIPELINE-PROCESS, HEALTH-STATE",
+      "description": "A STOP-THE-LINE silent-loss triage was filed as issue #44 before any patch. Source inspection corrected one overclaim in that issue: processEvent is infallible today (no try/return error in its 252-723 body), so its catch is defensive-only. The confirmed gaps were ConnectNamedPipe errors and aborted frame payloads updating only local g_reader_stats, leaving daemon health and DEGRADED unaware. Both now increment authoritative g_nose_pipe_errors; an aborted payload also increments g_nose_frames_dropped (matching the resync precedent). A defensive g_pipeline_processing_errors counter was added at the infallible catch and annotated as currently 0. The new counter is exposed as additive data_integrity.pipeline_processing_errors in health and in the control API projection, and participates in data_loss_observed under the unchanged loss_budget. The g_nose_frames_dropped comment now lists its real causes instead of calling it queue backpressure. Phase 1 evidence_level_summary.E1_count drift (41 recorded vs 42 actual) was recomputed from the evidence section. No wire layout, golden vector, rule, authority, host-effect, release tag or signature change.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-P2-20261124.md",
+        "src/capture/nose_pipe_reader.zig",
+        "src/control/state_machine.zig",
+        "src/pipeline/event_processor.zig",
+        "src/pipeline/runtime_state.zig",
+        "tools/aegisctl/api/control_api.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "zig build -> success",
+        "zig build test --summary all (fresh cache dirs) -> 3367/3377 passed, 10 skipped (baseline 3366/3376, +1 new test)",
+        "go test -run targeted codec set in nose/ -> ok aegis-nose",
+        "python scripts/check_summary.py -> E1_count 42, E2_count 143, evidence entries 332",
+        "python -m pytest tests/runtime/test_health.py tests/security/test_soak_verdict.py tests/release -q -> pass after records rebase; preflight/drift gates require a clean tree"
+      ],
+      "result": "PASS_E2",
+      "finding": "Observability is proven at E2 (health JSON field plus DEGRADED assertion). The two Win32 increment sites are source-inspected only (E1): no injected-frame test and no host verification in this slice. The defensive processing counter is expected to remain 0. No 'zero loss ever' claim; the recorded 36.52 h soak window is the only zero-loss statement.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P2-20261124.md",
+      "limitations": [
+        "E2/E1 mix only: no E4/E5, no soak, no Windows host verification, no signed-candidate change.",
+        "No counter-delta test feeds a corrupt frame through the live pipe; rejected-frame tests remain codec-level (E2/E3).",
+        "g_nose_frames_dropped still conflates framing reject, capacity shed and shape refusal; cause-splitting is an open follow-up on issue #44.",
+        "nose/pipe_writer.go capture-side drops remain local + stderr, a separate process boundary; no counter is projected across the pipe.",
+        "Protocol doc/map findings A1-A9 and helper findings B1-B6 were audited read-only and deliberately deferred to later slices."
+      ]
     }
   ],
   "known_gaps": [
@@ -16737,8 +16773,8 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 41,
-    "E2_count": 143,
+    "E1_count": 42,
+    "E2_count": 144,
     "E3_count": 15,
     "E4_count": 4,
     "E5_count": 122,

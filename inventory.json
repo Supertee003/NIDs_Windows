@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-23T16:30:50.657731+00:00",
+  "generated_at": "2026-11-23T20:14:41.346540+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3180,
+  "total_files": 3182,
   "by_class": {
-    "canonical-docs": 548,
+    "canonical-docs": 550,
     "canonical-build": 312,
     "unclassified": 27,
     "canonical-source": 1791,
@@ -258,13 +258,13 @@
       "path": "AGENTS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9154
+      "size": 9149
     },
     {
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 58776
+      "size": 59766
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -432,7 +432,7 @@
       "path": "analysis/current-head/AUDIT-CLOSE-20261123.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5691
+      "size": 6119
     },
     {
       "path": "analysis/current-head/BOOT-MODEL-002-20261114.md",
@@ -955,6 +955,18 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4085
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-P1-20261124.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 10348
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-P2-20261124.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 12102
     },
     {
       "path": "analysis/current-head/NATIVE-BUILD-001-20261114.md",
@@ -1980,7 +1992,7 @@
       "path": "AUTHORITY_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 18281
+      "size": 18760
     },
     {
       "path": "brain/__init__.py",
@@ -2340,13 +2352,13 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 136088
+      "size": 140332
     },
     {
       "path": "build_truth.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 4342
+      "size": 4462
     },
     {
       "path": "Cargo.lock",
@@ -2550,7 +2562,7 @@
       "path": "CONTRACT_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 12236
+      "size": 12512
     },
     {
       "path": "contracts/fixtures/abi/event_boundaries.json",
@@ -2880,7 +2892,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 70353
+      "size": 71973
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3096,7 +3108,7 @@
       "path": "docs/ARCHITECTURE-TRUTH.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 13132
+      "size": 13641
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -3186,7 +3198,7 @@
       "path": "docs/gates/PRODUCTION_READINESS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10031
+      "size": 10349
     },
     {
       "path": "docs/gates/RELEASE_TRUST_ANCHOR.md",
@@ -3486,7 +3498,7 @@
       "path": "docs/OPERATIONAL_FAILURE_MATRIX.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4047
+      "size": 4339
     },
     {
       "path": "docs/OPERATOR_COMMAND_MAP.md",
@@ -3540,13 +3552,13 @@
       "path": "docs/portfolio/APPLY_NOW.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6749
+      "size": 6877
     },
     {
       "path": "docs/portfolio/ARCHITECTURE_EN.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10755
+      "size": 10885
     },
     {
       "path": "docs/portfolio/DEMO.md",
@@ -3582,7 +3594,7 @@
       "path": "docs/portfolio/INTERVIEW_PREP.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9041
+      "size": 9346
     },
     {
       "path": "docs/portfolio/OBSERVED_PERFORMANCE.md",
@@ -3594,7 +3606,7 @@
       "path": "docs/portfolio/RESUME_PROJECT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5201
+      "size": 5304
     },
     {
       "path": "docs/PROJECT_ANALYSIS_2026-09-14.md",
@@ -3744,7 +3756,7 @@
       "path": "docs/runbooks/RB-024-final-release-window.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 11944
+      "size": 12153
     },
     {
       "path": "docs/runbooks/README.md",
@@ -3774,7 +3786,7 @@
       "path": "docs/runtime/LOCAL_RUNBOOK.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 14995
+      "size": 15059
     },
     {
       "path": "docs/runtime/NATIVE_GATES_IMPLEMENTATION.md",
@@ -4260,13 +4272,13 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1541183
+      "size": 1567279
     },
     {
       "path": "FLOW_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 32667
+      "size": 33440
     },
     {
       "path": "go/aggregator/alert.go",
@@ -4368,7 +4380,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 463792
+      "size": 503575
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4626,7 +4638,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 10046
+      "size": 10173
     },
     {
       "path": "pytest.ini",
@@ -4638,13 +4650,13 @@
       "path": "README.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 42082
+      "size": 42866
     },
     {
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 375948
+      "size": 407401
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -14274,7 +14286,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23219
+      "size": 23767
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -15084,7 +15096,7 @@
       "path": "SECURITY.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2220
+      "size": 2245
     },
     {
       "path": "shared/__init__.py",
@@ -15276,7 +15288,7 @@
       "path": "src/capture/nose_pipe_reader.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 25863
+      "size": 26468
     },
     {
       "path": "src/capture/npcap_adapter.zig",
@@ -15432,7 +15444,7 @@
       "path": "src/control/state_machine.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 37292
+      "size": 39836
     },
     {
       "path": "src/control.zig",
@@ -15906,7 +15918,7 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 66408
+      "size": 66731
     },
     {
       "path": "src/pipeline/event_queue.zig",
@@ -15942,7 +15954,7 @@
       "path": "src/pipeline/runtime_state.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 35035
+      "size": 35689
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",
@@ -17046,7 +17058,7 @@
       "path": "SYSTEM_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 24008
+      "size": 24686
     },
     {
       "path": "tests/__init__.py",
@@ -18516,7 +18528,7 @@
       "path": "tools/aegisctl/api/control_api.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 68005
+      "size": 68274
     },
     {
       "path": "tools/aegisctl/client.py",
@@ -19095,5 +19107,5 @@
       "size": 624
     }
   ],
-  "source_commit": "ab0fa17"
+  "source_commit": "9105ff5"
 }
