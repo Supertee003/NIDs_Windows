@@ -1,5 +1,10 @@
 # AEGIS Kernel-Level NIDS/IPS — Deep Development Handoff
 
+> **HISTORICAL (P6-DOC-TRUTH).** This 2026-09-27 handoff describes a superseded
+> NIDS/IPS design. Current truth is `AUTHORITY_MAP.json` and `AI_CONTEXT.md`:
+> detection-only, no host-effect authority. IPS/enforcement language below is
+> historical, not a current capability claim.
+
 **Document date:** 2026-09-27  
 **Repository HEAD observed in the latest audit:** `7623d1cf08f9e7dc0768d1043f458cb7fa100c35`  
 **Target runtime:** Windows 11 Host with VMware isolated lab  

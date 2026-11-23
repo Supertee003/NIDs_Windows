@@ -1,6 +1,6 @@
 # Runtime Spine
 
-**Status**: AUTHORITATIVE
+**Status**: HISTORICAL in part (P6-DOC-TRUTH); current runtime truth is `SYSTEM_MAP.json` / `FLOW_MAP.json` / `AUTHORITY_MAP.json`
 **Source**: `docs/architecture/ARCHITECTURE_CANONICAL.md` Section 2
 
 ---
@@ -204,7 +204,7 @@ ONE EVENT
   -> ONE STATE AUTHORITY
   -> ONE EVIDENCE MODEL
   -> ONE DECISION AUTHORITY
-  -> ONE ENFORCEMENT AUTHORITY
+  -> ONE DETECTION POLICY AUTHORITY / NO HOST EFFECT
   -> ONE FORENSIC TRACE
   -> ONE REPLAY PATH
 ```

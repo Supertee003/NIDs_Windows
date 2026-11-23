@@ -1,7 +1,14 @@
 # AEGIS NIDs Windows -- Authority Map
 
-**Status:** Locked by ADR-0001  
+**Status:** Accepted — HISTORICAL in part (P6-DOC-TRUTH)  
 **Date:** 2026-09-02  
+
+> **Current-state note (2026-11-24).** This is a phase-era authority snapshot.
+> Current truth is `AUTHORITY_MAP.json`: `rust-src/lib.rs` is a detection-only
+> policy/evidence authority, `is_final_enforcement: false`, and there is no
+> host-effect authority. The enforcement/execute/WFP vocabulary below is
+> HISTORICAL; no line here authors a host action. See RETIRE-HOST-EFFECT-001.
+
 **T1 recon (2026-09-07):** Re-confirmed under the 64-step plan. Decisions:
 canonical runtime = `core/` (build switch to core deferred to T2/T3); enforcement
 authority stays `shield/src/lib.rs` (Rust PEP); `rust-src/lib.rs` (aegis_pep) is
@@ -34,7 +41,7 @@ owner's authority without explicit delegation via ADR.
 |---|---|---|---|
 | Policy decision | core/policy_engine.zig | Zig | Final decision; consumes evidence + advice |
 | Policy signing | (P0.2: needs real crypto) | Zig/Rust | Must be SHA-256 + Ed25519 |
-| Enforcement | shield/src/lib.rs | Rust | Final enforcement; validates + executes |
+| Detection policy (historical Enforcement) | rust-src/lib.rs | Rust | Detection-only evaluation + evidence; no host effect |
 | Forensics | core/forensics_engine.zig | Zig | Immutable trace of all decisions |
 | Audit | core/forensic_log.zig | Zig | Append-only NDJSON log |
 
@@ -84,10 +91,10 @@ Event (Nose/WFP/HIDS)
 [Policy Decision] - owner: policy_engine.zig
     |
     v
-[Rust PEP] -------- owner: shield/src/lib.rs (validates + enforces)
+[Rust PEP] -------- owner: rust-src/lib.rs (detection-only evidence)
     |
     v
-[Windows Enforcement] (WFP IOCTL, netsh, etc.)
+[Evidence Receipt] -- ESCALATE reason 8 / filter_id 0; no host effect
     |
     v
 [Forensics] ------- owner: forensics_engine.zig (immutable trace)

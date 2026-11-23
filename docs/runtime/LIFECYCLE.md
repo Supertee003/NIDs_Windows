@@ -1,9 +1,12 @@
 # AEGIS NIDS — Component Lifecycle
 
-> Visual and normative reference for the lifecycle state machine every
-> AEGIS component implements. This document is the **state-machine
-> authority**; `RUNTIME_CONTRACT.md` defines the timeouts and message
-> formats, this document defines the legal transitions and edge cases.
+> Visual reference for the lifecycle state machine every AEGIS component
+> implements. The current state-machine authority is
+> `src/control/state_machine.zig` plus `FLOW_MAP.json`; `RUNTIME_CONTRACT.md`
+> defines timeouts and message formats. This document defines the historical
+> legal transitions and edge cases. Its topology diagram is a 2026-09-01
+> snapshot; the current operator dashboard is the read-only Python view on
+> `127.0.0.1:5000` (`python -m tools.aegisctl.web_dashboard.app`).
 
 Document version: 1.0
 Last updated: 2026-09-01
@@ -279,7 +282,7 @@ Below is the system-level view that ties together all components defined in
    │          ├──► mouth (Rust) ──► DEFCON TUI                    │
    │          ├──► metrics ──► :9100                               │
    │          ├──► notifier ──► email/webhook                     │
-   │          └──► dashboard (Rust) ──► :8080                     │
+   │          └──► dashboard (Python, read-only) ──► 127.0.0.1:5000 │
    └─────────────────────────────────────────────────────────────┘
 ```
 

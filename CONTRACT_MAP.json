@@ -2,6 +2,7 @@
   "head_sha": "661fb768dc1c8eeb0f79e4e437807f2eac08c9ff",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
+  "historical_source_note": "P6-DOC-TRUTH: shared/abi/pep_abi.md is a source-path ABI snapshot whose enforcement / FINAL security authority narrative predates RETIRE-HOST-EFFECT-001. ABI bytes are unchanged; current authority is AUTHORITY_MAP.json (detection-only, is_final_enforcement=false, no host-effect authority). In-file banner tracked in issue #45.",
   "architecture": "Hub-and-Spoke with Plane Separation",
   "contracts": [
     {
@@ -26,7 +27,7 @@
       "cross_language": true,
       "frozen": true,
       "transport_notes": {
-        "Go Nose -> Zig runtime": "Length-prefixed binary CanonicalEvent frames over the Windows named pipe \\\\.\\pipe\\aegis_nose; non-Windows development uses a loopback TCP fallback. This is not a C ABI call.",
+        "Go Nose -> Zig runtime": "Length-prefixed binary CanonicalEvent frames over the Windows named pipe \\\\.\\pipe\\aegis_nose only; no TCP fallback is implemented (nose/pipe_writer.go dials via os.OpenFile only). Loopback capture is a labelled self-test, not a production or fallback adapter. This is not a C ABI call.",
         "C/C++ native adapters": "Use the separately declared C ABI adapter contracts."
       },
       "fields": {

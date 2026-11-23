@@ -19,8 +19,8 @@ txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o=
 | Approved by | owner (Supertee003), 2026-11-18 |
 | Private key custody | local only, `.keys/aegis-release.ed25519` (git-ignored, never committed) |
 | First release signed with this key | `release/T20-final/ad7948c` |
-| Historical candidates (superseded) | `7d91e30` (superseded), `bece8f1` (rejected: unsigned drivers) - do NOT verify these as current |
-| Current candidate signed with this key | `release/T20-final/b597e71` |
+| Historical candidates (superseded) | `7d91e30` (superseded), `bece8f1` (rejected: unsigned drivers), `b597e71` (superseded by `466a226`) - do NOT verify these as current |
+| Current candidate signed with this key | `release/T20-final/466a226` |
 
 This is not new key material. The key already signed `ad7948c`, so approving it
 preserves continuity: the previous candidate and the current one verify under
@@ -31,7 +31,7 @@ security gain and broken that continuity.
 
 ```powershell
 $env:AEGIS_RELEASE_TRUSTED_PUBLIC_KEY = 'txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o='
-python tools\sign_release.py --verify --dir release\T20-final\b597e71
+python tools\sign_release.py --verify --dir release\T20-final\466a226
 python tools\final_audit.py --release-check
 ```
 

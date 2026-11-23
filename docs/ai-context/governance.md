@@ -40,8 +40,9 @@ the standard engineering rules in `docs/ARCHITECTURE.md` and
 
 1. Never weaken a fail-closed cell in `core/fault_matrix.zig` without a
    human decision recorded in an ADR (`docs/adr/`).
-2. Never add a path that writes to `blocked_ips.json` directly; all
-   enforcement goes through the Rust PEP (P0.4 decision, G53).
+2. Never add a host-effect path or a direct writer to `blocked_ips.json`.
+   `BLOCK` / `QUARANTINE` are recorded as intent: ESCALATE reason 8,
+   `filter_id=0`, `host_effect_confirmed=false` (RETIRE-HOST-EFFECT-001).
 3. Never replace real crypto with placeholders. SHA-256 is the floor
    (P0.2); Ed25519 signing is a Phase J upgrade, not a downgrade target.
 4. Never leave a deployed file with non-ASCII content. The deploy

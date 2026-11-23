@@ -6,12 +6,12 @@
 | C | Stable ABI, wire types, fixed-width primitives, native headers | Business logic |
 | C++ | Native adapters, Windows interop, legacy bridge, transport adapter | Becoming thinner |
 | Go | Nose, collectors, event ingestion, I/O concurrency, aggregation | Policy authority |
-| Rust | Security boundary, policy verification, PEP, enforcement, privileged state, rollback | Policy decisions, detection |
+| Rust | Crypto/trust (Ed25519, TLS), detection-only PEP evaluation, authorization evidence, federation TLS | Policy decisions, detection logic, host effects |
 | Python | Brain orchestration, RAG, analytics, experiments, model lifecycle | Direct enforcement |
 | Cython | Feature extraction, hot loops, numeric preprocessing, Brain perf | Policy decisions |
 
 ## Rule
-Each language has exactly ONE authority domain. No language can bypass Rust PEP for enforcement.
+Each language has exactly ONE authority domain. No language can create a host-effect authority; Rust PEP is detection-only and no host action is authorized.
 
 ## Build Systems
 - CMake: C/C++ native

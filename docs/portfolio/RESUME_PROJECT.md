@@ -59,6 +59,6 @@ Use only bullets you can personally explain in an interview. Keep 4–6 bullets 
 - Enforced a single runtime owner with authenticated control-plane access; operator interfaces cannot create runtime authority.
 - Fixed the fail-closed boundary so a policy `BLOCK` label is evidence of intent, never a confirmed host effect.
 - Established machine-readable truth maps and release gates regenerated and verified against the build source commit.
-- Shipped a signed release with verified artifacts, a 36.52 h soak PASS, and zero-loss counters.
+- Shipped a signed release with verified artifacts and a 36.52 h soak PASS; zero loss/shed counters were measured only in that recorded window, and later lab snapshots show nonzero ring/alert-write counters.
 
 **Technologies:** security architecture, IPC boundaries, Rust PEP, Ed25519 signing, fail-closed design.

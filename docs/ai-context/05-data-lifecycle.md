@@ -3,7 +3,7 @@
 ## Event Flow
 
 ```
-Source -> Nose -> CanonicalEvent -> Validation -> EventFabric -> Flow -> Detection -> Evidence -> Verdict -> Correlation -> Intelligence -> Policy -> EnforcementPlan -> Rust PEP -> Action -> Forensics -> Replay
+Source -> Nose -> CanonicalEvent -> Validation -> EventFabric -> Flow -> Detection -> Evidence -> Verdict -> Correlation -> Intelligence -> Policy -> Detection-only PEP Evidence -> Evidence Receipt -> Forensics -> Replay (no host action)
 ```
 
 ## State Transitions (Event Fabric)

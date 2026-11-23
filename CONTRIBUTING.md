@@ -45,10 +45,12 @@ patch transactions, evidence levels).
 
 ## What not to send
 
-- Enforcement or driver changes without executed proof on an isolated
-  host (blocking/quarantine/WFP mutation are lab-only by policy).
-- Changes that touch the WFP path outside `rust-src/` (the Rust PEP is
-  the sole enforcement authority).
+- Driver or WFP observation-path changes without executed proof on an
+  isolated host. Blocking, quarantine and WFP mutation are lab-only and
+  out of scope for production.
+- Changes that reintroduce a host-effect authority or a second
+  detection-policy authority. Rust PEP is detection-only and produces
+  evidence; it does not execute a host action.
 - Secrets, keys, certificates, `.env` files, or trust material — see
   `SECURITY.md`. Policy and installer signing keys live off-repo.
 

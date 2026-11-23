@@ -1,7 +1,14 @@
 # ADR-0001: Architecture Lock
 
-**Status:** Accepted  
+**Status:** Accepted — HISTORICAL in part (P6-DOC-TRUTH)  
 **Date:** 2026-09-02  
+
+> **Current-state note (2026-11-24).** The `core/*` ownership table and the
+> `core/dispatcher.zig` orchestrator claim below are phase-era aliases. No `core/`
+> directory exists; the production root is `src/main.zig` (`build.zig:28-30`).
+> Current authority is `AUTHORITY_MAP.json`: Rust PEP is a detection-only
+> policy/evidence authority and there is no host-effect authority. The pipeline
+> order below is HISTORICAL; the current pipeline is in `FLOW_MAP.json`.
 
 ## Context
 

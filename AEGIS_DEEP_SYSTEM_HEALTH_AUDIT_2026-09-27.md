@@ -1,5 +1,9 @@
 # AEGIS Deep System Health Audit
 
+> **HISTORICAL (P6-DOC-TRUTH).** This 2026-09 audit is superseded by
+> `AI_CONTEXT.md` and `AUTHORITY_MAP.json`: detection-only, no host-effect
+> authority. Enforcement language below is historical, not current capability.
+
 **Date:** 2026-09-27  
 **Scope:** Current repository at HEAD `7623d1cf08f9e7dc0768d1043f458cb7fa100c35`  
 **Audit mode:** Read-only source, contract, static, truth, and Python verification

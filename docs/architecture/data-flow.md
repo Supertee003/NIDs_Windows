@@ -1,5 +1,10 @@
 # AEGIS NIDS — Data Flow (Rewrite v3.0)
 
+> **HISTORICAL (P6-DOC-TRUTH).** This is a rewrite-target snapshot, not current
+> truth. Current flow is `FLOW_MAP.json`. The WFP block / host-action language
+> below predates `RETIRE-HOST-EFFECT-001`; the product is detection-only with no
+> host-effect authority.
+
 ## Golden Path (Rewrite Target)
 
 ```

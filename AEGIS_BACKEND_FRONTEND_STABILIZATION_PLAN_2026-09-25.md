@@ -1,5 +1,10 @@
 # AEGIS Backend Stabilization and Frontend Delivery Plan
 
+> **HISTORICAL (P6-DOC-TRUTH).** This 2026-09 plan is superseded by
+> `AI_CONTEXT.md` and `AUTHORITY_MAP.json`: detection-only, no host-effect
+> authority. Enforcement/WFP-mutation language below is historical, not
+> current capability.
+
 ## Objective
 
 The immediate objective is to complete and stabilize the existing Kernel-assisted NIDS with WFP enforcement capability before expanding kernel-mode detection. Backend behavior must become the single source of truth for runtime state, metrics, authorization, enforcement receipts, forensic linkage, and recovery. The frontend must remain a thin operator surface that reads authoritative backend state and never becomes a second policy or enforcement authority.

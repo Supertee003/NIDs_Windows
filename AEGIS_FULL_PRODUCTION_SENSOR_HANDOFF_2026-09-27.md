@@ -1,5 +1,10 @@
 # AEGIS Full Production and Victim Sensor Handoff
 
+> **HISTORICAL (P6-DOC-TRUTH).** This 2026-09 handoff is superseded by
+> `AI_CONTEXT.md` and `AUTHORITY_MAP.json`: detection-only, no host-effect
+> authority. Enforcement/WFP-mutation language below is historical, not
+> current capability.
+
 **Project:** AEGIS Windows-native NIDS with Rust PEP/WFP enforcement capability  
 **Date:** 2026-09-27  
 **Status:** Advanced pre-production; runtime readiness exists, but live network ingress and real host-effect proof are not complete  

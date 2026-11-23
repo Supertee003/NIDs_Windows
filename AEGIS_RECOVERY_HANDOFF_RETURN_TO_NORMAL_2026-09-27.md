@@ -1,5 +1,9 @@
 # AEGIS Recovery Handoff — Return the System to Normal
 
+> **HISTORICAL (P6-DOC-TRUTH).** This 2026-09 handoff is superseded by
+> `AI_CONTEXT.md` and `AUTHORITY_MAP.json`: detection-only, no host-effect
+> authority. Enforcement language below is historical, not current capability.
+
 **Project:** AEGIS Windows-native NIDS/IPS  
 **Date:** 2026-09-27  
 **Audience:** Project owner, next Manus agent, Windows administrator, validation engineer  

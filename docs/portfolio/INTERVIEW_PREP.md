@@ -48,8 +48,8 @@ See [Technology decisions](../TECHNOLOGY_DECISIONS.md).
 
 ### Q2 — "How do you know detection works?"
 
-Separate the evidence levels: 23/23 catalog and evaluable coverage, but host-positive proof only
-for the L4 family. R9006 has E5 + E6 proof with a ≥20-port burst, a 118,632-row zero-false-positive
+Separate the evidence levels: 23/23 catalog and code-path coverage, 22/23 host-evaluable
+coverage (R2003/FN-1), and host-positive proof only for the L4 family. R9006 has E5 + E6 proof with a ≥20-port burst, a 118,632-row zero-false-positive
 control, and a 10-port negative control that produced zero hits; the recorded demo reproduced that
 with a bounded 40-SYN burst. Synthetic fixtures prove the other families' logic, not sensor
 fidelity. R2003 has an accepted host limitation. See [Detection catalog](DETECTION_CATALOG.md) and
@@ -93,13 +93,13 @@ re-execute detection. Never say it matched original verdicts.
 | R2003 detects real host command lines here | ProcessStart v0–v4 have no `CommandLine`; real source not implemented |
 | Zig detection uses `regex_pattern` | Zig uses `match_pattern`; Python Brain owns `regex_pattern` |
 | `rules.validate` compiles regexes | It checks required fields only |
-| Authoritative MITRE ATT&CK mapping exists | No technique IDs in the rule catalog; ATS keyword only |
+| Authoritative MITRE ATT&CK mapping exists | No reviewed mapping in the rule catalog; T1055 IDs appear only as comments in the NOT-WIRED injection detector |
 | Replay re-executed the detection pipeline | Integrity-only observe replay; `events_replayed=0`, `pass=false` |
 | Zero loss on the current lab host | Live snapshot shows `minifilter_ring_dropped` and `alert_file.failed` nonzero |
 | Rust canonical event codec exists | `rust-src/canonical_event.rs` is TBD |
 | Python codec is wired to production | It is analytics-only, not wired to `brain/windows_brain.py` |
 | Privacy/redaction is documented in `shared/event/**` | No such contract was found |
-| All 23 rules are live-proven | Catalog/evaluable 23/23; host-positive proof is L4-only |
+| All 23 rules are live-proven | Catalog/code-path 23/23; host-evaluable 22/23; host-positive proof is L4-only |
 
 ---
 
@@ -118,5 +118,5 @@ re-execute detection. Never say it matched original verdicts.
 
 ---
 
-*See also: [Architecture (English)](ARCHITECTURE_EN.md) · [Apply now](APPLY_NOW.md) ·
+*See also: [Architecture (English)](ARCHITECTURE_EN.md) · [Technical evidence quick reference](APPLY_NOW.md) ·
 [Detection catalog](DETECTION_CATALOG.md)*

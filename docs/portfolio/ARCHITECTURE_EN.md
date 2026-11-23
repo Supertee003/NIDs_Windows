@@ -1,6 +1,6 @@
 # AEGIS NIDS Windows — Architecture (English)
 
-> Plain-language architecture explanation for recruiters, interviewers, and engineers.
+> Plain-language architecture explanation for engineers, operators, and reviewers.
 > Facts are taken from the repository's current machine-readable maps (`SYSTEM_MAP.json`,
 > `FLOW_MAP.json`, `AUTHORITY_MAP.json`, `CONTRACT_MAP.json`, `runtime_manifest.json`).
 > Historical IPS/enforcement documents in the repo are explicitly **not** current truth.

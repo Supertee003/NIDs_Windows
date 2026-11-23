@@ -1,6 +1,10 @@
 
 ## 2026-09-26 host-gate update
 
+> **HISTORICAL (P6-DOC-TRUTH).** This 2026-09 status record is superseded by
+> `AI_CONTEXT.md` and `AUTHORITY_MAP.json`: detection-only, no host-effect
+> authority. Enforcement language below is historical, not current capability.
+
 The final Administrator lifecycle proof passed: the runtime stopped and restarted, Rust Shield returned `READY`, forensic generation verified with `integrity=ok`, and the prevention gate was consistent with provider/host-effect capability. The final WFP read-only preflight also passed: Administrator=true, AegisWfp installed/running, PEP/provider/host-effect all true, and `enforcement_attempted=false`.
 
 The preflight required two correctness fixes: it now accepts a serving authoritative health JSON even when the CLI process exit code is non-zero, and it treats a prevention gate as valid when provider readiness and host-effect capability are both true.

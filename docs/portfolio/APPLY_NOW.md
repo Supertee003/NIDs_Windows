@@ -1,131 +1,72 @@
-# Apply now — ready-to-use job application kit
+# Technical evidence quick reference
 
-Everything below is copy/paste ready. Use it today; the project does not need to be "more complete"
-before you apply. The published `v1.1` release is signed, soak-tested, and detection-only.
+This path is retained as a stable link target for existing documentation. It contains only
+technical claims and current-source boundaries. Current machine-readable truth is in
+`SYSTEM_MAP.json`, `FLOW_MAP.json`, `AUTHORITY_MAP.json`, `CONTRACT_MAP.json`,
+`runtime_manifest.json`, `build_manifest.json` and `EVIDENCE_INDEX.json`.
 
 ## Links
 
-| Asset | URL |
+| Asset | Location |
 |---|---|
 | Repository | https://github.com/Supertee003/NIDs_Windows |
 | v1.1 release (gates, signature, soak evidence) | https://github.com/Supertee003/NIDs_Windows/releases/tag/v1.1 |
 | 1-minute README (with real screenshot) | https://github.com/Supertee003/NIDs_Windows#aegis-in-60-seconds |
 | 2:27 live demo (traffic → event → detection → dashboard → forensic record) | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/portfolio/images/demo.mp4 |
 | Architecture explained in English | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/portfolio/ARCHITECTURE_EN.md |
-| Resume project section | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/portfolio/RESUME_PROJECT.md |
+| Project summary | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/portfolio/RESUME_PROJECT.md |
 | Demo script / chapter guide | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/portfolio/DEMO.md |
 | Scope and status table (IDS vs IPS, one answer) | https://github.com/Supertee003/NIDs_Windows#scope-and-status-in-one-table |
 | Detection rule catalog | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/portfolio/DETECTION_CATALOG.md |
 | Security threat model | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/SECURITY_THREAT_MODEL.md |
-| Source-level interview preparation | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/portfolio/INTERVIEW_PREP.md |
+| Source-level technical Q&A | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/portfolio/INTERVIEW_PREP.md |
 
 ---
 
-## 30-second pitch (Use this everywhere)
+## One-paragraph technical summary
 
-> I built AEGIS NIDS Windows, a Windows-native, kernel-assisted network intrusion detection
-> system. It turns real packet and host telemetry into one canonical event, runs 23 detection
-> rules, and writes hash-chained forensic evidence with an evidence receipt. The engineering
-> challenge was authority: the runtime spans Zig, Go, Rust, C/C++, Python and TypeScript, but only
-> one component owns the pipeline, and no layer can promote "detected" into "blocked." v1.1 is a
-> released, signed detection-only build with a 36.5-hour owner-run soak PASS and a real Windows host
-> detection proof with a negative control.
-
----
-
-## LinkedIn headline (pick one)
-
-- `Security Engineer | Windows Kernel-Assisted NIDS | Zig · Go · Rust · C++ · Python`
-- `Detection Engineer | Built a Windows NIDS across six language families with hash-chained forensics`
-- `SOC / Detection Engineering | Windows telemetry, canonical event pipelines, detection-only architecture`
-
-## LinkedIn "About" section
-
-> I build detection systems for Windows. My flagship project, AEGIS NIDS Windows, is a
-> kernel-assisted network intrusion detection system with a six-language-family hub-and-spoke runtime
-> (C and C++ are two toolchains counted as one adapter family):
-> Zig owns the event pipeline, Go captures packets, C/C++ adapters read WFP/ETW/file/registry
-> telemetry, Rust is the detection-only policy and crypto authority, Python handles analytics, and
-> TypeScript authors policy. The design enforces a hard boundary — findings become hash-chained
-> forensic evidence, never a host block.
->
-> What I care about: canonical contracts across languages, verifiable evidence over claims, and
-> fail-closed behavior. Published v1.1 is signed, 674/674 artifacts verified, and soak-tested for
-> 36.52 hours; loss counters were zero during that recorded window, not on every later host
-> snapshot. Detect, record, prove — don't pretend.
+AEGIS NIDS Windows is a Windows-native, kernel-assisted network intrusion detection system.
+It turns real packet and host telemetry into one canonical event, runs 23 detection rules, and
+writes hash-chained forensic evidence with an evidence receipt. The engineering challenge is
+authority: the runtime spans Zig, Go, Rust, C/C++, Python and TypeScript (six language families,
+seven toolchains; C/C++ is one adapter family; TypeScript is advisory-only), but one Zig runtime
+owns the pipeline and no layer can promote "detected" into "blocked." Published `v1.1` is an
+Ed25519-signed, detection-only build from signed candidate `466a226` / build source `a53eda8`,
+with a genuine 36.52 h owner-run soak PASS and a bounded Windows host detection proof that has a
+negative control. Current build source is `661fb76`; no current-source E5/soak result is claimed.
 
 ---
 
-## Recruiter cold email / DM template
+## Technical Q&A
 
-**Subject:** Windows NIDS with real detection evidence — quick portfolio
+1. **"Isn't this just an IDS with rules?"** — The hard part is not the regex; it is the authority
+   model. One canonical event schema has byte-exact codecs in Zig, Go, C and Python plus a golden
+   tuple map; Rust has no production codec (TBD). One Zig runtime owns the pipeline, and the Rust
+   PEP is a detection-only policy/evidence authority. Steps that might mutate a host exist only in
+   a separately compiled lab gate; production cannot open the prevention gate.
 
-> Hi [Name],
->
-> I'm a security engineer with a released, signed, detection-only Windows kernel-assisted NIDS you
-> can inspect end-to-end: https://github.com/Supertee003/NIDs_Windows
->
-> It's a six-language-family runtime (Zig/Go/C/C++/Rust/Python/TypeScript; C/C++ counted as one
-> family) with a canonical event pipeline,
-> 23 detection rules, hash-chained forensics, and a strict detection-only authority boundary. The
-> README has a 1-minute summary and a real screenshot; there's a 2:27 demo that goes from traffic
-> to a verified forensic record. v1.1 is signed and soak-tested (36.5 h, zero loss during that
-> recorded window).
->
-> Would you be open to a 15-minute call? I can walk through the architecture and the evidence.
->
-> Thanks,
-> [Your name]
+2. **"How do you know detection works?"** — Real Windows E5 lab proof was recorded at historical
+   build sources: a bounded SYN burst was attributed by exact 5-tuple to R9006 with a 10-port
+   negative control that produced zero hits; a bridged-Kali window attributed multiple rules with
+   no drop/shed/quota deltas. All 23 rules have synthetic fixtures, but code-path 23/23 and
+   host-evaluable 22/23 are different claims; R2003 is blocked by FN-1. Live proof is strongest on
+   L4. See `DETECTION_CATALOG.md` and `docs/DETECTION_VALIDATION.md` for provenance.
 
----
-
-## Target roles and keywords
-
-**Roles:** Detection Engineer · Security Engineer (Windows) · SOC Engineer · Threat Detection
-Engineer · Endpoint/Host Telemetry Engineer · Network Security Engineer · Security Platform
-Engineer · Detection & Response Engineer.
-
-**ATS keywords:** Windows internals, WFP, ETW, Npcap, packet capture, intrusion detection, NIDS,
-canonical event schema, SOC, detection engineering, rule authoring, Rust, Zig,
-Go, C++, Python, TypeScript, Ed25519 signing, hash chains, forensic integrity, fail-closed,
-observability, SSE dashboard, pytest.
+3. **"Did it actually block anything?"** — No. That is by design. A `BLOCK` label is intent;
+   only a receipt with a verified host postcondition could claim a block, and this build cannot
+   produce one. Block/quarantine decisions are reported as ESCALATE reason 8 with `filter_id=0`
+   and `host_effect_confirmed=false`.
 
 ---
 
-## Three interview answers to have ready
-
-1. **"Isn't this just an IDS with rules?"** — The hard part isn't the regex; it's the authority
-   model. One canonical event schema with byte-exact codecs (Zig/Go/C/Python), one runtime owner, and a Rust policy evaluator
-   that can only produce evidence. Steps that might mutate a host exist only in a separately
-   compiled lab gate; production cannot open the prevention gate.
-
-2. **"How do you know detection works?"** — Real Windows E5 lab proof: a bounded SYN burst was
-   attributed by exact 5-tuple to R9006 with a 10-port negative control that produced zero hits;
-   a bridged-Kali window attributed 15 rows across multiple rules with zero drop/shed/quota deltas.
-   Everything else is stated honestly: all 23 rules have synthetic fixtures, live proof is strongest
-   on L4.
-
-3. **"Did it actually block anything?"** — No. That is by design. A `BLOCK` label is intent; only a
-   receipt with a verified host postcondition could claim a block, and this build cannot produce
-   one. That boundary is the product.
-
----
-
-## Application tracker (copy into a spreadsheet)
-
-| Company | Role | Link | Date applied | Referral? | Follow-up date | Status | Notes |
-|---|---|---|---|---|---|---|---|
-|  |  |  |  |  |  |  |  |
-
-**Cadence:** apply in batches of 10–15 per week. Follow up 5–7 business days after applying.
-Use the 30-second pitch in the first message; lead with the repo, not the feature list.
-
----
-
-## Non-negotiable claims guardrail
+## Claims guardrail
 
 Never say: IPS, blocks traffic in production, EV/HLK signed driver, Microsoft attestation,
-Signed-IR promotion, production fleet deployment, all 23 detections live-proven, or a fake soak.
-Say: **Windows kernel-assisted NIDS, detection-only, real evidence, fail-closed.**
+Signed-IR promotion, production fleet deployment, all 23 detections live-proven, replay
+re-executes detection, "zero loss ever," fake E5/soak PASS, re-key, invented MITRE mapping,
+benchmark ceiling, or production-ready.
 
-See [Architecture](ARCHITECTURE_EN.md) and [Resume section](RESUME_PROJECT.md) for the full facts.
+Say: **Windows kernel-assisted NIDS, detection-only, real evidence, fail-closed, honest
+DEGRADED state.**
+
+See [Architecture](ARCHITECTURE_EN.md) and [Project summary](RESUME_PROJECT.md) for the full facts.

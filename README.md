@@ -59,7 +59,8 @@ deliberately out of scope?" No implementation claim here implies a production ho
 | Claim | Status | Boundary |
 |---|---|---|
 | Rule catalog | 23/23 rules have `match_pattern`, `regex_pattern`, a fixture vector, and a shared rule-ID hash | rule-ID census pinned by `tests/security/test_detection_contract_pin.py`; lab attack scripts are opt-in and skipped on a fresh clone |
-| Evaluable in the runtime | 23/23 | Zig evaluates `match_pattern`; Python `regex_pattern` is advisory Tier-2 analytics |
+| Code-path evaluable | 23/23 | Zig evaluates `match_pattern`; Python `regex_pattern` is advisory Tier-2 analytics |
+| Host-evaluable | 22/23 | R2003 is blocked by FN-1: ProcessStart v0–v4 carry no `CommandLine` and no producer exists |
 | Synthetic proof | 23/23 at fixture level | E1/E2 pins only — not a claim of detection efficacy on live traffic |
 | Live host-positive proof | L4 family only; strongest on R9006 with a 40-port positive and 10-port negative control | one lab host/interface; loopback is a self-test binding |
 | Known gap | R2003 (PowerShell cradle) is FN-1 | process telemetry has no `CommandLine` field in v0–v4; a real command-line source is not implemented |
@@ -733,10 +734,10 @@ can separate "implemented", "tested at fixture level", and "proven on a live hos
 
 ## Documentation map
 
-**For recruiters and job applications**
+**Technical overview**
 
 - [AEGIS in 60 seconds / live console screenshot](#aegis-in-60-seconds)
-- [Ready-to-use job application kit](docs/portfolio/APPLY_NOW.md)
+- [Technical evidence quick reference](docs/portfolio/APPLY_NOW.md)
 - [2:27 demo: traffic → event → detection → dashboard → forensic record](docs/portfolio/DEMO.md)
 - [Architecture explained in English](docs/portfolio/ARCHITECTURE_EN.md)
 - [Resume project section](docs/portfolio/RESUME_PROJECT.md)

@@ -2,6 +2,11 @@
 
 ## Addendum: Runtime diagnosis and health convergence — 2026-09-27
 
+> **HISTORICAL (P6-DOC-TRUTH).** This 2026-09 handoff records a superseded
+> architecture. Current truth is `AUTHORITY_MAP.json` and `AI_CONTEXT.md`:
+> detection-only, no host-effect authority. Enforcement language below is
+> historical, not a current capability claim.
+
 ### ตรวจพบจาก runtime รุ่นเก่า
 
 หลักฐานก่อน rebuild พบว่า process เก่าค้างอยู่และ log เก่ามีอาการ:

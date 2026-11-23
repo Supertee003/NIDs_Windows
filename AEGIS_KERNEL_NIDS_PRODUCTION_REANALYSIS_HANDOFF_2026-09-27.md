@@ -1,5 +1,10 @@
 # AEGIS — Kernel NIDS/IPS Production Reanalysis Handoff
 
+> **HISTORICAL (P6-DOC-TRUTH).** This 2026-09 handoff is superseded by
+> `AI_CONTEXT.md` and `AUTHORITY_MAP.json`: detection-only, no host-effect
+> authority. Enforcement/WFP-mutation language below is historical, not
+> current capability.
+
 **Date:** 2026-09-27  
 **Project:** AEGIS Windows-native Network Intrusion Detection and Prevention System  
 **Target:** Windows Host as NIDS/IPS, Kali VM as attacker, Windows 11 VM as victim  

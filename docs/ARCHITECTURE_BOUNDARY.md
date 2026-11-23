@@ -2,8 +2,13 @@
 
 ## Overview
 
-This document defines the **frozen architecture boundaries** for AEGIS NIDS.
-Each subsystem has a clear responsibility and MUST NOT cross these boundaries.
+This document defines the **historical Phase 23 architecture boundaries** for
+AEGIS NIDS. Each subsystem has a clear responsibility and MUST NOT cross these
+boundaries.
+
+> **HISTORICAL (P6-DOC-TRUTH).** The Layer 6 enforcement/WFP-block language below
+> predates `RETIRE-HOST-EFFECT-001`. Current truth is `AUTHORITY_MAP.json`:
+> detection-only, no host-effect authority. Do not read this as current capability.
 
 ## Architecture Layers
 

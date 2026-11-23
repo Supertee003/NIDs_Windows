@@ -2,6 +2,11 @@
 
 **HEAD:** `2c7cb30` · **Date:** 2026-09-11 · **Mode:** corrected audit
 
+> **HISTORICAL (P6-DOC-TRUTH).** This is a 2026-09-11 phase snapshot. Current
+> truth is `AUTHORITY_MAP.json`: Rust PEP is detection-only, there is no host-effect
+> authority, and the production root is `src/main.zig`. Enforcement/WFP-mutation
+> lines below are retained as history, not current capability.
+
 ---
 
 ## Overview
@@ -129,7 +134,7 @@ AEGIS NIDS Windows is a **multi-process system** with 6 distinct components:
 
 ### 5. Rust PEP (aegis_pep.dll)
 - **Language:** Rust
-- **Role:** Privileged action authorization (Policy Enforcement Point)
+- **Role:** Detection-only policy evaluation and authorization evidence (no host action)
 - **Build:** `cargo build --release`
 - **Artifact:** `target/release/aegis_pep.dll`
 - **CI Job:** `rust-pep-build`
@@ -147,9 +152,9 @@ AEGIS NIDS Windows is a **multi-process system** with 6 distinct components:
 
 ## Data Flow
 
-### Primary Data Path (Acquisition → Detection → Enforcement)
+### Primary Data Path (Acquisition → Detection → Evidence; historical label retained)
 ```
-Npcap → Go Nose → Named Pipe → Zig Core → Event Fabric → Flow → Detection → Policy → Rust PEP → WFP → Block/Allow
+Npcap → Go Nose → Named Pipe → Zig Core → Event Fabric → Flow → Detection → Policy → Detection-only PEP Evidence → Forensics
 ```
 
 ### Alert Aggregation Path (Optional Sidecar)
@@ -172,7 +177,7 @@ Zig Core → Rust Shield (aegis_shield_screen, advisory verdict) → Escalate/Cl
 | Go Nose | Packet acquisition, canonical event production | Policy, enforcement, detection |
 | Go Aggregator | Alert dedup, correlation, REST API | Runtime, enforcement, detection |
 | Rust Shield | Advisory Tier-3 payload screening (aegis_shield_screen) | Final enforcement decisions |
-| Rust PEP | Privileged action authorization, crypto | Payload screening, runtime |
+| Rust PEP | Detection-only policy evaluation, authorization evidence, crypto | Payload screening, runtime, host effects |
 | C++ Bridge | Windows native adapters (ETW, FIM, WFP) | Policy, enforcement, detection |
 
 ---

@@ -10470,6 +10470,46 @@
         "DET-01, DET-04 and P4 source findings remain open and are not claimed as fixed.",
         "Golden-path bundle remains a declaration, not end-to-end verification."
       ]
+    },
+    {
+      "id": "P6-DOC-TRUTH-20261124-E2",
+      "head_sha": "661fb768dc1c8eeb0f79e4e437807f2eac08c9ff",
+      "timestamp": "2026-11-24",
+      "title": "Documentation truth: detection-only authority parity, active candidate, coverage split and outreach removal",
+      "level": "E2",
+      "component": "AI_CONTEXT.md, CONTRIBUTING.md, docs/ai-context/*, docs/architecture/*, CONTRACT_MAP.json, RELEASE_TRUST_ANCHOR.md, README.md, portfolio docs, ADR-0001, LIFECYCLE.md",
+      "flow_id": "REL-001, DOC-TRUTH",
+      "description": "Phase 6 read-only documentation audit. The STOP-THE-LINE contradictory-source condition was confirmed: current docs still described Rust PEP as final/sole enforcement authority with WFP block execution while AUTHORITY_MAP.json, CONTRACT_MAP.json and runtime_manifest.json define detection-only policy/evidence authority with no host effect. All records-path occurrences were corrected or explicitly scoped HISTORICAL; the one source-path file (shared/abi/pep_abi.md) was labelled historical from AI_CONTEXT.md and CONTRACT_MAP.json and deferred to issue #45 because shared/ is a build-source path. AI_CONTEXT v2.0.0 'current' language was replaced with historical provenance and v1.1/466a226/a53eda8/current 661fb76. RELEASE_TRUST_ANCHOR now names active candidate 466a226 (same key, no re-key). CONTRACT_MAP's unimplemented loopback TCP fallback was removed. README and interview doc now use the P5 code-path 23/23 / host-evaluable 22/23 split; the zero-loss caveat was restored in RESUME_PROJECT. ADR-0001 and LIFECYCLE were scoped to current truth (src/main.zig, state_machine.zig + FLOW_MAP, read-only Python dashboard 127.0.0.1:5000). The standing exclusion was applied by rewriting APPLY_NOW.md in place as a technical evidence quick reference and neutralizing outreach/application links and labels in README, INTERVIEW_PREP, ARCHITECTURE_EN and DEMO. Frozen release snapshots, docs/historical, T20 golden-path evidence and historical EVIDENCE_INDEX quotes were not rewritten.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-P6-20261124.md",
+        "AI_CONTEXT.md",
+        "CONTRIBUTING.md",
+        "CONTRACT_MAP.json",
+        "docs/gates/RELEASE_TRUST_ANCHOR.md",
+        "README.md",
+        "docs/portfolio/APPLY_NOW.md",
+        "docs/portfolio/INTERVIEW_PREP.md",
+        "docs/portfolio/RESUME_PROJECT.md",
+        "docs/portfolio/DETECTION_CATALOG.md",
+        "docs/adr/0001-architecture-lock.md",
+        "docs/runtime/LIFECYCLE.md",
+        "tests/docs/test_doc_truth_labels.py"
+      ],
+      "tests": [
+        "pytest tests/docs/test_doc_truth_labels.py -> pass",
+        "python tools/truth.py verify -> TRUTH_VALID @ 661fb76",
+        "python tools/release_engineering.py --verify -> 674/674 digests",
+        "python scripts/check_summary.py -> SUMMARY_VALID"
+      ],
+      "result": "PASS_E2",
+      "finding": "Honesty correction only: no wire/ABI bytes, rule, authority behavior, host-effect, release tag, signature or key change; no E4/E5/soak claim. The shared/abi source-path banner and the P4/P5 source/design findings remain open in issue #45 with exact file:line, replacement direction and acceptance criteria; they are explicitly NOT fixed by this records-only slice.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P6-20261124.md",
+      "limitations": [
+        "Records-only: no source tree change, no rebuild, no new host verification.",
+        "shared/abi/pep_abi.md retains historical enforcement words; labelled historical from current maps and deferred to issue #45.",
+        "E5/E6 rows remain historical at f4cde3c; no current-source E5 claim.",
+        "Release identity stays v1.1 / 6/6 at signed candidate 466a226 / source a53eda8."
+      ]
     }
   ],
   "known_gaps": [
@@ -17141,7 +17181,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 43,
-    "E2_count": 148,
+    "E2_count": 149,
     "E3_count": 15,
     "E4_count": 4,
     "E5_count": 122,

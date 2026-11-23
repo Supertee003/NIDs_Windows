@@ -112,8 +112,8 @@ provider supplies one, but no positive host proof exists here. Do not manufactur
 and `docs/DETECTION_VALIDATION.md` contain no technique IDs. The IDs that do exist are comments in
 the NOT-WIRED injection detector (`src/detection/injection_detector.zig`, T1055 and sub-techniques)
 and a test-only scenario library named in `docs/ARCHITECTURE.md`; neither is a mapping deliverable.
-`APPLY_NOW.md` mentions ATT&CK only as an ATS keyword. Do not present a technique mapping as a
-project deliverable until one is written against the real detection logic and reviewed.
+Do not present a technique mapping as a project deliverable until one is written against the real
+detection logic and reviewed.
 
 ## 5. The one demo that has a full evidence chain
 

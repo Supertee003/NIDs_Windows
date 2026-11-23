@@ -15,15 +15,20 @@ Single runtime path. No competing paths allowed.
 8. Correlation (CORRELATE) - Zig - entity graph (9 types)
 9. Intelligence (INTELLIGENCE) - Zig + Python - TI + RAG
 10. Policy (DECIDE) - Zig - decides, NOT executes
-11. Rust PEP (ENFORCE) - Rust - validate + execute + defer
+11. Rust PEP (DETECTION POLICY) - Rust - validate + produce evidence (no host effect)
 12. Forensics (REMEMBER) - Zig - immutable, hash-chained
 13. Replay (REMEMBER) - Zig - deterministic
 ```
 
 ## Authority
-- Orchestrator: core/dispatcher.zig
-- Lifecycle: core/lifecycle.zig
-- Main: nids_main.zig (bootstrap only)
+
+> **Path convention (P6-DOC-TRUTH).** The `core/*` names below are phase-era
+> manifest aliases; no `core/` directory exists. Current source is `src/**`
+> (production root `src/main.zig`). The Rust PEP stage is detection-only.
+
+- Orchestrator: `src/main.zig` (historical alias: core/dispatcher.zig)
+- Lifecycle: `src/daemon.zig` (historical alias: core/lifecycle.zig)
+- Main: `src/main.zig` (bootstrap only)
 
 ## Rule
 Dispatcher = orchestrator, NOT a second monolith. If processEvent() is too large, split into processFlow(), processDetection(), etc.

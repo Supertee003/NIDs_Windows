@@ -1,6 +1,10 @@
 
 ## Nose startup result
 
+> **HISTORICAL (P6-DOC-TRUTH).** This 2026-09 audit is superseded by
+> `AI_CONTEXT.md` and `AUTHORITY_MAP.json`: detection-only, no host-effect
+> authority. Enforcement language below is historical, not current capability.
+
 The latest Administrator evidence shows the fresh `dist\\nose_dashboard.exe` process running and listening on the correct Npcap adapter for VMware VMnet1:
 
 ```text

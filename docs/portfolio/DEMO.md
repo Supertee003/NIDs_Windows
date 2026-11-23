@@ -70,7 +70,7 @@ Talk track:
 
 ```powershell
 python tools\lab_attack_window.py --preflight
-python tools\lab_attack_window.py --label recruiter-demo --seconds 120 --expect-src <ATTACKER_IP>
+python tools\lab_attack_window.py --label lab-demo --seconds 120 --expect-src <ATTACKER_IP>
 ```
 
 From the authorized attacker host on the same segment (bounded, owned systems only):
