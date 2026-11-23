@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-23T22:01:54.865080+00:00",
+  "generated_at": "2026-11-23T22:25:46.828844+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3190,
+  "total_files": 3192,
   "by_class": {
-    "canonical-docs": 555,
+    "canonical-docs": 556,
     "canonical-build": 312,
     "unclassified": 27,
     "canonical-source": 1791,
-    "canonical-test": 409,
+    "canonical-test": 410,
     "canonical-config": 62,
     "legacy": 34
   },
@@ -186,19 +186,19 @@
       "path": "AEGIS_4_PHASE_COMPLETION_STATUS_2026-09-26.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 1450
+      "size": 1682
     },
     {
       "path": "AEGIS_BACKEND_FRONTEND_STABILIZATION_PLAN_2026-09-25.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5893
+      "size": 6131
     },
     {
       "path": "AEGIS_CURRENT_SYSTEM_AUDIT_2026-09-27.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 819
+      "size": 1043
     },
     {
       "path": "aegis_dashboard/Cargo.lock",
@@ -222,37 +222,37 @@
       "path": "AEGIS_DEEP_SYSTEM_HEALTH_AUDIT_2026-09-27.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10851
+      "size": 11075
     },
     {
       "path": "AEGIS_DEVELOPMENT_HANDOFF_2026-09-18.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9308
+      "size": 9579
     },
     {
       "path": "AEGIS_FULL_PRODUCTION_SENSOR_HANDOFF_2026-09-27.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 24494
+      "size": 24735
     },
     {
       "path": "AEGIS_KERNEL_NIDS_DEEP_HANDOFF_2026-09-27.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 22933
+      "size": 23216
     },
     {
       "path": "AEGIS_KERNEL_NIDS_PRODUCTION_REANALYSIS_HANDOFF_2026-09-27.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 22771
+      "size": 23012
     },
     {
       "path": "AEGIS_RECOVERY_HANDOFF_RETURN_TO_NORMAL_2026-09-27.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 12340
+      "size": 12566
     },
     {
       "path": "AGENTS.md",
@@ -264,7 +264,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 59813
+      "size": 60591
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -997,6 +997,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 12014
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-P6-20261124.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 14411
     },
     {
       "path": "analysis/current-head/NATIVE-BUILD-001-20261114.md",
@@ -2592,7 +2598,7 @@
       "path": "CONTRACT_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 13324
+      "size": 13796
     },
     {
       "path": "contracts/fixtures/abi/event_boundaries.json",
@@ -2682,13 +2688,13 @@
       "path": "CONTRIBUTING.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2503
+      "size": 2614
     },
     {
       "path": "docs/adr/0001-architecture-lock.md",
       "class": "canonical-docs",
       "role": "architecture-decision",
-      "size": 2810
+      "size": 3314
     },
     {
       "path": "docs/adr/0002-runtime-convergence-core-is-canonical.md",
@@ -2868,19 +2874,19 @@
       "path": "docs/ai-context/01-semantic-map.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 1359
+      "size": 1420
     },
     {
       "path": "docs/ai-context/02-runtime-spine.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 1004
+      "size": 1333
     },
     {
       "path": "docs/ai-context/03-language-ownership.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 1056
+      "size": 1150
     },
     {
       "path": "docs/ai-context/04-contracts.md",
@@ -2892,7 +2898,7 @@
       "path": "docs/ai-context/05-data-lifecycle.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 1568
+      "size": 1595
     },
     {
       "path": "docs/ai-context/06-security-boundary.md",
@@ -2922,13 +2928,13 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 71973
+      "size": 72044
     },
     {
       "path": "docs/ai-context/governance.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6863
+      "size": 6949
     },
     {
       "path": "docs/architecture/ADR-RUNTIME-CONVERGENCE.md",
@@ -2958,7 +2964,7 @@
       "path": "docs/architecture/authority-map.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4200
+      "size": 4680
     },
     {
       "path": "docs/architecture/authority-matrix.md",
@@ -2988,7 +2994,7 @@
       "path": "docs/architecture/data-flow.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8129
+      "size": 8395
     },
     {
       "path": "docs/architecture/dependency-map.md",
@@ -3054,7 +3060,7 @@
       "path": "docs/architecture/MULTI_PROCESS_ARCHITECTURE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 12987
+      "size": 13385
     },
     {
       "path": "docs/architecture/PART-I-VERIFICATION.md",
@@ -3078,7 +3084,7 @@
       "path": "docs/architecture/RUNTIME_SPINE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5827
+      "size": 5954
     },
     {
       "path": "docs/architecture/SECURITY_BOUNDARIES.md",
@@ -3150,7 +3156,7 @@
       "path": "docs/ARCHITECTURE_BOUNDARY.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6946
+      "size": 7202
     },
     {
       "path": "docs/BACKLOG-v1.1.md",
@@ -3234,7 +3240,7 @@
       "path": "docs/gates/RELEASE_TRUST_ANCHOR.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2186
+      "size": 2223
     },
     {
       "path": "docs/gates/T17_benchmark_results.md",
@@ -3582,25 +3588,25 @@
       "path": "docs/portfolio/APPLY_NOW.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6877
+      "size": 4532
     },
     {
       "path": "docs/portfolio/ARCHITECTURE_EN.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10885
+      "size": 10881
     },
     {
       "path": "docs/portfolio/DEMO.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5667
+      "size": 5661
     },
     {
       "path": "docs/portfolio/DETECTION_CATALOG.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8534
+      "size": 8479
     },
     {
       "path": "docs/portfolio/images/dashboard.png",
@@ -3624,7 +3630,7 @@
       "path": "docs/portfolio/INTERVIEW_PREP.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9346
+      "size": 9493
     },
     {
       "path": "docs/portfolio/OBSERVED_PERFORMANCE.md",
@@ -3636,7 +3642,7 @@
       "path": "docs/portfolio/RESUME_PROJECT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5304
+      "size": 5415
     },
     {
       "path": "docs/PROJECT_ANALYSIS_2026-09-14.md",
@@ -3810,7 +3816,7 @@
       "path": "docs/runtime/LIFECYCLE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 15890
+      "size": 16109
     },
     {
       "path": "docs/runtime/LOCAL_RUNBOOK.md",
@@ -4302,7 +4308,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1602992
+      "size": 1606810
     },
     {
       "path": "FLOW_MAP.json",
@@ -4410,7 +4416,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 504881
+      "size": 505200
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4680,13 +4686,13 @@
       "path": "README.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 42866
+      "size": 42968
     },
     {
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 408431
+      "size": 408681
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -17431,6 +17437,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 2595
+    },
+    {
+      "path": "tests/docs/test_doc_truth_labels.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 7489
     },
     {
       "path": "tests/docs/test_stale_doc_sweep.py",
