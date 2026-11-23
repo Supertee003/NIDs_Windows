@@ -3,6 +3,32 @@ AEGIS is a Windows-native, kernel-assisted network intrusion detection system. I
 
 > **Release status:** The repository is maintained with production-grade contracts, authority boundaries, runbooks, and acceptance gates. The current release is approved for development, qualification, and observe-only operation. Enforcement activation is permanently outside the production product scope; historical IPS/WFP proof material is retained only as historical or lab evidence.
 
+## AEGIS in 60 seconds
+
+**Windows-native, kernel-assisted Network Intrusion Detection System — detection-only.** AEGIS
+watches real Windows network and host activity, normalizes it into one canonical event format,
+matches 23 rules, records a policy decision as evidence, and writes hash-chained forensic records.
+It records and explains findings; it never blocks, quarantines, or mutates the host.
+
+![AEGIS NIDS live operator console](docs/portfolio/images/dashboard.png)
+
+*Live, read-only operator console on the lab host. The `DEGRADED` badge is the host's current
+control-pipe responder detail; all runtime subsystems report `RUNNING` and the console is showing
+authoritative daemon data.*
+
+| Question | Answer |
+|---|---|
+| What does it do? | Packet capture → canonical event → detect → policy evidence → forensic record → operator view |
+| Why is it interesting? | One runtime spanning six languages with a strict boundary: no layer may promote "detected" into "blocked" |
+| Stack | Zig runtime spine · Go packet acquisition · C/C++ WFP/ETW/FIM/Registry adapters · Rust detection-only PEP + crypto · Python analytics · TypeScript policy authoring |
+| Scale | 23 detection rules across L4, L7, kernel file/process, and pipe layers; 7M+ events observed on the current lab host |
+| Proof | `v1.1` SHIPPABLE (0/6 gates), 36.52 h owner-run soak PASS, 674/674 signed artifacts, 1,471 tests with 0 skips |
+| Boundary | observe-only; prevention gate closed; `host_effect_capable=false`; no WFP enforcement in production |
+
+**Watch the 2.5-minute demo:** [Traffic → Event → Detection → Dashboard → Forensic Record](docs/portfolio/DEMO.md) · [MP4](docs/portfolio/images/demo.mp4)
+
+**Go deeper:** [Architecture explained in English](docs/portfolio/ARCHITECTURE_EN.md) · [Resume project section](docs/portfolio/RESUME_PROJECT.md) · [Evidence index](EVIDENCE_INDEX.json)
+
 ### Project 2 Runtime Gate
 
 Before starting any Kali qualification probe, run the single fail-closed preflight:
@@ -12,7 +38,7 @@ powershell -ExecutionPolicy Bypass `
   -File .\scripts\project2_runtime_gate.ps1
 ```
 
-The gate writes health, readiness, snapshot, enforcement-status, and a result receipt under `admin-evidence`. It passes only when the daemon is `RUNNING`, `degraded=false`, all 22 rules are active, forensic verification is true, the Go Nose worker is connected, and enforcement remains `detection-only` with `prevention_gate=closed`. If it fails, do not start the Kali probes.
+The gate writes health, readiness, snapshot, enforcement-status, and a result receipt under `admin-evidence`. It passes only when the daemon is `RUNNING`, `degraded=false`, all 23 rules are active, forensic verification is true, the Go Nose worker is connected, and enforcement remains `detection-only` with `prevention_gate=closed`. If it fails, do not start the Kali probes.
 
 ### Unified Command Control Center
 
@@ -25,10 +51,10 @@ Use the following commands from the repository root:
 ```powershell
 python tools\aegisctl.py snapshot
 python scripts\aegis_console_pro.py --role operator
-python scripts\Dashboard.py
+python -m tools.aegisctl.web_dashboard.app   # http://127.0.0.1:5000/
 python scripts\aegis_console.py --mode dashboard
+```
 
-```text
 The current verified operator state is:
 
 | Area | Status |
@@ -57,7 +83,6 @@ receipt-backed postcondition contains `status=ENFORCED` and
 
 The current release is an observe-only, fail-closed Kernel NIDS release.
 Production host enforcement is not a pending feature; it is outside the product scope.
-```
 
 This README is the official entry point for developers, reviewers, lab operators, and release operators. It describes the production reference architecture, the current verified detection path, the required deployment controls, and the evidence needed to operate the Kernel NIDS safely. It distinguishes source implementation, diagnostic provider readiness, and actual host effect; provider readiness never opens the production prevention gate.
 
@@ -629,6 +654,15 @@ AEGIS is marketed and operated as a production Kernel NIDS, not as an IPS. The c
 The correct product statement is **Windows-native Kernel NIDS with detection-only, observe-only, and forensic evidence capabilities**. Historical or lab IPS material must not be presented as a production feature.
 
 ## Documentation map
+
+**For recruiters and job applications**
+
+- [AEGIS in 60 seconds / live console screenshot](#aegis-in-60-seconds)
+- [4-minute demo: traffic → event → detection → dashboard → forensic record](docs/portfolio/DEMO.md)
+- [Architecture explained in English](docs/portfolio/ARCHITECTURE_EN.md)
+- [Resume project section](docs/portfolio/RESUME_PROJECT.md)
+
+**For engineers and operators**
 
 - [User operations guide](docs/USER_OPERATIONS_GUIDE.md)
 - [Local runbook](docs/runtime/LOCAL_RUNBOOK.md)

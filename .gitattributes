@@ -16,3 +16,8 @@ scripts/verify_release.ps1 text eol=lf
 # the committed blob breaks verification of a fresh clone. Store release trees
 # verbatim (`-text`): the digest is the identity, not the line endings.
 release/** -text
+
+# Portfolio media are byte images. Never apply line-ending translation,
+# or a fresh checkout will not be the image that was captured and verified.
+docs/portfolio/images/*.png -text
+docs/portfolio/images/*.mp4 -text
