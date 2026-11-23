@@ -1033,7 +1033,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "2329c4670c46078aae485befd4c733c4a21e9a4ce5afdd5450ea8d2dfd415245",
+      "sha256": "99f1cdd4655e61384fc92d0b80013c0847f5e6757edf2cd2c76f0121c7e97547",
       "language": "json"
     },
     {
@@ -1896,8 +1896,8 @@
     },
     {
       "path": "src/capture/nose_pipe_reader.zig",
-      "size": 25863,
-      "sha256": "c585a2238c0562206894abd81e788efbbef979f7b36382ad55f88778a61fa3a1",
+      "size": 26468,
+      "sha256": "9cd0342ab82a67361c7e67e7033ce904996053bd309f4f964c1fd4a23c1c9ee6",
       "language": "zig"
     },
     {
@@ -2058,8 +2058,8 @@
     },
     {
       "path": "src/control/state_machine.zig",
-      "size": 37292,
-      "sha256": "f5a1a4c9f0286eb37dc24ec290ef8ce2e64bebd881cdce413f2a44939f466dc3",
+      "size": 39836,
+      "sha256": "6d9014f0a8b7f4f1c35774f1d37d6fe0538e0faee65cda39e4eea2d06d4c30eb",
       "language": "zig"
     },
     {
@@ -2520,8 +2520,8 @@
     },
     {
       "path": "src/pipeline/event_processor.zig",
-      "size": 66408,
-      "sha256": "b8cd636a1a640347c0bb28f858a5681a6ba603ce4bb934b7528270af013e167f",
+      "size": 66731,
+      "sha256": "b1eb0c9be68db36c0133b3bc295e84b46db0c49e34532a36b97fc7b110e96e86",
       "language": "zig"
     },
     {
@@ -2556,8 +2556,8 @@
     },
     {
       "path": "src/pipeline/runtime_state.zig",
-      "size": 35035,
-      "sha256": "0f2e100f6d11a1e2e4562cd9b97b39f997da9acbf1fb8d38b1ebcd6e53f6a31a",
+      "size": 35689,
+      "sha256": "edea53c17b7d7e2a2a9e58f3e2d44549aee73348319dc0f9e36ebd33d3871674",
       "language": "zig"
     },
     {
@@ -3672,8 +3672,8 @@
     },
     {
       "path": "tools/aegisctl/api/control_api.py",
-      "size": 68005,
-      "sha256": "cfd93f8a548d11cc462424c6a5940f6eca84aad00d363229a8cf7cd99c619263",
+      "size": 68274,
+      "sha256": "907fd9a8400bb22b8ebe1caad669ae5e10e0cd7e64aaeebce8d9ce70eadf7567",
       "language": "python/cython"
     },
     {
