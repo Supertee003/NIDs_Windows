@@ -1032,8 +1032,8 @@
     },
     {
       "path": "runtime_manifest.json",
-      "size": 23219,
-      "sha256": "6ee1da2ee55f55fab41b7192733f50db44d5a0488cb9d02327b62b07106c4052",
+      "size": 23280,
+      "sha256": "6dbda31631c31a3015369b8bd65a30da4eb05f36d939d6a2e415cb14d44d604c",
       "language": "json"
     },
     {
@@ -1746,8 +1746,8 @@
     },
     {
       "path": "scripts/summary_detection_path.py",
-      "size": 4559,
-      "sha256": "c59f609d7eb7390b55740d85927d4ba8b2ae5544099ba7c54251b2a47d572b4c",
+      "size": 5729,
+      "sha256": "816fb7a719126ce662f4b2c45a944c47b900773ce6f98e9756c38dbd48b46119",
       "language": "python/cython"
     },
     {
@@ -3654,8 +3654,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 124393,
-      "sha256": "789ac536e7ea38ac3f8da5e78a5baf9ec181ab4a7b3d68b16cef1d0e56c27c27",
+      "size": 124776,
+      "sha256": "20b286976fb58502a624cd789196e6b649131e0a8a66018cc7fbc3ff2bcdb086",
       "language": "python/cython"
     },
     {
@@ -3672,8 +3672,8 @@
     },
     {
       "path": "tools/aegisctl/api/control_api.py",
-      "size": 68274,
-      "sha256": "907fd9a8400bb22b8ebe1caad669ae5e10e0cd7e64aaeebce8d9ce70eadf7567",
+      "size": 69094,
+      "sha256": "ed31bc6dd70269ed5819c943e60dbc7553bb1a6d358a7eb49c001f007ab3927d",
       "language": "python/cython"
     },
     {
@@ -3756,8 +3756,8 @@
     },
     {
       "path": "tools/create_manifest.py",
-      "size": 21922,
-      "sha256": "066408bd4c631ab84c00ed628d1590164c832682afeeff95504510c9cc72a4a3",
+      "size": 21983,
+      "sha256": "b7b75773d30983e0a74027891a154b3187a326345852da0495ae7741398a0340",
       "language": "python/cython"
     },
     {
