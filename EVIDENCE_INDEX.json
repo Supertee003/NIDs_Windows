@@ -4,7 +4,7 @@
   "last_updated_at": "2026-11-23",
   "generator_version": "3.0",
   "artifact_retention": {
-    "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
+    "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; tracked files were retained in the operator archive and restored to the ignored admin-evidence/ directory. At the 2026-11-24 audit, 48 primary evidence_artifact pointers do not resolve in a fresh worktree (18 have exact operator-archive locators recorded as artifact_locator, 30 are marked artifact_status=missing and are not independently auditable from this tree). 61 entries cite admin-evidence paths in files_verified, 133 mention them anywhere, and only primary evidence_artifact pointers are validator-checked. The 3,229 clean / 4,009 lossy rate bracketing and all other historical host claims remain records, not current-source verification.",
     "audit_scan_dumps": "Local-only. aegis-audit-*/ (24.25 GiB) was removed from git history and from the working tree on 2026-11-06; archived at D:/AEGIS_archive/audit-dumps.",
     "history_rewrite": "analysis/HISTORY_REWRITE_20261106.md",
     "commit_map": "analysis/history-rewrite-20261106/commit-map.txt"
@@ -85,8 +85,9 @@
       "limitations": [
         "No push alerting: requires owner decision plus secrets, runner and E5 lab proof.",
         "siem_config.json is a pinned contract, not a runtime read.",
-        "Board remains 5/6; no tag/publish."
-      ]
+        "At the recorded head the board was 5/6; no tag/publish. [HISTORICAL @ recorded head: v1.1 was published 6/6 PASS (0 open) from signed candidate 466a226 / build source a53eda8; this is not a current gate claim.]"
+      ],
+      "historical": true
     },
     {
       "id": "VISIBILITY-001-KERNEL-PRIMARY-E2-20261119",
@@ -369,7 +370,10 @@
         "No Kali canary was sent.",
         "Runtime health remains DEGRADED with queue_dropped_total 13,907 and minifilter ring dropped 10,906; issue #29 remains open.",
         "Production prevention stayed closed; host-effect capability remains false."
-      ]
+      ],
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "HEALTH-PROJECTION-001-E2-20261109",
@@ -539,7 +543,10 @@
         "R9007 (XMAS, per-packet) not exercised",
         "readiness degraded/overall_gate false (failure_reasons empty) observed before and after; not caused by this test",
         "logged policy=block is not asserted as host enforcement (prevention_gate posture unchanged)"
-      ]
+      ],
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "ANOMALOUS-LOG-SIZE-CAP-E2-20261108",
@@ -610,7 +617,10 @@
       ],
       "result": "PASS_E5",
       "finding": "The end-to-end claim is now measured rather than inferred: a finding the brain produced on its own (Case 2) leaves the brain (out_events +1 with the pipe reporting ok), crosses the admin-only pipe (no FAILED), and lands in the daemon's own ingress accounting for detection_brain (pushed +1, dropped 0) within four seconds. This is what Case 1 inhibits on purpose, so the two paths now differ for a stated reason instead of by accident.  The record is in the hash ring, so the vertical slice closes: brain -> pipe -> canonical queue -> forensic record -> verified. Reaching it needs the canonical ordinal: the forensic writer stores python_brain = 5 in the canonical source space, while the queue reports detection_brain = 13, and searching 13 returns nothing on a host that writes ~2,500 records per second into a 16,384-record ring.",
-      "evidence_artifact": "admin-evidence/rb017-close-20261108/tier2_e2e.py"
+      "evidence_artifact": "admin-evidence/rb017-close-20261108/tier2_e2e.py",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "RB-017-DROP-ATTRIBUTION-E5-20261108",
@@ -634,7 +644,10 @@
       ],
       "result": "PASS_E5",
       "finding": "The cause is the 100-per-60s append cap on anomalous.json (B2-LOGTH-041), and the path it caps is Case 1: events Zig already matched and sent to the brain over UDP. That path logs the echo and deliberately does not call deliver_finding, because handing the daemon back its own event would duplicate it. So out_events 0 with drops.log_throttle high is the correct reading of a quiet return path on a host whose traffic is almost entirely Tier-1 echoes, and the earlier 'unexplained 96% loss' framing was wrong: nothing was lost between brain and daemon, the file append was bounded on purpose. The ambiguity that cost hours was HEALTH's, and it is now closed: bad_mac/no_mac being zero rules out the secret mismatch the wire evidence had already made unlikely, and sensor_pipe state ok/failed 0 rules out transport failure. Case 2 (brain-only Tier-2 findings) carried no traffic in this window, which is exactly what out_events 0 means. Note for the next reader: the drop counter is about the log file, not about detections leaving the brain.",
-      "evidence_artifact": "admin-evidence/rb017-close-20261108/kill-brain-20261108_150511.json"
+      "evidence_artifact": "admin-evidence/rb017-close-20261108/kill-brain-20261108_150511.json",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "RB-017-RETURN-PATH-OBSERVABILITY-E5-20261108",
@@ -661,7 +674,10 @@
       "result": "PASS_E5_PARTIAL",
       "finding": "Three separate links were proven: the daemon signs offers with HMAC over the exact body, the pipe accepts an admin/SYSTEM sender, and the daemon records what it receives as detection_brain. What is NOT explained is production behaviour: the supervised brain reports in_events 17,839 with dropped 17,139 (96%), out_events 0 and sensor_pipe failed 0, so roughly 700 messages were accepted while no finding was ever emitted - the drop happens before rule matching, which leaves bad MAC versus unsigned as the only gates that can account for it, and the brain's secret is demonstrably the same one the wire uses. HEALTH could not name the cause, which is itself the RB-017 'health honest' gap; the source now reports sensor_pipe {enabled, transport, state, failed} and drops {bad_mac, no_mac, log_throttle}, so one brain restart names the cause. That restart is BLOCKED: two elevation approvals for it expired without execution (no operator present), and the running brain (pid 24560) predates the patch.  CORRECTED the same day: the drop is attributed, and it is not a defect. See RB-017-DROP-ATTRIBUTION-E5-20261108.",
       "evidence_artifact": "admin-evidence/rb017-close-20261108/probe_pipe.py",
-      "superseded_by": "RB-017-DROP-ATTRIBUTION-E5-20261108"
+      "superseded_by": "RB-017-DROP-ATTRIBUTION-E5-20261108",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "RB-017-ORPHAN-ATTRIBUTION-E5-20261108",
@@ -684,7 +700,10 @@
       ],
       "result": "PASS_E5",
       "finding": "The foreign-status gate was wrong in kind, not in degree: it treated 'cannot see the command line' as evidence of foreignness, so a correctly supervised SYSTEM brain could never read clean for an unelevated caller. Two sources of truth already disagreed (bridge said owner_is_brain True while health said FOREIGN); the census now uses the same corroboration. Separately, the red state seen earlier in this session was NOT the brain at all: an ETW storm from this session's build/test activity drove 97,916 source-quota sheds (12.5% of ETW events, shed_overload 0, occupancy cap 7,168) and the daemon correctly reported data_loss_observed. A clean restart cleared it. The fair-share shedding itself is the designed behaviour; the storm is the environmental trigger.",
-      "evidence_artifact": "admin-evidence/rb017-close-20261108/kill-brain-20261108_143304.json"
+      "evidence_artifact": "admin-evidence/rb017-close-20261108/kill-brain-20261108_143304.json",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "QLOSS-CLOCK-001-E5-20261108",
@@ -714,7 +733,10 @@
       ],
       "result": "PASS_E5",
       "finding": "Before the swap the same append reported p50 1 ns and p95 1 ns because every sample shorter than the 571 us tick read as zero; the reported mean was tick size times straddle probability. After the swap the distribution is unimodal (p50 16.4 us, p95 32.8 us) and the mean is 24.6 us, which is consistent with the ~5.3 us of accounted passes (post-CRC-swap composite) plus in-situ cache/mutex/page-fault cost. Every latency number recorded before this date, including QLOSS-CONSUMER-002-E5, is therefore an approximation and cannot be quoted as microseconds. Deployment deviation: the prior installed daemon hashed 394491E5... instead of the last recorded 6326AB5D..., i.e. a locally built daemon (present in .zig-cache, built 2026-11-08 12:50) had been installed with no evidence record. All other runtime and driver hashes matched, the minifilter signature was Valid, and the deploy replaced it with the attested build; the prior-identity check failed as designed and the run still reported PASS=False until reviewed here.",
-      "evidence_artifact": "admin-evidence/e5-deploy-clock-20261108/install-result-20261108_135045.json"
+      "evidence_artifact": "admin-evidence/e5-deploy-clock-20261108/install-result-20261108_135045.json",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "RB-017-BRAIN-RETURN-PATH-E5-20261108",
@@ -741,7 +763,10 @@
       ],
       "result": "PASS_E5_RETURN_PATH",
       "finding": "RB-017 steps 4-5 are now satisfied on the host: an advisory Tier-2 finding produced by the supervised brain reaches the daemon as a detection_brain event, is attributed to python_brain in the forensic ring with the correct FNV rule identity, and is counted by the HEALTH output counter. The earlier 'brain out=0 therefore return path unproven' conclusion was wrong in its cause: OUT_EVENT_COUNT was never incremented in any code path (confirmed by grep across brain/, tests/ and the release snapshot), so the counter could not have moved even while deliveries succeeded. Limits, stated rather than implied: the traffic is a local loopback fixture, not live attack traffic; the payload is synthetic; and nothing about the fixture changes the detection-only posture (block requests remain deferred by design).",
-      "evidence_artifact": "admin-evidence/rb017-e5-deploy-20261108/rb017-return-fixture.json"
+      "evidence_artifact": "admin-evidence/rb017-e5-deploy-20261108/rb017-return-fixture.json",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "QLOSS-ISOLATION-002-E5-20261108",
@@ -765,7 +790,10 @@
       "result": "PASS_E5_SHARE_ARITHMETIC",
       "finding": "The pairwise isolation guarantee is now measured on the host, not only proven arithmetically. Both host sources reach their full 7,168 share and the shared tail check refused nothing during the window, so the second source is no longer stopped at 6,656 by the boundary as the old formula required. Limits, stated rather than implied: the refusals are the storming source's own excess (206,999, all source_quota_shed), so total loss is NOT reduced - FIM ingress aggregation (ADR-0012) remains the only lever for that; the churn is synthetic; critical_pushed_total was 0 because no System32 write happened in the window; the deploy used a hash-verified rollback copy and one restart, but the RB-021 preflight was not run for this window; readiness is degraded=true as it was before the deploy.",
       "evidence_artifact": "admin-evidence/rb017-e5-deploy-20261108/storm-20261108_114326-summary.json",
-      "artifact_note": "pointer corrected 2026-11-10: the recorded filename used the file mtime (11:45:16) instead of the run stamp (11:43:26)"
+      "artifact_note": "pointer corrected 2026-11-10: the recorded filename used the file mtime (11:45:16) instead of the run stamp (11:43:26)",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "RB-017-BRAIN-SUPERVISED-E5-20261108",
@@ -790,7 +818,10 @@
       "result": "PASS_E5_SUPERVISION_PARTIAL_RETURN_PATH",
       "finding": "Supervision, ownership and MAC posture are verified; the runbook premise 'no SCM service or scheduled task supervising it' is corrected, because a non-elevated schtasks query of AegisKeeper is access-denied rather than empty. What is NOT verified is the return path: brain out=0 during the window, so no brain_tier2 provenance records were observed, and no fixture was injected to force a finding. RB-017 steps 4-5 therefore stay open. This is also the answer to the earlier 'FOREIGN' ownership flag: the listener is SYSTEM-owned pythonw by design, not a stray process. SUPERSEDED IN PART on the same day by RB-017-BRAIN-RETURN-PATH-E5-20261108: the return path was proven with a MAC-authenticated fixture (daemon detection_brain pushed, forensic python_brain record with FNV rule identity) and the out=0 that made it look unproven was a counter defect (OUT_EVENT_COUNT never incremented), fixed in 74d6ac2.",
       "evidence_artifact": "admin-evidence/rb017-e5-deploy-20261108/elevated-20261108-v3-result.json",
-      "superseded_by": "RB-017-BRAIN-RETURN-PATH-E5-20261108"
+      "superseded_by": "RB-017-BRAIN-RETURN-PATH-E5-20261108",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "QLOSS-ISOLATION-002-E2-20261107",
@@ -840,7 +871,10 @@
       "result": "PASS_E5",
       "finding": "The contract-preserving CRC swap holds up on the host, not just in a micro-benchmark: the append dropped by 10.6 us per record and the end-to-end capture_to_decode stage by 7.9 us, with no drops and clean readiness. The host gain is larger than the isolated 5.8 us pass delta, so the optimized pass also relieved in-situ cache/mutex cost. receipt_issue moved from 0.00 to 0.02 us mean - sub-tick noise, not a regression. Limit: the sample windows differ in size (1.38M vs 84K events) because the counter is cumulative since daemon start; the comparison is same-host, same-workload-class, not a controlled burst. CORRECTION (ADR-0012): this comparison was read from std.time.nanoTimestamp, which advances every ~571 us on this host, so the microsecond figures are tick-straddle statistics and must not be quoted as durations. The direction (the sliced CRC made the append cheaper, drops stayed 0, readiness stayed clean) holds; the magnitude is carried by the E2 benchmark, which used std.time.Timer.",
       "evidence_artifact": "admin-evidence/e5-deploy-crc-20261107/install-result-20261107_020855.json",
-      "superseded_by": "QLOSS-CONSUMER-002-E2-20261107 (quantified) + QLOSS-CLOCK-001-E5-20261108 (instrument)"
+      "superseded_by": "QLOSS-CONSUMER-002-E2-20261107 (quantified) + QLOSS-CLOCK-001-E5-20261108 (instrument)",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "QLOSS-CONSUMER-002-E2-20261107",
@@ -884,7 +918,10 @@
       ],
       "result": "PASS_E5_NO_BREAKING_POINT",
       "finding": "The breaking point is above 120,000 files on this host in ReleaseSafe: the queue peaked at 13,451 of 16,384 and drained to 92, so nothing hit the hard capacity wall and the only refusals came from the per-source share (quota_shed 6,184) plus ordinary pressure. The protected class behaved as designed under this load - 859 System32 rows admitted and none present in any shed counter - and the kernel ring stayed at zero. Limit: this is a synthetic churn on one host, capacity beyond 120,000 files is unmeasured, and critical protection was still not exercised adversarially.",
-      "evidence_artifact": "admin-evidence/e5-deploy-release-20261107/install-result-20261107_013110.json"
+      "evidence_artifact": "admin-evidence/e5-deploy-release-20261107/install-result-20261107_013110.json",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "QLOSS-CONSUMER-001-E5-20261107",
@@ -910,7 +947,10 @@
       ],
       "result": "PASS_E5_RELEASE_SAFE",
       "finding": "The dominant consumer cost was the build mode, not an algorithm. Two earlier conclusions were therefore wrong and are corrected here: the observed 1,325 rows/s was a saturated drain rate rather than the consumer's capacity, and the '10:1 producer/consumer gap' that justified rejecting buffering as a fix was substantially an artifact of running an unoptimized binary. What survives is the qualitative finding that forensic append dominates per-event cost (38 us of the ~48 us capture_to_decode mean), so the next lever is inside that stage - the 4 KiB zero/hash/CRC passes - not worker parallelism. Limits: the churn is synthetic; the 2,930 rows/s figure includes a 439-row shortfall attributed to the FIM per-source quota, and capacity was not pushed past that point.",
-      "evidence_artifact": "admin-evidence/e5-deploy-release-20261107/install-result-20261107_013110.json"
+      "evidence_artifact": "admin-evidence/e5-deploy-release-20261107/install-result-20261107_013110.json",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "QLOSS-CRITICAL-001-E5-20261107",
@@ -936,7 +976,10 @@
       ],
       "result": "PASS_E5_CRITICAL_CLASS",
       "finding": "The class works and is observable: protected rows are counted (264 during real System32 activity, none injected) and depth_peak exceeds the ordinary working tail by exactly the number of protected rows admitted into the reserve, which is the mechanism showing up in the measurement. Two honest limits. (1) The protection was NOT exercised adversarially: writing into System32 to force a storm is an unrequested host change, so the guarantee is proven at unit level (E2) and by construction, not by a live protected storm. (2) The single failing check is a measurement artifact, not starvation - etw_active is instantaneous and was sampled at 0 while the queue had drained, whereas ETW pushed 245,343 events in the same window. The check should assert a pushed delta instead of an instantaneous occupancy.",
-      "evidence_artifact": "admin-evidence/e5-deploy-ad9733c-20261106/deploy-result-20261107_004428.json"
+      "evidence_artifact": "admin-evidence/e5-deploy-ad9733c-20261106/deploy-result-20261107_004428.json",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "QLOSS-FAIRSHARE-001-E5-20261107",
@@ -964,7 +1007,10 @@
       ],
       "result": "PASS_E5_FAIR_ADMISSION",
       "finding": "Isolation now holds as a guarantee, not a hope: whatever the storm does, another host source keeps half the host tail reachable, and the measurement shows ETW holding 7,242 of its 7,680 share while FIM was pinned at 7,554. Two honest limits. (1) This does not reduce total loss: FIM still sheds its own excess (~181k rows in this synthetic burst), and the total dropped across the run is unchanged or slightly higher, because isolation trades total throughput for stream completeness. (2) ETW's residual ~31k drops are its own overflow, not starvation: the same file churn floods the kernel file provider too, so ETW would exceed any share it was given. Reducing either stream's volume still needs sensor-side aggregation or rate shaping, which remains the recorded next decision. Also note the counters shown in the last run are cumulative since daemon start (three measurement runs on one install), so only the per-run deltas above are comparable.",
-      "evidence_artifact": "admin-evidence/e5-deploy-fadc216-20261106/deploy-result-20261107_002004.json"
+      "evidence_artifact": "admin-evidence/e5-deploy-fadc216-20261106/deploy-result-20261107_002004.json",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "QLOSS-FIM-STORM-20261106",
@@ -991,7 +1037,10 @@
       ],
       "result": "PASS_INSTRUMENTED_BUT_SIZED_OUT",
       "finding": "The measurement kills the capacity hypothesis the previous slice proposed. During churn the ingress demanded at least 157,000 events while the consumer drained ~1,000-1,250/s, and FIM alone shed 131,065 - one sensor's volume, not a marginal shortfall. Adding slots would need ~36x the queue (roughly 950 MB of static state) to absorb this burst, and 32,768 slots (+26 MB) would only have moved the boundary. The real lever is FIM ingress volume: aggregate or rate-shape repeated file-operation events at the sensor, or add per-source fair admission so an ETW/FIM storm cannot consume the whole host tail. Both change detection semantics or fairness policy, so they are recorded as the decision instead of being guessed into the code. Caveat: the burst was synthetic (a deliberately created 20,000-file churn), so its magnitude is a stress probe, not a host observation; the earlier organic burst was 10,408 drops.",
-      "evidence_artifact": "admin-evidence/e5-deploy-86024fb-20261106/peak-watch-20261106_234137.ndjson"
+      "evidence_artifact": "admin-evidence/e5-deploy-86024fb-20261106/peak-watch-20261106_234137.ndjson",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "QLOSS-QUEUE-BURST-20261106",
@@ -1014,7 +1063,10 @@
       ],
       "result": "OPEN_BURST_OVERFLOW",
       "finding": "The queue's burst headroom is insufficient on this host, but the follow-up slice (QLOSS-FIM-STORM-20261106) showed capacity is not the fix: with depth_peak instrumented, a churn burst demanded >157,000 events and FIM alone shed 131,065, so slot count would need a ~36x increase (~950 MB) to absorb it. Next lever is FIM ingress aggregation/rate-shaping or per-source fair admission, both of which change detection or fairness policy and are therefore an explicit decision, not a silent patch.",
-      "evidence_artifact": "admin-evidence/qloss-sample-20261106/burst-watch.txt"
+      "evidence_artifact": "admin-evidence/qloss-sample-20261106/burst-watch.txt",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "E5-DEPLOY-05EBBA0-RING4M",
@@ -1041,7 +1093,10 @@
       ],
       "result": "PASS_E5_ZERO_LOSS",
       "finding": "The kernel ring loss is eliminated and stays at 0. CORRECTION (same evening): the 180 s window was not steady state. A later host burst overflowed the 16,384-slot pipeline queue with 10,408 drops (FIM 9,553, ETW 855) while ring_dropped stayed 0, and readiness returned to degraded=true, so QLOSS-HEALTH-001 is PARTIALLY CLOSED rather than closed; see QLOSS-QUEUE-BURST-20261106. Gate semantics were never relaxed. Open: production driver signing (test-signed driver), queue burst headroom. Rollback: admin-evidence/e5-deploy-05ebba0-20261106/rollback-installed plus rollback-aegis_minifilter.sys.",
-      "evidence_artifact": "admin-evidence/e5-deploy-05ebba0-20261106/closeout.md"
+      "evidence_artifact": "admin-evidence/e5-deploy-05ebba0-20261106/closeout.md",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "E5-DEPLOY-940714B-QUIET-AUDIT",
@@ -1067,7 +1122,10 @@
       ],
       "result": "PASS_E5_INSTALL_AND_VOLUME",
       "finding": "Persisted diagnostic volume is reduced by roughly 10,000x with no rotation churn, and audit identity (audit_id, decision trace, forensic ring) is unchanged. Limit: the window carried no policy-matching traffic, so a matched row reaching the persisted file is pinned by the unit test and by the earlier canary's pep=quarantine confirmed=true lines, not re-exercised live. readiness stays degraded from the separate QLOSS queue/minifilter loss. Rollback: admin-evidence/e5-deploy-940714b-20261106/rollback-installed (daemon F4BC3A85...).",
-      "evidence_artifact": "admin-evidence/e5-deploy-940714b-20261106/closeout.md"
+      "evidence_artifact": "admin-evidence/e5-deploy-940714b-20261106/closeout.md",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "E5-DEPLOY-A9E8DE3-LOGCAP",
@@ -1092,7 +1150,10 @@
       ],
       "result": "PASS_E5_INSTALL_AND_CAP",
       "finding": "QLOSS-DISK-001 is closed at E5 for bounded growth: the host no longer writes an unbounded diagnostic file. This is installation identity plus live file-behavior proof, not kernel qualification or a canary. Remaining risk: the diagnostic stream is loud (~55 GB/day of writes, rotation every ~100 s), so verbosity reduction stays with the QLOSS admission work. Rollback is available at admin-evidence/e5-deploy-a9e8de3-20261106/rollback-installed (daemon EB9F44AB...).",
-      "evidence_artifact": "admin-evidence/e5-deploy-a9e8de3-20261106/closeout.md"
+      "evidence_artifact": "admin-evidence/e5-deploy-a9e8de3-20261106/closeout.md",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "QLOSS-DISK-001-E2-20261106",
@@ -1115,7 +1176,10 @@
       ],
       "result": "PASS_E2",
       "finding": "In-tree fix proven at E2 only. The installed host still runs the f7c626d image with the unbounded sink and the 40.9 GB file is still present; stopping the growth and reclaiming the space needs an owner-approved elevated deploy and an explicit delete of the stale file. Raw log growth also indicates the diagnostic stream is far too verbose per captured packet, which the QLOSS admission work should address separately.",
-      "evidence_artifact": "admin-evidence/project-state-audit-20261106/closeout.md"
+      "evidence_artifact": "admin-evidence/project-state-audit-20261106/closeout.md",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "PROJECT-STATE-AUDIT-20261106",
@@ -1140,7 +1204,10 @@
       ],
       "result": "AUDIT_RECORDED",
       "finding": "E2 source/build truth is green at this HEAD; no new E5 is claimed. QLOSS-HEALTH-001 overload (issue #29) remains OPEN, RB-017 cannot pass with a FOREIGN unsupervised listener, and the remaining blockers are QLOSS elimination, supervised Windows E5/kernel qualification, the approved RB-017 restart, signed release/E7, and the pending CI push. A host incident is recorded: C: reached 0 bytes free and broke tools staging output on C:/Windows temp until %LOCALAPPDATA%/Temp was cleared (~4.4 GB recovered); no repository artifact was affected.",
-      "evidence_artifact": "admin-evidence/project-state-audit-20261106/closeout.md"
+      "evidence_artifact": "admin-evidence/project-state-audit-20261106/closeout.md",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "EVT-001",
@@ -4413,7 +4480,11 @@
       ],
       "result": "PASS_E2_WITH_OPEN_HOST_VERIFICATION",
       "finding": "Bounded source behavior follows ADR-0009. The slice does not prove live ETW/FIM/Registry detector production, Windows-host integration, kernel-driver production qualification, or overall release readiness.",
-      "evidence_artifact": "admin-evidence/ids-host-004-20261031/closeout.md"
+      "evidence_artifact": "admin-evidence/ids-host-004-20261031/closeout.md",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/ids-host-004-20261031/closeout.md",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "IDS-XDR-005-E2-20261031",
@@ -4458,7 +4529,11 @@
       "result": "PASS_WITH_OPEN_BLOCKERS",
       "finding": "At this evidence point, the selected XDR code was advisory-only and not represented as a production route. The subsequent MAP-006 source/map reconciliation is recorded separately; XDR-to-CanonicalEvent/receipt/replay integration and kernel/Windows qualification remain open.",
       "evidence_artifact": "admin-evidence/ids-xdr-005-20261031/closeout.md",
-      "historical_disposition": "HISTORICAL_SNAPSHOT: predates the MAP-006 source/map reconciliation recorded in admin-evidence/map006-runtime-truth-20261031/closeout.md; XDR-RECEIPT-002 (2026-11-03) later proved the source-to-forensic receipt/replay integration at E2, while Windows E5 remains open."
+      "historical_disposition": "HISTORICAL_SNAPSHOT: predates the MAP-006 source/map reconciliation recorded in admin-evidence/map006-runtime-truth-20261031/closeout.md; XDR-RECEIPT-002 (2026-11-03) later proved the source-to-forensic receipt/replay integration at E2, while Windows E5 remains open.",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/ids-xdr-005-20261031/closeout.md",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "MAP-006-E2-20261031",
@@ -4499,7 +4574,11 @@
       ],
       "result": "PASS_WITH_OPEN_KERNEL_E5_AND_XDR_INTEGRATION",
       "finding": "MAP-006 source/map reconciliation is verified at E2. This does not prove a kernel-resident detector, supervised Windows E5, release readiness, or the separate XDR-to-forensic-receipt/replay flow; production host-effect activation remains out of scope.",
-      "evidence_artifact": "admin-evidence/map006-runtime-truth-20261031/closeout.md"
+      "evidence_artifact": "admin-evidence/map006-runtime-truth-20261031/closeout.md",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/map006-runtime-truth-20261031/closeout.md",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "IDS-COV-001-20261101",
@@ -4523,7 +4602,11 @@
       ],
       "result": "PASS",
       "finding": "The two documented Zig test execution-graph gaps are closed at E2. This is not Windows E5/kernel qualification or release evidence.",
-      "evidence_artifact": "admin-evidence/ids-cov-001-20261101/closeout.md"
+      "evidence_artifact": "admin-evidence/ids-cov-001-20261101/closeout.md",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/ids-cov-001-20261101/closeout.md",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "VER-002-20261101",
@@ -4547,7 +4630,11 @@
       ],
       "result": "PASS_WITH_OPEN_FULL_SUITE_AND_NETWORK_HOST_PROOF",
       "finding": "Canonical test invocation no longer opens real loopback sockets implicitly. This patch does not establish full-suite, Windows host, or release readiness.",
-      "evidence_artifact": "admin-evidence/ver-002-20261101/closeout.md"
+      "evidence_artifact": "admin-evidence/ver-002-20261101/closeout.md",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/ver-002-20261101/closeout.md",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "VER-003-20261101",
@@ -4568,7 +4655,11 @@
       ],
       "result": "PASS",
       "finding": "Canonical unit suite is green. The trie unit graph no longer makes a wall-clock speed claim; comparative performance is unproven and belongs in a dedicated benchmark.",
-      "evidence_artifact": "admin-evidence/ver-003-20261101/closeout.md"
+      "evidence_artifact": "admin-evidence/ver-003-20261101/closeout.md",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/ver-003-20261101/closeout.md",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "IDS-XDR-006-20261101",
@@ -4593,7 +4684,11 @@
       "finding": "The source-to-forensic-receipt/replay test slice is proven in memory. Production XDR wiring, Windows E5 and release E7 remain open.",
       "evidence_artifact": "admin-evidence/ids-xdr-006-20261101/closeout.md",
       "superseded_by": "XDR-RECEIPT-002-20261103",
-      "historical_disposition": "HISTORICAL: production wiring was added later by XDR-RECEIPT-002 at source f7c626d; this entry remains the lab-slice record."
+      "historical_disposition": "HISTORICAL: production wiring was added later by XDR-RECEIPT-002 at source f7c626d; this entry remains the lab-slice record.",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/ids-xdr-006-20261101/closeout.md",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "XDR-RECEIPT-002-20261103",
@@ -4631,7 +4726,11 @@
       ],
       "result": "PASS_E2_SOURCE_AND_BUILD; WINDOWS_E5_PENDING",
       "actual": "The frozen batch is proven at Zig unit/component level and through the runtime freeze handoff test: two source categories freeze, the snapshot records, the receipt is non-enforcement, and replay reproduces the same decision. Security pins reject any policy/PEP/DEFCON/dispatch import or branch. No Windows host proof was performed; E5-CURRENT-RUNTIME-MISMATCH remains OPEN and the RB-021 canary was not run.",
-      "evidence_artifact": "admin-evidence/xdr-receipt-002-20261103/"
+      "evidence_artifact": "admin-evidence/xdr-receipt-002-20261103/",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/xdr-receipt-002-20261103/",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "E5-DEPLOY-F7C626D-20261103",
@@ -4655,7 +4754,11 @@
       ],
       "result": "PASS_E5_DEPLOY_AND_INSTALLED_RUNTIME_VERIFICATION; RB021_PREFLIGHT_BLOCKED_ON_LAB_ARP; CANARY_NOT_RUN",
       "actual": "All identity, hash, service, driver, pin, and policy-posture checks passed; a live read-only xdr.list confirmed the deployed binary exposes the XDR-RECEIPT-002 receipt counters and is ingesting advisory observations (single-source only, so no receipt has been issued yet). The RB-021 preflight reported RB021_PREFLIGHT_BLOCKED because the isolated lab VMs are not running, so no 192.168.126.10/192.168.126.20 ARP neighbors exist; every preflight identity and capture-pin check passed. No canary was sent, no gate was opened, and no host effect was enabled. Scope is deployment plus installed-runtime verification, not detection or canary E5.",
-      "evidence_artifact": "admin-evidence/e5-current-source-20261103/closeout.md"
+      "evidence_artifact": "admin-evidence/e5-current-source-20261103/closeout.md",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/e5-current-source-20261103/closeout.md",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "RB021-PREFLIGHT-PASS-20261103",
@@ -4678,7 +4781,11 @@
       ],
       "result": "PASS_PREFLIGHT_E1; CANARY_NOT_RUN; host_effect_confirmed=false; prevention_gate=closed",
       "actual": "The preflight that was BLOCKED at deploy time now passes because the lab guests are running and the daemon process carries the pinned selector. No canary traffic was sent, no gate was opened, the prevention gate stayed closed, and no host enforcement occurred. The service round-trip is the only host change and it was reverted in the same run.",
-      "evidence_artifact": "admin-evidence/rb021-window-20261103/lab-window.log"
+      "evidence_artifact": "admin-evidence/rb021-window-20261103/lab-window.log",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/rb021-window-20261103/lab-window.log",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "E5-PREFLIGHT-20261101",
@@ -4698,7 +4805,11 @@
       ],
       "result": "BLOCKED_PREFLIGHT",
       "finding": "No E5 host proof was performed or claimed. Resume in an elevated supervised session after confirming the isolated Kali .10 and Windows .20 guests.",
-      "evidence_artifact": "admin-evidence/e5-preflight-20261101/closeout.md"
+      "evidence_artifact": "admin-evidence/e5-preflight-20261101/closeout.md",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/e5-preflight-20261101/closeout.md",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "QLOSS-HEALTH-001-20261101",
@@ -4723,7 +4834,11 @@
       "result": "PASS_E2_SOURCE_AND_BUILD; WINDOWS_DEPLOYMENT_PENDING",
       "actual": "Source regression proves a queue drop produces state=DEGRADED, degraded=true and data_integrity.queue_dropped_total=1. After the operator restarted the old installed binary (SHA-256 8A195ABA73C66DB61A8810329C9B4414926B1813D731FDA8524792C47BB566D6), health still said RUNNING/degraded=false. A sample at uptime 18.7s showed EventQueue dropped_total=4,655 (capture_etw=2,125; capture_fim=2,530), depth=15,323/16,384; minifilter kernel ring counter read 466,949 (no before/after delta established). New source image SHA-256 749784FE150076600DE09E2CF0926EEAE0F4483442E8E5A0B9C5EE849E17C610 remains uninstalled. Rollback package SHA-256 37E9A198500A94DF363FFFA1C96C1C16D0CE59C283AC95235A9B0F61ACA54790 is retained; snapshot ID 20261101091936. Current-source installer SHA-256 488845A8A7D9B3648AF38A59E612074F933B4C6FA2E9A6C7BA9C31F01AC9DE7B is stamped 1edb2b1 and includes both driver payloads, but remains uninstalled. Release verification is 616/616; fresh_deploy --plan passes.",
       "evidence_artifact": "admin-evidence/qloss-health-001-20261101/closeout.md",
-      "tracking": "GitHub issue #29 remains OPEN until current build deployment and bounded Windows validation."
+      "tracking": "GitHub issue #29 remains OPEN until current build deployment and bounded Windows validation.",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/qloss-health-001-20261101/closeout.md",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "IDS-QUEUE-001-20261102",
@@ -4747,7 +4862,11 @@
       "result": "PASS_E2_SOURCE_AND_BUILD; WINDOWS_DEPLOYMENT_PENDING",
       "actual": "The new unit test fills 15,360 host events, proves the next host event is refused at the reserve boundary, proves a network event still enters the reserve, fills the reserve with network events, and proves a host refusal at true capacity increments only the full-queue counter. queue.stats parses and reports reserved_network_slots=1024 plus reserved_tail_shed. No Windows host proof was performed; the installed service image remains older than this source build.",
       "evidence_artifact": "admin-evidence/ids-queue-001-20261102/closeout.md",
-      "tracking": "Local record; no GitHub issue opened in this session."
+      "tracking": "Local record; no GitHub issue opened in this session.",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/ids-queue-001-20261102/closeout.md",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "TEST-DRIFT-20261102",
@@ -4775,7 +4894,11 @@
       "result": "PASS_E2_TEST_AND_TRUTH_ONLY; NO_PRODUCT_CHANGE",
       "actual": "No product source changed. The T10 test no longer writes runtime_manifest.json; it asserts Go Nose is REAL/golden path and direct Npcap is LAB/not golden path. The build_manifest refresh updated nine drifted digests without adding or dropping artifacts. This is not Windows E5, kernel qualification, or a new release bundle.",
       "evidence_artifact": "admin-evidence/test-drift-20261102/closeout.md",
-      "tracking": "Local record; no GitHub issue opened in this session."
+      "tracking": "Local record; no GitHub issue opened in this session.",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/test-drift-20261102/closeout.md",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "RB013-LOG-E5-20261102",
@@ -4865,7 +4988,11 @@
         "R1005 is a cross-layer literal-match artifact from the R0088 payload.",
         "Readiness degradation is pre-existing data-loss health reporting, unrelated to the canary."
       ],
-      "evidence_artifact": "admin-evidence/rb021-canary-20261104/closeout.md"
+      "evidence_artifact": "admin-evidence/rb021-canary-20261104/closeout.md",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/rb021-canary-20261104/closeout.md",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "XDR-005-HOSTNET-WIRING-E2-20261105",
@@ -4925,7 +5052,11 @@
         "No TAXII transport; export is file/stdout.",
         "E2 advisory surface only: this proves nothing about detection or host behavior."
       ],
-      "evidence_artifact": "admin-evidence/stix-export-20261105/xdr-20261105.stix.json"
+      "evidence_artifact": "admin-evidence/stix-export-20261105/xdr-20261105.stix.json",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/stix-export-20261105/xdr-20261105.stix.json",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "TAXII-PUSH-E2-20261105",
@@ -4992,7 +5123,11 @@
         "Join is proven for inbound traffic whose peer is the NIDS host; VM-to-VM traffic is not in the host TCP table.",
         "Host-only observations never open an incident; they remain pending until network evidence for the same entity arrives within the 120 s TTL."
       ],
-      "evidence_artifact": "admin-evidence/xdr005-e5-20261105/closeout.md"
+      "evidence_artifact": "admin-evidence/xdr005-e5-20261105/closeout.md",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/xdr005-e5-20261105/closeout.md",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "QLOSS-HEALTH-001-E5-20261104",
@@ -5024,7 +5159,11 @@
         "Observability only: no loss reduction, no enforcement, and no automatic remediation.",
         "The snapshot comes from the installed f7c626d image (D34D350A...), not from the fc108b0 workspace build."
       ],
-      "evidence_artifact": "admin-evidence/rb021-canary-20261104/post-restore/health-degradation.json"
+      "evidence_artifact": "admin-evidence/rb021-canary-20261104/post-restore/health-degradation.json",
+      "artifact_status": "historical",
+      "artifact_locator": "D:/AEGIS_archive/admin-evidence-20261106/rb021-canary-20261104/post-restore/health-degradation.json",
+      "artifact_status_basis": "Primary pointer removed from published git history on 2026-11-06; the exact file is retained at artifact_locator. Historical record, not reproducible from a fresh clone.",
+      "historical": true
     },
     {
       "id": "L4-FLAGS-R9007-LIVE-E5-VMNET1-20261108",
@@ -5872,7 +6011,10 @@
         "powershell -Verb RunAs -File admin-evidence/host-window-003-20261110/deploy-window-003.ps1"
       ],
       "limitations": "A deployment proof, not a stability proof. It cannot say whether the FIM helper fix prevents #30, because no crash-free interval has been observed yet.",
-      "evidence_artifact": "admin-evidence/host-window-003-20261110/deploy-window-003-result.json"
+      "evidence_artifact": "admin-evidence/host-window-003-20261110/deploy-window-003-result.json",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "KIND-ATTR-001-E5-20261110",
@@ -5892,7 +6034,10 @@
         "python tools/aegisctl.py metrics"
       ],
       "limitations": "The pre-deploy half of the comparison (893,223 = 893,223) is transcript-observed, not archived as a file. The post-deploy table is archived.",
-      "evidence_artifact": "admin-evidence/host-window-003-20261110/kind-attribution-e5.json"
+      "evidence_artifact": "admin-evidence/host-window-003-20261110/kind-attribution-e5.json",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "QLOSS-RATE-E5-20261110",
@@ -5913,7 +6058,10 @@
         "python admin-evidence/host-window-003-20261110/soak_rate.py --ops-per-second 4000 --seconds 90 --workers 3"
       ],
       "limitations": "Two points bracket the ceiling (3,229 clean, 4,009 lossy); the exact knee is not located. The window therefore cannot start a clean 24 h soak without an elevated daemon restart, and #29 stays open.",
-      "evidence_artifact": "admin-evidence/host-window-003-20261110/kind-attribution-e5.json"
+      "evidence_artifact": "admin-evidence/host-window-003-20261110/soak-attempt.json",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Repointed from kind-attribution-e5.json (the adjacent KIND-ATTR-001 artifact) to this entry's own rate/retraction artifact. Neither it nor the other rate series files are present in the worktree or archive as of 2026-11-24; the 3,229 clean / 4,009 lossy bracketing remains a historical operator record.",
+      "historical": true
     },
     {
       "id": "QLOSS-RATE-CLEAN-E5-20261110",
@@ -5944,7 +6092,10 @@
         "Acceptance is 4,000 op-sets/s; a 6,383 op-sets/s burst still sheds.",
         "The 24 h soak (R-08) is a separate gate started from this clean counter set and was not complete at the time of this record; #30 stays open until it finishes crash-free.",
         "admin-evidence/ is local-only and git-ignored; the JSON artifacts live on the host that produced them."
-      ]
+      ],
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "VERDICT-AUTH-001-E2-20261110",
@@ -8381,7 +8532,10 @@
       "result": "PASS",
       "finding": "A real attacker VM on the production sensor's link raises 10004, 10001 and 10003 as observe-only evidence; the lane is live end to end, and its row counts are doubled only by an adapter-level duplicate-frame behaviour that is measured and tracked separately.",
       "evidence_artifact": "admin-evidence/lab-wifi-bridged-l7-kinds-20261117/attack-window-20261116T193738Z.json",
-      "record": "analysis/current-head/IDS-L7-003-20261117.md"
+      "record": "analysis/current-head/IDS-L7-003-20261117.md",
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "REL-EOL-DIGEST-001-E2-20261117",
@@ -8811,7 +8965,11 @@
       "limitations": [
         "The scan covers the retained ring window only; a 0 can still mean 'aged out' rather than 'never seen', and the response does not yet say which sequence range was scanned.",
         "The frames came from the host side of VMnet1 (the Kali guest cannot be driven for exec on this host), so the source is host-originated traffic on the captured interface."
-      ]
+      ],
+      "artifact_status": "historical",
+      "artifact_locator": "tests/forensics/test_forensic_payload_filter.py",
+      "artifact_status_basis": "Primary pointer is a source/test file, not a Windows-host artifact. The host measurement is described in this record but no host-side capture is present in the checked tree; treat the E5 narrative as operator-attested, not independently auditable here (P3-EVIDENCE-HONESTY).",
+      "historical": true
     },
     {
       "id": "PROC-LAYER-001-E5-20261118",
@@ -8836,7 +8994,11 @@
       "limitations": [
         "R2003 (IEX) still cannot fire: the producing lane carries the image path only, not the command line.",
         "The positive control is one rule (R2004) on one stimulus; R2001/R2002 remained at 0 in the same window but that is a negative control, not proof they work."
-      ]
+      ],
+      "artifact_status": "historical",
+      "artifact_locator": "src/pipeline/event_processor.zig",
+      "artifact_status_basis": "Primary pointer is a source/test file, not a Windows-host artifact. The host measurement is described in this record but no host-side capture is present in the checked tree; treat the E5 narrative as operator-attested, not independently auditable here (P3-EVIDENCE-HONESTY).",
+      "historical": true
     },
     {
       "id": "QLOSS-DELFILTER-001-E5-20261118",
@@ -8863,7 +9025,11 @@
         "Acceptance criterion 1 of the ADR (total drops and shed_overload strictly below the QLOSS baseline for the same stimulus) is NOT measured yet: it needs a controlled storm plus the 24 h soak, and the soak is the last step.",
         "The aggregate row for a mass delete (one high-count event with top-N prefixes) is not implemented yet; today the reduction is visible only as the name_delete_filtered counter.",
         "Option B (batched forensic append) is not started; the ADR itself gates it on the measurement above."
-      ]
+      ],
+      "artifact_status": "historical",
+      "artifact_locator": "src/pipeline/telemetry_threads.zig",
+      "artifact_status_basis": "Primary pointer is a source/test file, not a Windows-host artifact. The host measurement is described in this record but no host-side capture is present in the checked tree; treat the E5 narrative as operator-attested, not independently auditable here (P3-EVIDENCE-HONESTY).",
+      "historical": true
     },
     {
       "id": "QLOSS-DELAGG-001-E5-20261118",
@@ -8889,7 +9055,11 @@
         "The aggregate covers deletes only; a storm made of other classes still relies on the pre-decode gate and the shed policy.",
         "ADR acceptance criterion 1 (drops and shed_overload strictly below the QLOSS baseline for the same stimulus) still needs the controlled storm comparison, which is scheduled with the soak.",
         "Only one window was observed live; the top-N folding was pinned in a unit test (three paths, two prefixes) rather than observed under a real million-row delete storm."
-      ]
+      ],
+      "artifact_status": "historical",
+      "artifact_locator": "src/pipeline/telemetry_threads.zig",
+      "artifact_status_basis": "Primary pointer is a source/test file, not a Windows-host artifact. The host measurement is described in this record but no host-side capture is present in the checked tree; treat the E5 narrative as operator-attested, not independently auditable here (P3-EVIDENCE-HONESTY).",
+      "historical": true
     },
     {
       "id": "QLOSS-B-MEASURE-001-E2-20261118",
@@ -8976,7 +9146,7 @@
       "flow_id": "REL-001",
       "component": "tools/release_candidate.py, tools/sign_release.py, tools/installer.py, tools/final_audit.py",
       "title": "The release candidate was rebuilt from current source, signed with the existing anchor, and its signature proven to survive a clone",
-      "description": "release/T20-final/ad7948c predated the shipped runtime, so release_signature could not close. The candidate is release/T20-final/bece8f1, assembled at records HEAD bece8f1 from build source 4169839: 258 files on disk, 251 checksummed entries, SHA256SUMS hashing to B008EA1CFA24A1A504E80DC950274790C1BF2B7FDAEE49B3D7BE36E8DA17C754, signed with the ed25519 key that already signed ad7948c (txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o=), so the trust anchor has continuity rather than new key material. All 251 per-file digests were recomputed from the bytes on disk: 0 mismatches, 0 missing. final_audit --release-check with AEGIS_RELEASE_TRUSTED_PUBLIC_KEY set reports release_signature PASS. Two defects were found by checking the artifact rather than trusting RC PASS. SIGNED-TREE-001: '* text eol=lf' rewrote the signed SHA256SUMS bytes on commit, so ad7948c and the first candidate verified on the signing machine and would fail on every clone; release/** is now -text, the trees are re-staged byte-for-byte, and tests/release/test_signed_tree_bytes.py recomputes every committed digest. PACKAGING-CACHE-001: the first candidate copied brain/aegis_brain_cython/.pytest_cache into the signed tree (unreproducible bytes, local test names shipped); release_candidate.COPY_IGNORE now drops test/tool caches and tests/release/test_release_candidate_packaging.py pins it. That first tree was deleted and rebuilt. The 6.0.0 bundle (dist/aegis_setup_6.0.0_trial.exe, 6233653 bytes, sha256 BC61B102933C30D8DD404363D088F4DEA503D825E44C8F57FFA4D1B082769C14) packages zig-out/bin/aegis_nids.exe as built from 4169839. Gate board is 5/6 PASS; soak_24h is the only open gate and is the owner's final step.",
+      "description": "release/T20-final/ad7948c predated the shipped runtime, so release_signature could not close. The candidate is release/T20-final/bece8f1, assembled at records HEAD bece8f1 from build source 4169839: 258 files on disk, 251 checksummed entries, SHA256SUMS hashing to B008EA1CFA24A1A504E80DC950274790C1BF2B7FDAEE49B3D7BE36E8DA17C754, signed with the ed25519 key that already signed ad7948c (txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o=), so the trust anchor has continuity rather than new key material. All 251 per-file digests were recomputed from the bytes on disk: 0 mismatches, 0 missing. final_audit --release-check with AEGIS_RELEASE_TRUSTED_PUBLIC_KEY set reports release_signature PASS. Two defects were found by checking the artifact rather than trusting RC PASS. SIGNED-TREE-001: '* text eol=lf' rewrote the signed SHA256SUMS bytes on commit, so ad7948c and the first candidate verified on the signing machine and would fail on every clone; release/** is now -text, the trees are re-staged byte-for-byte, and tests/release/test_signed_tree_bytes.py recomputes every committed digest. PACKAGING-CACHE-001: the first candidate copied brain/aegis_brain_cython/.pytest_cache into the signed tree (unreproducible bytes, local test names shipped); release_candidate.COPY_IGNORE now drops test/tool caches and tests/release/test_release_candidate_packaging.py pins it. That first tree was deleted and rebuilt. The 6.0.0 bundle (dist/aegis_setup_6.0.0_trial.exe, 6233653 bytes, sha256 BC61B102933C30D8DD404363D088F4DEA503D825E44C8F57FFA4D1B082769C14) packages zig-out/bin/aegis_nids.exe as built from 4169839. Gate board was 5/6 at the recorded head PASS; soak_24h is the only open gate and is the owner's final step. [HISTORICAL @ recorded head: v1.1 was published 6/6 PASS (0 open) from signed candidate 466a226 / build source a53eda8; this is not a current gate claim.]",
       "evidence_artifact": "analysis/current-head/RC-BECE8F1-20261118.md",
       "artifacts": [
         "release/T20-final/bece8f1/SHA256SUMS",
@@ -9002,7 +9172,8 @@
         "clean_host_e5 passes on the 2026-11-14 preflight, which predates build source 4169839; it proves the gate's shape, not this build.",
         "The installer sits under dist/, which is ignored and not committed; its sha256 is recorded here instead.",
         "Seven tree files carry no digest: SHA256SUMS, signatures.json, KNOWN_LIMITATIONS.md, ROLLBACK.md and the three generated reports. They are the tree's own metadata, not shipped runtime."
-      ]
+      ],
+      "historical": true
     },
     {
       "id": "SUITE-FLAKE-FRESHCACHE-001-E2-20261118",
@@ -9100,7 +9271,7 @@
       "flow_id": "REL-001",
       "component": "installed 6.0.0 bundle from corrected candidate 7d91e30",
       "title": "RB-024 steps 1-6 passed on the installed build; the 24 h soak was deliberately not started",
-      "description": "One elevated window on 2026-11-18 verified the corrected candidate signature and board (5/6, soak_24h the only OPEN gate), checked both driver images Valid before and after install, installed dist/aegis_setup_6.0.0_trial.exe sha256 296780A9... with exit 0, found all four AEGIS services RUNNING, and confirmed the installed runtime sha256 4CDC1999... matches the signed build. host_preflight after 5.4 min uptime returned PASS with 0 failed checks, including both kernel telemetry drivers RUNNING, loss budget 3500 and minifilter ring drops 0. capture_select --show proved two resolved disjoint devices with direct capture enabled and --verify showed ingress advancing +432 frames on the Wi-Fi pin. upgrade_rollback snapshot/report/rollback/report completed with snapshot 20261118153506 and AegisNids RUNNING afterwards. soak_started=false in the result artifact.",
+      "description": "One elevated window on 2026-11-18 verified the corrected candidate signature and board (5/6, soak_24h the only OPEN gate), checked both driver images Valid before and after install, installed dist/aegis_setup_6.0.0_trial.exe sha256 296780A9... with exit 0, found all four AEGIS services RUNNING, and confirmed the installed runtime sha256 4CDC1999... matches the signed build. host_preflight after 5.4 min uptime returned PASS with 0 failed checks, including both kernel telemetry drivers RUNNING, loss budget 3500 and minifilter ring drops 0. capture_select --show proved two resolved disjoint devices with direct capture enabled and --verify showed ingress advancing +432 frames on the Wi-Fi pin. upgrade_rollback snapshot/report/rollback/report completed with snapshot 20261118153506 and AegisNids RUNNING afterwards. soak_started=false in the result artifact. [HISTORICAL @ recorded head: v1.1 was published 6/6 PASS (0 open) from signed candidate 466a226 / build source a53eda8; this is not a current gate claim.]",
       "evidence_artifact": "admin-evidence/e5-clean-host-20261118-final/RB-024-result.json",
       "artifacts": [
         "admin-evidence/e5-clean-host-20261118-final/RB-024-transcript.txt",
@@ -9122,9 +9293,12 @@
       "result": "PASS",
       "limitations": [
         "E5 on this lab host only: no EV/HLK driver signing, no clean-machine boot model, and no WFP enforcement claim.",
-        "The 24 h soak is intentionally excluded and remains the only release gate; the board stays 5/6.",
+        "The 24 h soak is intentionally excluded and remains the only release gate; the at the recorded head the board was 5/6. [HISTORICAL @ recorded head: v1.1 was published 6/6 PASS (0 open) from signed candidate 466a226 / build source a53eda8; this is not a current gate claim.]",
         "The runner transcript records two earlier aborted attempts (expected stderr handling, then an unsigned-driver install). Both are superseded by this clean run; the unsigned-driver defect is recorded in DRIVER-TESTSIGN-RESTORE-001-E5-20261118."
-      ]
+      ],
+      "historical": true,
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree."
     },
     {
       "id": "CAPTURE-DUP-BYTELEVEL-7D91E30-001-E5-20261118",
@@ -9152,7 +9326,10 @@
         "The item is not closed: RB-024 requires a zero from the ratio counter, and this build measured 66 pairs.",
         "The byte-level probe covers this 1084-frame sample only; it does not prove absence at all traffic rates.",
         "pcap files live in local-only admin-evidence and are not committed."
-      ]
+      ],
+      "artifact_status": "missing",
+      "artifact_status_basis": "Not present in the worktree or the operator archive as of 2026-11-24; this historical record is not independently auditable from this tree.",
+      "historical": true
     },
     {
       "id": "RULE-LAYER-FAILCLOSED-001-E2-20261119",
@@ -9266,7 +9443,11 @@
       "limitations": [
         "Never reached PASS; deliberately stopped before the 24 h requirement.",
         "No host change or restart occurred during the window."
-      ]
+      ],
+      "artifact_status": "missing",
+      "artifact_status_basis": "Voided window, never PASS and never release proof. The artifact is not present in the worktree or operator archive as of 2026-11-24.",
+      "historical": true,
+      "result": "VOIDED_BY_OWNER_DECISION"
     },
     {
       "id": "CI-ENCODING-BOM-FIX-20261119",
@@ -9574,11 +9755,12 @@
         "python scripts/check_summary.py -> SUMMARY_VALID"
       ],
       "result": "PASS_E1",
-      "finding": "Current system is not yet complete; Slice 1 starts with rule coverage and R2003 FP/FN. Board stays 5/6 until soak and new evidence are reconciled.",
+      "finding": "Current system is not yet complete; Slice 1 starts with rule coverage and R2003 FP/FN. At the recorded head the board was 5/6 until soak and new evidence are reconciled. [HISTORICAL @ recorded head: v1.1 was published 6/6 PASS (0 open) from signed candidate 466a226 / build source a53eda8; this is not a current gate claim.]",
       "evidence_artifact": "analysis/current-head/GAP-CLOSURE-PLAN-20261119.md",
       "limitations": [
         "Plan only; no source patch, build, install, restart or gate change authorized by this document."
-      ]
+      ],
+      "historical": true
     },
     {
       "id": "DOCS-READINESS-PATCH-E1-20261119",
@@ -9602,14 +9784,15 @@
         "python tools/truth.py verify -> TRUTH_VALID",
         "python scripts/check_summary.py -> SUMMARY_VALID",
         "python tools/evidence_debt.py -> 0 unnamed product files",
-        "python tools/final_audit.py --release-check (owner anchor supplied) -> 5/6 PASS, soak_24h OPEN"
+        "python tools/final_audit.py --release-check (owner anchor supplied) -> 5/6 PASS, soak_24h OPEN [HISTORICAL @ recorded head: v1.1 was published 6/6 PASS (0 open) from signed candidate 466a226 / build source a53eda8; this is not a current gate claim.]"
       ],
       "result": "PASS_E1",
-      "finding": "Board remains 5/6 NOT SHIPPABLE until the fresh 24 h window closes; metrics source gaps are documented and deferred, not fixed.",
+      "finding": "At the recorded head the board was 5/6 NOT SHIPPABLE until the fresh 24 h window closes; metrics source gaps are documented and deferred, not fixed. [HISTORICAL @ recorded head: v1.1 was published 6/6 PASS (0 open) from signed candidate 466a226 / build source a53eda8; this is not a current gate claim.]",
       "evidence_artifact": "analysis/current-head/DOCS-READINESS-PATCH-20261119.md",
       "limitations": [
         "Records-only; no runtime or release action authorized."
-      ]
+      ],
+      "historical": true
     },
     {
       "id": "DOCS-RUST-FOUNDATION-STATUS-E1-20261119",
@@ -10175,6 +10358,43 @@
         "No fuzz campaign or property-based test was run; only the enumerated malformed cases are proven.",
         "Issue #44 counter-delta tests and cause-splitting remain open follow-ups.",
         "Build source advanced to 661fb76; map restamp and digest refresh are separate records-only commits."
+      ]
+    },
+    {
+      "id": "P3-EVIDENCE-HONESTY-20261124-E2",
+      "head_sha": "661fb768dc1c8eeb0f79e4e437807f2eac08c9ff",
+      "timestamp": "2026-11-24",
+      "title": "Evidence integrity: unopenable pointers, stale gate language and invalid gap statuses are explicitly labelled",
+      "level": "E2",
+      "component": "EVIDENCE_INDEX.json, scripts/check_summary.py, tools/final_audit.py, release board docs",
+      "flow_id": "REL-001, EVIDENCE-INTEGRITY",
+      "description": "Phase 3 audit. check_summary.py was exiting 1 with 48 unresolvable primary evidence_artifact pointers (32 E5) while its E5_with_artifact_count: 72 read as openable proof. The validator now separates resolvable/unresolvable counts and requires every unresolvable pointer to be historical with an artifact_locator or missing with an artifact_status_basis. 18 pointers have exact operator-archive locators; 30 are marked missing and are not independently auditable. The stale retention note said 63 citing entries (actual: 48 primary pointers, 61 files_verified citations, 133 mentions anywhere). QLOSS-RATE-E5 was repointed from the adjacent kind-attribution artifact to its own rate/retraction artifact (still missing). The voided soak window now carries result VOIDED_BY_OWNER_DECISION and is not presented as PASS. Stale 'board remains 5/6' language is scoped to recorded heads. Two known gaps claiming a recorded head they cannot name (XDR-WIRE-001 null head, EVT-101 42-char head) are UNRECORDED; SUITE-FLAKE-001 gained result=PASS. final_audit now runs the read-only index validator as a second input to the existing truth_artifacts gate: still six gates, no waiver and no release-signature change.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-P3-20261124.md",
+        "EVIDENCE_INDEX.json",
+        "scripts/check_summary.py",
+        "tests/release/test_evidence_index_valid.py",
+        "tests/release/test_known_gap_status.py",
+        "tools/final_audit.py",
+        "tests/release/test_release_board.py",
+        "AI_CONTEXT.md",
+        "docs/gates/PRODUCTION_READINESS.md",
+        "docs/gates/T20_100pct_audit.md"
+      ],
+      "tests": [
+        "python scripts/check_summary.py -> SUMMARY_VALID with split artifact counts",
+        "pytest tests/release/test_evidence_index_valid.py test_known_gap_status.py test_release_board.py -> pass",
+        "python tools/truth.py verify -> TRUTH_VALID (build source unchanged)",
+        "python tools/release_engineering.py --verify -> 674/674 digests"
+      ],
+      "result": "PASS_E2",
+      "finding": "Honesty correction only: no new E4/E5/soak/host claim, no wire/rule/authority or release-artifact change. Release identity stays v1.1 / 6/6 at signed candidate 466a226; the T20 board is labelled release-identity, not a current-source re-run.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P3-20261124.md",
+      "limitations": [
+        "Records-only slice: no new host verification, no fresh soak and no new release artifact.",
+        "30 historical host artifacts remain unrecovered and are explicitly not independently auditable.",
+        "E5 entries whose primary pointer is a source/test file are marked operator-attested; no new host artifact was invented.",
+        "Six release gates are unchanged in count; the truth gate now fails closed on an invalid evidence index."
       ]
     }
   ],
@@ -11895,7 +12115,7 @@
     },
     {
       "id": "EVT-101",
-      "head_sha": "39afa56bcc2180814c452545b272d3ec08e3e3e1c9",
+      "head_sha": null,
       "timestamp": "2026-10-08",
       "title": "Re-verify battery green after all crash fixes: cargo, nose, brain",
       "level": "E2",
@@ -11910,8 +12130,9 @@
       ],
       "result": "PASS",
       "finding": "Rust, Go, and Python suites are green on the fixed tree. Zig suite explicitly green: Build Summary 4/4 steps succeeded, test run cached from the clean post-LIT-FREE execution. All verification batteries in this session are now closed with executed proof.",
-      "status": "CLOSED_AT_RECORDED_HEAD",
-      "status_basis": "entry.result=PASS recorded at head 39afa56 on 2026-10-08; not re-verified at the current HEAD"
+      "status": "UNRECORDED",
+      "status_basis": "Recorded head_sha was 39afa56bcc2180814c452545b272d3ec08e3e3e1c9 (42 hex characters, invalid); closure is not verified at a named source commit (P3 audit).",
+      "invalid_recorded_head": null
     },
     {
       "id": "EVT-102",
@@ -16306,8 +16527,8 @@
       ],
       "result_note": "Advisory-only read-only wiring; full source-to-forensic-receipt integration (IDS-XDR-005) remains OPEN",
       "evidence_artifact": "admin-evidence/xdr-wire-001-20261102/closeout.md",
-      "status": "CLOSED_AT_RECORDED_HEAD",
-      "status_basis": "entry.result=PASS recorded at head None on 2026-11-02; not re-verified at the current HEAD"
+      "status": "UNRECORDED",
+      "status_basis": "head_sha was null when recorded; result=PASS is a historical claim with no named source commit and is not re-verified at the current HEAD (P3 audit)."
     },
     {
       "id": "IDS-XDR-005-WIRING-OPEN",
@@ -16836,23 +17057,27 @@
       "next_step": "No source change is justified. If the failure recurs, reopen with the full runner log, the build summary, host memory pressure and the exact source SHA; do not count a cached-green run.",
       "head_sha": "4169839",
       "timestamp": "2026-11-18",
-      "status_basis": "4169839",
+      "status_basis": "4169839 result=PASS recorded from the resolution text (two CI + two fresh-cache local runs, 3337/3347 + 10 skips) at source 4169839; historical only (P3 audit).",
       "closed_by": "SUITE-FLAKE-FRESHCACHE-001-E2-20261118",
       "resolution": "Two CI runs and two fresh-cache local runs on recorded source 4169839 exited 0 with 3337/3347 tests passed and 10 declared skips; the historical XdrEngine prune process death did not reproduce. Root cause is not claimed. Closed at the recorded source only; recurrence requires the full log, host memory state and exact source SHA.",
-      "evidence": "SUITE-FLAKE-FRESHCACHE-001-E2-20261118: fresh-cache local reruns and two green CI runs on 4169839"
+      "evidence": "SUITE-FLAKE-FRESHCACHE-001-E2-20261118: fresh-cache local reruns and two green CI runs on 4169839",
+      "result": "PASS"
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 43,
-    "E2_count": 145,
+    "E2_count": 146,
     "E3_count": 15,
     "E4_count": 4,
     "E5_count": 122,
     "E6_count": 1,
     "E7_count": 5,
     "E5_with_artifact_count": 72,
+    "E5_with_resolvable_artifact_count": 40,
+    "E5_with_unresolvable_artifact_count": 32,
+    "unresolvable_artifact_pointer_count": 48,
     "known_gaps_count": 287
   },
-  "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone."
+  "known_gaps_status_note": "status is one of OPEN, CLOSED, CLOSED_AT_RECORDED_HEAD or UNRECORDED. CLOSED_AT_RECORDED_HEAD means the entry's own result field recorded a pass/closure at the head_sha it names (status_basis repeats it) and nobody has re-verified it at the current HEAD; it is a historical record, not a current guarantee. UNRECORDED means the entry carries no recorded result and has not been assessed. Neither field is ever promoted to CLOSED by this index alone. CLOSED_AT_RECORDED_HEAD additionally requires a 7-40 hex head_sha and a non-empty result field; entries lacking either are UNRECORDED (P3-EVIDENCE-HONESTY)."
 }

@@ -60,4 +60,31 @@ def test_level_summary_matches_entries():
     e5 = [e for e in d["evidence"] if e.get("level") == "E5"]
     with_artifact = [e for e in e5 if e.get("evidence_artifact")]
     assert summary.get("E5_with_artifact_count") == len(with_artifact)
+    resolvable = [e for e in with_artifact
+                  if (INDEX.parent / e["evidence_artifact"]).exists()]
+    assert summary.get("E5_with_resolvable_artifact_count") == len(resolvable)
+    assert summary.get("E5_with_unresolvable_artifact_count") == len(with_artifact) - len(resolvable)
+    all_ptr = [e for e in d["evidence"] if e.get("evidence_artifact")]
+    all_resolvable = [e for e in all_ptr
+                      if (INDEX.parent / e["evidence_artifact"]).exists()]
+    assert summary.get("unresolvable_artifact_pointer_count") == len(all_ptr) - len(all_resolvable)
     assert summary.get("known_gaps_count") == len(d.get("known_gaps", []))
+
+
+def test_unresolvable_artifact_pointers_carry_explicit_status():
+    # P3-EVIDENCE-HONESTY: a truthy pointer is not proof an auditor can open
+    # the artifact. Historical pointers name an operator-archive locator;
+    # genuinely lost pointers state why they are not independently auditable.
+    bad = []
+    for e in _load().get("evidence", []):
+        pointer = e.get("evidence_artifact")
+        if not pointer or (INDEX.parent / pointer).exists():
+            continue
+        status = e.get("artifact_status")
+        if status not in {"historical", "missing"}:
+            bad.append(f"{e.get('id')}: bad status {status!r}")
+        elif status == "historical" and not str(e.get("artifact_locator") or "").strip():
+            bad.append(f"{e.get('id')}: missing artifact_locator")
+        elif status == "missing" and not str(e.get("artifact_status_basis") or "").strip():
+            bad.append(f"{e.get('id')}: missing artifact_status_basis")
+    assert not bad, f"unlabeled unresolved artifact pointers: {bad[:10]}"

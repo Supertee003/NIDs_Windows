@@ -38,6 +38,7 @@ INSTALL = r"C:\Program Files\AEGIS NIDS"
 def facts(**over) -> dict:
     base = {
         "truth": {"ok": True, "detail": "TRUTH_VALID"},
+        "evidence_index": {"ok": True, "detail": "SUMMARY_VALID"},
         "component": {"ok": True, "detail": "modules 66/66"},
         "signatures": [
             {
@@ -117,6 +118,17 @@ def test_a_fully_evidenced_release_is_shippable() -> None:
     verdict = TOOL_MOD.release_verdict(TOOL_MOD.release_gates(facts()))
     assert verdict["shippable"] is True
     assert verdict["open"] == []
+
+
+def test_an_invalid_evidence_index_keeps_the_truth_gate_closed() -> None:
+    """P3-EVIDENCE-HONESTY: six gates stay six, but TRUTH_VALID is not enough."""
+    opened = gates(evidence_index={"ok": False, "detail": "EVIDENCE_INDEX INVALID"})
+    assert opened["truth_artifacts"]["ok"] is False
+    assert "EVIDENCE_INDEX INVALID" in opened["truth_artifacts"]["detail"]
+    assert len(TOOL_MOD.release_gates(facts())) == len(opened) == 6
+    assert TOOL_MOD.release_verdict(
+        TOOL_MOD.release_gates(facts(evidence_index={"ok": False, "detail": "invalid"}))
+    )["shippable"] is False
 
 
 def test_a_complete_component_audit_alone_never_closes_the_release() -> None:

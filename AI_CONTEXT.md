@@ -6,9 +6,9 @@
 
 **HEAD:** `661fb768dc1c8eeb0f79e4e437807f2eac08c9ff` (build source commit — ADR-0008)
 
-**RECORDS TIP:** `c3cc44f` (records head before this edit; a commit cannot contain its own SHA)
+**RECORDS TIP:** `8b18ef7` (records head before this edit; a commit cannot contain its own SHA)
 
-**BRANCH:** `codex/o2-etw-context`
+**BRANCH:** `main`
 
 **GENERATED:** 2026-11-03T14:45:00+07:00
 

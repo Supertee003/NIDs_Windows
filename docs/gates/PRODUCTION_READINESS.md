@@ -5,9 +5,15 @@
 > `T20_100pct_audit.md`. The FAIL / NOT SHIPPABLE language below records the earlier candidate
 > only and is not the current release state.
 
-> **Reading rule.** The conditions below are the historical definition, not the current gate
-> board. Current board: `docs/gates/T20_100pct_audit.md` → SHIPPABLE, 6/6 PASS (0 open); release
-> record `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`.
+> **Reading rule.** The conditions below are the historical definition, not the gate board.
+> The v1.1 **release-identity** board is `docs/gates/T20_100pct_audit.md` → SHIPPABLE, 6/6 PASS
+> (0 open), recorded at signed candidate `466a226` / build source `a53eda8`; release record
+> `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`. That board is **not** a re-run at the
+> current build source (`661fb76` at the 2026-11-24 audit); no current-source E5/soak claim is made here.
+>
+> **Evidence-retention limit.** The board's `clean_host_e5` and `soak_24h` inputs are owner-attested
+> operator files under ignored `admin-evidence/`. They are not reproducible from a fresh clone;
+> see `EVIDENCE_INDEX.json` `artifact_retention` for the 18 archived / 30 unrecovered pointer split.
 
 > **Provenance.** Gates 1, 2, 4–8 were evidenced at build source `f4cde3c`
 > (candidate `b597e71`). The branch source is now `a53eda8` (additive E2 slices,

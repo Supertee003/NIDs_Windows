@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate EVIDENCE_INDEX.json against what it actually claims (S1-03).
 
-Three defects this closes:
+Four defects this closes:
 
 1. ``evidence_level_summary`` counted the ``known_gaps`` section as evidence.
    ``tools/evidence_debt.py`` states the correct rule ("Only evidence entries
@@ -15,6 +15,12 @@ Three defects this closes:
 3. Entries asserting ``host_effect_confirmed: true`` must be marked as
    lab-scoped or historical. This product is detection-only; an unmarked
    "host effect confirmed" row reads as a live enforcement claim.
+4. A truthy ``evidence_artifact`` pointer is not proof that the artifact can
+   be opened. Unresolvable pointers must now carry an explicit
+   ``artifact_status``: ``historical`` with an ``artifact_locator`` (operator
+   archive), or ``missing`` with an ``artifact_status_basis``. The summary
+   publishes resolvable and unresolvable counts separately; an unlabeled
+   missing pointer still fails validation.
 
 Usage:
     python scripts/check_summary.py           # validate (exit 1 on drift)
@@ -42,13 +48,33 @@ def save(d: dict) -> None:
     INDEX.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def resolves(pointer: str) -> bool:
+    return (INDEX.parent / pointer).exists()
+
+
 def recompute(d: dict) -> dict:
-    """Summary derived from evidence entries only, plus artifact visibility."""
+    """Summary derived from evidence entries only, plus artifact visibility.
+
+    ``E5_with_artifact_count`` stays as the historical count of truthy
+    pointers, but it is explicitly NOT an openable-artifact count. The two new
+    fields split it into what an auditor can read in this worktree and what
+    they cannot.
+    """
     counts = Counter(e.get("level") for e in d.get("evidence", []) if e.get("level"))
     e5 = [e for e in d.get("evidence", []) if e.get("level") == "E5"]
     e5_with_artifact = [e for e in e5 if e.get("evidence_artifact")]
+    all_with_artifact = [e for e in d.get("evidence", []) if e.get("evidence_artifact")]
     summary = {f"{lvl}_count": counts.get(lvl, 0) for lvl in LEVELS}
     summary["E5_with_artifact_count"] = len(e5_with_artifact)
+    summary["E5_with_resolvable_artifact_count"] = sum(
+        1 for e in e5_with_artifact if resolves(e["evidence_artifact"])
+    )
+    summary["E5_with_unresolvable_artifact_count"] = sum(
+        1 for e in e5_with_artifact if not resolves(e["evidence_artifact"])
+    )
+    summary["unresolvable_artifact_pointer_count"] = sum(
+        1 for e in all_with_artifact if not resolves(e["evidence_artifact"])
+    )
     summary["known_gaps_count"] = len(d.get("known_gaps", []))
     return summary
 
@@ -90,8 +116,20 @@ def validate(d: dict) -> list[str]:
                 )
         pointer = e.get("evidence_artifact")
         if pointer and not (root / pointer).exists():
-            if e.get("artifact_status") not in ARTIFACT_STATUSES:
-                problems.append(f"{e.get('id')}: artifact pointer does not resolve: {pointer}")
+            status = e.get("artifact_status")
+            if status not in {"historical", "missing"}:
+                problems.append(
+                    f"{e.get('id')}: unresolvable pointer needs artifact_status "
+                    f"historical|missing: {pointer}"
+                )
+            elif status == "historical" and not str(e.get("artifact_locator") or "").strip():
+                problems.append(
+                    f"{e.get('id')}: historical artifact needs artifact_locator: {pointer}"
+                )
+            elif status == "missing" and not str(e.get("artifact_status_basis") or "").strip():
+                problems.append(
+                    f"{e.get('id')}: missing artifact needs artifact_status_basis: {pointer}"
+                )
 
     for section in ("evidence", "known_gaps"):
         for e in d.get(section, []):
@@ -124,8 +162,13 @@ def main(argv: list[str] | None = None) -> int:
     evidence = d.get("evidence", [])
     gaps = d.get("known_gaps", [])
     with_pointer = [e for e in evidence if e.get("evidence_artifact")]
+    unresolvable = [e for e in with_pointer if not resolves(e["evidence_artifact"])]
     print()
     print(f"evidence entries: {len(evidence)} (with artifact pointer: {len(with_pointer)})")
+    print(f"artifact pointers resolvable in worktree: {len(with_pointer) - len(unresolvable)}")
+    for e in unresolvable:
+        print(f"  UNRESOLVABLE {e.get('id')}: {e.get('evidence_artifact')} "
+              f"[{e.get('artifact_status')}]")
     print(f"known_gaps entries: {len(gaps)} (findings log, never counted as evidence)")
 
     problems = validate(d)

@@ -567,8 +567,14 @@ def release_gates(facts: dict) -> list[dict]:
         add(gate_id, result.get("ok") is True, owner, result.get("detail") or "unreadable")
 
     truth = facts.get("truth") or {}
-    add("truth_artifacts", truth.get("ok") is True, "none",
-        truth.get("detail") or "tools/truth.py verify did not run")
+    evidence_index = facts.get("evidence_index") or {}
+    add("truth_artifacts",
+        truth.get("ok") is True and evidence_index.get("ok") is True,
+        "none",
+        "; ".join(filter(None, [
+            truth.get("detail") or "tools/truth.py verify did not run",
+            evidence_index.get("detail") or "scripts/check_summary.py did not run",
+        ])))
 
     component = facts.get("component") or {}
     add("component_audit", component.get("ok") is True, "none",
@@ -737,6 +743,24 @@ def collect_release_facts(repo: Path = REPO) -> dict:
         }
     except (OSError, subprocess.SubprocessError) as exc:
         facts["truth"] = {"ok": False, "detail": f"truth.py did not run: {exc}"}
+
+    # P3-EVIDENCE-HONESTY: TRUTH_VALID alone did not notice 48 unopenable
+    # evidence pointers. Run the read-only index validator as a second input
+    # to the SAME truth gate; the release board stays at six gates.
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(repo / "scripts" / "check_summary.py")],
+            capture_output=True, text=True, timeout=300, cwd=str(repo),
+        )
+        tail = (proc.stdout or proc.stderr).strip().splitlines()
+        verdict = next(
+            (line for line in reversed(tail)
+             if line.startswith("SUMMARY_VALID") or line.startswith("EVIDENCE_INDEX INVALID")),
+            f"exit {proc.returncode}",
+        )
+        facts["evidence_index"] = {"ok": proc.returncode == 0, "detail": verdict}
+    except (OSError, subprocess.SubprocessError) as exc:
+        facts["evidence_index"] = {"ok": False, "detail": f"check_summary.py did not run: {exc}"}
 
     runtime_commit, source_time = _runtime_source(repo)
     facts["runtime_commit"] = runtime_commit

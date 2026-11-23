@@ -13,6 +13,7 @@ Nothing here claims a gap was fixed.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -61,14 +62,25 @@ def test_the_index_explains_what_unrecorded_means() -> None:
 
 
 def test_a_historical_closure_carries_its_basis() -> None:
-    """`CLOSED_AT_RECORDED_HEAD` is a claim about a past head, so it must say which."""
-    offenders = [
-        gap.get("id")
-        for gap in (_index().get("known_gaps") or [])
-        if gap.get("status") == "CLOSED_AT_RECORDED_HEAD"
-        and not str(gap.get("status_basis") or "").strip()
-    ]
-    assert not offenders, f"historical closures without a basis: {offenders}"
+    """`CLOSED_AT_RECORDED_HEAD` must name a real SHA and a recorded result.
+
+    P3-EVIDENCE-HONESTY: `head_sha: null`, a malformed SHA, or a closure with
+    no `result` field cannot support the status. Those entries must be
+    `UNRECORDED` instead of claiming a verified past head.
+    """
+    offenders = []
+    for gap in (_index().get("known_gaps") or []):
+        if gap.get("status") != "CLOSED_AT_RECORDED_HEAD":
+            continue
+        gap_id = gap.get("id")
+        head = gap.get("head_sha")
+        if not re.fullmatch(r"[0-9a-f]{7,40}", str(head or "")):
+            offenders.append(f"{gap_id}: invalid head_sha {head!r}")
+        if not str(gap.get("status_basis") or "").strip():
+            offenders.append(f"{gap_id}: missing status_basis")
+        if not str(gap.get("result") or "").strip():
+            offenders.append(f"{gap_id}: missing result")
+    assert not offenders, f"unsupported historical closures: {offenders}"
 
 
 def test_the_note_distinguishes_a_historical_closure_from_a_current_one() -> None:
