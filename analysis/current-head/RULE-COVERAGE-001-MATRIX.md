@@ -4,7 +4,7 @@
 **FLOW-ID:** DETECTION-L4-KERNEL, DETECTION-R2003  
 **TARGET HEAD:** `f0baadf9205a69ea0fc3e27a26eb7968e71cbb40` (detached worktree)  
 **BUILD SOURCE BEFORE PATCH:** `f4cde3c503fd8b696183751a608b999768caa769`  
-**STATUS:** Slice 1 code + E2 proof COMPLETE. Not E5. No binary installed. Board stays 5/6.
+**STATUS:** Slice 1 code + E2 proof COMPLETE. Not E5. No binary installed. [HISTORICAL @ recorded head `f0baadf` / source `f4cde3c`: the board was 5/6 then. The immutable v1.1 release identity is 6/6 PASS (0 open) at signed candidate `466a226`; this is not a current gate claim.]
 
 ---
 
@@ -15,7 +15,7 @@ Three distinct claims, deliberately not conflated:
 | Term | Definition | This patch |
 |---|---|---|
 | **Catalog coverage** | rule_id appears in the canonical catalog, has `match_pattern` + `regex_pattern`, a fixture vector, and one shared rule-id hash | 23/23 (pre-existing E2 pins) |
-| **Evaluable coverage** | the production runtime has a code path that can evaluate the rule from evidence it can actually receive | 23/23 after this patch (L4 flag rules were the last gap) |
+| **Evaluable coverage** | the production runtime has a code path that can evaluate the rule from evidence it can actually receive | 23/23 as defined at `f4cde3c` (code path exists). The current catalog splits this into **code-path 23/23** and **host-evaluable 22/23** (R2003/FN-1); see `docs/portfolio/DETECTION_CATALOG.md` |
 | **Host-positive proof** | the rule fired on the installed host with a real positive stimulus | L4 family only; unchanged by this patch |
 
 A rule can be fully evaluable and still be unprovable on *this* host when the

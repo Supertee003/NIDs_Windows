@@ -10435,6 +10435,41 @@
         "No counter semantics, arbiter ownership or DEFCON ladder behavior was changed.",
         "Release identity stays v1.1 / 6/6 at signed candidate 466a226 / source a53eda8."
       ]
+    },
+    {
+      "id": "P5-DETECTION-TRUTH-20261124-E2",
+      "head_sha": "661fb768dc1c8eeb0f79e4e437807f2eac08c9ff",
+      "timestamp": "2026-11-24",
+      "title": "Detection truth: coverage terms split, unwired ML/MITRE claims corrected, historical E5 provenance labelled",
+      "level": "E2",
+      "component": "DETECTION_CATALOG.md, DETECTION_VALIDATION.md, ARCHITECTURE.md, AI_CONTEXT.md, golden_path_evidence.py, RULE-COVERAGE matrix",
+      "flow_id": "REL-001, DETECTION-TRUTH",
+      "description": "Phase 5 read-only audit of Detection. The catalog's 'Evaluable coverage 23/23' contradicted its own FN-1 (R2003 has no CommandLine producer on the measured host); it is now split into code-path 23/23 and host-evaluable 22/23. The MITRE section's 'only occurrence is an ATS keyword' claim was false: T1055 IDs exist as comments in the NOT-WIRED injection detector and a test-only scenario library is named in ARCHITECTURE.md; the statement now names those real occurrences without inventing a mapping. ARCHITECTURE.md drew the unwired ML detector as a live pipeline input and used non-existent core/* paths: the diagram now marks ML NOT WIRED and section 3 declares those names historical phase-era aliases. AI_CONTEXT.md used the forbidden 'seven-language architecture' count; it now states six language families / seven toolchains with TypeScript advisory-only. The golden-path generator emitted 'Final evidence' bundles naming removed core/* files; every emitted record now carries declaration_only=true and a note, and the docstring is labelled HISTORICAL. Provenance banners on the catalog, validation doc and RULE-COVERAGE matrix state that E5/E6 rows were measured at f4cde3c, release identity is a53eda8, current build source is 661fb76, and no host re-measurement occurred. No E5 row was upgraded or downgraded without a host run.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-P5-20261124.md",
+        "docs/portfolio/DETECTION_CATALOG.md",
+        "docs/DETECTION_VALIDATION.md",
+        "docs/ARCHITECTURE.md",
+        "AI_CONTEXT.md",
+        "analysis/current-head/RULE-COVERAGE-001-MATRIX.md",
+        "tools/golden_path_evidence.py",
+        "tests/docs/test_detection_truth_labels.py"
+      ],
+      "tests": [
+        "pytest tests/docs/test_detection_truth_labels.py -> pass",
+        "pytest tests/security/test_single_rule_authority.py -> pass",
+        "python tools/truth.py verify -> TRUTH_VALID @ 661fb76",
+        "python scripts/check_summary.py -> SUMMARY_VALID"
+      ],
+      "result": "PASS_E2",
+      "finding": "Honesty correction only: no rule, wire, ABI, authority, host-effect or release-artifact change; no MITRE mapping invented. Silent detector degradation (DET-01/F6) and the injection-detector header claim (DET-04) are source-tree findings with exact file:line and acceptance criteria in the audit artifact; they are explicitly NOT fixed by this records-only slice.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P5-20261124.md",
+      "limitations": [
+        "Records-only: no source tree change, no rebuild, no new host verification.",
+        "E5/E6 rows remain historical at f4cde3c; no current-source E5 claim.",
+        "DET-01, DET-04 and P4 source findings remain open and are not claimed as fixed.",
+        "Golden-path bundle remains a declaration, not end-to-end verification."
+      ]
     }
   ],
   "known_gaps": [
@@ -17106,7 +17141,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 43,
-    "E2_count": 147,
+    "E2_count": 148,
     "E3_count": 15,
     "E4_count": 4,
     "E5_count": 122,

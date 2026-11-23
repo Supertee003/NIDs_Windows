@@ -1,4 +1,10 @@
-"""Final Golden Path evidence package (T20 AC2, Step 61).
+"""HISTORICAL T20 Golden Path declaration package (T20 AC2, Step 61).
+
+P5-DETECTION-TRUTH: ZIG_GATES and several step descriptions still name removed
+`core/*` paths. The bundle this tool writes is therefore a DECLARATION, not
+end-to-end verification; collect() stamps `declaration_only: true` into every
+emitted record. Current golden-path truth is EVIDENCE_INDEX.json plus
+build_manifest.json at the current build source.
 
 Produces the complete evidence package for the AEGIS golden path:
 
@@ -104,6 +110,13 @@ def ver(cmd: list[str]) -> str:
 
 def collect() -> dict:
     ev: dict = {}
+    ev["declaration_only"] = True
+    ev["declaration_note"] = (
+        "HISTORICAL T20 declaration snapshot. ZIG_GATES and several step "
+        "descriptions still name removed core/* paths; this bundle is a "
+        "declaration, not end-to-end verification. Current truth is "
+        "EVIDENCE_INDEX.json + build_manifest.json at the current build source."
+    )
     ev["commit_sha"] = git("rev-parse", "--short", "HEAD")
     env = {"os": platform.platform(), "machine": platform.machine(),
            "python": platform.python_version()}

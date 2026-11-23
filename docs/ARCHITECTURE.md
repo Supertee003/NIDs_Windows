@@ -33,11 +33,17 @@ WFP driver       = kernel telemetry, observe-only (block IOCTL = STATUS_NOT_SUPP
 ```text
 Npcap capture (passive) ──────┐
 Host telemetry (ETW/FIM/Reg) ─┤→ CanonicalEvent → EventPump → HostTelemetry
-ML flow detector ─────────────┘        → incidents → ClusterCoord → XdrEngine (CEF→SIEM)
+ML flow detector (NOT WIRED - test/CLI only) - - ┘        → incidents → ClusterCoord → XdrEngine (CEF→SIEM)
                                        → evidence only (no host effect)
 ```
 
 ## 3. Component Map — Phase 32–44 (สถานะตามจริง ตาม Rule 3)
+
+> **Path convention (P5-DETECTION-TRUTH).** The `ไฟล์` column below uses phase-era module names.
+> There is no `core/` directory in this tree; those names were manifest aliases, not filesystem
+> paths. Current sources live under `src/` (for example `src/detection/`, `src/capture/`,
+> `src/forensic/`). This table is a historical phase ledger — do not read `core/*` entries as
+> current paths. The ML row and the T1055 row are explicitly NOT WIRED; see section 5.
 
 | Phase | Component | ไฟล์ | สถานะ |
 |---|---|---|---|

@@ -6,6 +6,12 @@
 > **An `action` of `Block` or `Drop` is a policy *intent* only.** This product cannot create a host
 > block; such decisions are recorded as `observed` with `host_effect_confirmed=false`.
 
+> **Provenance (P5-DETECTION-TRUTH).** The rule matrix and E5/E6 rows below were measured at build
+> source `f4cde3c`; the immutable release identity is `a53eda8`; the current build source is
+> `661fb76`. The intervening delta is recorded as additive control-plane/observability work, but
+> the matrix has **not** been re-measured at `661fb76`. Treat every E5/E6 row here as HISTORICAL at
+> its recorded source, not as current-source verification. See `docs/DETECTION_VALIDATION.md`.
+
 ## 1. Three different meanings of "coverage"
 
 The coverage matrix deliberately separates these claims:
@@ -13,11 +19,13 @@ The coverage matrix deliberately separates these claims:
 | Term | Meaning | Current value |
 |---|---|---|
 | **Catalog coverage** | rule ID in the canonical catalog with `match_pattern` + `regex_pattern`, a fixture vector, and one shared rule-ID hash | **23/23** |
-| **Evaluable coverage** | the runtime has a code path that can evaluate the rule from evidence it can actually receive | **23/23** |
+| **Code-path coverage** | a production code path exists that can evaluate the rule | **23/23** |
+| **Host-evaluable coverage** | the runtime can evaluate the rule from evidence it can actually receive on the measured host | **22/23** — R2003 blocked by FN-1 |
 | **Host-positive proof** | the rule fired on the installed host against a real positive stimulus | **L4 family only; not 23/23** |
 
-A rule may be fully evaluable yet unprovable on this host when the sensor cannot supply the
-field it needs. That is recorded as a limitation, never as a pass.
+FN-1 means R2003's `CommandLine` field has no producer on the measured host, so it does not
+satisfy "evidence it can actually receive". A rule may have a complete code path yet remain
+unevaluable on this host; that is recorded as a limitation, never as a pass.
 
 ## 2. Rule matrix
 
@@ -100,11 +108,12 @@ provider supplies one, but no positive host proof exists here. Do not manufactur
 
 ## 4. MITRE ATT&CK
 
-**There is no authoritative MITRE ATT&CK mapping in this repository.** No technique IDs exist in
-`configs/Rules.json` or `docs/DETECTION_VALIDATION.md`; the only occurrence is an ATS keyword in
-`APPLY_NOW.md`. Do not present a technique mapping as a project deliverable until one is written
-against the real detection logic and reviewed. If a job description asks for it, say it is a
-planned mapping exercise, not existing work.
+**There is no reviewed, authoritative MITRE ATT&CK mapping in this repository.** `configs/Rules.json`
+and `docs/DETECTION_VALIDATION.md` contain no technique IDs. The IDs that do exist are comments in
+the NOT-WIRED injection detector (`src/detection/injection_detector.zig`, T1055 and sub-techniques)
+and a test-only scenario library named in `docs/ARCHITECTURE.md`; neither is a mapping deliverable.
+`APPLY_NOW.md` mentions ATT&CK only as an ATS keyword. Do not present a technique mapping as a
+project deliverable until one is written against the real detection logic and reviewed.
 
 ## 5. The one demo that has a full evidence chain
 

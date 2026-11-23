@@ -59,7 +59,7 @@
 
 
 
-AEGIS is a **Security Operations Machine** — a Windows-native Network Intrusion Detection System with seven-language architecture. It is NOT a single-file project. It is a runtime with capture, detection, policy observation, forensics, and control planes; production host-effect activation is out of scope.
+AEGIS is a **Security Operations Machine** — a Windows-native Network Intrusion Detection System with six language families (seven toolchains; TypeScript advisory-only, no production artifact). It is NOT a single-file project. It is a runtime with capture, detection, policy observation, forensics, and control planes; production host-effect activation is out of scope.
 
 
 
