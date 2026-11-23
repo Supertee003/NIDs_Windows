@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-23T20:14:41.351578+00:00",
+  "generated_at": "2026-11-23T20:54:44.258068+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 3182,
+  "total_files": 3183,
   "by_role": {
-    "documentation": 535,
+    "documentation": 536,
     "build-config": 301,
     "other": 27,
     "lockfile": 6,
@@ -959,6 +959,10 @@
       "role": "documentation"
     },
     "analysis/current-head/MASTER-AUDIT-P2-20261124.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-P2A-20261124.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -13055,5 +13059,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "9105ff5"
+  "source_commit": "d2f129e"
 }

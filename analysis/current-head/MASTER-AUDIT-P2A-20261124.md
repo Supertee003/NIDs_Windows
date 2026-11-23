@@ -1,7 +1,9 @@
 # Master Audit — Phase 2a (Protocol docs / machine map, records-only)
 
 **Target HEAD:** `9016ce52c59623a936c922c1e7c47279e0323527`
-**Build source:** `9105ff56d3aa223fd7e0ff9c2e6e71b1d93771be` (unchanged — records-only patch, ADR-0008)
+**Build source after this patch:** `d2f129e305c2c237ac46ee0fa0d009266e869c7f` (the commit itself)
+
+**Correction to the initial patch classification:** this slice was labelled "records-only, build source unchanged" when it was authored. That label was wrong: `tools/truth.py:44-64` lists `shared` under `SOURCE_PATHS`, so any change under `shared/protocol/**` advances the build source under ADR-0008. The docs are non-executable, but the stamp is a mechanical consequence of the path set. The correction is recorded here rather than silently rewording history; no wire, rule, authority or runtime behavior changes.
 **Date:** 2026-11-24
 **Patch ID:** `P2A-PROTOCOL-DOCS-20261124`
 **Classification:** "ตรวจพบ" = confirmed against current source; all nine items were confirmed read-only in the P2 audit and are closed here.
@@ -10,7 +12,7 @@
 
 ## 1. Scope and invariant
 
-This patch closes carry-forward items **A1–A9** recorded in `analysis/current-head/MASTER-AUDIT-P2-20261124.md` §6a. It changes only documentation and the machine-readable contract map. No source code, wire bytes, golden vectors, rules, authority, host effect, release tag, signature or key changes. Build source stays `9105ff5`; the new evidence entry therefore carries that commit as `head_sha`.
+This patch closes carry-forward items **A1–A9** recorded in `analysis/current-head/MASTER-AUDIT-P2-20261124.md` §6a. It changes only documentation and the machine-readable contract map. No code, wire bytes, golden vectors, rules, authority, host effect, release tag, signature or key changes. Because `shared/protocol/**` is inside `SOURCE_PATHS`, the build source advances from `9105ff5` to this commit `d2f129e`; the evidence entry and machine maps are stamped accordingly.
 
 Source truth used for every replacement:
 
@@ -100,10 +102,10 @@ NEW  protocol docs + CONTRACT_MAP  -> legacy nominal labelled LEGACY, active pre
 - **Authority:** none. The correction removes an overclaim of enforcement; it does not add any host effect.
 - **State:** none.
 - **Tests:** `tests/docs` + `tests/contracts` 92 passed; `tests/security/test_t16_security_hardening.py` 9 passed. Full release gates re-run after commit.
-- **Evidence:** E1 (static inspection + existing test suites); no new build, no E4/E5, no Windows run.
+- **Evidence:** E1 (static inspection + existing test suites); no new build, no E4/E5, no Windows run. Rebuilding the machine maps and refreshing digests is a records-only follow-up and does not advance the build source again.
 
 ---
 
 ## 4. Completion gate
 
-**PASS (E1, records-only).** Build source remains `9105ff5`; machine maps keep that stamp. Digests for changed tracked files must be refreshed in a follow-up records commit before the final verification run. carry-forward P2b (B1–B6 helper/codec test gaps) and issue #44 follow-ups remain open and are not claimed here.
+**PASS (E1).** Build source = `d2f129e` (docs under `shared/`). Machine maps restamped and digests refreshed in follow-up records commits; final verification must show `TRUTH_VALID @ d2f129e`, 674/674 digests and no bad links. carry-forward P2b (B1–B6 helper/codec test gaps) and issue #44 follow-ups remain open and are not claimed here.

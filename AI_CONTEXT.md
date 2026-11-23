@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `9105ff56d3aa223fd7e0ff9c2e6e71b1d93771be` (build source commit — ADR-0008)
+**HEAD:** `d2f129e305c2c237ac46ee0fa0d009266e869c7f` (build source commit — ADR-0008)
 
 **RECORDS TIP:** `c3cc44f` (records head before this edit; a commit cannot contain its own SHA)
 

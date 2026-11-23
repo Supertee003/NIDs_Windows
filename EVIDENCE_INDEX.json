@@ -1,5 +1,5 @@
 {
-  "head_sha": "9105ff56d3aa223fd7e0ff9c2e6e71b1d93771be",
+  "head_sha": "d2f129e305c2c237ac46ee0fa0d009266e869c7f",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-23",
   "generator_version": "3.0",
@@ -10108,13 +10108,13 @@
     },
     {
       "id": "MASTER-AUDIT-P2A-20261124-E1",
-      "head_sha": "9105ff56d3aa223fd7e0ff9c2e6e71b1d93771be",
+      "head_sha": "d2f129e305c2c237ac46ee0fa0d009266e869c7f",
       "timestamp": "2026-11-24",
       "title": "Phase 2a protocol docs and CONTRACT_MAP corrected: legacy framing labelled, control v2 active, replay declared-only",
       "level": "E1",
       "component": "documentation / machine-readable contract map",
       "flow_id": "N/A",
-      "description": "Records-only patch P2A-PROTOCOL-DOCS-20261124 closes carry-forward findings A1-A9. wire_v1.md, protocol.md and wire_v1.h no longer present the 125-byte WEV1 container as the active Nose pipe frame: active framing is a 4-byte LE length prefix plus raw canonical frame (113/137/169..1193 bytes on the wire, src/forensic/integration_contract.zig:19-25). Stale 'all five languages byte-identical production codecs' claims were narrowed to Zig + Go production codecs with C/C++, reference Python as test codecs, Rust TBD and Python brain not production-wired. protocol.md's zero-filled reserved claim was replaced with the G2 frozen identity/confidence layout and its dead core/wire_event.zig path corrected. versioning.md's skip-trailing/reserved-growth rules carry HISTORICAL superseded callouts pointing to exact-length fail-closed dispatch. control_protocol.md gained a top-level v1-history/v2-active banner. CONTRACT_MAP.json now distinguishes legacy nominal from active on-wire sizes, names JSON control v2 as the CONTRACT-04 implementation with the v1 IPC unlinked, records freshness/nonce replay as declared-only and NOT enforced on active v2, and lists actual codec status. No source, wire byte, golden vector, rule, authority, host-effect, release tag or signature change; build source stays 9105ff5 per ADR-0008.",
+      "description": "Records-only patch P2A-PROTOCOL-DOCS-20261124 closes carry-forward findings A1-A9. wire_v1.md, protocol.md and wire_v1.h no longer present the 125-byte WEV1 container as the active Nose pipe frame: active framing is a 4-byte LE length prefix plus raw canonical frame (113/137/169..1193 bytes on the wire, src/forensic/integration_contract.zig:19-25). Stale 'all five languages byte-identical production codecs' claims were narrowed to Zig + Go production codecs with C/C++, reference Python as test codecs, Rust TBD and Python brain not production-wired. protocol.md's zero-filled reserved claim was replaced with the G2 frozen identity/confidence layout and its dead core/wire_event.zig path corrected. versioning.md's skip-trailing/reserved-growth rules carry HISTORICAL superseded callouts pointing to exact-length fail-closed dispatch. control_protocol.md gained a top-level v1-history/v2-active banner. CONTRACT_MAP.json now distinguishes legacy nominal from active on-wire sizes, names JSON control v2 as the CONTRACT-04 implementation with the v1 IPC unlinked, records freshness/nonce replay as declared-only and NOT enforced on active v2, and lists actual codec status. No code, wire byte, golden vector, rule, authority, host-effect, release tag or signature change. The slice was initially labelled records-only; that label was corrected because `shared/protocol/**` is inside `tools/truth.py` SOURCE_PATHS, so build source advances to d2f129e under ADR-0008.",
       "files_verified": [
         "analysis/current-head/MASTER-AUDIT-P2A-20261124.md",
         "shared/protocol/wire_v1.md",
@@ -10129,15 +10129,15 @@
         "python D:\\aegis-tmp\\check_links.py -> BAD LINKS: none",
         "python -m pytest tests/docs/test_stale_doc_sweep.py tests/contracts -q -> 92 passed",
         "python -m pytest tests/security/test_t16_security_hardening.py -q -> 9 passed",
-        "python tools/truth.py verify -> expected clean after records commit (dirty tree during authoring)"
+        "python tools/truth.py verify -> TRUTH_VALID @ d2f129e after map restamp and digest refresh records commits"
       ],
       "result": "PASS_E1",
-      "finding": "E1 static reconciliation only. No new build or runtime proof: records-only, build source unchanged. Declared-but-unenforced nonce/replay remains an explicit disclosure (matching INTERVIEW_PREP.md:17), never promoted to an enforcement claim. B1-B6 codec/helper findings and issue #44 follow-ups remain open.",
+      "finding": "E1 static reconciliation only. No new build or runtime proof: documentation-only, but build source advanced to d2f129e because shared/protocol is a source path; the earlier records-only label was corrected in the audit artifact. Declared-but-unenforced nonce/replay remains an explicit disclosure (matching INTERVIEW_PREP.md:17), never promoted to an enforcement claim. B1-B6 codec/helper findings and issue #44 follow-ups remain open.",
       "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P2A-20261124.md",
       "limitations": [
         "E1 only: no E2/E4/E5, no soak, no Windows host verification, no new build in this slice.",
         "Existing security tests verify the frozen v1 reference source, not active v2 replay enforcement; the map now states that distinction.",
-        "Build source remains 9105ff5; a records-only HEAD move does not invalidate the machine maps."
+        "Build source advanced to d2f129e because shared/protocol is inside SOURCE_PATHS; map restamp and digest refresh are separate records-only commits."
       ]
     }
   ],

@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-23T20:14:41.346540+00:00",
+  "generated_at": "2026-11-23T20:54:44.253461+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3182,
+  "total_files": 3183,
   "by_class": {
-    "canonical-docs": 550,
+    "canonical-docs": 551,
     "canonical-build": 312,
     "unclassified": 27,
     "canonical-source": 1791,
@@ -967,6 +967,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 12102
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-P2A-20261124.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 11377
     },
     {
       "path": "analysis/current-head/NATIVE-BUILD-001-20261114.md",
@@ -2352,7 +2358,7 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 140332
+      "size": 136088
     },
     {
       "path": "build_truth.json",
@@ -2562,7 +2568,7 @@
       "path": "CONTRACT_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 12512
+      "size": 13324
     },
     {
       "path": "contracts/fixtures/abi/event_boundaries.json",
@@ -4272,7 +4278,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1567279
+      "size": 1570980
     },
     {
       "path": "FLOW_MAP.json",
@@ -4380,7 +4386,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 503575
+      "size": 503903
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4656,7 +4662,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 407401
+      "size": 407659
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -15144,13 +15150,13 @@
       "path": "shared/protocol/control_protocol.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8937
+      "size": 9380
     },
     {
       "path": "shared/protocol/protocol.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3203
+      "size": 4002
     },
     {
       "path": "shared/protocol/protocol_version.json",
@@ -15162,19 +15168,19 @@
       "path": "shared/protocol/versioning.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 1913
+      "size": 2458
     },
     {
       "path": "shared/protocol/wire_v1.h",
       "class": "canonical-source",
       "role": "source",
-      "size": 10611
+      "size": 10838
     },
     {
       "path": "shared/protocol/wire_v1.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6935
+      "size": 7869
     },
     {
       "path": "shared/protocol/wire_v2.md",
@@ -19107,5 +19113,5 @@
       "size": 624
     }
   ],
-  "source_commit": "9105ff5"
+  "source_commit": "d2f129e"
 }
