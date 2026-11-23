@@ -613,6 +613,13 @@ func DeserializeV3(b []byte) (*CanonicalEvent, error) {
 	if len(b) < EventV3HeaderSize {
 		return nil, errors.New("canonical: short v3 frame")
 	}
+	// B2: the prefix below is deliberately decoded as v1 so the frozen
+	// 109-byte field decoder can be reused. Pin the declared version first;
+	// otherwise a v1/v2 frame could be relabelled and smuggled in through
+	// this exported direct-call decoder.
+	if binary.LittleEndian.Uint16(b[4:6]) != EventSchemaVersionV3 {
+		return nil, errors.New("canonical: v3 frame has wrong declared version")
+	}
 	var prefix [EventWireSize]byte
 	copy(prefix[:], b[:EventWireSize])
 	binary.LittleEndian.PutUint16(prefix[4:6], EventSchemaVersion)

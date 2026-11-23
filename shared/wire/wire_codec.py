@@ -109,8 +109,8 @@ class PayloadEnvelope:
 
     @staticmethod
     def decode(data: bytes) -> "PayloadEnvelope":
-        if len(data) < V3_ENVELOPE_SIZE:
-            raise ValueError("short v3 envelope")
+        if len(data) != V3_ENVELOPE_SIZE:
+            raise ValueError("v3 envelope length mismatch")
         (flags, completeness, reserved, payload_len, original_len, crc,
          seq, epoch, generation, interface_id) = struct.unpack_from(V3_ENVELOPE_FORMAT, data, 0)
         # wire_v3.md: any non-zero reserved byte is rejected fail closed. The
@@ -552,8 +552,8 @@ class WireCodec:
             or WIRE_V3_HEADER_SIZE <= header.payload_length <= WIRE_V3_MAX_SIZE
         ):
             return None
-        if len(buf) < WIRE_HEADER_SIZE + header.payload_length:
-            return None
+        if len(buf) != WIRE_HEADER_SIZE + header.payload_length:
+            return None  # B4: exact frame length, no trailing bytes
 
         payload = buf[WIRE_HEADER_SIZE:WIRE_HEADER_SIZE + header.payload_length]
         computed_crc = zlib.crc32(payload) & 0xFFFFFFFF

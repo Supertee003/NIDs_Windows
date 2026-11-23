@@ -3,10 +3,11 @@
 // ============================================================
 // PAYLOAD-ENVELOPE-V3-001 (C++ leg).
 //
-// The C++ reference header is the byte-identity authority every other
-// codec is written against, but nothing in the build compiled it: v3 was
-// added to `shared/wire/wire_codec.h` with no translation unit exercising
-// it. This harness closes that gap without a new build system: compile it
+// The C++ reference header is a test/reference codec, not the production
+// authority (Zig is authoritative; Go is the Nose producer). Nothing in the
+// build compiled it: v3 was added to `shared/wire/wire_codec.h` with no
+// translation unit exercising it. This harness closes that gap without a new
+// build system: compile it
 // with the same golden vectors the Zig/Go/Python codecs pin, and it must
 // pass byte-identically.
 //
@@ -218,6 +219,13 @@ void check_strict_rejections(const std::string& dir) {
         check(!aegis::aegis_wire_decode_event_dispatch(forged_frame.data(),
                                                        forged_frame.size(), ev),
               "v3 frame forged as v1/v2 rejected on dispatch");
+        // B3: the exported direct v3 decoder used to patch the version to 1
+        // without pinning it, accepting a forged frame. It must fail closed
+        // independently of dispatch.
+        check(!aegis::aegis_wire_decode_event_v3(forged_frame.data(),
+                                                  forged_frame.size(), ev, env,
+                                                  &payload, &payload_len),
+               "v3 frame forged as v1/v2 rejected on direct v3 decode");
     }
 
     // Dirty v6 tail when bit2 is clear (vector 009 is a v4 metadata frame).
@@ -244,6 +252,33 @@ void check_strict_rejections(const std::string& dir) {
 
 }  // namespace
 
+// B5: the legacy WEV1 full-frame helper has no production caller, but its
+// guard must still be exact-length and version-dispatched, not a looser
+// `<`-length branch. This is a compatibility-helper check, not live pipe
+// coverage.
+void check_legacy_frame_helper(const std::string& dir) {
+    const std::vector<uint8_t> v1 = read_file(join(dir, "event_v1_001.bin"));
+    if (v1.size() != aegis::WIRE_PAYLOAD_SIZE) {
+        ++g_failures;
+        return;
+    }
+    aegis::CanonicalEvent ev;
+    if (!aegis::aegis_wire_decode_event(v1.data(), v1.size(), ev)) {
+        ++g_failures;
+        return;
+    }
+    std::vector<uint8_t> frame(aegis::WIRE_FRAME_SIZE, 0);
+    check(aegis::aegis_wire_encode_frame(frame.data(), frame.size(), ev) ==
+              aegis::WIRE_FRAME_SIZE,
+          "legacy WEV1 frame encodes");
+    aegis::CanonicalEvent back;
+    check(aegis::aegis_wire_decode_frame(frame.data(), frame.size(), back),
+          "legacy WEV1 frame decodes");
+    frame.push_back(0x00);
+    check(!aegis::aegis_wire_decode_frame(frame.data(), frame.size(), back),
+          "legacy WEV1 trailing byte rejected");
+}
+
 int main(int argc, char** argv) {
     if (argc < 2) {
         std::fprintf(stderr, "usage: %s <vector-dir>\n", argv[0]);
@@ -265,6 +300,7 @@ int main(int argc, char** argv) {
     }
 
     check_strict_rejections(dir);
+    check_legacy_frame_helper(dir);
 
     if (g_failures != 0) {
         std::fprintf(stderr, "wire_codec_v3_cpp_check: %d failure(s)\n",

@@ -262,6 +262,21 @@ def test_v3_frame_roundtrip():
     assert back.payload_envelope.completeness == PAYLOAD_COMPLETE
 
 
+def test_frame_helper_rejects_trailing_byte():
+    # B4: decode_frame used '<', so an extra byte after a valid frame was
+    # silently ignored. Exact length is the live fail-closed rule.
+    frame = WireCodec.encode_frame_v3(_event_007(), _env_007(), PAYLOAD_007)
+    assert WireCodec.decode_frame(frame + b"\x00") is None
+
+
+def test_envelope_helper_rejects_trailing_byte():
+    # B4: PayloadEnvelope.decode had the same '<' gap at helper level.
+    raw = VEC_007.read_bytes()[V3_BASE_SIZE:V3_BASE_SIZE + V3_ENVELOPE_SIZE]
+    assert PayloadEnvelope.decode(raw).payload_len == len(PAYLOAD_007)
+    with pytest.raises(ValueError):
+        PayloadEnvelope.decode(raw + b"\x00")
+
+
 # ---------------------------------------------------------------------------
 # V3: strict guards fail closed.
 # ---------------------------------------------------------------------------

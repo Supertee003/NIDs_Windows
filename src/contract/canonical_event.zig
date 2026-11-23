@@ -1621,8 +1621,19 @@ test "v3 rejects tampered envelope and mismatched payload" {
     bad[WIRE_PAYLOAD_SIZE] = 1;
     try std.testing.expect(deserializeDispatch(bad[0..n]) == null);
 
-    // Extra trailing bytes are rejected: v3 length is exact.
+    // A frame one byte short of the exact v3 length is rejected.
     try std.testing.expect(deserializeDispatch(buf[0 .. n - 1]) == null);
+
+    // Extra trailing bytes are rejected: v3 length is exact (B1).
+    try std.testing.expect(deserializeDispatch(buf[0 .. n + 1]) == null);
+
+    // A v3-sized frame relabelled v1/v2 must not be downgraded into a
+    // metadata-only event: exact length is enforced per declared version.
+    for ([_]u16{ EVENT_VERSION, EVENT_VERSION_V2 }) |forged| {
+        bad = buf;
+        std.mem.writeInt(u16, bad[4..][0..2], forged, .little);
+        try std.testing.expect(deserializeDispatch(bad[0..n]) == null);
+    }
 
     // Reserved envelope byte is pinned to 0 by wire_v3.md. The encoder always
     // writes 0, so a set byte is a corrupt/foreign frame, not an extension.

@@ -8,6 +8,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"hash/crc32"
 	"os"
 	"testing"
@@ -296,6 +297,19 @@ func TestDeserializeV3RejectsDirtyTailAndTrailing(t *testing.T) {
 	reserved[EventV3BaseSize+3] = 0x01
 	if _, err := DeserializeV3(reserved); err == nil {
 		t.Fatalf("non-zero reserved byte must be rejected")
+	}
+}
+
+// B2: direct DeserializeV3 calls must pin version 3 before the v1-prefix
+// patch; dispatch already does this, the exported helper did not.
+func TestDeserializeV3RejectsForgedVersion(t *testing.T) {
+	raw := readV3Vector(t, "event_v3_008.bin")
+	for _, version := range []uint16{1, 2, 4} {
+		forged := append([]byte(nil), raw...)
+		binary.LittleEndian.PutUint16(forged[4:6], version)
+		if _, err := DeserializeV3(forged); err == nil {
+			t.Fatalf("direct v3 decode accepted forged version %d", version)
+		}
 	}
 }
 

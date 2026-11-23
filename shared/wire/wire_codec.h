@@ -502,6 +502,8 @@ inline bool aegis_wire_decode_event_v3(const uint8_t* bytes, size_t bytes_len,
                                        CanonicalEvent& out, V3Envelope& env,
                                        const uint8_t** payload, size_t* payload_len) {
     if (bytes_len < WIRE_V3_HEADER_SIZE) return false;
+    // B3: the v1-prefix patch below must not relabel a foreign version.
+    if (read_u16_le(bytes + 4) != EVENT_VERSION_V3) return false;
     uint8_t prefix[WIRE_PAYLOAD_SIZE];
     ::memcpy(prefix, bytes, WIRE_PAYLOAD_SIZE);
     write_u16_le(prefix + 4, EVENT_VERSION);
@@ -593,7 +595,11 @@ inline size_t aegis_wire_encode_frame(uint8_t* buf, size_t buf_len, const Canoni
     return WIRE_FRAME_SIZE;
 }
 
-// Decode a complete wire frame. Returns true on success, false on validation failure.
+// Decode a complete LEGACY WEV1 container. No production caller: the live
+// Nose pipe uses a 4-byte length prefix plus the raw canonical frame. Kept as
+// a test-only compatibility helper, now with the same exact-length,
+// version-dispatched guards as the live codecs (B5). Never count this helper
+// as live pipe coverage.
 inline bool aegis_wire_decode_frame(const uint8_t* buf, size_t buf_len, CanonicalEvent& out) {
     if (buf_len < WIRE_HEADER_SIZE) return false;
 
@@ -603,17 +609,15 @@ inline bool aegis_wire_decode_frame(const uint8_t* buf, size_t buf_len, Canonica
     if (h.magic != WIRE_MAGIC) return false;
     if (h.version != WIRE_VERSION) return false;
     if (h.payload_type != static_cast<uint16_t>(PayloadType::canonical_event)) return false;
-    if (h.payload_length != WIRE_PAYLOAD_SIZE && h.payload_length != WIRE_V2_PAYLOAD_SIZE) return false;
-    if (buf_len < WIRE_HEADER_SIZE + h.payload_length) return false;
+    if (h.payload_length < WIRE_PAYLOAD_SIZE) return false;
+    if (buf_len != WIRE_HEADER_SIZE + h.payload_length) return false;  // no trailing bytes
 
-    // Verify CRC32.
+    // Verify CRC32 over the declared payload only.
     uint32_t computed_crc = aegis_crc32(buf + WIRE_HEADER_SIZE, h.payload_length);
     if (computed_crc != h.crc32) return false;
 
-    // Decode canonical event (version-dispatched).
-    if (h.payload_length == WIRE_PAYLOAD_SIZE)
-        return aegis_wire_decode_event(buf + WIRE_HEADER_SIZE, h.payload_length, out);
-    return aegis_wire_decode_event_v2(buf + WIRE_HEADER_SIZE, h.payload_length, out);
+    // Decode canonical event through the live exact-length dispatcher (v1/v2/v3).
+    return aegis_wire_decode_event_dispatch(buf + WIRE_HEADER_SIZE, h.payload_length, out);
 }
 
 } // namespace aegis
