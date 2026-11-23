@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-23T22:25:46.828844+00:00",
+  "generated_at": "2026-11-23T22:39:02.248508+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3192,
+  "total_files": 3194,
   "by_class": {
-    "canonical-docs": 556,
+    "canonical-docs": 557,
     "canonical-build": 312,
     "unclassified": 27,
     "canonical-source": 1791,
-    "canonical-test": 410,
+    "canonical-test": 411,
     "canonical-config": 62,
     "legacy": 34
   },
@@ -1003,6 +1003,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 14411
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-P7-20261124.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 12279
     },
     {
       "path": "analysis/current-head/NATIVE-BUILD-001-20261114.md",
@@ -2388,7 +2394,7 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 140332
+      "size": 140465
     },
     {
       "path": "build_truth.json",
@@ -2412,7 +2418,7 @@
       "path": "ci_coverage.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 5647
+      "size": 5999
     },
     {
       "path": "CMakeLists.txt",
@@ -3882,7 +3888,7 @@
       "path": "docs/STRUCTURE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8228
+      "size": 8274
     },
     {
       "path": "docs/TECHNOLOGY_DECISIONS.md",
@@ -4308,7 +4314,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1606810
+      "size": 1610548
     },
     {
       "path": "FLOW_MAP.json",
@@ -4416,7 +4422,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 505200
+      "size": 505514
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4692,7 +4698,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 408681
+      "size": 408925
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -15132,7 +15138,7 @@
       "path": "SECURITY.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2245
+      "size": 2286
     },
     {
       "path": "shared/__init__.py",
@@ -17733,6 +17739,12 @@
       "size": 6008
     },
     {
+      "path": "tests/release/test_vr_truth.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 4485
+    },
+    {
       "path": "tests/reliability/test_t15_reliability_config.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -18708,7 +18720,7 @@
       "path": "tools/final_audit.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 48133
+      "size": 48929
     },
     {
       "path": "tools/final_regression.py",
@@ -18990,7 +19002,7 @@
       "path": "tools/release_engineering.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 28678
+      "size": 29198
     },
     {
       "path": "tools/run_zig_test_timeout.ps1",

@@ -1,17 +1,17 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-23T22:25:46.833486+00:00",
+  "generated_at": "2026-11-23T22:39:02.253357+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 3192,
+  "total_files": 3194,
   "by_role": {
-    "documentation": 541,
+    "documentation": 542,
     "build-config": 301,
     "other": 27,
     "lockfile": 6,
     "rust-build": 4,
     "source": 1493,
     "architecture-decision": 13,
-    "test-artifact": 410,
+    "test-artifact": 411,
     "config-data": 62,
     "step-document": 2,
     "go-source": 8,
@@ -983,6 +983,10 @@
       "role": "documentation"
     },
     "analysis/current-head/MASTER-AUDIT-P6-20261124.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-P7-20261124.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -12135,6 +12139,10 @@
       "role": "test-artifact"
     },
     "tests/release/test_truth_source_commit.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/release/test_vr_truth.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
