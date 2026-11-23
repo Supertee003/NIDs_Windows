@@ -288,8 +288,8 @@
     },
     {
       "path": "brain/canonical_event.py",
-      "size": 12601,
-      "sha256": "8c529a3aa2d6f9ace44435c21f9427d6858c449fc223b94bfbf52085b6ea5745",
+      "size": 12768,
+      "sha256": "65178ee2f0ce076ac3fa9c0120d9e03e13e4694fec4bbba9d82e78339154c380",
       "language": "python/cython"
     },
     {
@@ -858,14 +858,14 @@
     },
     {
       "path": "nose/canonical.go",
-      "size": 25852,
-      "sha256": "3bc0dd7da16ada6489b56b5b132b0d8261a04740e5715a0bf32abe9376d724e4",
+      "size": 25901,
+      "sha256": "6e3edca7da1dc868be58839636bf318b9ef39de18f3c505d8b503ca62fa16b17",
       "language": "go"
     },
     {
       "path": "nose/canonical_test.go",
-      "size": 17985,
-      "sha256": "761075cdd074f8ef6786f7d429190675e40c459ada41f22da75e32954d1daa8b",
+      "size": 18181,
+      "sha256": "06120f4a6ba0a47211bf3c26fb1b0e0fdb68ccb7bd443e8cb170edce9aae5bdc",
       "language": "go"
     },
     {
@@ -918,8 +918,8 @@
     },
     {
       "path": "nose/golden_path_ffi.go",
-      "size": 13370,
-      "sha256": "60cfd664fc71edfebd011dfad54aa3899a4240b0641113480da27ae764dc1a1e",
+      "size": 13438,
+      "sha256": "ff83027d3e6e99c89a4b6a9086643fd407c4c077397c1b68858289414f3307aa",
       "language": "go"
     },
     {
@@ -1033,7 +1033,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "4e11280c5e576c1d366a1db69fcc8ab4cd07dbf59f4a13ed2d8f040e49008732",
+      "sha256": "2329c4670c46078aae485befd4c733c4a21e9a4ce5afdd5450ea8d2dfd415245",
       "language": "json"
     },
     {
@@ -1110,8 +1110,8 @@
     },
     {
       "path": "scripts/aegis_daemon.py",
-      "size": 34230,
-      "sha256": "4aca77148f335f67ace6915c1c7669eba37cc109a5d0d2beaa9973f4973f6c43",
+      "size": 34249,
+      "sha256": "925a1d72f2a1bab30828aaa0d845e51a61836cf262619dfe5e1c968fb10bc98e",
       "language": "python/cython"
     },
     {
@@ -1944,14 +1944,14 @@
     },
     {
       "path": "src/capture/source_arbiter.zig",
-      "size": 17339,
-      "sha256": "05d964c963bf2c83bcd389a9c56037eaef0d091dd21db2838498b9db349ce233",
+      "size": 17431,
+      "sha256": "1b51c512056e88dd2dd91b183c8279bb994a253bfb736529e327c1a8262d2ada",
       "language": "zig"
     },
     {
       "path": "src/capture/stream_reassembly.zig",
-      "size": 7044,
-      "sha256": "830dff97e44765193586b6a00377681c91819e7553307fe73ad48e114b9d8c4b",
+      "size": 7414,
+      "sha256": "eecc3c1273a7310a63a70a54845d827bb59a852a06f5c923db41b8f80781a7b8",
       "language": "zig"
     },
     {
@@ -1980,8 +1980,8 @@
     },
     {
       "path": "src/contract/canonical_event.zig",
-      "size": 71609,
-      "sha256": "6ba929fb06b8b7723d13583f5a88db2b9328afa2531854dfa7705e3506bf5101",
+      "size": 71692,
+      "sha256": "9764ca6c1acf210010ddc681e242a2c7cb3ad9a5ce254c9e60e9f3c68d6dd74a",
       "language": "zig"
     },
     {
@@ -2400,8 +2400,8 @@
     },
     {
       "path": "src/forensic/integration_contract.zig",
-      "size": 28830,
-      "sha256": "577e93980c27c274242e335c74f7b9796224770a39576dd8e6be8368341eac3f",
+      "size": 28982,
+      "sha256": "1f642d6facebbb923d8c7550bde52321829f88f2c4ba182f738066c4db0cd37d",
       "language": "zig"
     },
     {
