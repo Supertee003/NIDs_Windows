@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-23T20:54:44.253461+00:00",
+  "generated_at": "2026-11-23T21:11:30.848847+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3183,
+  "total_files": 3185,
   "by_class": {
-    "canonical-docs": 551,
+    "canonical-docs": 552,
     "canonical-build": 312,
     "unclassified": 27,
     "canonical-source": 1791,
-    "canonical-test": 406,
+    "canonical-test": 407,
     "canonical-config": 62,
     "legacy": 34
   },
@@ -973,6 +973,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 11377
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-P2B-20261124.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 8996
     },
     {
       "path": "analysis/current-head/NATIVE-BUILD-001-20261114.md",
@@ -2358,7 +2364,7 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 136088
+      "size": 140332
     },
     {
       "path": "build_truth.json",
@@ -4278,7 +4284,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1570980
+      "size": 1574177
     },
     {
       "path": "FLOW_MAP.json",
@@ -4386,7 +4392,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 503903
+      "size": 504068
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4470,7 +4476,7 @@
       "path": "nose/canonical.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 25901
+      "size": 26298
     },
     {
       "path": "nose/canonical_test.go",
@@ -4572,7 +4578,7 @@
       "path": "nose/payload_v3_test.go",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 10583
+      "size": 11114
     },
     {
       "path": "nose/pipe_writer.go",
@@ -4662,7 +4668,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 407659
+      "size": 407789
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -15222,13 +15228,13 @@
       "path": "shared/wire/wire_codec.h",
       "class": "canonical-source",
       "role": "source",
-      "size": 25096
+      "size": 25387
     },
     {
       "path": "shared/wire/wire_codec.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 27790
+      "size": 27847
     },
     {
       "path": "shield/Cargo.toml",
@@ -15378,7 +15384,7 @@
       "path": "src/contract/canonical_event.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 71692
+      "size": 72209
     },
     {
       "path": "src/contract/event.zig",
@@ -17346,7 +17352,7 @@
       "path": "tests/contracts/test_payload_envelope_v3.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 12980
+      "size": 13659
     },
     {
       "path": "tests/contracts/test_pep_abi_layout.py",
@@ -17355,10 +17361,16 @@
       "size": 12643
     },
     {
+      "path": "tests/contracts/test_vectors_metadata_digests.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1170
+    },
+    {
       "path": "tests/contracts/wire_codec_v3_cpp_check.cpp",
       "class": "canonical-source",
       "role": "source",
-      "size": 11322
+      "size": 13006
     },
     {
       "path": "tests/cython/profile_brain_hotspot.py",
@@ -19113,5 +19125,5 @@
       "size": 624
     }
   ],
-  "source_commit": "d2f129e"
+  "source_commit": "661fb76"
 }

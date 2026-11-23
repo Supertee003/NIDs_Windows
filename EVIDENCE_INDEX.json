@@ -1,5 +1,5 @@
 {
-  "head_sha": "d2f129e305c2c237ac46ee0fa0d009266e869c7f",
+  "head_sha": "661fb768dc1c8eeb0f79e4e437807f2eac08c9ff",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-23",
   "generator_version": "3.0",
@@ -10139,6 +10139,43 @@
         "Existing security tests verify the frozen v1 reference source, not active v2 replay enforcement; the map now states that distinction.",
         "Build source advanced to d2f129e because shared/protocol is inside SOURCE_PATHS; map restamp and digest refresh are separate records-only commits."
       ]
+    },
+    {
+      "id": "MASTER-AUDIT-P2B-20261124-E2",
+      "head_sha": "661fb768dc1c8eeb0f79e4e437807f2eac08c9ff",
+      "timestamp": "2026-11-24",
+      "title": "Phase 2b codec guard gaps closed: v3 version pin, exact-length helpers, vector digest pin",
+      "level": "E2",
+      "component": "Zig / Go / C++ / Python canonical codecs and contract vectors",
+      "flow_id": "CANONICAL-DECODE, CONTRACT-VECTORS",
+      "description": "Records findings B1-B6 from the Phase 2 audit. The Zig test claiming to reject extra trailing v3 bytes actually asserted a one-byte-short frame; it now tests short, overlong and v1/v2 relabel cases. Exported direct v3 decoders in Go (DeserializeV3) and C++ (aegis_wire_decode_event_v3) rewrote the declared version to 1 before decoding the frozen prefix without first pinning version 3; both now reject forged versions, with direct-call tests. Python PayloadEnvelope.decode and WireCodec.decode_frame used '<' and silently accepted trailing bytes; both now require exact length, with regression tests. The legacy WEV1 full-frame C++ helper (zero callers) had looser length logic and no v3 branch; it is now exact-length and delegates to the live version dispatcher, with a harness check, and is explicitly not counted as live pipe coverage. A new read-only test verifies sha256 and size for all nine committed event vectors. No wire layout, golden vector byte, rule, authority, host-effect, release tag or signature change.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-P2B-20261124.md",
+        "src/contract/canonical_event.zig",
+        "nose/canonical.go",
+        "nose/payload_v3_test.go",
+        "shared/wire/wire_codec.h",
+        "shared/wire/wire_codec.py",
+        "tests/contracts/test_payload_envelope_v3.py",
+        "tests/contracts/wire_codec_v3_cpp_check.cpp",
+        "tests/contracts/test_vectors_metadata_digests.py"
+      ],
+      "tests": [
+        "zig build -> success",
+        "zig build test --summary all (fresh cache dirs) -> 3367/3377 passed, 10 skipped (assertions added inside an existing test)",
+        "go test -run targeted v3 set in nose/ -> ok aegis-nose",
+        "g++ -std=c++17 -Wall -Wextra harness with vector dir -> wire_codec_v3_cpp_check: PASS",
+        "python -m pytest tests/contracts -q -> 80 passed"
+      ],
+      "result": "PASS_E2",
+      "finding": "Helper-level guards and metadata verification are proven by executable tests (E2). No E4/E5, no soak, no Windows host verification, no signed-candidate change. The legacy full-frame helper remains legacy/test-only and no claim is made that it exercises the active Nose pipe.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P2B-20261124.md",
+      "limitations": [
+        "E2 only: no E4/E5, no soak, no Windows host verification, no new release artifact.",
+        "No fuzz campaign or property-based test was run; only the enumerated malformed cases are proven.",
+        "Issue #44 counter-delta tests and cause-splitting remain open follow-ups.",
+        "Build source advanced to 661fb76; map restamp and digest refresh are separate records-only commits."
+      ]
     }
   ],
   "known_gaps": [
@@ -16808,7 +16845,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 43,
-    "E2_count": 144,
+    "E2_count": 145,
     "E3_count": 15,
     "E4_count": 4,
     "E5_count": 122,
