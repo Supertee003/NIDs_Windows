@@ -658,7 +658,8 @@ The correct product statement is **Windows-native Kernel NIDS with detection-onl
 **For recruiters and job applications**
 
 - [AEGIS in 60 seconds / live console screenshot](#aegis-in-60-seconds)
-- [4-minute demo: traffic → event → detection → dashboard → forensic record](docs/portfolio/DEMO.md)
+- [Ready-to-use job application kit](docs/portfolio/APPLY_NOW.md)
+- [2.5-minute demo: traffic → event → detection → dashboard → forensic record](docs/portfolio/DEMO.md)
 - [Architecture explained in English](docs/portfolio/ARCHITECTURE_EN.md)
 - [Resume project section](docs/portfolio/RESUME_PROJECT.md)
 
