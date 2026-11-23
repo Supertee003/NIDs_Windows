@@ -5,7 +5,7 @@
 | Version | Status |
 |---|---|
 | `v1.1` (published, immutable) | Supported as the current release record |
-| `main` development head | Best-effort; records-only changes after build source `a53eda8` |
+| `main` development head | Best-effort; current build source `ab0fa17` (audit-close slice). `v1.1` stays immutable |
 
 AEGIS is a **research and development** Windows kernel-assisted NIDS. It is released for
 development, qualification, and observe-only lab operation. It is **not** an IPS, does not block

@@ -3,7 +3,8 @@
 > **UPDATE (2026-11-22):** the published release is now `v1.1` (signed candidate
 > `466a226`, build source `a53eda8`, 6/6 gates PASS, genuine 36.52 h soak, 0 open
 > gaps). The v2.0.0 status below is HISTORICAL for release identity; `a53eda8`
-> descends from `7c604d5`. Authority:
+> descends from `7c604d5`. The current build source after AUDIT-CLOSE-20261123 is
+> `ab0fa17`; the immutable v1.1 release identity above is unchanged. Authority:
 > `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`.
 
 ## Status: CLOSED — v2.0.0 shipped as a detection-only E5 release (2026-11-17)

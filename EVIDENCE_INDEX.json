@@ -10027,7 +10027,7 @@
       "evidence_artifact": "analysis/current-head/AUDIT-CLOSE-20261123.md",
       "limitations": [
         "E2/E3 only: no E4/E5 claim, no new soak, no signed-candidate change and no corrupted-frame injection on a Windows host.",
-        "Full Go suite includes an environment-dependent live Npcap capture test; codec correctness is gated by the targeted Go tests above.",
+        "Full Go suite includes an environment-dependent live Npcap capture test (TestCapturePipeDeliversCanonicalEvents); on this host it timed out at 601 s in named-pipe teardown and is not used as a codec gate. Codec correctness is gated by the targeted Go tests above.",
         "Historical Zig counts in this index are now explicitly labelled as f0baadf runs and are not current-source results."
       ]
     }

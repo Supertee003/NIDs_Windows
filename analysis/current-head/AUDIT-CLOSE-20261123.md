@@ -72,8 +72,10 @@ authority maps are untouched.
 | Go codec tests | `go test -run 'TestOverLengthV1FrameRejected\|TestDeserializeDispatchVersions\|TestV3Vector\|TestCommittedVectorsValidate\|TestV3EnvelopeRejects\|TestDeserializeV3RejectsDirtyTailAndTrailing' -v ./...` | PASS |
 | Python codecs + release index | `python -m pytest tests/brain/test_canonical_event_v3.py tests/contracts/test_ipv6_wire_v2.py tests/contracts/test_payload_envelope_v3.py tests/release/test_evidence_index_valid.py tests/release/test_known_gap_status.py -q` | **47 passed** |
 | C++ codec | `g++ -std=c++17 -Wall -Wextra -I. tests/contracts/wire_codec_v3_cpp_check.cpp -o <tmp>` + run with vector dir | `wire_codec_v3_cpp_check: PASS` |
-| Truth | `python tools/truth.py verify` | see rebaseline section below |
-| Links | `python D:\aegis-tmp\check_links.py` | see rebaseline section below |
+| Go full suite (host capture) | `go test -run '^TestCapturePipeDeliversCanonicalEvents$' -count=1 -v ./...` | **FAIL / 601 s timeout on this host** in named-pipe capture teardown (`runCapture did not stop` on the earlier full-suite run). Environment-dependent live Npcap test, not a codec assertion; not used as a gate |
+| Truth | `python tools/truth.py verify` | TRUTH_VALID at `ab0fa17` |
+| Links | `python D:\aegis-tmp\check_links.py` | BAD LINKS: none |
+| Release digests | `python tools/release_engineering.py --verify` | OK — 674 artifacts match, source_commit `ab0fa17` |
 
 ## Evidence level
 

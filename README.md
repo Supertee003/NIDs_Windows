@@ -702,25 +702,25 @@ The correct product statement is **Windows-native Kernel NIDS with detection-onl
 
 This section is deliberately explicit: a portfolio is only as trustworthy as the gaps it
 admits. All items below are from the [source audit](analysis/current-head/SOURCE_AUDIT-20261123.md)
-(E1/E2 source reading, no new build, test run, or host verification) and remain open at the
-current build source `a53eda8`.
+(E1/E2 source reading). Items 3–5 were closed by [AUDIT-CLOSE-20261123](analysis/current-head/AUDIT-CLOSE-20261123.md)
+at build source `ab0fa17`; the remaining items are still open.
 
 | # | Limitation | Evidence boundary |
 |---|---|---|
 | 1 | The WFP block handler is still present in the lab driver binary but is not reachable from production code; WFP is fail-open observe-only telemetry | Source call-graph reading only (not disassembly). An old persistent filter can still be recovered at startup; cleanup can only remove a filter with the AEGIS proof-provider GUID |
 | 2 | TCP stream reassembly exists in `src/capture/stream_reassembly.zig` but has no production caller | Detection runs on single-packet prefixes. Do not claim session-level reassembly |
-| 3 | A `CanonicalEvent` length/version mismatch can cause trailing bytes to be ignored | Code-level risk, not proven reachable by runtime fuzzing. Fix requires a staged one-schema-N-codecs patch (Zig/Go/C/Python + golden vector in the same change) — issue #41 |
-| 4 | Live Zig test counts (`2116/2114/2109 passed, 11 skipped`) are historical at `f0baadf` | Current-source Zig tests were not rerun for the audit; do not present those counts as current — issue #42 |
-| 5 | ABI framing documentation contradicts the implementation (old `125/149 bytes` text) | Current wire format is a 4-byte length prefix + payload (`113/137/169..1193` bytes); tracked as P0 ABI-01 in `analysis/current-head/02-contracts-abi.md` — issue #43 |
+| 3 | Canonical length/version mismatch (fixed at `ab0fa17`, issue #41 closed) | All codecs now require exact per-version length; a mismatch is rejected and counted in `nose_frames_rejected`. Still no E5 corrupted-frame injection test |
+| 4 | Zig counts `2116/2114/2109 passed, 11 skipped` were historical at `f0baadf` (issue #42 closed) | Those strings are now labelled as historical; the current-source run at `ab0fa17` is `3366/3376 passed, 10 skipped` |
+| 5 | ABI framing contradiction (fixed at `ab0fa17`, issue #43 closed) | Active pipe framing is a 4-byte length prefix + payload (`113/137/169..1193` bytes); the old `125-byte` WEV1 contract is explicitly scoped as legacy |
 | 6 | Control IPC v2 declares `nonce` and `issued_at_ms` fields but does not enforce replay protection | Token-derived per-command authorization exists; active nonce/replay enforcement does not |
 | 7 | Loopback capture is a self-test binding, not a general live-network proof | The live host-positive proof is the bounded SYN burst from `192.168.1.39` to `192.0.2.1:1..40` on one interface, with a 10-port negative control |
 | 8 | R2003 (PowerShell cradle) is a known false negative | Process telemetry in v0–v4 has no `CommandLine` field; no real command-line source is implemented |
 | 9 | No authoritative MITRE ATT&CK mapping, Splunk content, published fuzz campaign, fixed-rate offered-load ceiling, clean install/uninstall campaign, or full WFP E5 result for the current source | These are future work, not existing evidence |
 | 10 | The current lab snapshot has nonzero drop/shed counters (`minifilter_ring_dropped=1,341,156`, `alert_file.failed=7,028`) | The v1.1 soak measured zero loss **only during its recorded 36.52 h window**; never claim "zero loss ever" on this host |
 
-Source-side comment/capability overclaims are tracked in issue #40. None of these open items
-changes the immutable `v1.1` release or the build source `a53eda8`; they are listed so that a
-reviewer can separate "implemented", "tested at fixture level", and "proven on a live host".
+Source-side comment/capability overclaims were corrected at `ab0fa17` (issue #40 closed).
+None of these items changes the immutable `v1.1` release; they are listed so that a reviewer
+can separate "implemented", "tested at fixture level", and "proven on a live host".
 
 ## Documentation map
 
