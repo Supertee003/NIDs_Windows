@@ -1,4 +1,9 @@
 # AEGIS Kernel NIDS for Windows
+
+[![Release v1.1](https://img.shields.io/badge/release-v1.1-2ea44f)](https://github.com/Supertee003/NIDs_Windows/releases/tag/v1.1)
+[![Scope: detection-only](https://img.shields.io/badge/scope-detection--only-blue)](docs/portfolio/ARCHITECTURE_EN.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 AEGIS is a Windows-native, kernel-assisted network intrusion detection system. It combines kernel network telemetry, host telemetry, rule matching, policy evaluation, operator control, and forensic evidence in one supervised runtime. Production behavior is detection-only: findings are recorded and explained, not applied as host blocking or quarantine.
 
 > **Release status:** The repository is maintained with production-grade contracts, authority boundaries, runbooks, and acceptance gates. The current release is approved for development, qualification, and observe-only operation. Enforcement activation is permanently outside the production product scope; historical IPS/WFP proof material is retained only as historical or lab evidence.
