@@ -13,7 +13,7 @@ observations, `docs/architecture/FAILURE_MODEL.md`, `FLOW_MAP.json`,
 | WFP driver / adapter unavailable | Detection capability reported accurately; subsystem state not silently `READY`; no host effect claimed | `health --json` deps/subsystems, `endpoint_ownership`, `wfp` state |
 | Go Nose pipe disconnect | `nose_connected=false`, ingestion counters stop; no false "event processed" | `health.data_plane`, queue counters |
 | Sensor produces no frames | Explicit `DEGRADED` / warning; capture preflight fails instead of interpreting silence as "no attack" | `capture_select.py --verify`, dashboard warning banner |
-| Queue pressure / overflow | Bounded queue with backpressure; `dropped_total`, `shed_overload`, `queue_dropped_total` increase and are visible | `health.counters`, `health.data_integrity`, `aegisctl metrics` |
+| Queue pressure / overflow | Bounded queue that drops/sheds when full (no producer blocking); `dropped_total`, `shed_overload`, `queue_dropped_total` increase and are visible | `health.counters`, `health.data_integrity`, `aegisctl metrics` |
 | Duplicate / non-monotonic events | Counters expose the anomaly; no silent promotion to truth | `exactly_once` counters |
 | Detection engine unavailable | Worker failure state and reason mask set; runtime reports degraded | `health.workers.failed`, `failure_reasons` |
 | Forensic storage / integrity failure | `forensic verify` fails; integrity status not `OK`; system remains observe-only | `aegisctl forensic verify`, dashboard Forensic Integrity |

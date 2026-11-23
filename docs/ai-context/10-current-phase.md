@@ -1025,8 +1025,9 @@ See `analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md` and
   `f4cde3c`) reached a terminal **SOAK_FAIL** at 18.03 h (daemon DEGRADED,
   `queue_dropped_total` 5177 over the 3500 budget). Recorded honestly; the
   release board row moved from OPEN to FAIL. `soak_24h` remains NOT closed and
-  the release stays **NOT SHIPPABLE**. A fresh window needs a new signed
-  candidate and an owner-named baseline.
+  the release stayed **NOT SHIPPABLE** at that recorded point. This section is
+  HISTORICAL: v1.1 was later published with 6/6 gates PASS (0 open) — see
+  `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`.
 - The eight slices have no E5: the worktree source is outside the old soak
   window and no new signed candidate is installed. `docs/gates/T20_100pct_audit.*`
   carry build source `a53eda8`; `tools/truth.py verify` = TRUTH_VALID.
@@ -1048,3 +1049,19 @@ See `analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md` and
   1 xfailed, 1 xpassed, 2 failed - the same two E4 live-daemon tests, which
   probe the installed DEGRADED daemon (host state, not a source regression).
   `tools/truth.py verify` = TRUTH_VALID at `a53eda8`.
+
+## Post-patch rebaseline — source audit records patch (2026-11-23)
+
+- Records HEAD is this commit; build source remains `a53eda8` (no source/build-tree file was
+  changed, so all machine maps stay current per ADR-0008).
+- Audit evidence: `analysis/current-head/SOURCE_AUDIT-20261123.md` (E1/E2 only; no build, test or
+  host re-verification). EVIDENCE_INDEX gained `SOURCE-AUDIT-20261123-E1`; E1_count 39 -> 40.
+- Closed by this patch: P0 documentation contradictions (release-gate wording, demo timeline,
+  enforcement language in the operations guide, CONTRACTS.md authority status, L4 rule count,
+  local worktree path in the demo script, v1.1 release link), plus framing/reassembly/stale-evidence
+  wording in portfolio and architecture docs.
+- Still open: issues #40 (source-side capability/comment overclaims), #41 (length/version mismatch
+  can silently ignore trailing bytes — source fix needs staged one-schema-N-codecs), #42 (Zig counts
+  pinned to historical `f0baadf`), #43 (ABI framing doc contradiction tracked as P0 ABI-01).
+- Verification after patch: `TRUTH_VALID`, `BAD LINKS: none`, release-index tests 9/9 PASS,
+  pre-commit artifact scan clean. No E5 claim is added by this patch.

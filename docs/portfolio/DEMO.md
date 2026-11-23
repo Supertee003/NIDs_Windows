@@ -38,7 +38,7 @@ captions; every command output and dashboard row in it is live, not staged.
 ## 0:25 — Show the safety posture first
 
 ```powershell
-cd C:\Users\User\.local\share\opencode\worktree\a6f58a\rule-coverage-20261119
+cd <REPO_ROOT>   # replace with the path to your clone
 python tools\aegisctl.py status
 python tools\aegisctl.py enforce status
 ```
@@ -92,7 +92,7 @@ quota deltas all `0`.
 
 ---
 
-## 2:10 — Event received, detection attributed
+## 1:40 — Event received, detection attributed
 
 ```powershell
 python tools\aegisctl.py events tail --count 20
@@ -108,7 +108,7 @@ Talk track:
 
 ---
 
-## 2:50 — Show the live operator dashboard
+## 1:50 — Show the live operator dashboard
 
 ```powershell
 $env:DASHBOARD_PORT = "5000"
@@ -125,7 +125,7 @@ Talk track:
 
 ---
 
-## 3:30 — Close with forensic proof and the safety invariant
+## 2:15 — Close with forensic proof and the safety invariant
 
 ```powershell
 python tools\aegisctl.py forensic verify

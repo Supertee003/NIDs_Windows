@@ -43,7 +43,7 @@
 | Event injection from a sensor | Schema validation, length-prefixed framing, runtime-owned queue | Normalizer + runtime |
 | Malformed / oversized IPC message | Bounded framing and explicit rejection path | Codecs + runtime; exact limits in contract docs |
 | Duplicate / replayed events | Exactly-once counters (`duplicate_event_ids`, `nose_non_monotonic_event_ids`) reported by health | Data-plane counters; see `tests/` |
-| Queue exhaustion / resource abuse | Bounded queue, backpressure, `shed_overload` and drop counters exposed to health | Zig runtime; is intentionally observable, not silent |
+| Queue exhaustion / resource abuse | Bounded queue with observable shedding on full (drop-on-full, **not** blocking-producer backpressure); `shed_overload` and drop counters exposed to health | Zig runtime; is intentionally observable, not silent |
 | Detection bypass | 23 rules across multiple layers; negative controls used for L4 proof | Detection engine; honest coverage stated in `DETECTION_VALIDATION.md` |
 | Forensic record tampering | Hash-chain integrity verification plus `forensic verify` CLI | Forensics; **tamper-evident**, not tamper-proof |
 | Release binary substitution | Ed25519 signature over `SHA256SUMS`; 674/674 manifest verification; pinned trust anchor | Release engineering |

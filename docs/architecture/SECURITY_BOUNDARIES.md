@@ -88,7 +88,7 @@ current behavior.
 
 | Component | Privilege / role | Authority it does **not** have |
 |---|---|---|
-| WFP kernel callout | Kernel, telemetry only | No packet modification, no filter creation |
+| WFP kernel callout | Kernel, telemetry only | No packet modification, no **reachable** host-effect creation path (the legacy block handler and persistent-filter recovery are disclosed in the source audit) |
 | Zig daemon | User, **single runtime owner** | No host effects; cannot be duplicated |
 | Go Nose | User, acquisition | No rule file, no pattern matcher, no verdict; acquisition-authored verdicts are stripped at Zig ingress |
 | C/C++ adapters | User/native, acquisition | No policy decision |

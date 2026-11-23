@@ -24,7 +24,7 @@ field it needs. That is recorded as a limitation, never as a pass.
 Evidence key: **E1** static inspection · **E2** unit/fixture proof · **E5** Windows host observation ·
 **E6** controlled lab exercise.
 
-### L4 — network transport (5 rules in catalog: 3)
+### L4 — network transport (3 rules)
 
 | ID | Name | Severity | Action | Detection logic | Evidence |
 |---|---|---|---|---|---|

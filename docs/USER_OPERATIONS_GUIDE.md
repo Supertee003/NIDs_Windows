@@ -4,7 +4,7 @@ AEGIS is operated as a single Windows security appliance. The operator should us
 
 ## First installation
 
-Install the pinned toolchains and Windows dependencies described in `docs/runtime/LOCAL_RUNBOOK.md`. Install Npcap when packet capture is required. Install the signed or test-signed WFP driver only on an isolated test host when enforcement testing is explicitly enabled. Create the runtime directories and copy `config/deployment_profile.example.json` to `config/deployment_profile.json`.
+Install the pinned toolchains and Windows dependencies described in `docs/runtime/LOCAL_RUNBOOK.md`. Install Npcap when packet capture is required. Install the test-signed WFP driver only on an isolated test host for detection-only telemetry qualification. Enforcement activation is out of scope for this product. Create the runtime directories and copy `config/deployment_profile.example.json` to `config/deployment_profile.json`.
 
 Build from the repository root:
 
@@ -64,13 +64,13 @@ Use `events count`, `events tail`, and `events stats` for live observation. Use 
 
 ## Test safely with WSL2
 
-Create an isolated WSL2 test network and use only a disposable local service on the Windows host. Record the attacker and host addresses, selected adapter, active ruleset digest, and enforcement mode before testing. Start with replay and detection-only tests. Then test bounded HTTP signatures, ICMP/TCP reconnaissance markers, and benign file/process markers. Enable block/drop canaries only after the decision trace is complete and rollback has been tested.
+Create an isolated WSL2 test network and use only a disposable local service on the Windows host. Record the attacker and host addresses, selected adapter, active ruleset digest, and enforcement mode before testing. Start with replay and detection-only tests. Then test bounded HTTP signatures, ICMP/TCP reconnaissance markers, and benign file/process markers. Use detection canaries only: a `Block`/`Drop` action is recorded as policy intent with `host_effect_confirmed=false`, and no canary sequence can change that.
 
 Do not run credential theft tools, ransomware, destructive payloads, or uncontrolled flood commands. The supported `simulate` and replay commands provide deterministic regression coverage without requiring harmful payloads.
 
 ## Stop, recover, and update
 
-Stop components through the control plane or the documented service stop procedure. Confirm that `aegisctl status` reports stopped and that no stale process owns the control pipe. For an update, snapshot configuration and evidence first, install the new release, run manifest verification and rule validation, then start in detection-only mode. Promote to enforcement only after the canary sequence reports success and rollback remains available.
+Stop components through the control plane or the documented service stop procedure. Confirm that `aegisctl status` reports stopped and that no stale process owns the control pipe. For an update, snapshot configuration and evidence first, install the new release, run manifest verification and rule validation, then start in detection-only mode. The prevention gate stays closed in every supported configuration. Lab IPS/canary material is historical and cannot be promoted in this product.
 
 ## Final operational checklist
 

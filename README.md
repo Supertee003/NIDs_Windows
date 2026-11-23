@@ -22,10 +22,10 @@ authoritative daemon data.*
 | Why is it interesting? | One runtime spanning six languages with a strict boundary: no layer may promote "detected" into "blocked" |
 | Stack | Zig runtime spine · Go packet acquisition · C/C++ WFP/ETW/FIM/Registry adapters · Rust detection-only PEP + crypto · Python analytics · TypeScript policy authoring |
 | Scale | 23 detection rules across L4, L7, kernel file/process, and pipe layers; 12M+ events observed on the current lab host ([measured values](docs/portfolio/OBSERVED_PERFORMANCE.md)) |
-| Proof | `v1.1` SHIPPABLE (0/6 gates), 36.52 h owner-run soak PASS, 674/674 signed artifacts, 1,471 tests with 0 skips |
+| Proof | [`v1.1` release](https://github.com/Supertee003/NIDs_Windows/releases/tag/v1.1) — SHIPPABLE, 6/6 gates PASS (0 open), 36.52 h owner-run soak PASS, 674/674 signed artifacts; 1,471 Python tests (two-phase run at build source `a53eda8`, 0 skipped) |
 | Boundary | observe-only; prevention gate closed; `host_effect_capable=false`; no WFP enforcement in production |
 
-**Watch the 2.5-minute demo:** [Traffic → Event → Detection → Dashboard → Forensic Record](docs/portfolio/DEMO.md) · [MP4](docs/portfolio/images/demo.mp4)
+**Watch the 2:27 demo:** [Traffic → Event → Detection → Dashboard → Forensic Record](docs/portfolio/DEMO.md) · [MP4](docs/portfolio/images/demo.mp4)
 
 **Go deeper:** [Architecture explained in English](docs/portfolio/ARCHITECTURE_EN.md) · [Resume project section](docs/portfolio/RESUME_PROJECT.md) · [Evidence index](EVIDENCE_INDEX.json)
 
@@ -39,10 +39,25 @@ deliberately out of scope?" No implementation claim here implies a production ho
 | Zig runtime / event pipeline | Yes | Build, unit/integration tests, Windows E5 lab | Yes — runtime owner |
 | Go Nose packet ingress | Yes | Build + Windows E5 capture preflight | Yes — acquisition only |
 | C/C++ WFP / ETW / FIM / Registry adapters | Yes | Observe-only E5 lab proof for WFP; synthetic fixtures for other families | Yes — telemetry evidence |
-| Detection rules (23) | Yes | 23/23 synthetic fixtures; live positive proof strongest on L4/R9006 with negative control | Yes — detection only |
+| Detection rules (23) | Yes | 23/23 catalog + fixture-level pins; live positive proof on L4/R9006 with negative control; R2003 has an open command-line limitation | Yes — detection only |
 | Correlation / forensics / evidence receipts | Yes | Hash-chain verification on the current host | Yes — evidence only |
 | Release v1.1 | Yes | Signed manifest, 674/674 artifacts, 36.52 h soak PASS | Published, immutable |
 | Host blocking / WFP mutation / quarantine | Lab-only historical code | Lab qualification only | **Out of scope — not planned, not enabled** |
+
+### Detection coverage — what is and is not proven
+
+| Claim | Status | Boundary |
+|---|---|---|
+| Rule catalog | 23/23 rules have `match_pattern`, `regex_pattern`, a fixture vector, and a shared rule-ID hash | rule-ID census pinned by `tests/security/test_detection_contract_pin.py`; lab attack scripts are opt-in and skipped on a fresh clone |
+| Evaluable in the runtime | 23/23 | Zig evaluates `match_pattern`; Python `regex_pattern` is advisory Tier-2 analytics |
+| Synthetic proof | 23/23 at fixture level | E1/E2 pins only — not a claim of detection efficacy on live traffic |
+| Live host-positive proof | L4 family only; strongest on R9006 with a 40-port positive and 10-port negative control | one lab host/interface; loopback is a self-test binding |
+| Known gap | R2003 (PowerShell cradle) is FN-1 | process telemetry has no `CommandLine` field in v0–v4; a real command-line source is not implemented |
+
+A synthetic fixture and a live detector firing are different evidence levels. There is no
+authoritative MITRE ATT&CK mapping in this repository. Details:
+[detection catalog](docs/portfolio/DETECTION_CATALOG.md) and
+[source audit](analysis/current-head/SOURCE_AUDIT-20261123.md).
 
 ### Project 2 Runtime Gate
 
@@ -681,7 +696,7 @@ The correct product statement is **Windows-native Kernel NIDS with detection-onl
 
 - [AEGIS in 60 seconds / live console screenshot](#aegis-in-60-seconds)
 - [Ready-to-use job application kit](docs/portfolio/APPLY_NOW.md)
-- [2.5-minute demo: traffic → event → detection → dashboard → forensic record](docs/portfolio/DEMO.md)
+- [2:27 demo: traffic → event → detection → dashboard → forensic record](docs/portfolio/DEMO.md)
 - [Architecture explained in English](docs/portfolio/ARCHITECTURE_EN.md)
 - [Resume project section](docs/portfolio/RESUME_PROJECT.md)
 

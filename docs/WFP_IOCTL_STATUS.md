@@ -1,4 +1,10 @@
-# WFP IOCTL & Enforcement Status: IMPLEMENTED (lab-gated)
+# WFP IOCTL & Enforcement Status: HISTORICAL (lab-gated)
+
+> **Document status: HISTORICAL / SUPERSEDED.** The block-install description below belonged to an
+> earlier lab design. The current driver refuses `IOCTL_AEGIS_BLOCK_FLOW` at
+> `aegis_wfp.c:923-932`; the legacy block handler at `aegis_wfp.c:1171-1174` has no reachable
+> dispatch path, while startup can recover a pre-existing persistent filter (`:426-459`). See
+> `docs/architecture/SECURITY_BOUNDARIES.md` and `analysis/current-head/SOURCE_AUDIT-20261123.md`.
 
 Updated 2026-10-19; arbitration live-state note appended 2026-10-26
 (E5-C arbiter host proof). Supersedes the earlier "tracking-only" description
@@ -25,13 +31,16 @@ The WFP stack has two implemented layers:
      `IOCTL_AEGIS_READ_EVENTS` (read), `IOCTL_AEGIS_BLOCK_FLOW` (write),
      `IOCTL_AEGIS_GET_STATS` (read), `IOCTL_AEGIS_UNBLOCK_FLOW` (write),
      `IOCTL_AEGIS_QUERY_FILTER` (read);
-   - `IOCTL_AEGIS_BLOCK_FLOW` installs an exact-flow WFP filter
-     (remote IPv4 + port + protocol) with `FWP_ACTION_BLOCK` at
+   - **HISTORICAL / SUPERSEDED:** an earlier lab build installed an exact-flow
+     WFP filter (remote IPv4 + port + protocol) with `FWP_ACTION_BLOCK` at
      `FWPM_LAYER_ALE_AUTH_CONNECT_V4` for outbound (direction 0) or
-     `FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4` for inbound capture
-     (direction 1), and returns its `filter_id`; unblock/query operate
-     on that id. The query input names the direction so an outbound
-     read-back can never attest an inbound filter.
+     `FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4` for inbound (direction 1) and
+     returned a `filter_id`. The current driver does **not** install it:
+     `aegis_wfp.c:923-932` refuses `IOCTL_AEGIS_BLOCK_FLOW` with
+     `STATUS_NOT_SUPPORTED`; the handler at `:1171-1174` is unreachable from
+     dispatch. Startup can still recover a pre-existing persistent filter
+     (`:426-459`), which is why the current claim is "no reachable
+     host-effect creation path", not "no filter code exists".
 2. User-mode boundary:
    - `src/policy/wfp_ioctl.zig` is READ-ONLY telemetry transport
      (PEP-001): privileged block/unblock is prohibited in this module.

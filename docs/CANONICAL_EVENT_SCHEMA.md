@@ -46,9 +46,15 @@ The reserved area is G2-frozen for process, host, and node identity plus confide
 | **v2** | 133 B | v1 + 24-byte tail: full IPv6 source/destination identity. `struct_size` keeps its v1 meaning; wire length comes from `version`. |
 | **v3** | 165 + `payload_len` B | v2 base + 32-byte envelope + 0..1024 bounded payload. Carries captured evidence, **never** a detection verdict. |
 
-Receivers dispatch on `version` and reject unknown values — no silent truncation, no version
-fallback. All fields are fixed-width: no pointers, no padding dependency, no `i128`, and explicit
-field-by-field encoding (never `memcpy` of the in-memory struct).
+Receivers dispatch on `version` and reject unknown versions. All fields are fixed-width: no
+pointers, no padding dependency, no `i128`, and explicit field-by-field encoding (never `memcpy`
+of the in-memory struct).
+
+**Known nuance (E1, 2026-11-23; issue #41):** a v1 frame longer than 109 bytes is currently
+accepted by both `nose/canonical.go:673-686` and `src/contract/canonical_event.zig:768-773`;
+bytes past offset 109 are ignored and `nose_frames_rejected` is not incremented. A v3 frame whose
+version byte is corrupted to 1 therefore degrades to metadata-only instead of failing closed. Do
+not read this section as claiming protection against a length/version mismatch.
 
 ## 4. Codec implementation status
 

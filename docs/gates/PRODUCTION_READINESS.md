@@ -1,5 +1,10 @@
 # Production Readiness — v1.1 branch (build source `a53eda8`)
 
+> **Document status: HISTORICAL (pre-release snapshot).** v1.1 was subsequently published with
+> 6/6 gates PASS (0 open) — see `V1.1-RELEASE-CLOSEOUT-20261122.md` and
+> `T20_100pct_audit.md`. The FAIL / NOT SHIPPABLE language below records the earlier candidate
+> only and is not the current release state.
+
 > **Provenance.** Gates 1, 2, 4–8 were evidenced at build source `f4cde3c`
 > (candidate `b597e71`). The branch source is now `a53eda8` (additive E2 slices,
 > no host effect); the gate evidence has not been re-run on the host at

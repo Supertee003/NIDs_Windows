@@ -8,6 +8,7 @@ before you apply. The published `v1.1` release is signed, soak-tested, and detec
 | Asset | URL |
 |---|---|
 | Repository | https://github.com/Supertee003/NIDs_Windows |
+| v1.1 release (gates, signature, soak evidence) | https://github.com/Supertee003/NIDs_Windows/releases/tag/v1.1 |
 | 1-minute README (with real screenshot) | https://github.com/Supertee003/NIDs_Windows#aegis-in-60-seconds |
 | 2:27 live demo (traffic → event → detection → dashboard → forensic record) | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/portfolio/images/demo.mp4 |
 | Architecture explained in English | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/portfolio/ARCHITECTURE_EN.md |
@@ -26,8 +27,9 @@ before you apply. The published `v1.1` release is signed, soak-tested, and detec
 > system. It turns real packet and host telemetry into one canonical event, runs 23 detection
 > rules, and writes hash-chained forensic evidence with an evidence receipt. The engineering
 > challenge was authority: the runtime spans Zig, Go, Rust, C/C++, Python and TypeScript, but only
-> one component owns the pipeline, and no layer can promote "detected" into "blocked." v1.1 shipped
-> signed with a 36.5-hour soak PASS and a real Windows host detection proof with a negative control.
+> one component owns the pipeline, and no layer can promote "detected" into "blocked." v1.1 is a
+> released, signed detection-only build with a 36.5-hour owner-run soak PASS and a real Windows host
+> detection proof with a negative control.
 
 ---
 
@@ -48,7 +50,8 @@ before you apply. The published `v1.1` release is signed, soak-tested, and detec
 >
 > What I care about: canonical contracts across languages, verifiable evidence over claims, and
 > fail-closed behavior. Published v1.1 is signed, 674/674 artifacts verified, and soak-tested for
-> 36.52 hours with zero loss counters. Detect, record, prove — don't pretend.
+> 36.52 hours; loss counters were zero during that recorded window, not on every later host
+> snapshot. Detect, record, prove — don't pretend.
 
 ---
 
@@ -58,13 +61,14 @@ before you apply. The published `v1.1` release is signed, soak-tested, and detec
 
 > Hi [Name],
 >
-> I'm a security engineer with a shipped Windows kernel-assisted NIDS you can inspect end-to-end:
-> https://github.com/Supertee003/NIDs_Windows
+> I'm a security engineer with a released, signed, detection-only Windows kernel-assisted NIDS you
+> can inspect end-to-end: https://github.com/Supertee003/NIDs_Windows
 >
 > It's a six-language runtime (Zig/Go/Rust/C++/Python/TypeScript) with a canonical event pipeline,
 > 23 detection rules, hash-chained forensics, and a strict detection-only authority boundary. The
-> README has a 1-minute summary and a real screenshot; there's a 2.5-minute demo that goes from
-> traffic to a verified forensic record. v1.1 is signed and soak-tested (36.5 h, zero loss).
+> README has a 1-minute summary and a real screenshot; there's a 2:27 demo that goes from traffic
+> to a verified forensic record. v1.1 is signed and soak-tested (36.5 h, zero loss during that
+> recorded window).
 >
 > Would you be open to a 15-minute call? I can walk through the architecture and the evidence.
 >

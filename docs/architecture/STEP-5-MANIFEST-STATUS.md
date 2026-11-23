@@ -35,7 +35,7 @@ S6 PRODUCTION VERIFIED
 | Packet Decoder | `src/capture/packet_decoder.zig` | **S2 (Implemented)** | L2-L4 decoding defined |
 | Flow Tracking | `src/capture/flow_table.zig` | **S2 (Implemented)** | Flow state model defined |
 | Protocol Parsers | `src/capture/proto/parsers.zig` | **S2 (Implemented)** | HTTP/DNS/TLS/SMB/RDP parsers |
-| Stream Reassembly | `src/capture/stream_reassembly.zig` | **S2 (Implemented)** | TCP stream model |
+| Stream Reassembly | `src/capture/stream_reassembly.zig` | **UNWIRED / implementation-only** | Test-only module with no production caller; runtime detection uses single-packet prefixes |
 | Signature Engine | `src/detection/signature_engine.zig` | **PARTIAL** | Aho-Corasick framework present; rules compiled from policy |
 | Statistical Anomaly | `src/detection/anomaly_detector.zig` | **S2 (Implemented)** | Statistical model defined |
 | Protocol Anomaly | `src/detection/proto_anomaly.zig` | **S2 (Implemented)** | Protocol-level anomaly detection |

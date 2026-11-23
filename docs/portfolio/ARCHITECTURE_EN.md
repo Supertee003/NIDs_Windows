@@ -6,7 +6,9 @@
 > Historical IPS/enforcement documents in the repo are explicitly **not** current truth.
 > Caveat: `CONTRACT_MAP.json` CONTRACT-04 is stale v1 control-IPC metadata; current control-plane
 > behavior comes from `src/control/protocol.zig` and `src/control/handler_registry.zig` (v2).
-> See [Security boundaries](../architecture/SECURITY_BOUNDARIES.md) for source-cited details.
+> See [Security boundaries](../architecture/SECURITY_BOUNDARIES.md) for source-cited details and
+> [SOURCE_AUDIT-20261123.md](../../analysis/current-head/SOURCE_AUDIT-20261123.md) for the 2026-11-23
+> read-only audit (E1/E2; no new build or host verification).
 
 ---
 
@@ -99,11 +101,13 @@ Detection → Forensic Record → IDS Evidence Receipt`. Compressed to the steps
 1. **Capture** — Go Nose reads frames from the selected Windows interface with Npcap.
 2. **Normalize** — Each frame becomes a `CanonicalEvent`. The schema is frozen in
    `shared/event/canonical_event.md`; implementations exist in Zig, Go, C, and Python (plus a
-   golden tuple-map), while the Rust codec is still marked TBD. IPC frames are length-prefixed:
-   16-byte header + 109-byte v1 payload (125 bytes), or + 24-byte IPv6 tail for v2 (149 bytes).
+   golden tuple-map), while the Rust codec is still marked TBD. The named-pipe frame is a
+   **4-byte little-endian length prefix followed by the canonical frame**: v1 = 113 bytes on
+   wire, v2 = 137 bytes, v3 = 169..1193 bytes (4 + 165-byte envelope + up to 1024-byte payload).
    See the [Canonical Event Schema](../CANONICAL_EVENT_SCHEMA.md) for field-level detail.
-3. **Transport** — Frames cross `\\.\pipe\aegis_nose` into the Zig daemon. Loopback TCP exists
-   only as a non-Windows development fallback; it is not a production binding.
+3. **Transport** — Frames cross `\\.\pipe\aegis_nose` into the Zig daemon. The recorded
+   loopback binding is a self-test configuration, not the production default; no loopback TCP
+   fallback is implemented in `nose/pipe_writer.go` (`dialPipe` uses the named pipe only).
 4. **Flow & detect** — The Zig runtime maintains flow state and evaluates 23 rules across
    `L4`, `L7`, `KERNEL_FILE`, `KERNEL_PROCESS`, and `L2_PIPE`.
 5. **Correlate** — Events are related into flows, processes, hosts, sessions, and incidents.

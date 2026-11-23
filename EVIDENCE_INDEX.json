@@ -9937,6 +9937,34 @@
         "GitHub asset digests reported by the API were cross-checked against local SHA-256; no independent third-party mirror was used.",
         "Detection-only release; no WFP enforcement or host effect is claimed."
       ]
+    },
+    {
+      "id": "SOURCE-AUDIT-20261123-E1",
+      "head_sha": "9411a4bd6fd2b1205b514950f846bc7f68adc643",
+      "timestamp": "2026-11-23",
+      "title": "Read-only source audit across drivers/src/nose/tests and current-head docs",
+      "level": "E1",
+      "component": "repository-wide static inspection",
+      "flow_id": "N/A",
+      "description": "Component-by-component E1 audit; four AGENTS.md STOP-THE-LINE triggers recorded as issues #40-#43. No build, test, or host verification was performed; this entry does not raise independent verification.",
+      "files_verified": [
+        "analysis/current-head/SOURCE_AUDIT-20261123.md",
+        "README.md",
+        "docs/USER_OPERATIONS_GUIDE.md",
+        "docs/architecture/CONTRACTS.md",
+        "docs/portfolio/ARCHITECTURE_EN.md"
+      ],
+      "tests": [
+        "python tools/truth.py verify: TRUTH_VALID (build source a53eda8)",
+        "python D:/aegis-tmp/check_links.py: BAD LINKS none"
+      ],
+      "result": "E1_ONLY",
+      "finding": "Detection-only runtime and control plane verified from source; documentation contradictions and stale evidence recorded for records-only correction.",
+      "evidence_artifact": "analysis/current-head/SOURCE_AUDIT-20261123.md",
+      "limitations": [
+        "Static inspection only; no build, test, E5 host run, or disassembly.",
+        "Records HEAD differs from build source a53eda8 per ADR-0008."
+      ]
     }
   ],
   "known_gaps": [
@@ -16605,7 +16633,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 39,
+    "E1_count": 40,
     "E2_count": 143,
     "E3_count": 14,
     "E4_count": 4,

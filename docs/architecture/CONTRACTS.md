@@ -1,7 +1,14 @@
 # Contracts
 
-**Status**: AUTHORITATIVE
-**Source**: `docs/architecture/ARCHITECTURE_CANONICAL.md` Section 6
+**Status**: HISTORICAL / SUPERSEDED — not current truth for this source tree.
+**Source**: `docs/architecture/ARCHITECTURE_CANONICAL.md` Section 6 (pre-restructure)
+
+> **Document status (2026-11-23).** The authority paths below are pre-restructure `core/*.zig`
+> paths that no longer exist; current code lives under `src/`, and the rule file is
+> `configs/Rules.json`. Enforcement vocabulary here (`EnforcementPlan`, `EXECUTED`, `blocked_ip`,
+> `manual_block_ip`) is historical and is **not** production behavior. Current sources of truth:
+> `CONTRACT_MAP.json`, `AUTHORITY_MAP.json`, `docs/portfolio/ARCHITECTURE_EN.md`,
+> `docs/architecture/SECURITY_BOUNDARIES.md`, and `analysis/current-head/SOURCE_AUDIT-20261123.md`.
 
 ---
 
