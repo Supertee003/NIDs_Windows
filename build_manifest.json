@@ -1033,7 +1033,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23280,
-      "sha256": "6dbda31631c31a3015369b8bd65a30da4eb05f36d939d6a2e415cb14d44d604c",
+      "sha256": "e8d52cd1b8547d7adc0abdf331856cebe9444edd9589f962b734e147a6aed25e",
       "language": "json"
     },
     {
@@ -3804,8 +3804,8 @@
     },
     {
       "path": "tools/golden_path_evidence.py",
-      "size": 12412,
-      "sha256": "9892fcd5b7934da945e6e5407eb9f4f86690f4bc62d93a7ea2b7232a715f0415",
+      "size": 13148,
+      "sha256": "2ccd7cc33f749c2aa2db5e96f2db29a50b32c663a86fd6d28943556f8bc6aef8",
       "language": "python/cython"
     },
     {
