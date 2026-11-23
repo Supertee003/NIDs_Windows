@@ -17,11 +17,12 @@
       "magic": "0x41454731",
       "languages": [
         "Zig",
-        "C",
-        "Rust",
         "Go",
+        "C",
+        "C++",
         "Python"
       ],
+      "language_codec_status": "Zig authoritative codec; Go Nose producer codec; C/C++ and Python are test/reference codecs; Python brain is not production-wired; Rust canonical codec TBD (does not exist in source).",
       "cross_language": true,
       "frozen": true,
       "transport_notes": {
@@ -144,12 +145,12 @@
       "id": "CONTRACT-04",
       "name": "Control Protocol (IPC)",
       "file": "shared/protocol/control_protocol.md",
-      "implementation": "src/policy/control_ipc.zig",
+      "implementation": "src/control/protocol.zig (CONTROL_PROTOCOL_VERSION = 2) with handlers in src/control/handler_registry.zig; src/policy/control_ipc.zig is an unlinked v1 reference with zero production importers",
       "cli_implementation": "tools/aegisctl.py",
       "producer": "TypeScript/Python CLI",
       "consumer": "Zig Runtime (named pipe)",
       "schema": "JSON messages over named pipe",
-      "version": "1.0",
+      "version": "2.0 active; v1 frozen history",
       "magic": "0x4354524C",
       "languages": [
         "TypeScript",
@@ -157,7 +158,8 @@
         "Zig"
       ],
       "cross_language": true,
-      "frozen": true,
+      "frozen": false,
+      "historical_section": "v1 command table below is frozen history; v2 is the active daemon protocol",
       "transport": "Named pipe: \\\\.\\pipe\\aegis_control",
       "commands": {
         "READ": [
@@ -181,8 +183,8 @@
       "authorization": {
         "roles": "READ < OPERATE < PRIVILEGED",
         "acl": "Explicit caller-to-role mapping (no catch-all)",
-        "freshness": "now_ms within [issued_at_ms, issued_at_ms + timeout_ms]",
-        "replay": "(request_id, nonce) pair consumed once"
+        "freshness": "DECLARED in frozen v1 only; NOT enforced on active v2",
+        "replay": "DECLARED in frozen v1 only; (request_id, nonce) is NOT consumed on active v2 — no active nonce/replay protection"
       }
     },
     {
@@ -221,7 +223,7 @@
       "name": "Wire Protocol v1",
       "file": "shared/protocol/wire_v1.h",
       "implementation": "src/contract/wire_event.zig",
-      "schema": "Binary frame: 16-byte header + 109-byte payload = 125 bytes",
+      "schema": "LEGACY WEV1 nominal: 16-byte header + 109-byte payload = 125 bytes; ACTIVE Nose pipe: 4-byte LE length prefix + canonical frame = 113 (v1) / 137 (v2) / 169..1193 (v3) bytes on the wire",
       "version": "1.0",
       "magic": "0x57455631"
     },
@@ -230,7 +232,7 @@
       "name": "Wire Protocol v2 (full IPv6 identity)",
       "file": "shared/protocol/wire_v2.md",
       "implementation": "src/contract/canonical_event.zig (serializeV2 / deserializeDispatch / validateDecodedFrame)",
-      "schema": "16-byte header + 133-byte payload = 149 bytes (v1 109-byte payload + 24-byte IPv6 tail); version field 1|2",
+      "schema": "Canonical v2 payload = 133 bytes (v1 109-byte payload + 24-byte IPv6 tail), version field 1|2; legacy WEV1 nominal total = 149 bytes; ACTIVE Nose pipe on-wire total = 137 bytes (4-byte LE prefix + 133)",
       "version": "2.0",
       "magic": "0x57455631 (WEV1, shared with v1; the version field selects v2)"
     },

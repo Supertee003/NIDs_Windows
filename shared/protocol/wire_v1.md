@@ -2,13 +2,22 @@
 
 ## Status: FROZEN — Changes require protocol version bump
 
-This document is the single source of truth for the AEGIS wire format.
-All languages (Zig, C++, Rust, Go, Python) MUST produce byte-identical
-output for the same logical input.
+This document is the frozen **v1 canonical-event encoding** spec, not the
+active Nose pipe framing spec. Production codecs exist in Zig (authoritative)
+and Go (Nose); C/C++ and reference Python are test/reference codecs. The Rust
+canonical codec is TBD and the Python brain codec is not production-wired, so
+"all languages byte-identical" is not a production guarantee here.
 
-## Wire Frame Layout
+## Wire Frame Layout — LEGACY WEV1 ONLY
 
-A wire frame consists of a 16-byte header followed by a variable-length payload:
+> **LEGACY WEV1 container, not the active Nose pipe frame.** The live writer
+> (`nose/pipe_writer.go`) and reader (`src/capture/nose_pipe_reader.zig`) use a
+> 4-byte little-endian length prefix plus the raw canonical frame: v1 = **113**,
+> v2 = **137**, v3 = **169..1193** bytes on the wire
+> (`src/forensic/integration_contract.zig:19-25`). The 16-byte WEV1 header
+> below survives only in legacy forensic compatibility tests.
+
+A legacy WEV1 frame consists of a 16-byte header followed by a variable-length payload:
 
 ```
 +----------------+----------------+----------------+----------------+
@@ -20,7 +29,7 @@ A wire frame consists of a 16-byte header followed by a variable-length payload:
 +----------------------------------------------------------------+
 ```
 
-Total canonical event frame = 16 (header) + 109 (payload) = **125 bytes**.
+Total **legacy WEV1** canonical event frame = 16 (header) + 109 (payload) = **125 bytes**. The active Nose pipe v1 frame is **113 bytes** (4-byte length prefix + 109-byte canonical payload).
 
 ## Wire Header (16 bytes, little-endian, explicit field-by-field encoding)
 
@@ -135,11 +144,11 @@ interpret the lane continue to round-trip `context_flags` verbatim.
 
 ```
 tests/contracts/canonical_event.bin  — Binary canonical event payload (109 bytes)
-tests/contracts/wire_event.bin       — Wire-format frame (125 bytes = 16 header + 109 payload)
+tests/contracts/wire_event.bin       — LEGACY WEV1 frame (125 bytes = 16 header + 109 payload); NOT the active Nose pipe frame
 tests/contracts/test_vectors.json    — Human-readable expected field values
 ```
 
-All languages must produce bytes identical to the test vectors for the same input.
+Implemented codecs (Zig, Go, C/C++, reference Python) must produce bytes identical to the canonical vectors for the same input. This is not a claim about a Rust production codec or a production-wired Python codec.
 
 ## Cross-Language Verification
 

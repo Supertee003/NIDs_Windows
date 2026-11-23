@@ -3,13 +3,19 @@
 **Contract ID:** CONTROL_PROTOCOL
 **Version:** 1.0
 **Status:** FROZEN
+
+> This header describes the frozen **v1** section below only. The daemon speaks
+> **v2** ("Version 2 (ACTIVE...)" near the end of this file); v1 is history, not
+> the active wire path. Freshness and `(request_id, nonce)` replay are declared
+> in v1 and are **not enforced** on active v2.
+
 **Languages:** TypeScript, Python, Zig
 
 ## Purpose
 
 Defines the control-plane IPC protocol between CLI/TUI/Web and Zig Runtime.
 TypeScript/Python submit commands; Zig validates and executes.
-Privileged actions flow through Rust PEP (never direct to WFP).
+Privileged actions flow through Rust PEP (never direct to WFP). *(v1 historical posture; active v2 block/quarantine handlers refuse host effects — detection-only, see `src/control/handler_registry.zig:2197-2208`.)*
 
 ## Transport
 

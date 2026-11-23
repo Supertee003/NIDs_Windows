@@ -1,13 +1,21 @@
 # AEGIS Wire Protocol v1 (Rewrite Phase 2)
 
+> **HISTORICAL — legacy WEV1 framing only.** This is not the active Nose pipe
+> path. Active framing is a 4-byte little-endian length prefix plus the raw
+> canonical frame: v1 113 / v2 137 / v3 169..1193 bytes on the wire
+> (`src/forensic/integration_contract.zig:19-25`). Current truth lives in
+> `wire_v2.md`, `wire_v3.md` and `src/contract/canonical_event.zig`.
+
 ## Status: FROZEN — Changes require protocol version bump
 
 ## Overview
 
-All cross-language communication uses this wire protocol.
-Every language (Zig, C++, Rust, Go, Python) MUST produce byte-identical output.
+The canonical event payload encoding below is shared by the implemented Zig
+and Go codecs, with C/C++ and reference Python test codecs. This document does
+not describe the control plane (JSON control v2), the C ABI adapter contracts,
+or a Rust / production-Python codec.
 
-## Wire Frame Layout (125 bytes total)
+## Wire Frame Layout — LEGACY WEV1 (125 bytes total)
 
 ```
 Offset  Size  Field              Description
@@ -18,7 +26,7 @@ Offset  Size  Field              Description
 12      4     crc32              CRC32 of payload (IEEE 802.3)
 --- Header: 16 bytes ---
 16      109   payload            Canonical event (explicit field-by-field)
---- Total: 125 bytes ---
+--- Total: 125 bytes (legacy WEV1 only; active v1 pipe frame = 113) ---
 ```
 
 ## Encoding Rules (MANDATORY)
@@ -66,7 +74,8 @@ Offset  Size  Field
 87      1     enforcement_status
 88      1     defcon_impact
 89      4     context_flags
-93      16    reserved (zero-filled)
+93      16    reserved — G2 frozen process/host/node identity + confidence
+              (see wire_v1.md:87-95); not zero-fill, not a v2 expansion area
 Total:  109 bytes
 ```
 
@@ -75,7 +84,7 @@ Total:  109 bytes
 | Language | File | Functions |
 |----------|------|-----------|
 | C/C++ | `shared/protocol/wire_v1.h` | `aegis_wire_encode_header()`, `aegis_wire_decode_header()`, `aegis_wire_encode_event()`, `aegis_wire_encode_frame()` |
-| Zig | `core/wire_event.zig` | `serializeHeader()`, `deserializeHeader()`, `serializeEvent()`, `deserializeEvent()` |
+| Zig | `src/contract/wire_event.zig` | `serializeHeader()`, `deserializeHeader()`, `serializeEvent()`, `deserializeEvent()` |
 | Python | `shared/wire/wire_codec.py` | `WireCodec.encode_header()`, `decode_header()`, `encode_event()`, `decode_event()` |
 
 ## CRC32
@@ -94,4 +103,4 @@ tests/contracts/event_vectors/event_v1_004.bin  — edge case: zeros (109 bytes)
 tests/contracts/event_vectors/event_v1_005.bin  — edge case: max (109 bytes)
 ```
 
-All languages must produce bytes identical to these vectors for the same input.
+Implemented codecs (Zig, Go, C/C++, reference Python) must produce bytes identical to these vectors for the same input. Rust codec is TBD and the Python brain codec is not production-wired.

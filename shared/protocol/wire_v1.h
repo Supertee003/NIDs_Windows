@@ -1,9 +1,11 @@
 // ============================================================
 // shared/protocol/wire_v1.h - AEGIS Wire Protocol v1 (Rewrite Phase 2)
 // ============================================================
-// C header defining the cross-language wire protocol.
-// ALL languages (Zig, C++, Rust, Go, Python) MUST produce byte-identical
-// output to these reference implementations.
+// C header defining the LEGACY WEV1 container (frozen history), not the
+// active Nose pipe framing (4-byte LE prefix + canonical frame: 113/137/
+// 169..1193 bytes on the wire). Production codecs exist in Zig and Go;
+// C/C++ and reference Python are test/reference codecs; the Rust canonical
+// codec is TBD and the Python brain codec is not production-wired.
 //
 // Rules:
 //   - Fixed-width fields only (u8, u16, u32, u64)
@@ -12,7 +14,7 @@
 //   - No @ptrCast, no pointer cast, no compiler padding
 //   - No i128 (not portable)
 //
-// Wire frame layout (125 bytes total):
+// LEGACY WEV1 wire frame layout (125 bytes total; not the active pipe frame):
 //   [0..4]    magic           u32  0x57455631 ("WEV1")
 //   [4..6]    version          u16  1
 //   [6..8]    payload_type     u16  0=event, 1=cmd, 2=ack, 3=heartbeat

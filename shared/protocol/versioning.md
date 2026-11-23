@@ -21,12 +21,22 @@
 
 ### Version Compatibility Rules
 
+> **HISTORICAL (superseded by wire_v2/v3 exact-length dispatch).** Live codecs
+> reject unknown versions and any length mismatch; they do not skip unknown
+> trailing fields. v2 shipped as a separate 24-byte IPv6 tail, not by filling
+> `reserved[]`. See `src/contract/canonical_event.zig:595-655`.
+
 1. **Forward compatible**: receivers can skip unknown trailing fields if `struct_size > expected`
 2. **Backward compatible**: old clients can read v1 events (no breaking changes within v1)
 3. **Version validation**: receivers MUST validate magic + version before reading fields
 4. **Reserved field**: 16 bytes at end of payload — zero-filled, available for v2 fields
 
 ## Bump Procedure
+
+> **HISTORICAL (superseded):** the live rule is an exact length per declared
+> version (v1 109, v2 133, v3 `165 + payload_len`) with fail-closed rejection.
+> Do not use `struct_size >= expected` or reserved-byte growth as a
+> compatibility path.
 
 When adding a new field to canonical event:
 1. Add to `reserved[]` (use reserved bytes first)
