@@ -13,6 +13,10 @@ before you apply. The published `v1.1` release is signed, soak-tested, and detec
 | Architecture explained in English | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/portfolio/ARCHITECTURE_EN.md |
 | Resume project section | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/portfolio/RESUME_PROJECT.md |
 | Demo script / chapter guide | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/portfolio/DEMO.md |
+| Scope and status table (IDS vs IPS, one answer) | https://github.com/Supertee003/NIDs_Windows#scope-and-status-in-one-table |
+| Detection rule catalog | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/portfolio/DETECTION_CATALOG.md |
+| Security threat model | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/SECURITY_THREAT_MODEL.md |
+| Source-level interview preparation | https://github.com/Supertee003/NIDs_Windows/blob/main/docs/portfolio/INTERVIEW_PREP.md |
 
 ---
 
@@ -76,7 +80,7 @@ Engineer · Endpoint/Host Telemetry Engineer · Network Security Engineer · Sec
 Engineer · Detection & Response Engineer.
 
 **ATS keywords:** Windows internals, WFP, ETW, Npcap, packet capture, intrusion detection, NIDS,
-canonical event schema, SOC, MITRE ATT&CK-aligned detection, Sigma-like rule authoring, Rust, Zig,
+canonical event schema, SOC, detection engineering, rule authoring, Rust, Zig,
 Go, C++, Python, TypeScript, Ed25519 signing, hash chains, forensic integrity, fail-closed,
 observability, SSE dashboard, pytest.
 
@@ -85,7 +89,7 @@ observability, SSE dashboard, pytest.
 ## Three interview answers to have ready
 
 1. **"Isn't this just an IDS with rules?"** — The hard part isn't the regex; it's the authority
-   model. One canonical event schema with six codecs, one runtime owner, and a Rust policy evaluator
+   model. One canonical event schema with byte-exact codecs (Zig/Go/C/Python), one runtime owner, and a Rust policy evaluator
    that can only produce evidence. Steps that might mutate a host exist only in a separately
    compiled lab gate; production cannot open the prevention gate.
 

@@ -21,13 +21,28 @@ authoritative daemon data.*
 | What does it do? | Packet capture → canonical event → detect → policy evidence → forensic record → operator view |
 | Why is it interesting? | One runtime spanning six languages with a strict boundary: no layer may promote "detected" into "blocked" |
 | Stack | Zig runtime spine · Go packet acquisition · C/C++ WFP/ETW/FIM/Registry adapters · Rust detection-only PEP + crypto · Python analytics · TypeScript policy authoring |
-| Scale | 23 detection rules across L4, L7, kernel file/process, and pipe layers; 7M+ events observed on the current lab host |
+| Scale | 23 detection rules across L4, L7, kernel file/process, and pipe layers; 12M+ events observed on the current lab host ([measured values](docs/portfolio/OBSERVED_PERFORMANCE.md)) |
 | Proof | `v1.1` SHIPPABLE (0/6 gates), 36.52 h owner-run soak PASS, 674/674 signed artifacts, 1,471 tests with 0 skips |
 | Boundary | observe-only; prevention gate closed; `host_effect_capable=false`; no WFP enforcement in production |
 
 **Watch the 2.5-minute demo:** [Traffic → Event → Detection → Dashboard → Forensic Record](docs/portfolio/DEMO.md) · [MP4](docs/portfolio/images/demo.mp4)
 
 **Go deeper:** [Architecture explained in English](docs/portfolio/ARCHITECTURE_EN.md) · [Resume project section](docs/portfolio/RESUME_PROJECT.md) · [Evidence index](EVIDENCE_INDEX.json)
+
+### Scope and status, in one table
+
+This table is the answer to "is it an IDS or an IPS, and is blocking implemented, planned, or
+deliberately out of scope?" No implementation claim here implies a production host effect.
+
+| Area | Implemented | Verified | Production scope |
+|---|---|---|---|
+| Zig runtime / event pipeline | Yes | Build, unit/integration tests, Windows E5 lab | Yes — runtime owner |
+| Go Nose packet ingress | Yes | Build + Windows E5 capture preflight | Yes — acquisition only |
+| C/C++ WFP / ETW / FIM / Registry adapters | Yes | Observe-only E5 lab proof for WFP; synthetic fixtures for other families | Yes — telemetry evidence |
+| Detection rules (23) | Yes | 23/23 synthetic fixtures; live positive proof strongest on L4/R9006 with negative control | Yes — detection only |
+| Correlation / forensics / evidence receipts | Yes | Hash-chain verification on the current host | Yes — evidence only |
+| Release v1.1 | Yes | Signed manifest, 674/674 artifacts, 36.52 h soak PASS | Published, immutable |
+| Host blocking / WFP mutation / quarantine | Lab-only historical code | Lab qualification only | **Out of scope — not planned, not enabled** |
 
 ### Project 2 Runtime Gate
 
@@ -55,7 +70,7 @@ python -m tools.aegisctl.web_dashboard.app   # http://127.0.0.1:5000/
 python scripts\aegis_console.py --mode dashboard
 ```
 
-The current verified operator state is:
+The `v1.1` release-gate operator state is:
 
 | Area | Status |
 |---|---|
@@ -70,6 +85,13 @@ The current verified operator state is:
 | Host effect | `NOT_PROVEN` |
 | Forensic integrity | `OK` |
 | Forensic verification | `true` |
+
+**Current lab-host observation (2026-11-23):** the live daemon reports `runtime=DEGRADED`
+because of a control-pipe responder detail while all subsystems report `RUNNING`; the prevention
+gate remains closed and `host_effect_capable=false`. That is the state shown, unchanged, in the
+screenshot above. See the [failure matrix](docs/OPERATIONAL_FAILURE_MATRIX.md) and
+[observed runtime values](docs/portfolio/OBSERVED_PERFORMANCE.md) for the exact counters and the
+distinction between a release-gate result and a current host observation.
 
 All operator surfaces consume the daemon-owned snapshot. Process scans are
 diagnostic-only and are not promoted to runtime truth when the control daemon
@@ -665,6 +687,15 @@ The correct product statement is **Windows-native Kernel NIDS with detection-onl
 
 **For engineers and operators**
 
+- [Security policy](SECURITY.md)
+- [Security threat model](docs/SECURITY_THREAT_MODEL.md)
+- [Security boundaries and privilege separation](docs/architecture/SECURITY_BOUNDARIES.md)
+- [Operational failure matrix](docs/OPERATIONAL_FAILURE_MATRIX.md)
+- [Technology decisions](docs/TECHNOLOGY_DECISIONS.md)
+- [Detection rule catalog](docs/portfolio/DETECTION_CATALOG.md)
+- [Canonical event schema](docs/CANONICAL_EVENT_SCHEMA.md)
+- [Test results](docs/testing/RESULTS.md)
+- [Source-level interview preparation](docs/portfolio/INTERVIEW_PREP.md)
 - [User operations guide](docs/USER_OPERATIONS_GUIDE.md)
 - [Local runbook](docs/runtime/LOCAL_RUNBOOK.md)
 - [Canonical contracts](docs/architecture/CONTRACTS.md)

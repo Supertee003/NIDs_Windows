@@ -4,6 +4,9 @@
 > Facts are taken from the repository's current machine-readable maps (`SYSTEM_MAP.json`,
 > `FLOW_MAP.json`, `AUTHORITY_MAP.json`, `CONTRACT_MAP.json`, `runtime_manifest.json`).
 > Historical IPS/enforcement documents in the repo are explicitly **not** current truth.
+> Caveat: `CONTRACT_MAP.json` CONTRACT-04 is stale v1 control-IPC metadata; current control-plane
+> behavior comes from `src/control/protocol.zig` and `src/control/handler_registry.zig` (v2).
+> See [Security boundaries](../architecture/SECURITY_BOUNDARIES.md) for source-cited details.
 
 ---
 
@@ -94,9 +97,11 @@ The canonical flow in `FLOW_MAP.json` is `DATA-001 — Production IDS: Go Nose �
 Detection → Forensic Record → IDS Evidence Receipt`. Compressed to the steps that matter:
 
 1. **Capture** — Go Nose reads frames from the selected Windows interface with Npcap.
-2. **Normalize** — Each frame becomes a `CanonicalEvent` (one schema, six codecs: Zig, Go, C++,
-   Python ×2, plus a golden tuple-map). Wire formats are length-prefixed: 16-byte header +
-   109-byte v1 payload (125 bytes), or + 24-byte IPv6 tail for v2 (149 bytes).
+2. **Normalize** — Each frame becomes a `CanonicalEvent`. The schema is frozen in
+   `shared/event/canonical_event.md`; implementations exist in Zig, Go, C, and Python (plus a
+   golden tuple-map), while the Rust codec is still marked TBD. IPC frames are length-prefixed:
+   16-byte header + 109-byte v1 payload (125 bytes), or + 24-byte IPv6 tail for v2 (149 bytes).
+   See the [Canonical Event Schema](../CANONICAL_EVENT_SCHEMA.md) for field-level detail.
 3. **Transport** — Frames cross `\\.\pipe\aegis_nose` into the Zig daemon. Loopback TCP exists
    only as a non-Windows development fallback; it is not a production binding.
 4. **Flow & detect** — The Zig runtime maintains flow state and evaluates 23 rules across
