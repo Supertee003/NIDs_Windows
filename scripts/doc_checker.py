@@ -51,8 +51,12 @@ ENV_DOCS_RELPATH = "docs/ENV_VARS.md"
 ENV_SEARCH_GLOBS = ["src/**/*.zig", "scripts/**/*.py", "go/**/*.go", "*.bat", "*.ps1"]
 
 FENCE_RE = re.compile(r"```")
+# Hyphen is part of real top-level command names (e.g. `mark-fp`); the old
+# `[a-z_0-9]+` pattern truncated them and produced a false doc-cmd-unknown.
+# The first character must be alphanumeric/underscore so options like `-v`
+# are not mistaken for commands.
 AEGISCTL_USE_RE = re.compile(
-    r"(?:python\s+)?(?:scripts[/\\])?aegisctl(?:\.py)?\s+([a-z_0-9]+)"
+    r"(?:python\s+)?(?:scripts[/\\])?aegisctl(?:\.py)?\s+([a-z_0-9][a-z_0-9-]*)"
 )
 ENV_VAR_RE = re.compile(r"\bAEGIS_[A-Z0-9_]+\b")
 
@@ -108,7 +112,7 @@ def parse_aegisctl_commands(aegisctl_text):
     validated by their parent command's own documentation.
     """
     return set(
-        re.findall(r'(?<![\w])sub\.add_parser\(\s*"([a-z_0-9]+)"', aegisctl_text)
+        re.findall(r'(?<![\w])sub\.add_parser\(\s*"([a-z_0-9][a-z_0-9-]*)"', aegisctl_text)
     )
 
 
@@ -245,10 +249,11 @@ GOOD_AEGISCTL = (
     "    sub = parser.add_subparsers()\n"
     '    sub.add_parser("status", help="status")\n'
     '    sub.add_parser("health", help="health")\n'
+    '    sub.add_parser("mark-fp", help="hyphenated command")\n'
 )
 BAD_DOC = "# Doc\n\n```powershell\npython tools/aegisctl.py bogus_cmd\n```\n"
 
-GOOD_DOC = "# Doc\n\n```powershell\npython tools/aegisctl.py status\n```\n"
+GOOD_DOC = "# Doc\n\n```powershell\npython tools/aegisctl.py mark-fp\n```\n"
 
 
 def build_fixture(root, bad):

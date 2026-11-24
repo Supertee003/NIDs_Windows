@@ -194,6 +194,16 @@ def test_pep_abi_narrative_is_historical_but_abi_bytes_frozen() -> None:
         assert frozen in text, frozen
 
 
+def test_doc_checker_accepts_hyphenated_aegisctl_commands() -> None:
+    checker = _read("scripts/doc_checker.py")
+    doc = _read("docs/CLI_COMMANDS.md")
+    cli = _read("tools/aegisctl.py")
+    assert checker.count("[a-z_0-9][a-z_0-9-]*") >= 2
+    assert "mark-fp" in doc
+    assert '"mark-fp"' in cli
+    assert 'sub.add_parser("mark-fp"' in checker
+
+
 def test_source_comments_no_longer_claim_removed_core_paths_or_tcp_fallback() -> None:
     writer = _read("nose/pipe_writer.go")
     cli = _read("src/tests/cli/nose_pipe_e2e_cli.zig")
