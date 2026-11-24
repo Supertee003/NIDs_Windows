@@ -25,8 +25,9 @@ now split, and the second half is computed from recorded artifacts:
     and whose boot-task loader lives under the install directory (owner: needs a
     clean Windows host),
   * `soak_24h`          — a soak artifact declaring `required_hours >= 24`,
-    observing `elapsed_hours >= required_hours`, verdict PASS and no problems
-    (V&R-03: a declared 24 h rule is not proof that 24 h were observed),
+    observing `elapsed_hours >= required_hours`, ordered `soak_start`/
+    `checked_at`, verdict PASS and no problems (V&R-03/V&R-08: a declared
+    24 h rule is not proof that 24 h were observed),
   * `evidence_debt`     — the unnamed-product-file ratchet has not grown.
 
 Every gate is fail-closed: an absent artifact is an open gate, never a pass, and
@@ -544,6 +545,14 @@ def evaluate_soak(artifacts: list[dict]) -> dict:
             return {"ok": False,
                     "detail": f"{label}, but the runtime source commit time is unreadable, "
                               "so freshness cannot be established"}
+        start = parse_timestamp(newest.get("soak_start"))
+        checked = parse_timestamp(newest.get("checked_at"))
+        if start is None or checked is None or checked < start:
+            return {
+                "ok": False,
+                "detail": (f"{label}, but soak_start/checked_at are missing, unreadable, "
+                           "or out of order"),
+            }
         return {"ok": True, "detail": f"{label} with no problems"}
 
     detail = label + (f", problems {problems}" if problems else "")
@@ -671,6 +680,21 @@ def release_verdict(gates: list[dict]) -> dict:
         "unwaived": [g["id"] for g in unwaived],
         "owners": sorted({g["owner"] for g in open_gates if g["owner"] != "none"}),
     }
+
+
+def release_exit(verdict: dict, accept_waivers: bool) -> tuple[int, str | None]:
+    """V&R-08: an owner waiver is never a green release-check exit."""
+    if verdict["shippable"]:
+        return 0, None
+    if accept_waivers and verdict["shippable_with_waiver"]:
+        return 2, (
+            "WAIVED_NOT_SHIPPABLE: not a full shippable release; owner waiver on "
+            f"{', '.join(verdict['waived'])} is unproven (exit 2, never green)"
+        )
+    return 1, (
+        "FAIL: release gates open: "
+        f"{', '.join(verdict['unwaived'] or verdict['open'])}"
+    )
 
 
 # ── artifact collection (the only I/O in this half) ────────────────────────
@@ -994,15 +1018,10 @@ def main() -> int:
         print("FAIL: the component audit is incomplete", file=sys.stderr)
         return 1
     if args.release_check:
-        if verdict["shippable"]:
-            return 0
-        if args.accept_waivers and verdict["shippable_with_waiver"]:
-            print(f"FAIL: not a full shippable release; shipping with owner waiver on "
-                  f"{', '.join(verdict['waived'])} (unproven)", file=sys.stderr)
-            return 0
-        print(f"FAIL: release gates open: {', '.join(verdict['unwaived'] or verdict['open'])}",
-              file=sys.stderr)
-        return 1
+        code, error = release_exit(verdict, args.accept_waivers)
+        if error:
+            print(error, file=sys.stderr)
+        return code
     return 0
 
 

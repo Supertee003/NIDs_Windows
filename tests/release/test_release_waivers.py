@@ -6,8 +6,9 @@ must not dress that decision up as evidence. These pins hold the boundary:
 * a waiver never sets `ok` on the gate;
 * a malformed, unknown-gate or expired waiver is ignored, not trusted;
 * `--release-check` alone still fails while a gate is open;
-* only with the explicit `--accept-waivers` flag does the exit code become 0, and
-  the markdown/JSON keep saying the exception is unproven.
+* `--accept-waivers` never becomes a green exit: it prints
+  `WAIVED_NOT_SHIPPABLE` and returns 2, while the markdown/JSON keep saying
+  the exception is unproven (V&R-08).
 """
 from __future__ import annotations
 
@@ -106,3 +107,29 @@ def test_an_unwaived_open_gate_blocks_even_with_the_flag(tmp_path: Path) -> None
 
 def test_no_waivers_file_means_no_waivers(tmp_path: Path) -> None:
     assert final_audit.load_waivers(tmp_path / "absent.json") == {}
+
+
+def test_waiver_mode_is_never_a_green_release_exit(tmp_path: Path) -> None:
+    waivers = final_audit.load_waivers(_write(tmp_path, [_waiver()]))
+    verdict = final_audit.release_verdict(final_audit.apply_waivers([
+        _gate(), {"id": "truth_artifacts", "ok": True, "owner": "none", "detail": "ok"},
+    ], waivers))
+    assert verdict["shippable"] is False
+    assert verdict["shippable_with_waiver"] is True
+
+    code, message = final_audit.release_exit(verdict, accept_waivers=False)
+    assert code == 1
+    assert message and message.startswith("FAIL: release gates open:")
+
+    code, message = final_audit.release_exit(verdict, accept_waivers=True)
+    assert code == 2
+    assert message and message.startswith("WAIVED_NOT_SHIPPABLE:")
+    assert "soak_24h" in message
+    assert "never green" in message
+
+
+def test_full_release_exit_is_green_without_waivers() -> None:
+    verdict = final_audit.release_verdict([
+        {"id": "soak_24h", "ok": True, "owner": "time", "detail": "PASS"},
+    ])
+    assert final_audit.release_exit(verdict, accept_waivers=True) == (0, None)

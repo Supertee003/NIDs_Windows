@@ -1,6 +1,6 @@
 {
   "id": "RELEASE-WAIVERS",
-  "rule": "A waiver is an explicit owner exception, never a pass. A waived gate stays ok=false and is printed as WAIVED; the audit only returns success for it when run with --accept-waivers, and even then it says the release is not fully shippable. Delete an entry to restore the hard gate.",
+  "rule": "A waiver is an explicit owner exception, never a pass. A waived gate stays ok=false and is printed as WAIVED. With --accept-waivers, release-check prints WAIVED_NOT_SHIPPABLE and exits 2 (never 0/green); without it, the gate remains open and exits 1. Delete an entry to restore the hard gate.",
   "waivers": [],
   "removed": [
     {

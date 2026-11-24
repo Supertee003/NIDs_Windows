@@ -1,9 +1,9 @@
-"""P7 verification/release truth pins (V&R-01..V&R-07).
+"""P7/P8 verification/release truth pins (V&R-01..V&R-08).
 
 Records-only E1/E2 guards. They stop a second build-source boundary, a
-declared-only 24 h soak, stale component provenance, advisory CI jobs labelled
-CANONICAL, and superseded build-source labels from returning to current truth.
-V&R-08 (waiver exit semantics) remains explicitly open in issue #46.
+declared-only or out-of-order 24 h soak, stale component provenance, advisory
+CI jobs labelled CANONICAL, superseded build-source labels, and a waiver being
+reported as a green release from returning to current truth.
 """
 from __future__ import annotations
 
@@ -42,6 +42,7 @@ def test_soak_gate_requires_observed_elapsed_hours() -> None:
         "verdict": "PASS",
         "required_hours": 24.0,
         "problems": [],
+        "soak_start": "2026-11-20T00:00:00",
         "checked_at": "2026-11-22T00:00:00",
         "stale": False,
     }
@@ -56,6 +57,31 @@ def test_soak_gate_requires_observed_elapsed_hours() -> None:
 
     valid = final_audit.evaluate_soak([{**base, "elapsed_hours": 24.4}])
     assert valid["ok"] is True
+
+
+def test_soak_gate_requires_ordered_timestamps() -> None:
+    final_audit = _load("final_audit_soak_times_vr", "tools/final_audit.py")
+    base = {
+        "path": "admin-evidence/x/soak-24h.json",
+        "verdict": "PASS",
+        "required_hours": 24.0,
+        "elapsed_hours": 24.4,
+        "problems": [],
+        "soak_start": "2026-11-20T00:00:00",
+        "checked_at": "2026-11-22T00:00:00",
+        "stale": False,
+    }
+    assert final_audit.evaluate_soak([base])["ok"] is True
+
+    missing_start = final_audit.evaluate_soak([{k: v for k, v in base.items()
+                                               if k != "soak_start"}])
+    assert missing_start["ok"] is False
+    assert "soak_start/checked_at are missing" in missing_start["detail"]
+
+    reversed_times = final_audit.evaluate_soak([{**base,
+        "soak_start": "2026-11-23T00:00:00", "checked_at": "2026-11-22T00:00:00"}])
+    assert reversed_times["ok"] is False
+    assert "or out of order" in reversed_times["detail"]
 
 
 def test_build_manifest_component_commits_match_source_commit() -> None:

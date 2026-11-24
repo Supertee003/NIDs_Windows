@@ -10545,9 +10545,44 @@
       "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P7-20261124.md",
       "limitations": [
         "Records-only: no source tree change, no rebuild, no new host verification.",
-        "V&R-08 waiver exit semantics and soak_start/checked_at ordering are deferred to issue #46.",
+        "V&R-08 waiver exit semantics and soak_start/checked_at ordering are deferred to issue #46 (closed by P8-VR08-E2 below).",
         "E5/E6 rows remain historical at f4cde3c; no current-source E5 claim.",
         "Release identity stays v1.1 / 6/6 at signed candidate 466a226 / source a53eda8."
+      ]
+    },
+    {
+      "id": "P8-VR08-E2",
+      "head_sha": "661fb768dc1c8eeb0f79e4e437807f2eac08c9ff",
+      "timestamp": "2026-11-24",
+      "title": "P8 addendum: waiver exit is never green and soak timestamps must be ordered",
+      "level": "E2",
+      "component": "tools/final_audit.py, docs/gates/waivers.json, tests/release/test_release_waivers.py, tests/release/test_vr_truth.py, tests/release/test_release_board.py",
+      "flow_id": "VER-001, REL-001",
+      "description": "Owner-directed closeout of the two items deliberately left open by P7. A pure release_exit(verdict, accept_waivers) helper returns 0 only for a fully closed release, 1 for unwaived open gates, and 2 with WAIVED_NOT_SHIPPABLE when only waived gates remain; no waiver is active. evaluate_soak also requires ordered soak_start/checked_at after the existing freshness checks. No new soak, waiver, signature, tag, key, gate, rule, wire or authority change.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-P7-20261124.md",
+        "tools/final_audit.py",
+        "docs/gates/waivers.json",
+        "tests/release/test_release_waivers.py",
+        "tests/release/test_vr_truth.py",
+        "tests/release/test_release_board.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "pytest tests/release/test_release_waivers.py -> pass",
+        "pytest tests/release/test_vr_truth.py -> pass",
+        "pytest tests/release/test_release_board.py -> pass",
+        "python tools/truth.py verify -> TRUTH_VALID @ 661fb76",
+        "python tools/release_engineering.py --verify -> 674/674 digests after rebaseline",
+        "python scripts/check_summary.py -> SUMMARY_VALID"
+      ],
+      "result": "PASS_E2",
+      "finding": "Records-only contract correction: an owner exception stays ok=false and is never a green release-check exit; soak PASS requires observed elapsed hours and ordered timestamps. Six release gates remain six.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P7-20261124.md",
+      "limitations": [
+        "Records-only: no source-tree change, rebuild, host, soak, signing or install verification.",
+        "Build source remains 661fb76; release identity remains v1.1 / 466a226 / a53eda8.",
+        "Source findings in issues #44/#45 remain open."
       ]
     }
   ],
@@ -17220,7 +17255,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 43,
-    "E2_count": 150,
+    "E2_count": 151,
     "E3_count": 15,
     "E4_count": 4,
     "E5_count": 122,

@@ -67,18 +67,28 @@ No release tag, signature, key, gate count, rule, wire layout, authority behavio
 - **Replacement:** all four now say `661fb76`. `docs/STRUCTURE.md` no longer freezes a records HEAD value; it points to `git rev-parse HEAD` because this slice is records-only.
 - **Acceptance:** pin asserts no `ab0fa17` and presence of `661fb76` in all four files.
 
-## 8. V&R-08 — waiver exit path prints FAIL but returns 0 · แนะนำเพิ่ม · OPEN
+## 8. V&R-08 — waiver exit path prints FAIL but returns 0 · HISTORICAL (closed by P8 addendum below)
 
 - **Paths / current text:** `tools/final_audit.py:983-989` — `if args.accept_waivers and verdict["shippable_with_waiver"]: ... print("FAIL: not a full shippable release ... (unproven)", file=sys.stderr); return 0`; `docs/gates/waivers.json:3` currently describes that success path; `:4` `"waivers": []`.
 - **Reason:** an owner waiver mode can print a FAIL banner while automation observes exit 0. It is latent because no waiver is active, and the existing waiver rule explicitly expects this return path, so it is a contract decision rather than a proven breach of that rule.
 - **Replacement direction:** use a distinct non-zero machine-readable status such as `WAIVED_NOT_SHIPPABLE`, or document exit 0 as an explicit owner-only waiver mode and keep it out of release automation. Do not silently change it in a truth-labelling patch.
-- **Acceptance:** issue #46 remains open with exact file:line, direction and the requirement that any change preserve the six-gate contract and be pinned by `tests/release/test_release_waivers.py`.
+- **Acceptance (historical):** issue #46 was left open with exact file:line and direction; the requirement was to preserve the six-gate contract and pin any change in `tests/release/test_release_waivers.py`. See §9 for the P8 closeout.
 
 ---
 
-## Additional decision recorded
+## 9. P8 addendum — V&R-08 and soak timestamp ordering closed · ตรวจพบ · FIXED
 
-- `soak_start`/`checked_at` ordering was recommended in the audit but not added: current small test artifacts omit `soak_start`, and forcing it would be a broader artifact-schema change unrelated to the V&R-03 false-PASS class. It is listed in issue #46 as optional hardening, not claimed fixed.
+- **Owner decision:** the user requested full closeout (`ทำให้ครบด้วย`), so the non-zero status option was chosen. An owner waiver is an explicit exception, never a PASS and never a green automation exit.
+- **Paths / old text:** `tools/final_audit.py` returned `0` after printing `FAIL: not a full shippable release ... (unproven)`; `docs/gates/waivers.json:3` described that success path. `evaluate_soak()` printed `checked_at` but did not parse `soak_start`.
+- **Replacement:** a pure `release_exit(verdict, accept_waivers)` now returns `(0, None)` only when all six gates are closed; with `--accept-waivers` and only waived gates open it prints `WAIVED_NOT_SHIPPABLE` and returns `2` (never green); otherwise it returns `1`. `main()` delegates to that helper. `docs/gates/waivers.json:3` records the exit-2 contract. `evaluate_soak()` now also requires ordered `soak_start <= checked_at` for a PASS artifact, after the existing stale/freshness checks, so stale detail text is unchanged.
+- **Acceptance:** `tests/release/test_release_waivers.py` pins exit 0/1/2 through the helper; `tests/release/test_vr_truth.py` pins missing and reversed timestamps, and the release-board soak fixture now carries an ordered `soak_start`. Six gates remain six. No waiver is active (`"waivers": []`).
+- **Scope:** records-only (`tools/`, `tests/`, docs, `EVIDENCE_INDEX.json`); build source stays `661fb76`. No release tag, signature, key, gate-count, wire, rule or authority change; no new host/soak/E4/E5 claim.
+
+---
+
+## Additional decision recorded (historical)
+
+- `soak_start`/`checked_at` ordering was recommended in the audit but not added in P7: current small test artifacts omitted `soak_start`, and forcing it would have been a broader artifact-schema change unrelated to the V&R-03 false-PASS class. It was listed in issue #46 as optional hardening. **P8 addendum:** ordering is now enforced after freshness checks, with fixtures updated; no new soak was run.
 
 ## Flow / contract impact
 
@@ -93,6 +103,10 @@ OLD  security-scan / ts-policy     -> required CANONICAL
 NEW  security-scan / ts-policy     -> SUPPORT, jobs still run and report
 OLD  four security/structure docs  -> ab0fa17 as current
 NEW  four security/structure docs  -> 661fb76
+OLD  waiver mode                   -> FAIL banner, exit 0
+NEW  waiver mode                   -> WAIVED_NOT_SHIPPABLE, exit 2, never green
+OLD  soak PASS                     -> declared/observed hours only
+NEW  soak PASS                     -> + ordered soak_start/checked_at
 ```
 
 - **Wire/ABI bytes/rules/authority behavior/host effects:** none changed.
@@ -102,4 +116,4 @@ NEW  four security/structure docs  -> 661fb76
 
 ## Completion gate
 
-**PASS (E1/E2, records-only)** requires: new V&R pins pass; existing release/board/CI pins pass after digest rebaseline; `TRUTH_VALID @ 661fb76`; 674/674 digests; BAD LINKS none; `SUMMARY_VALID`; CI-equivalent pytest green. V&R-08 and optional soak timestamp ordering remain explicitly open in issue #46. Deferred source findings in issues #44/#45 and MASTER-AUDIT-P4/P5/P6 are not claimed fixed by this records-only slice.
+**PASS (E1/E2, records-only)** requires: new V&R pins pass; existing release/board/CI pins pass after digest rebaseline; `TRUTH_VALID @ 661fb76`; 674/674 digests; BAD LINKS none; `SUMMARY_VALID`; CI-equivalent pytest green. V&R-08 and soak timestamp ordering are closed by the P8 addendum (§9) with six gates unchanged. Deferred source findings in issues #44/#45 and MASTER-AUDIT-P4/P5/P6 are not claimed fixed by this records-only slice.

@@ -79,6 +79,7 @@ def facts(**over) -> dict:
                 "elapsed_hours": 24.4,
                 "required_hours": 24.0,
                 "problems": [],
+                "soak_start": "2026-11-15T09:00:00",
                 "checked_at": "2026-11-16T09:00:00",
                 "stale": False,
             }
