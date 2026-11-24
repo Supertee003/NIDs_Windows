@@ -35,13 +35,12 @@ const nosePipeRetryDelay = 500 * time.Millisecond
 type FrameWriter struct {
 	mu        sync.Mutex
 	pipePath  string
-	useSocket bool
 	conn      *pipeConn
 	dropped   uint64
 	sent      uint64
 }
 
-// pipeConn abstracts a Windows named pipe or a loopback TCP fallback.
+// pipeConn wraps a Windows named-pipe file handle; there is no TCP socket path.
 type pipeConn struct {
 	file *os.File
 }
@@ -99,7 +98,7 @@ func (w *FrameWriter) ensureConnected() {
 	w.conn = dialPipe(w.pipePath)
 }
 
-// dialPipe opens the named pipe client (or loopback TCP fallback).
+// dialPipe opens the Windows named pipe client via os.OpenFile only (no TCP fallback).
 func dialPipe(path string) *pipeConn {
 	// Windows: CreateFile("\\\\.\\pipe\\name", GENERIC_WRITE, ...)
 	// Go's os.OpenFile maps to CreateFileW with FILE_SHARE_READ|WRITE,

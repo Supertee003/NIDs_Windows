@@ -1,7 +1,7 @@
 // =====================================================================
 // canonical_test.go - cross-language golden-vector verification
 // =====================================================================
-// This test reproduces the EXACT wire bytes that core/canonical_event.zig
+// This test reproduces the EXACT wire bytes that src/contract/canonical_event.zig
 // produces for the same field values (the T2 golden vector). If Zig and
 // Go ever diverge, one of the two golden tests fails — the schema is
 // therefore verified consistently across both languages.
@@ -50,7 +50,7 @@ func goldenEvent() *CanonicalEvent {
 }
 
 // goldenBytes is the frozen wire output — byte-for-byte identical to
-// the Zig golden vector embedded in core/canonical_event.zig.
+// the Zig golden vector embedded in src/contract/canonical_event.zig.
 func goldenBytes() [109]byte {
 	return [109]byte{
 		0x31, 0x47, 0x45, 0x41, 0x01, 0x00, 0x80, 0x00,

@@ -206,11 +206,17 @@ def test_doc_checker_accepts_hyphenated_aegisctl_commands() -> None:
 
 def test_source_comments_no_longer_claim_removed_core_paths_or_tcp_fallback() -> None:
     writer = _read("nose/pipe_writer.go")
+    golden = _read("nose/canonical_test.go")
     cli = _read("src/tests/cli/nose_pipe_e2e_cli.zig")
     assert "core/nose_pipe_reader.zig" not in writer
     assert "core/nose_pipe_e2e_cli.zig" not in cli
+    assert "core/canonical_event.zig" not in golden
     assert "src/capture/nose_pipe_reader.zig" in writer
+    assert "src/contract/canonical_event.zig" in golden
     assert "capture/nose_pipe_reader.zig" in cli
     assert "src/tests/cli/nose_pipe_e2e_cli.zig" in cli
     assert "TCP loopback" not in writer
+    assert "loopback TCP fallback" not in writer
+    assert "useSocket" not in writer
     assert "no TCP fallback is implemented" in writer
+    assert "no TCP fallback" in writer
