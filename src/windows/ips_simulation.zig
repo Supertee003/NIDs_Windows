@@ -41,7 +41,7 @@ pub const IpsMode = enum(u8) {
         return self == .canary or self == .enforce;
     }
 
-    /// Returns true if this mode is production-ready.
+    /// Returns true for the terminal ENFORCE stage (HISTORICAL lab mode; no live host-effect authority).
     pub fn isProduction(self: IpsMode) bool {
         return self == .enforce;
     }

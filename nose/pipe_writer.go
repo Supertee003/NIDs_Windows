@@ -151,6 +151,19 @@ func (w *FrameWriter) sendWire(wire []byte, eventID uint64) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
+	// Defense in depth: SerializeV3 already bounds payloads, but a direct
+	// caller must never desynchronise the u32 length prefix from the bytes
+	// written. Reject oversize wires instead of truncating or slicing past
+	// the fixed frame buffer (wire layout is unchanged).
+	if len(wire) > EventV3MaxWireSize {
+		w.dropped++
+		if w.dropped == 1 {
+			fmt.Fprintf(os.Stderr, "[NOSE PIPE] first frame dropped: oversize wire %d > %d event_id=%d\n",
+				len(wire), EventV3MaxWireSize, eventID)
+		}
+		return false
+	}
+
 	if w.conn == nil || w.conn.file == nil {
 		w.dropped++
 		if w.dropped == 1 {
