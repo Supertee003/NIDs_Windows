@@ -85,20 +85,21 @@ E3 private-pipe -inject                                    -> exit 0, exact delt
 E4/E5 canonical-pipe -inject (elevated operator session)   -> exit 0, exact deltas, host restored
 zig build test / zig build                                 -> exit 0 (verified at a26c573 before this records slice)
 cd nose && go test ./...                                   -> exit 0 (verified at a26c573 before this records slice)
-python -m pytest -q -m "not host_live"                     -> 1486 passed, 1 skipped, 18 deselected, 27 subtests passed (verified at a26c573 before this records slice)
-pytest tests/docs tests/release (this records slice)       -> 262 passed
-pytest evidence-index integrity/release valid (this slice) -> 12 passed
+python -m pytest -q -m "not host_live"                     -> 1486 passed, 1 skipped, 18 deselected, 27 subtests passed (at a26c573 before the records slice); re-run at final records state: 1485 passed, 4 skipped, 18 deselected, 25 subtests passed
+pytest tests/docs tests/release (records slices)           -> 262 passed
+pytest evidence-index integrity/release valid (records)    -> 12 passed
 python tools/truth.py verify                               -> TRUTH_VALID @ a26c573
 python tools/release_engineering.py --verify               -> 674/674 digests
 python scripts/check_summary.py                            -> SUMMARY_VALID
 python scripts/doc_checker.py                              -> 0 FAIL, 0 WARN
 ```
 
-Local `C:` hit ENOSPC during a full post-records pytest re-run; npm/Go temp
-caches were redirected to `D:` and all TypeScript checks then passed, but the
-canary-report and `_nose_probe.exe` tests (both write into the repo tree)
-could not be re-run locally. Their fresh-runner result is the CI gate; no
-source/test defect was indicated by the failures (`WinError 112` / `ENOSPC`).
+An intermediate full pytest re-run was blocked by local `C:` ENOSPC (`WinError
+112` / `ENOSPC`) on tests that write into the repo tree. The stale default Go
+build cache was removed (126 MB reclaimed; `GOCACHE` was already redirected to
+`D:`), after which the full non-host suite passed at the final records state.
+No source or test file was changed to obtain that result; the differing skip
+counts reflect local environment conditions, not a change in product claims.
 
 ## EVIDENCE LEVEL AND LIMITS
 

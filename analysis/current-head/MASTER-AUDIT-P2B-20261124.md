@@ -99,4 +99,4 @@ NEW  vectors_metadata.json       -> 9/9 bytes checked against sha256 + size in a
 
 ## 4. Completion gate
 
-**PASS (E2).** Build source = `661fb76` (source-file changes). Machine maps restamped and digests refreshed in follow-up records commits; final verification must show `TRUTH_VALID @ 661fb76`, 674/674 digests and no bad links. Issue #44 counter-delta follow-ups remain open and are not claimed here.
+**PASS (E2).** Build source = `661fb76` (source-file changes). Machine maps restamped and digests refreshed in follow-up records commits; final verification must show `TRUTH_VALID @ 661fb76`, 674/674 digests and no bad links. Issue #44 counter-delta follow-ups were open at recorded source `661fb76`; they were closed by the P8-I44 slices and re-proved at current source `a26c573` in `analysis/current-head/MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md`.

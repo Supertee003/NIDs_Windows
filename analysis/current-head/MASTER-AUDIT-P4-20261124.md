@@ -54,7 +54,7 @@ Two **contradictory source-of-truth documents** were confirmed (SL-1, SL-2). Bot
 - **Current text:** `_ = runtime_state.g_nose_pipe_errors.fetchAdd(1, .monotonic);` followed by `_ = runtime_state.g_nose_frames_dropped.fetchAdd(1, .monotonic);` with comment `Same dual accounting as the resync branch above.` The E2E CLI harness only asserts `frames_submitted != 0`.
 - **Reason:** the dual count is intentional and disclosed, but no test drives a failing frame through the real named-pipe path and asserts the exact per-branch delta. `g_nose_frames_dropped` still conflates framing reject, capacity shed and shape refusal.
 - **Replacement direction:** add an injected-frame failure test on the Win32 pipe asserting `+1` on each counter for each branch; then split counters by cause and update health/control fields and maps in the same patch.
-- **Acceptance criteria:** exact counter deltas proven through the pipe, not by direct function call; no counter renamed without its consumer surfaces. This is already an open issue #44 follow-up; not re-filed.
+- **Acceptance criteria:** exact counter deltas proven through the pipe, not by direct function call; no counter renamed without its consumer surfaces. This was an open issue #44 follow-up at the recorded source; not re-filed. **CLOSED at current source `a26c573`** by the exact-delta pipe runs recorded in `analysis/current-head/MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md`.
 
 ## 6. F4 — `kernel_fallback` allows both submit paths despite "one authority at a time" · ตรวจพบ · DEFERRED (design decision)
 

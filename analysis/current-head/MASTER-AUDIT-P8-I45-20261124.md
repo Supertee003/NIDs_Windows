@@ -155,13 +155,17 @@ No higher level is claimed.
 commits; frozen `v1.1` release identity is untouched. No config, key, tag or
 signature rollback is required.
 
-**REMAINING RISK:** issue #44 counter-delta/observability source slice is still
-open; no current-source host evaluation exists. The F4 dual-submitter overlap is
-now disclosed but deliberately retained to avoid silent event loss. Lab-only
+**REMAINING RISK:** issue #44 was closed at current build source `a26c573` with
+E3 private-pipe and E4/E5 canonical-pipe `-inject` exact-delta proof; see
+`analysis/current-head/MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md`. The
+earlier "still open" wording in this record was true at its recorded source
+`2129dcd` and is SUPERSEDED, not a current status. The F4 dual-submitter overlap
+remains disclosed but deliberately retained to avoid silent event loss. Lab-only
 F10 rungs remain in the pure ladder for the lab gate.
 
-**OPEN BLOCKERS:** none for this slice. Issue #44 remains a separate open slice;
-no E4/E5/soak gate may be closed from these results.
+**OPEN BLOCKERS:** none for this slice. These E1/E2 results close no E4/E5/soak
+gate; the narrow current-source pipe/lifecycle E4/E5 proof is recorded separately
+and adds no soak, install, signing, rule-matrix, E6/E7 or zero-loss claim.
 
 **COMPLETION GATE:** PASS (E1/E2). Build 0, targeted pins 41/41, CI-equivalent
 1483/1483, docs 0 FAIL, links none, TRUTH_VALID @ 2129dcd, 674/674 digests.

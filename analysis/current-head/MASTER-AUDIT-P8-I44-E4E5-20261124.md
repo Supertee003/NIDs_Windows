@@ -163,4 +163,7 @@ host rollback is required.
 
 PASS_E4 / PASS_E5 — canonical-pipe `-inject` exact deltas green on a Windows
 host, exit 0, failure actions/service/Nose/pipe restored and verified, records
-gates green at unchanged build source `03bb86d`.
+gates green at recorded build source `03bb86d`. This is HISTORICAL after the
+build source advanced; the same narrow lifecycle proof was repeated at current
+source `a26c573` in
+`analysis/current-head/MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md`.

@@ -116,4 +116,4 @@ NEW  soak PASS                     -> + ordered soak_start/checked_at
 
 ## Completion gate
 
-**PASS (E1/E2, records-only)** requires: new V&R pins pass; existing release/board/CI pins pass after digest rebaseline; `TRUTH_VALID @ 661fb76`; 674/674 digests; BAD LINKS none; `SUMMARY_VALID`; CI-equivalent pytest green. V&R-08 and soak timestamp ordering are closed by the P8 addendum (§9) with six gates unchanged. Deferred source findings in issues #44/#45 and MASTER-AUDIT-P4/P5/P6 are not claimed fixed by this records-only slice.
+**PASS (E1/E2, records-only)** requires: new V&R pins pass; existing release/board/CI pins pass after digest rebaseline; `TRUTH_VALID @ 661fb76`; 674/674 digests; BAD LINKS none; `SUMMARY_VALID`; CI-equivalent pytest green. V&R-08 and soak timestamp ordering are closed by the P8 addendum (§9) with six gates unchanged. Deferred source findings in issues #44/#45 and MASTER-AUDIT-P4/P5/P6 were not claimed fixed by this records-only slice. Issue #44 was later closed at current source `a26c573` (`analysis/current-head/MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md`); all other deferred source/design findings remain explicitly deferred.

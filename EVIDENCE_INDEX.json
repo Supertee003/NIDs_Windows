@@ -4404,7 +4404,9 @@
       "result": "PASS",
       "finding": "Production remains detection-only; this slice adds no prevention or enforcement authority.",
       "timestamp": "2026-10-30",
-      "source_commit": "06d15329fe10aa16057372ce9932b1a375bfc5d2"
+      "head_sha": "06d15329fe10aa16057372ce9932b1a375bfc5d2",
+      "source_commit": "06d15329fe10aa16057372ce9932b1a375bfc5d2",
+      "head_sha_basis": "Ad-hoc source_commit at the recorded head; treated as this entry's build source head under ADR-0008. Kept verbatim for provenance."
     },
     {
       "id": "IDS-INT-001-E3-20261031",
@@ -11517,7 +11519,7 @@
       "id": "EVT-051",
       "head_sha": "210afbe30364cb488657f75ebb357464ac45c57e",
       "timestamp": "2026-10-07",
-      "title": "INVARIANT-113: control-plane authority and fail-closed stated in manifest generator; gate restored to 100% PRODUCTION VERIFIED",
+      "title": "INVARIANT-113: control-plane authority and fail-closed stated in manifest generator; gate restored to 100% PRODUCTION VERIFIED [HISTORICAL @ recorded head 210afbe: this declaration string was removed from executable code by REL-002; not a current verdict]",
       "level": "E2",
       "component": "release",
       "description": "tools/create_manifest.py gains two invariants that already hold in code: control-plane authority (authorization.zig/control_ipc, aegisctl-only operators) and fail-closed (no validated PEP receipt means no BLOCKED_CONFIRMED; absent Tier-3 is surfaced). runtime_manifest and T20 gate regenerated: 62/62 modules, 5/5 holds, declaration restored.",
@@ -11529,12 +11531,13 @@
         "docs/gates/T20_100pct_audit.md"
       ],
       "tests": [
-        "final_audit 100% PRODUCTION VERIFIED (62/62, 5/5)",
+        "final_audit 100% PRODUCTION VERIFIED (62/62, 5/5) [HISTORICAL @ recorded head 210afbe; string removed from executable code by REL-002]",
         "zig build test green",
         "release --verify 529/529"
       ],
       "result": "PASS",
       "finding": "Manifest now says what the code already enforces; no production behavior changed.",
+      "historical": true,
       "status": "CLOSED_AT_RECORDED_HEAD",
       "status_basis": "entry.result=PASS recorded at head 210afbe on 2026-10-07; not re-verified at the current HEAD"
     },

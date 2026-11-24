@@ -6,7 +6,7 @@
 
 **HEAD:** `a26c5731afe154890e4f3d205d9736a5e1ead78a` (build source commit — ADR-0008)
 
-**RECORDS TIP:** `a26c573` (records head before this rebaseline; a commit cannot contain its own SHA)
+**RECORDS TIP:** `9cad2eb` (records head before this final residuals closeout; a commit cannot contain its own SHA)
 
 **BRANCH:** `main`
 

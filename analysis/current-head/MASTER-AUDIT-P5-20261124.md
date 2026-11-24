@@ -114,4 +114,4 @@ NEW  every emitted record stamped declaration_only: true
 
 ## Completion gate
 
-**PASS (E1/E2, records-only).** Requires: new doc pins pass; `TRUTH_VALID @ 661fb76`; 674/674 digests; BAD LINKS none; `SUMMARY_VALID`; CI-equivalent pytest green. Remaining: DET-01/F6, DET-04 and the earlier P4 source findings are documented deferred source/design slices — not fixed, not claimed as fixed.
+**PASS (E1/E2, records-only).** Requires: new doc pins pass; `TRUTH_VALID @ 661fb76`; 674/674 digests; BAD LINKS none; `SUMMARY_VALID`; CI-equivalent pytest green. Remaining at the recorded source: DET-01/F6, DET-04 and the earlier P4 source findings were documented deferred source/design slices — not fixed, not claimed as fixed by this slice. DET-01/F6 was subsequently covered by the P8-I44 counters and exact-delta pipe proof at current source `a26c573`; DET-04 and the remaining source/design findings stay explicitly deferred.

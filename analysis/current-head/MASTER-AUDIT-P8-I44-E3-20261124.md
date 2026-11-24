@@ -143,6 +143,10 @@ is affected.
 ## COMPLETION GATE
 
 PASS_E3 — real `-inject` exact-delta run green, full non-host suite green,
-truth/digest/doc/link gates green at the new build source. Remaining risk: none
-for the #44 counter-delta claim; E4/E5 still require an isolated host with the
-service stopped and a real Nose producer, which is deliberately not claimed.
+truth/digest/doc/link gates green at recorded source `03bb86d`. This was
+HISTORICAL after build source advanced; the same E3 run was repeated at current
+source `a26c573` and is recorded in
+`analysis/current-head/MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md`. The
+original note that E4/E5 still required an isolated host was true at this
+recorded source; a narrow elevated canonical-pipe E4/E5 lifecycle proof was
+later completed and is recorded in the same current-source document.

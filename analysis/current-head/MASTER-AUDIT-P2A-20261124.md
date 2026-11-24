@@ -108,4 +108,4 @@ NEW  protocol docs + CONTRACT_MAP  -> legacy nominal labelled LEGACY, active pre
 
 ## 4. Completion gate
 
-**PASS (E1).** Build source = `d2f129e` (docs under `shared/`). Machine maps restamped and digests refreshed in follow-up records commits; final verification must show `TRUTH_VALID @ d2f129e`, 674/674 digests and no bad links. carry-forward P2b (B1–B6 helper/codec test gaps) and issue #44 follow-ups remain open and are not claimed here.
+**PASS (E1).** Build source = `d2f129e` (docs under `shared/`). Machine maps restamped and digests refreshed in follow-up records commits; final verification must show `TRUTH_VALID @ d2f129e`, 674/674 digests and no bad links. carry-forward P2b (B1–B6 helper/codec test gaps) and issue #44 follow-ups were open at recorded source `d2f129e`; both were closed by later slices, with issue #44 re-proved at current source `a26c573` in `analysis/current-head/MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md`.

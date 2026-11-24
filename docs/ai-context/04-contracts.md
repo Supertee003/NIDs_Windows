@@ -1,5 +1,11 @@
 # 04 - Contracts
 
+> **HISTORICAL ALIASES (2026-11-25, P1 carry-forward closeout):** the `core/*.zig`
+> names in the list below are phase-era module IDs, not filesystem paths. No
+> tracked `core/` directory exists. Current contract ownership is declared in
+> `CONTRACT_MAP.json`, `SYSTEM_MAP.json` and `docs/STRUCTURE.md`. Do not read the
+> listed paths as current filesystem truth.
+
 Each contract has ONE authoritative definition.
 
 ## Contracts (12)

@@ -1,5 +1,11 @@
 # 01 - Semantic Map
 
+> **HISTORICAL ALIASES (2026-11-25, P1 carry-forward closeout):** the `core/*.zig`
+> names below are phase-era module IDs, not filesystem paths. No tracked `core/`
+> directory exists. Current paths and roles are in `SYSTEM_MAP.json`,
+> `FLOW_MAP.json`, `AUTHORITY_MAP.json` and `docs/STRUCTURE.md`. Do not read the
+> paths in the table as current filesystem truth.
+
 Every source file belongs to exactly ONE semantic position.
 
 ## Positions

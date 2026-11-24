@@ -22,7 +22,7 @@
 - Direct enforcement (none exists: product is detection-only, RETIRE-HOST-EFFECT-001)
 - Brain/RAG logic (Python owns this)
 
-**Authority files**: `core/dispatcher.zig`, `core/lifecycle.zig`, `core/canonical_event.zig`
+**Authority files (historical aliases)**: `core/dispatcher.zig`, `core/lifecycle.zig`, `core/canonical_event.zig` are phase-era module IDs; no tracked `core/` directory exists. Current authority paths are declared in `SYSTEM_MAP.json`, `FLOW_MAP.json`, `AUTHORITY_MAP.json` and `docs/STRUCTURE.md`.
 
 ---
 
