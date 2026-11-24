@@ -10718,10 +10718,50 @@
       "finding": "The issue #44 exact-delta counter proof is now real execution evidence (E3), not source-pinned-only: all three failing-frame cases moved exactly the authoritative and local counters asserted by the harness. The live LocalSystem daemon was never stopped (service STATE 4 RUNNING, PIDs 82112/58924 unchanged before and after).",
       "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P8-I44-E3-20261124.md",
       "limitations": [
-        "E3 only: no E4/E5, no Windows-host soak, no install, no signing, no production simulation.",
+        "E3 only at this source: no E4/E5, no Windows-host soak, no install, no signing, no production simulation; the later P8-I44-E4E5-HOST-INJECT entry records the elevated canonical-pipe host run at the same build source 03bb86d.",
         "The harness runs in its own process with a fabric sink; it does not exercise the AegisNids service or the Go Nose producer, and it is not a loss-rate measurement.",
         "The private pipe name is a test seam, not a new ingress path; production still binds the canonical pipe with single-instance authority.",
         "No zero-loss-ever claim; the 36.52 h soak remains HISTORICAL at a53eda8. Release identity remains v1.1 / 466a226 / a53eda8."
+      ]
+    },
+    {
+      "id": "P8-I44-E4E5-HOST-INJECT",
+      "head_sha": "03bb86d98ea5925170157b6d0f9b63ed12f4c858",
+      "timestamp": "2026-11-24",
+      "title": "P8 / issue #44 E4/E5: elevated Windows-host -inject on the canonical named pipe with verified stop/restore lifecycle",
+      "level": "E5",
+      "component": "Windows host lifecycle + src/capture/nose_pipe_reader.zig canonical pipe path",
+      "flow_id": "host lifecycle -> canonical pipe -> reader loop -> decoder/queue -> authoritative counters -> host restore (issue #44 E4/E5)",
+      "description": "Records-only slice at unchanged build source 03bb86d. An elevated user session ran the already-built -inject harness on \\\\.\\\\pipe\\\\aegis_nose after disabling failure actions, stopping AegisNids and aegis-nose, then restored failure actions, started the service and restarted Nose with the captured command line. No source/build-tree file changed; no wire, rule, authority, host-effect or release-identity change.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-P8-I44-E4E5-20261124.md",
+        "D:/aegis-tmp/i44_e45_elevated_run.txt",
+        "D:/aegis-tmp/i44_e45_inject.txt",
+        "D:/aegis-tmp/i44_e45_prestate.txt",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "i44_e45_elevated_run.ps1 (PowerShell PARSE_OK) via run_i44_e45_as_admin.cmd with UAC, admin session",
+        "sc failure AegisNids actions=none before window; restored to reset=86400 restart/5000/restart/15000/restart/60000",
+        "sc stop AegisNids -> STATE 1 STOPPED at 22:39:38+07:00; aegis-nose stopped; canonical pipe free",
+        "i44_e3_check.exe -inject -seconds 2 on \\\\.\\\\pipe\\\\aegis_nose -> exit 0; DONE inject_exit=0",
+        "close-before-payload -> +1 midframe, +1 pipe error (exact)",
+        "absurd-length -> +1 framing, +1 pipe error (exact)",
+        "drain-then-valid -> +1 framing, +1 submitted, no pipe error (exact)",
+        "reader: read=1 drop=3 submitted=1 pipe_errors=2; fabric pending=0 accepted=0 rejected=0 dropped=0",
+        "sc start AegisNids -> STATE 4 RUNNING PID 77256 at 22:39:49+07:00; final failure config matches pre-state",
+        "Nose restart via WMI ReturnValue=0 ProcessId=65040; single \\\\.\\\\pipe\\\\aegis_nose present after restore",
+        "zig build test / zig build -> exit 0; pytest non-host -> 1486 passed, 1 skipped, 18 deselected, 27 subtests passed",
+        "python tools/truth.py verify -> TRUTH_VALID @ 03bb86d; release digests 674/674; doc checker 0 FAIL/0 WARN"
+      ],
+      "result": "PASS_E4_E5",
+      "finding": "The issue #44 exact-delta counter proof is now verified on the CANONICAL Windows named pipe under a real elevated stop/inject/restore lifecycle. All three cases moved exactly the asserted counters, harness exit 0, and the host was returned to RUNNING with original failure actions, a live Nose process and a single canonical pipe. Build source stayed 03bb86d; only records changed.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P8-I44-E4E5-20261124.md",
+      "limitations": [
+        "Narrow E4/E5 scope: canonical pipe + elevated host lifecycle; the harness is the pipe server with a fabric sink, so this is not AegisNids-consumer or Go-Nose-producer verification.",
+        "No detection-rule or 23-rule matrix measurement; no soak, loss-rate, install, signing, production simulation, E6 or E7 claim.",
+        "The agent session remained non-elevated (admin=False); all host actions were performed by the user's Admin session and are evidenced by its transcript, not by agent execution.",
+        "No zero-loss-ever claim; the 36.52 h soak remains HISTORICAL at a53eda8. Release identity remains v1.1 / 466a226 / a53eda8, 6/6 gates PASS (0 open)."
       ]
     }
   ],
@@ -17397,11 +17437,11 @@
     "E2_count": 153,
     "E3_count": 16,
     "E4_count": 4,
-    "E5_count": 122,
+    "E5_count": 123,
     "E6_count": 1,
     "E7_count": 5,
-    "E5_with_artifact_count": 72,
-    "E5_with_resolvable_artifact_count": 40,
+    "E5_with_artifact_count": 73,
+    "E5_with_resolvable_artifact_count": 41,
     "E5_with_unresolvable_artifact_count": 32,
     "unresolvable_artifact_pointer_count": 48,
     "known_gaps_count": 287

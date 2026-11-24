@@ -5,8 +5,9 @@
 > gaps). The v2.0.0 status below is HISTORICAL for release identity; `a53eda8`
 > descends from `7c604d5`. The current build source is `03bb86d`
 > (P2-44 `9105ff5`, P2a `d2f129e`, P2b `661fb76`, P8 source-truth `2129dcd`,
-> P8-I44 observability `e406cbb`, P8-I44-E3 isolated `-inject` proof `03bb86d`;
-> P3–P7 and the P8 V&R-08 closeout are records-only).
+> P8-I44 observability `e406cbb`, P8-I44-E3 isolated `-inject` proof `03bb86d`
+> (same source then received records-only E4/E5 elevated Windows-host `-inject`
+> proof on the canonical pipe); P3–P7 and the P8 V&R-08 closeout are records-only).
 > The immutable v1.1 release identity above is unchanged. Authority:
 > `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`.
 
