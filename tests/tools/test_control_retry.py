@@ -72,6 +72,49 @@ def test_health_data_integrity_projects_loss_budget():
     assert out == {}
 
 
+def test_health_projects_nose_drop_causes_as_subsets():
+    out = control_api._daemon_data_integrity(
+        {
+            "data_integrity": {
+                "nose_frames_dropped": 4,
+                "nose_frames_dropped_framing": 1,
+                "nose_frames_dropped_midframe": 1,
+                "nose_frames_dropped_shape": 1,
+                "nose_frames_dropped_capacity": 1,
+            }
+        }
+    )
+    assert out == {
+        "nose_frames_dropped": 4,
+        "nose_frames_dropped_framing": 1,
+        "nose_frames_dropped_midframe": 1,
+        "nose_frames_dropped_shape": 1,
+        "nose_frames_dropped_capacity": 1,
+    }
+
+
+def test_health_projects_detector_degradation_without_fabricating_zero():
+    out = control_api._daemon_detector_degradation(
+        {
+            "detector_degradation": {
+                "correlator_errors": 1,
+                "anomaly_detector_errors": 2,
+                "threat_tracker_errors": 3,
+                "unknown": 9,
+            }
+        }
+    )
+    assert out == {
+        "correlator_errors": 1,
+        "anomaly_detector_errors": 2,
+        "threat_tracker_errors": 3,
+    }
+    assert control_api._daemon_detector_degradation({}) == {}
+    assert control_api._daemon_detector_degradation(
+        {"detector_degradation": {"correlator_errors": True}}
+    ) == {}
+
+
 def test_latency_probe_caps_rounds_and_survives_total_failure(monkeypatch):
     calls = {"n": 0}
 

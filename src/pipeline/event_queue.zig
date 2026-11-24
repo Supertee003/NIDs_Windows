@@ -441,15 +441,20 @@ pub fn sanitizeAcquisitionClaim(ce: *const canonical.CanonicalEvent) SanitizedCl
     };
 }
 
+/// Why a decoded frame was not admitted. Issue #44: the reader used to see one
+/// `false` for shape refusal and queue-capacity refusal, so the loss counter
+/// could not distinguish them. Additive enum; no queue/wire change.
+pub const DecodedFrameOutcome = enum { accepted, rejected_shape, dropped_capacity };
+
 /// Gate: canonical.validateDecodedFrame - v1 frames (null sidecars) vs v2
 /// frames (version==EVENT_VERSION_V2 + both sidecars); mixed shapes fail
 /// closed. V6-QUEUE-DROP: this gate used the strict event validator
 /// (version==EVENT_VERSION only) and silently dropped every wire-decoded
 /// v2 frame - all IPv6 acquisition (NIC-001 run3 evidence).
-pub fn pushDecodedFrame(frame: *const canonical.DecodedFrame, payload: []const u8) bool {
-    if (!canonical.validateDecodedFrame(frame)) return false;
+pub fn pushDecodedFrameDetailed(frame: *const canonical.DecodedFrame, payload: []const u8) DecodedFrameOutcome {
+    if (!canonical.validateDecodedFrame(frame)) return .rejected_shape;
     const ce = &frame.event;
-    if (ce.direction > 1) return false;
+    if (ce.direction > 1) return .rejected_shape;
 
     // VERDICT-AUTH-001 (#28): the three fields below are the whole detection
     // verdict vocabulary the wire carries, and Zig recomputes all of them from
@@ -495,7 +500,16 @@ pub fn pushDecodedFrame(frame: *const canonical.DecodedFrame, payload: []const u
     // sidecar the direct Npcap path already uses, so L4 FLAGS predicates
     // match on both acquisition paths. Absence stays 0 ("no evidence").
     const tcp_flags = canonical.getTcpFlags(ce) orelse 0;
-    return pushEventFull(ev, payload, frame.src_ipv6, frame.dst_ipv6, tcp_flags, ce.direction);
+    return if (pushEventFull(ev, payload, frame.src_ipv6, frame.dst_ipv6, tcp_flags, ce.direction))
+        .accepted
+    else
+        .dropped_capacity;
+}
+
+/// Backward-compatible boolean facade. Existing callers keep their contract;
+/// the pipe reader uses the detailed outcome so cause counters stay exclusive.
+pub fn pushDecodedFrame(frame: *const canonical.DecodedFrame, payload: []const u8) bool {
+    return pushDecodedFrameDetailed(frame, payload) == .accepted;
 }
 
 test "pushCanonicalEventWithPayload attributes the observing sensor" {
@@ -699,6 +713,34 @@ test "decoded-frame gate rejects shapes no codec can emit (V6-QUEUE-DROP)" {
     try std.testing.expect(!r_v1_with_sidecars);
     try std.testing.expect(!r_one_sided);
     try std.testing.expect(!r_bad_magic);
+}
+
+test "pushDecodedFrameDetailed separates shape refusal from capacity refusal" {
+    // Issue #44: one boolean hid two causes. A codec-impossible frame is a
+    // shape refusal; a full queue is capacity. Both are reported distinctly
+    // so the reader can move exactly one diagnostic cause counter.
+    var bad_magic = canonical.create(.npcap_sensor);
+    bad_magic.magic = 0;
+    const bad = canonical.DecodedFrame{ .event = bad_magic, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expectEqual(DecodedFrameOutcome.rejected_shape, pushDecodedFrameDetailed(&bad, &[_]u8{}));
+
+    const ok = canonical.create(.npcap_sensor);
+    const good = canonical.DecodedFrame{ .event = ok, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expectEqual(DecodedFrameOutcome.accepted, pushDecodedFrameDetailed(&good, &[_]u8{}));
+    while (popEvent()) |_| {}
+
+    // Fill the real bounded ring until an admission is refused. No mock queue.
+    var pushed: usize = 0;
+    while (pushed < 100_000) : (pushed += 1) {
+        const filler = canonical.create(.npcap_sensor);
+        const frame = canonical.DecodedFrame{ .event = filler, .src_ipv6 = null, .dst_ipv6 = null };
+        if (pushDecodedFrameDetailed(&frame, &[_]u8{}) == .dropped_capacity) break;
+    }
+    try std.testing.expect(pushed < 100_000);
+    const overflow = canonical.create(.npcap_sensor);
+    const overflow_frame = canonical.DecodedFrame{ .event = overflow, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expectEqual(DecodedFrameOutcome.dropped_capacity, pushDecodedFrameDetailed(&overflow_frame, &[_]u8{}));
+    while (popEvent()) |_| {}
 }
 
 test "classifyCustom names host provenance, never the traffic lane (KIND-ATTR-001)" {

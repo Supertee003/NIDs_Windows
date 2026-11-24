@@ -98,7 +98,10 @@ def test_packet_side_permission_is_ENFORCED_at_the_nose_submit_point() -> None:
     assert "g_nose_shadow_frames.fetchAdd(1" in reader
     # The guard must run BEFORE the frame reaches the pipeline queue.
     guard = reader.index("noseFrameIsShadowed(")
-    submit = reader.index("pipeline_queue.pushDecodedFrame(")
+    # OBSERVABILITY-001 (issue #44): the reader uses the detailed outcome
+    # variant so shape refusals and capacity sheds move exclusive counters;
+    # the boolean facade still exists for legacy callers.
+    submit = reader.index("pipeline_queue.pushDecodedFrameDetailed(")
     assert guard < submit, "permission check must precede submission"
     # A denied frame is drained via `continue`, never pushed anyway.
     assert "continue;" in reader[guard:submit]

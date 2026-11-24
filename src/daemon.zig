@@ -234,10 +234,10 @@ fn lifecycleLoop(stop: *const std.atomic.Value(bool)) void {
             .pipeline_ready = state.g_pipeline_ready.load(.acquire),
             .pipeline_failed = (state.workerFailureMask() & 0x01) != 0,
             .bridge_ready = bridge_init.allActive(),
-            // New loss since the previous sample is the loss fact: cumulative
-            // counters must not keep the runtime degraded forever, and recent
-            // loss must not be averaged away.
-            .data_loss_observed = dropped > last_dropped,
+            // P4-F7: lifecycle uses FRESH loss since the previous sample,
+            // while health uses the cumulative loss budget. Name the field
+            // so the two surfaces cannot be mistaken for one boolean.
+            .fresh_loss_observed = dropped > last_dropped,
         };
         last_dropped = dropped;
         if (runtime_sm.g_runtime.reconcileLifecycle(std.time.milliTimestamp(), facts)) |next| {

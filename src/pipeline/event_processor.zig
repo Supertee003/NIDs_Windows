@@ -249,6 +249,35 @@ fn resolveRuleAutomaton(
     return .{ .automaton = null, .unavailable = unavailable };
 }
 
+// P4-F6 (issue #44): these three detector calls can fail on allocation. The
+// old `catch null` discarded the error and kept the event moving, which is the
+// right liveness choice but left detection degradation invisible. Count each
+// failure at its own site, warn, and keep the event flowing. These are NOT
+// event-loss counters and must never feed `data_loss_observed`.
+fn observeCorrelationCounted(corr: *corr_mod.Correlator, ev: *const event.IpcEvent) ?u32 {
+    return corr.observe(ev) catch |err| {
+        _ = state.g_correlator_observe_errors.fetchAdd(1, .monotonic);
+        diag.warn("correlation observe failed (event continues): {}", .{err});
+        return null;
+    };
+}
+
+fn observeAnomalyCounted(ad: *anom.AnomalyDetector, key: anom.EntityKey, value: f64) ?f64 {
+    return ad.observe(key, value) catch |err| {
+        _ = state.g_anomaly_observe_errors.fetchAdd(1, .monotonic);
+        diag.warn("anomaly observe failed (event continues): {}", .{err});
+        return null;
+    };
+}
+
+fn observeThreatCounted(tt: *tracker.ThreatTracker, ev: *const event.IpcEvent, weight: u16) ?*tracker.Incident {
+    return tt.observeFlowThreat(ev, weight) catch |err| {
+        _ = state.g_threat_tracker_observe_errors.fetchAdd(1, .monotonic);
+        diag.warn("threat observe failed (event continues): {}", .{err});
+        return null;
+    };
+}
+
 fn processEvent(
     qe: *const queue.QueuedEvent,
     _: *sig.AhoCorasick, // using g_active_ac global instead
@@ -449,7 +478,7 @@ fn processEvent(
     // used by rule_loader hashes. Observe-only: hits count and escalate
     // severity, they never invent host effects.
     if (shouldObserveCorrelation(ev.source)) {
-        if (corr.observe(ev) catch null) |corr_rule_id| {
+        if (observeCorrelationCounted(corr, ev)) |corr_rule_id| {
             if (matched_rule_id == 0) {
                 matched_rule_id = corr_rule_id;
                 ev.rule_id = corr_rule_id;
@@ -471,7 +500,7 @@ fn processEvent(
     // 16B for v2, zero-padded u32 otherwise) — same rule as the flow key.
     const anom_key_bytes = anom.EntityKey{ .src_ip = anom.entityKeyBytes(qe.src_ipv6, ev.src_ip), .metric_kind = 2 }; // 2 = payload bytes
     const anom_bytes: f64 = @floatFromInt(qe.payload_len);
-    if (ad.observe(anom_key_bytes, anom_bytes) catch null) |z_score| {
+    if (observeAnomalyCounted(ad, anom_key_bytes, anom_bytes)) |z_score| {
         _ = z_score;
         // ANOM-COUNT-035: the detector already counted this emission in
         // ad.anomalies_emitted. The only other counter touched here is the
@@ -486,7 +515,7 @@ fn processEvent(
     var active_incident: ?tracker.Incident = null;
     var ev_severity = ev.severity; // track severity escalation
     if (matched_rule_id != 0 and !isHostTelemetrySource(ev.source)) {
-        if (tt.observeFlowThreat(ev, 10) catch null) |inc| {
+        if (observeThreatCounted(tt, ev, 10)) |inc| {
             // Incident created: threat score crossed threshold
             active_incident = inc.*;
             // Escalate event severity to incident severity
@@ -1364,4 +1393,42 @@ test "RULE-LAYER-SCOPE: each event source maps to its own rule layer" {
     try std.testing.expectEqual(@as(?usize, null), ruleLayerIndexForSource(.capture_host_net, .packet_captured));
     try std.testing.expectEqual(@as(?usize, null), ruleLayerIndexForSource(.detection_brain, .packet_captured));
     try std.testing.expectEqual(@as(?usize, null), ruleLayerIndexForSource(.system, .packet_captured));
+}
+
+test "P4-F6 forced allocation failures move only their named detector counter" {
+    var ev = event.IpcEvent.init(.packet_captured);
+    ev.src_ip = @bitCast([4]u8{ 192, 0, 2, 10 });
+
+    // Correlator: the matching spec forces getOrPut on the failing allocator.
+    {
+        const specs = [_]corr_mod.EventSpec{.{ .kind = .packet_captured }};
+        const rules = [_]corr_mod.CorrelationRule{.{ .id = 1, .events = &specs }};
+        var failing = std.testing.FailingAllocator.init(std.testing.allocator, .{ .fail_index = 0 });
+        var corr = corr_mod.Correlator.init(failing.allocator(), &rules);
+        defer corr.deinit();
+        const before = state.g_correlator_observe_errors.load(.acquire);
+        try std.testing.expectEqual(@as(?u32, null), observeCorrelationCounted(&corr, &ev));
+        try std.testing.expectEqual(before + 1, state.g_correlator_observe_errors.load(.acquire));
+    }
+
+    // Anomaly baseline insertion is the allocation that fails.
+    {
+        var failing = std.testing.FailingAllocator.init(std.testing.allocator, .{ .fail_index = 0 });
+        var ad = anom.AnomalyDetector.init(failing.allocator());
+        defer ad.deinit();
+        const key = anom.EntityKey{ .src_ip = [_]u8{ 192, 0, 2, 10 } ++ [_]u8{0} ** 12, .metric_kind = 2 };
+        const before = state.g_anomaly_observe_errors.load(.acquire);
+        try std.testing.expectEqual(@as(?f64, null), observeAnomalyCounted(&ad, key, 1.0));
+        try std.testing.expectEqual(before + 1, state.g_anomaly_observe_errors.load(.acquire));
+    }
+
+    // Threat tracker flow insertion is the allocation that fails.
+    {
+        var failing = std.testing.FailingAllocator.init(std.testing.allocator, .{ .fail_index = 0 });
+        var tt = tracker.ThreatTracker.init(failing.allocator());
+        defer tt.deinit();
+        const before = state.g_threat_tracker_observe_errors.load(.acquire);
+        try std.testing.expect(observeThreatCounted(&tt, &ev, 10) == null);
+        try std.testing.expectEqual(before + 1, state.g_threat_tracker_observe_errors.load(.acquire));
+    }
 }

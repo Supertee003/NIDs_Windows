@@ -42,6 +42,21 @@ def zero_integrity(**over) -> dict:
     return block
 
 
+def test_nose_drop_causes_are_not_soak_loss_counters():
+    # issue #44: the four cause counters are diagnostic subsets of
+    # `nose_frames_dropped`. Adding them to LOSS_COUNTERS would double-count
+    # the same lost frame and make a real zero-loss window fail.
+    tool = load_tool()
+    assert "nose_frames_dropped" in tool.LOSS_COUNTERS
+    assert not any(name.startswith("nose_frames_dropped_") for name in tool.LOSS_COUNTERS)
+    for detector_counter in (
+        "correlator_errors",
+        "anomaly_detector_errors",
+        "threat_tracker_errors",
+    ):
+        assert detector_counter not in tool.LOSS_COUNTERS
+
+
 def base_kwargs(**over):
     kwargs = dict(
         elapsed_h=25.0,

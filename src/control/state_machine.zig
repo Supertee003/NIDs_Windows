@@ -284,17 +284,19 @@ pub const RuntimeState = struct {
     pub const PROMOTION_SAMPLES: u8 = 3;
     pub const PROMOTION_MIN_INTERVAL_MS: i64 = 5_000;
 
-    /// The facts a promotion may depend on. They are the same booleans the
-    /// health contract publishes, which is the point: the lifecycle cannot be
-    /// promoted on something health does not also believe.
+    /// The facts a promotion may depend on. `fresh_loss_observed` is
+    /// deliberately NOT the health contract's cumulative `data_loss_observed`:
+    /// the daemon samples fresh loss since the previous 5 s poll, so lifecycle
+    /// can recover while health stays DEGRADED under the cumulative budget.
+    /// P4-F7 names the difference instead of claiming identical booleans.
     pub const LifecycleFacts = struct {
         pipeline_ready: bool = false,
         pipeline_failed: bool = false,
         bridge_ready: bool = false,
-        data_loss_observed: bool = false,
+        fresh_loss_observed: bool = false,
 
         pub fn allClear(self: LifecycleFacts) bool {
-            return self.pipeline_ready and !self.pipeline_failed and self.bridge_ready and !self.data_loss_observed;
+            return self.pipeline_ready and !self.pipeline_failed and self.bridge_ready and !self.fresh_loss_observed;
         }
     };
 
@@ -454,17 +456,23 @@ pub const RuntimeState = struct {
         try writer.print(
             \\{{"component":"core","version":"{s}","state":"{s}","runtime_state":"{s}","pid":{} ,"uptime_ms":{},"last_event_ms":{},"degraded":{},"rules_loaded":{},"policies_loaded":{},"defcon_level":{},"defcon_label":"{s}","capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},"data_plane":{{"nose_connected":{},"nose_frames_read":{},"nose_frames_rejected":{},"nose_frames_submitted":{},"nose_frames_dropped":{},"nose_pipe_errors":{},"nose_last_event_id":{},"nose_duplicate_event_ids":{},"nose_non_monotonic_event_ids":{}}},"packets_captured":{},"flows_active":{},"counters":{{"in_events":{},"out_events":{},"errors":{},"dropped":{}}},
         , .{ ver, operational_state, ss.toString(), pid, uptime, runtime_state.lastEventAgeMs(runtime_state.g_last_event_ms.load(.acquire), std.time.milliTimestamp()), health_degraded, runtime_state.g_rules_loaded.load(.acquire), runtime_state.g_policies_loaded.load(.acquire), defcon_level, defcon.labelFor(defcon_level), wfp_ready, cpp_ready, udp_ready, runtime_state.g_nose_connected.load(.acquire), runtime_state.g_nose_frames_read.load(.acquire), runtime_state.g_nose_frames_rejected.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), runtime_state.g_nose_frames_dropped.load(.acquire), runtime_state.g_nose_pipe_errors.load(.acquire), runtime_state.g_nose_last_event_id.load(.acquire), runtime_state.g_nose_duplicate_event_ids.load(.acquire), runtime_state.g_nose_non_monotonic_event_ids.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), diag.metrics.flows_active.get(), runtime_state.g_nose_frames_read.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), runtime_state.g_nose_pipe_errors.load(.acquire), runtime_state.g_nose_frames_dropped.load(.acquire) });
-        // OBSERVABILITY-001: additive keys inside data_integrity. `shed_overload`
-        // was recorded only on queue.stats before (soak reads health, hence the
-        // honesty gap). `process_generation_ms` is captured once at daemon start:
-        // monotonic counters reset at process start, so a generation change
-        // between soak baseline and delta makes the delta meaningless. It is a
-        // PROCESS generation token (not an OS reboot id) — older readers ignore
-        // both keys.
-        try writer.print("\"data_integrity\":{{\"queue_dropped_total\":{},\"nose_frames_rejected\":{},\"nose_frames_dropped\":{},\"nose_pipe_errors\":{},\"pipeline_processing_errors\":{},\"minifilter_ring_dropped\":{},\"minifilter_pipeline_dropped\":{},\"loss_budget\":{},\"shed_overload\":{},\"process_generation_ms\":{}}},", .{
+        // OBSERVABILITY-001 / issue #44: additive keys inside data_integrity.
+        // The four `nose_frames_dropped_*` keys are DIAGNOSTIC SUBSETS of the
+        // total, not extra loss: they are never summed by the soak gate.
+        // `shed_overload` was recorded only on queue.stats before (soak reads
+        // health, hence the honesty gap). `process_generation_ms` is captured
+        // once at daemon start: monotonic counters reset at process start, so a
+        // generation change between soak baseline and delta makes the delta
+        // meaningless. It is a PROCESS generation token (not an OS reboot id).
+        // Older readers ignore all additive keys.
+        try writer.print("\"data_integrity\":{{\"queue_dropped_total\":{},\"nose_frames_rejected\":{},\"nose_frames_dropped\":{},\"nose_frames_dropped_framing\":{},\"nose_frames_dropped_midframe\":{},\"nose_frames_dropped_shape\":{},\"nose_frames_dropped_capacity\":{},\"nose_pipe_errors\":{},\"pipeline_processing_errors\":{},\"minifilter_ring_dropped\":{},\"minifilter_pipeline_dropped\":{},\"loss_budget\":{},\"shed_overload\":{},\"process_generation_ms\":{}}},", .{
             queue_drops,
             nose_rejected,
             nose_dropped,
+            runtime_state.g_nose_frames_dropped_framing.load(.acquire),
+            runtime_state.g_nose_frames_dropped_midframe.load(.acquire),
+            runtime_state.g_nose_frames_dropped_shape.load(.acquire),
+            runtime_state.g_nose_frames_dropped_capacity.load(.acquire),
             nose_pipe_errors,
             pipeline_processing_errors,
             minifilter_ring_dropped,
@@ -472,6 +480,14 @@ pub const RuntimeState = struct {
             loss_budget,
             shed_overload,
             runtime_state.g_process_generation_ms.load(.acquire),
+        });
+        // P4-F6: detection degradation is visible but is NOT event loss. A
+        // separate object keeps it out of `data_loss_observed` and out of the
+        // soak tool's LOSS_COUNTERS. The event keeps flowing on every failure.
+        try writer.print("\"detector_degradation\":{{\"correlator_errors\":{},\"anomaly_detector_errors\":{},\"threat_tracker_errors\":{}}},", .{
+            runtime_state.g_correlator_observe_errors.load(.acquire),
+            runtime_state.g_anomaly_observe_errors.load(.acquire),
+            runtime_state.g_threat_tracker_observe_errors.load(.acquire),
         });
         // RESOURCE-TELEMETRY-001: additive, sampled off the hot path. Written
         // through the pure json() helper so escaped-brace errors cannot truncate
@@ -702,6 +718,68 @@ test "healthJson exposes pipeline processing errors and degrades on them (issue 
     try std.testing.expect(std.mem.indexOf(u8, out, "\"degraded\":true") != null);
 }
 
+test "healthJson exposes cause splits and detector degradation without double-counting (issue #44)" {
+    const saved = .{
+        runtime_state.g_queue_drops.load(.acquire),
+        runtime_state.g_nose_frames_rejected.load(.acquire),
+        runtime_state.g_nose_frames_dropped.load(.acquire),
+        runtime_state.g_nose_frames_dropped_framing.load(.acquire),
+        runtime_state.g_nose_frames_dropped_midframe.load(.acquire),
+        runtime_state.g_nose_frames_dropped_shape.load(.acquire),
+        runtime_state.g_nose_frames_dropped_capacity.load(.acquire),
+        runtime_state.g_nose_pipe_errors.load(.acquire),
+        runtime_state.g_correlator_observe_errors.load(.acquire),
+        runtime_state.g_anomaly_observe_errors.load(.acquire),
+        runtime_state.g_threat_tracker_observe_errors.load(.acquire),
+        runtime_state.g_minifilter_dropped.load(.acquire),
+        runtime_state.g_minifilter_pipeline_dropped.load(.acquire),
+        runtime_state.g_loss_budget.load(.acquire),
+    };
+    defer {
+        runtime_state.g_queue_drops.store(saved[0], .monotonic);
+        runtime_state.g_nose_frames_rejected.store(saved[1], .monotonic);
+        runtime_state.g_nose_frames_dropped.store(saved[2], .monotonic);
+        runtime_state.g_nose_frames_dropped_framing.store(saved[3], .monotonic);
+        runtime_state.g_nose_frames_dropped_midframe.store(saved[4], .monotonic);
+        runtime_state.g_nose_frames_dropped_shape.store(saved[5], .monotonic);
+        runtime_state.g_nose_frames_dropped_capacity.store(saved[6], .monotonic);
+        runtime_state.g_nose_pipe_errors.store(saved[7], .monotonic);
+        runtime_state.g_correlator_observe_errors.store(saved[8], .monotonic);
+        runtime_state.g_anomaly_observe_errors.store(saved[9], .monotonic);
+        runtime_state.g_threat_tracker_observe_errors.store(saved[10], .monotonic);
+        runtime_state.g_minifilter_dropped.store(saved[11], .monotonic);
+        runtime_state.g_minifilter_pipeline_dropped.store(saved[12], .monotonic);
+        runtime_state.g_loss_budget.store(saved[13], .monotonic);
+    }
+    runtime_state.g_queue_drops.store(0, .monotonic);
+    runtime_state.g_nose_frames_rejected.store(0, .monotonic);
+    runtime_state.g_nose_frames_dropped.store(4, .monotonic);
+    runtime_state.g_nose_frames_dropped_framing.store(1, .monotonic);
+    runtime_state.g_nose_frames_dropped_midframe.store(1, .monotonic);
+    runtime_state.g_nose_frames_dropped_shape.store(1, .monotonic);
+    runtime_state.g_nose_frames_dropped_capacity.store(1, .monotonic);
+    runtime_state.g_nose_pipe_errors.store(0, .monotonic);
+    runtime_state.g_correlator_observe_errors.store(1, .monotonic);
+    runtime_state.g_anomaly_observe_errors.store(1, .monotonic);
+    runtime_state.g_threat_tracker_observe_errors.store(1, .monotonic);
+    runtime_state.g_minifilter_dropped.store(0, .monotonic);
+    runtime_state.g_minifilter_pipeline_dropped.store(0, .monotonic);
+    runtime_state.g_loss_budget.store(4, .monotonic);
+    var rs = RuntimeState{};
+    const workers = WorkerReadiness{ .pipeline = true, .sensor = true, .nose = true, .etw = true, .fim = true, .registry = true, .failed = false, .failure_reason = "", .failure_mask = 0 };
+    const out = try rs.healthJson(std.testing.allocator, 1234, true, true, true, true, workers);
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"nose_frames_dropped_framing\":1") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"nose_frames_dropped_midframe\":1") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"nose_frames_dropped_shape\":1") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"nose_frames_dropped_capacity\":1") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"detector_degradation\":{\"correlator_errors\":1,\"anomaly_detector_errors\":1,\"threat_tracker_errors\":1}") != null);
+    // Total is inside the budget and causes/detector counters are subsets or
+    // non-loss, so this must stay RUNNING. No cause is counted twice.
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"state\":\"RUNNING\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"degraded\":false") != null);
+}
+
 test "healthJson accepts loss at or below the owner-approved budget" {
     const saved = .{
         runtime_state.g_queue_drops.load(.acquire),
@@ -746,7 +824,7 @@ test "READY-PROMOTION: three clear samples promote DEGRADED -> RECOVERING -> RUN
         .pipeline_ready = true,
         .pipeline_failed = false,
         .bridge_ready = true,
-        .data_loss_observed = false,
+        .fresh_loss_observed = false,
     };
     var t: i64 = 1_000;
     const step = RuntimeState.PROMOTION_MIN_INTERVAL_MS;
@@ -795,7 +873,7 @@ test "READY-PROMOTION: data loss above budget blocks promotion even with every w
         .pipeline_ready = true,
         .pipeline_failed = false,
         .bridge_ready = true,
-        .data_loss_observed = true,
+        .fresh_loss_observed = true,
     };
     var t: i64 = 1_000;
     var i: usize = 0;

@@ -238,7 +238,9 @@ def test_direction_survives_queue_and_forensic_readback() -> None:
     handler = HANDLER.read_text(encoding="utf-8")
 
     assert "direction: ?u8 = null" in queue
-    assert "if (ce.direction > 1) return false;" in queue
+    # OBSERVABILITY-001 (issue #44): the shape gate returns an additive enum
+    # outcome instead of a bare false; the boolean facade maps it back.
+    assert "if (ce.direction > 1) return .rejected_shape;" in queue
     assert "qe.direction = direction;" in queue
     assert "tcp_flags, ce.direction" in queue
     assert "ring.appendWithDirection" in processor

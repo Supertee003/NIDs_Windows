@@ -449,17 +449,43 @@ pub var g_fim_minifilter_batch_duplicates_same_ts = std.atomic.Value(u64).init(0
 /// infallible today, so this stays at 0 until an error path is introduced.
 /// Instrumented now so that catch can never become a silent loss later.
 pub var g_pipeline_processing_errors = std.atomic.Value(u64).init(0);
+/// P4-F6 (issue #44): detector calls that return an error are counted here and
+/// the event continues through the remaining stages. These are DETECTION
+/// DEGRADATION counters, not event-loss counters: no `data_loss_observed`
+/// comparison consumes them. They are exposed in `detector_degradation`.
+pub var g_correlator_observe_errors = std.atomic.Value(u64).init(0);
+pub var g_anomaly_observe_errors = std.atomic.Value(u64).init(0);
+pub var g_threat_tracker_observe_errors = std.atomic.Value(u64).init(0);
 // Canonical Go Nose -> Zig reader counters. These are deliberately separate
 // from process liveness: RUNNING does not imply that the data plane is active.
 pub var g_nose_connected = std.atomic.Value(bool).init(false);
 pub var g_nose_frames_read = std.atomic.Value(u64).init(0);
 pub var g_nose_frames_rejected = std.atomic.Value(u64).init(0);
 pub var g_nose_frames_submitted = std.atomic.Value(u64).init(0);
-/// Nose frames that reach the reader but are never admitted as events:
-/// framing rejects (absurd/invalid length), aborted payload reads, and
-/// post-decode queue/shape/direction refusals. NOT queue backpressure alone;
-/// the cause is not split here (issue #44 follow-up).
+/// Nose frames that reach the reader but are never admitted as events. Real
+/// causes, all exclusive: framing reject (resync/drain), aborted payload read,
+/// post-decode shape refusal, and queue-capacity refusal. `nose_frames_rejected`
+/// is a separate decode failure, not a drop. The four cause counters below are
+/// DIAGNOSTIC SUBSETS of this total; never add them to soak LOSS_COUNTERS.
 pub var g_nose_frames_dropped = std.atomic.Value(u64).init(0);
+pub var g_nose_frames_dropped_framing = std.atomic.Value(u64).init(0);
+pub var g_nose_frames_dropped_midframe = std.atomic.Value(u64).init(0);
+pub var g_nose_frames_dropped_shape = std.atomic.Value(u64).init(0);
+pub var g_nose_frames_dropped_capacity = std.atomic.Value(u64).init(0);
+
+/// The single authority for a Nose frame drop. Every reader branch calls this
+/// once, so the total and exactly one cause counter move in the same operation.
+pub const NoseDropCause = enum { framing, midframe, shape, capacity };
+
+pub fn recordNoseFrameDrop(cause: NoseDropCause) void {
+    _ = g_nose_frames_dropped.fetchAdd(1, .monotonic);
+    switch (cause) {
+        .framing => _ = g_nose_frames_dropped_framing.fetchAdd(1, .monotonic),
+        .midframe => _ = g_nose_frames_dropped_midframe.fetchAdd(1, .monotonic),
+        .shape => _ = g_nose_frames_dropped_shape.fetchAdd(1, .monotonic),
+        .capacity => _ = g_nose_frames_dropped_capacity.fetchAdd(1, .monotonic),
+    }
+}
 /// VISIBILITY-001: Nose frames drained (not submitted) because the operator
 /// selected kernel-primary ingress. A visible shadow count, never a silent
 /// loss: distinct from `g_nose_frames_dropped` (the admission/loss counter).
@@ -629,4 +655,32 @@ test "POLICY-MUTATE-001: publish swaps the live set, retires the old one" {
     freeRetiredPolicySets();
     try std.testing.expect(g_live_policy_set.load(.acquire) == null);
     try std.testing.expectEqual(&fallback, effectivePolicySet(&fallback).?);
+}
+
+test "issue #44 nose drop causes are exclusive and sum to the total" {
+    const saved = .{
+        g_nose_frames_dropped.load(.acquire),
+        g_nose_frames_dropped_framing.load(.acquire),
+        g_nose_frames_dropped_midframe.load(.acquire),
+        g_nose_frames_dropped_shape.load(.acquire),
+        g_nose_frames_dropped_capacity.load(.acquire),
+    };
+    defer {
+        g_nose_frames_dropped.store(saved[0], .monotonic);
+        g_nose_frames_dropped_framing.store(saved[1], .monotonic);
+        g_nose_frames_dropped_midframe.store(saved[2], .monotonic);
+        g_nose_frames_dropped_shape.store(saved[3], .monotonic);
+        g_nose_frames_dropped_capacity.store(saved[4], .monotonic);
+    }
+
+    recordNoseFrameDrop(.framing);
+    recordNoseFrameDrop(.midframe);
+    recordNoseFrameDrop(.shape);
+    recordNoseFrameDrop(.capacity);
+
+    try std.testing.expectEqual(saved[0] + 4, g_nose_frames_dropped.load(.acquire));
+    try std.testing.expectEqual(saved[1] + 1, g_nose_frames_dropped_framing.load(.acquire));
+    try std.testing.expectEqual(saved[2] + 1, g_nose_frames_dropped_midframe.load(.acquire));
+    try std.testing.expectEqual(saved[3] + 1, g_nose_frames_dropped_shape.load(.acquire));
+    try std.testing.expectEqual(saved[4] + 1, g_nose_frames_dropped_capacity.load(.acquire));
 }

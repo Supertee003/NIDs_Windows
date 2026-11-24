@@ -1069,6 +1069,12 @@ def _daemon_data_integrity(daemon_health: Dict[str, Any]) -> Dict[str, int]:
         "queue_dropped_total",
         "nose_frames_rejected",
         "nose_frames_dropped",
+        # issue #44: diagnostic subsets of the total. Projected for operators,
+        # never added to host_soak_check.LOSS_COUNTERS (that would double-count).
+        "nose_frames_dropped_framing",
+        "nose_frames_dropped_midframe",
+        "nose_frames_dropped_shape",
+        "nose_frames_dropped_capacity",
         "nose_pipe_errors",
         # OBSERVABILITY-001 (issue #44): defensive pipeline counter, currently
         # 0 because processEvent is infallible. Older daemons omit it; the
@@ -1084,6 +1090,30 @@ def _daemon_data_integrity(daemon_health: Dict[str, Any]) -> Dict[str, int]:
         # pins counter-reset semantics to one daemon process generation.
         "shed_overload",
         "process_generation_ms",
+    )
+    projected: Dict[str, int] = {}
+    for key in keys:
+        value = raw.get(key)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            continue
+        projected[key] = value
+    return projected
+
+
+def _daemon_detector_degradation(daemon_health: Dict[str, Any]) -> Dict[str, int]:
+    """Project detector allocation-failure counters without fabricating zeros.
+
+    P4-F6: these are detection-degradation signals, not event loss. A separate
+    object keeps them out of `data_integrity`, `data_loss_observed` and the
+    soak tool's loss counters. Older daemons omit the object entirely.
+    """
+    raw = daemon_health.get("detector_degradation")
+    if not isinstance(raw, dict):
+        return {}
+    keys = (
+        "correlator_errors",
+        "anomaly_detector_errors",
+        "threat_tracker_errors",
     )
     projected: Dict[str, int] = {}
     for key in keys:
@@ -1253,14 +1283,14 @@ def get_health_payload() -> Dict[str, Any]:
         ).upper()
         daemon_health_state = str(daemon_health.get("state", daemon_runtime_state)).upper()
         daemon_degraded = bool(daemon_health.get("degraded", False))
-        # CLI-STATE-001 / P4-RUNTIME-TRUTH: the daemon owns two different
-        # states. `state` is the health contract, computed from live facts
-        # (workers, subsystems, cumulative data loss). `runtime_state` is the
-        # lifecycle state machine: src/daemon.zig re-samples it every 5 s via
-        # reconcileLifecycle, but that sample uses FRESH loss since the previous
-        # poll while health uses the cumulative budget. They can therefore
-        # disagree in either direction. Both directions are named below;
-        # the merge stays fail-closed (a degraded surface never promotes).
+        # CLI-STATE-001 / P4-RUNTIME-TRUTH / P4-F7: the daemon owns two states.
+        # `state` is the health contract, computed from live facts (workers,
+        # subsystems, cumulative data loss). `runtime_state` is the lifecycle
+        # state machine: src/daemon.zig re-samples it every 5 s via
+        # reconcileLifecycle with `fresh_loss_observed` (loss since the previous
+        # poll), while health uses the cumulative loss budget. They can
+        # disagree in either direction. Both directions are named below; the
+        # merge stays fail-closed (a degraded surface never promotes).
         state_machine_disagrees = (
             daemon_runtime_state == "DEGRADED"
             and daemon_health_state == "RUNNING"
@@ -1362,6 +1392,9 @@ def get_health_payload() -> Dict[str, Any]:
             "workers": workers,
             "data_plane": data_plane,
             "data_integrity": _daemon_data_integrity(daemon_health),
+            # P4-F6: detection degradation is real but is not ingress loss.
+            # Keep it in its own additive object on older daemons it stays {}.
+            "detector_degradation": _daemon_detector_degradation(daemon_health),
             # RESOURCE-TELEMETRY-001: sampled off the hot path; additive and
             # empty on older daemons (no fabricated zero gauges).
             "resources": _daemon_resources(daemon_health),
@@ -1417,6 +1450,7 @@ def _diagnostic_health_payload(reason: str) -> Dict[str, Any]:
         },
         "subsystems": subsystem_payload,
         "data_integrity": {},
+        "detector_degradation": {},
         "tier3": {"ready": False, "state": "UNAVAILABLE"},
         "rust_pep": {
             "state": "UNAVAILABLE",

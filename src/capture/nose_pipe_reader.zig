@@ -392,7 +392,7 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
             std.log.err("[NOSE PIPE] absurd frame length {d}: dropping connection to resync (nose will reconnect)", .{frameLen});
             g_reader_stats.frames_dropped += 1;
             g_reader_stats.pipe_errors += 1;
-            _ = runtime_state.g_nose_frames_dropped.fetchAdd(1, .monotonic);
+            runtime_state.recordNoseFrameDrop(.framing);
             _ = runtime_state.g_nose_pipe_errors.fetchAdd(1, .monotonic);
             break;
         }
@@ -407,7 +407,7 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
                 remaining -= @intCast(toRead);
             }
             g_reader_stats.frames_dropped += 1;
-            _ = runtime_state.g_nose_frames_dropped.fetchAdd(1, .monotonic);
+            runtime_state.recordNoseFrameDrop(.framing);
             continue;
         }
 
@@ -417,11 +417,14 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
         if (!readExact(server, payload_slice, stopSignal)) {
             std.log.warn("[NOSE PIPE] frame payload read failed: GetLastError={d}", .{GetLastError()});
             g_reader_stats.pipe_errors += 1;
+            g_reader_stats.frames_dropped += 1;
             // OBSERVABILITY-001 (issue #44): the length header committed us to
             // a frame, so an aborted payload is both an I/O error and a lost
-            // frame. Same dual accounting as the resync branch above.
+            // frame (local + authoritative, same dual accounting as resync).
+            // The cause is `midframe`, not framing: the header was valid and
+            // the payload read failed.
             _ = runtime_state.g_nose_pipe_errors.fetchAdd(1, .monotonic);
-            _ = runtime_state.g_nose_frames_dropped.fetchAdd(1, .monotonic);
+            runtime_state.recordNoseFrameDrop(.midframe);
             break;
         }
 
@@ -481,13 +484,22 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
         // A pause is not a loss (the Go pipe buffers upstream); after the hard
         // 5 ms bound the existing counted-drop path below still applies.
         paceBeforeSubmit(stopSignal);
-        if (pipeline_queue.pushDecodedFrame(&frame, frame.payload)) {
-            g_reader_stats.frames_submitted += 1;
-            _ = runtime_state.g_nose_frames_submitted.fetchAdd(1, .monotonic);
-            std.log.debug("[NOSE PIPE] canonical event submitted: event_id={d}", .{event.event_id});
-        } else {
-            g_reader_stats.frames_dropped += 1;
-            _ = runtime_state.g_nose_frames_dropped.fetchAdd(1, .monotonic);
+        switch (pipeline_queue.pushDecodedFrameDetailed(&frame, frame.payload)) {
+            .accepted => {
+                g_reader_stats.frames_submitted += 1;
+                _ = runtime_state.g_nose_frames_submitted.fetchAdd(1, .monotonic);
+                std.log.debug("[NOSE PIPE] canonical event submitted: event_id={d}", .{event.event_id});
+            },
+            .rejected_shape => {
+                // Codec-impossible shape (bad magic/version, mixed sidecars,
+                // direction > 1): a codec defect, not a full queue.
+                g_reader_stats.frames_dropped += 1;
+                runtime_state.recordNoseFrameDrop(.shape);
+            },
+            .dropped_capacity => {
+                g_reader_stats.frames_dropped += 1;
+                runtime_state.recordNoseFrameDrop(.capacity);
+            },
         }
     }
 }
