@@ -90,13 +90,14 @@ rebaseline (records):
   python scripts/check_summary.py --write / check     -> SUMMARY_VALID
   python scripts/doc_checker.py                       -> 0 FAIL, 0 WARN
   python tools/release_engineering.py --verify        -> 674/674 digests
-  python -m pytest -q -p no:cacheprovider tests/docs tests/release -> expected pass
-  python -m pytest -q -p no:cacheprovider -m "not host_live"       -> expected pass
+  python -m pytest -q -p no:cacheprovider tests/docs tests/release -> 262 passed
+  python -m pytest -q -p no:cacheprovider -m "not host_live" -> 1486 passed, 1 skipped, 18 deselected, 27 subtests passed
   git diff --check                                    -> clean
 ```
 
 Local `C:` ENOSPC was worked around by deleting ignored build caches
-(`AppData/Local/go-build`, `aegis_dashboard/target`); no source or tracked file
+(`AppData/Local/go-build`, `aegis_dashboard/target`) and redirecting
+`CARGO_TARGET_DIR` to `D:\aegis-tmp\cargo-target`; no source or tracked file
 was changed to obtain test space.
 
 ## Completion gate
