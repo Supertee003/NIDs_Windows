@@ -8945,7 +8945,7 @@
       "id": "FORENSIC-CONTAINS-001-E5-20261118",
       "head_sha": "de176bc",
       "timestamp": "2026-11-18",
-      "level": "E5",
+      "level": "E2",
       "flow_id": "FOR-001",
       "component": "C:/Program Files/AEGIS NIDS/runtime/aegis_nids.exe",
       "title": "The forensic ring is searchable by payload text (payload_contains), proven live with a negative control",
@@ -8968,14 +8968,14 @@
       ],
       "artifact_status": "historical",
       "artifact_locator": "tests/forensics/test_forensic_payload_filter.py",
-      "artifact_status_basis": "Primary pointer is a source/test file, not a Windows-host artifact. The host measurement is described in this record but no host-side capture is present in the checked tree; treat the E5 narrative as operator-attested, not independently auditable here (P3-EVIDENCE-HONESTY).",
+      "artifact_status_basis": "Primary pointer is a source/test file, not a Windows-host artifact. The host measurement is described in this record but no host-side capture is present in the checked tree; treat the E5 narrative as operator-attested, not independently auditable here (P3-EVIDENCE-HONESTY). On P3 carry-forward, level reduced E5->E2 after source/test-pointer review; the only independently auditable material here is source/test code, and the host result remains operator-attested, not falsified and not E4/E5 proof (P3-EVIDENCE-HONESTY-CARRY).",
       "historical": true
     },
     {
       "id": "PROC-LAYER-001-E5-20261118",
       "head_sha": "50986b3",
       "timestamp": "2026-11-18",
-      "level": "E5",
+      "level": "E2",
       "flow_id": "DET-001",
       "component": "C:/Program Files/AEGIS NIDS/runtime/aegis_nids.exe",
       "title": "Process-create events reach the process rule layer: R2004 fires on a real certutil launch",
@@ -8997,14 +8997,14 @@
       ],
       "artifact_status": "historical",
       "artifact_locator": "src/pipeline/event_processor.zig",
-      "artifact_status_basis": "Primary pointer is a source/test file, not a Windows-host artifact. The host measurement is described in this record but no host-side capture is present in the checked tree; treat the E5 narrative as operator-attested, not independently auditable here (P3-EVIDENCE-HONESTY).",
+      "artifact_status_basis": "Primary pointer is a source/test file, not a Windows-host artifact. The host measurement is described in this record but no host-side capture is present in the checked tree; treat the E5 narrative as operator-attested, not independently auditable here (P3-EVIDENCE-HONESTY). On P3 carry-forward, level reduced E5->E2 after source/test-pointer review; the only independently auditable material here is source/test code, and the host result remains operator-attested, not falsified and not E4/E5 proof (P3-EVIDENCE-HONESTY-CARRY).",
       "historical": true
     },
     {
       "id": "QLOSS-DELFILTER-001-E5-20261118",
       "head_sha": "ed2d7c1",
       "timestamp": "2026-11-18",
-      "level": "E5",
+      "level": "E2",
       "flow_id": "FIM-001",
       "component": "C:/Program Files/AEGIS NIDS/runtime/aegis_nids.exe",
       "title": "ETW deletes that no kernel-file rule can act on stop entering the pipeline; the R1002 lane still fires",
@@ -9028,14 +9028,14 @@
       ],
       "artifact_status": "historical",
       "artifact_locator": "src/pipeline/telemetry_threads.zig",
-      "artifact_status_basis": "Primary pointer is a source/test file, not a Windows-host artifact. The host measurement is described in this record but no host-side capture is present in the checked tree; treat the E5 narrative as operator-attested, not independently auditable here (P3-EVIDENCE-HONESTY).",
+      "artifact_status_basis": "Primary pointer is a source/test file, not a Windows-host artifact. The host measurement is described in this record but no host-side capture is present in the checked tree; treat the E5 narrative as operator-attested, not independently auditable here (P3-EVIDENCE-HONESTY). On P3 carry-forward, level reduced E5->E2 after source/test-pointer review; the only independently auditable material here is source/test code, and the host result remains operator-attested, not falsified and not E4/E5 proof (P3-EVIDENCE-HONESTY-CARRY).",
       "historical": true
     },
     {
       "id": "QLOSS-DELAGG-001-E5-20261118",
       "head_sha": "0e38068",
       "timestamp": "2026-11-18",
-      "level": "E5",
+      "level": "E2",
       "flow_id": "FIM-001",
       "component": "C:/Program Files/AEGIS NIDS/runtime/aegis_nids.exe",
       "title": "A mass delete still appears as one record: filtered deletes fold into a per-window aggregate",
@@ -9058,7 +9058,7 @@
       ],
       "artifact_status": "historical",
       "artifact_locator": "src/pipeline/telemetry_threads.zig",
-      "artifact_status_basis": "Primary pointer is a source/test file, not a Windows-host artifact. The host measurement is described in this record but no host-side capture is present in the checked tree; treat the E5 narrative as operator-attested, not independently auditable here (P3-EVIDENCE-HONESTY).",
+      "artifact_status_basis": "Primary pointer is a source/test file, not a Windows-host artifact. The host measurement is described in this record but no host-side capture is present in the checked tree; treat the E5 narrative as operator-attested, not independently auditable here (P3-EVIDENCE-HONESTY). On P3 carry-forward, level reduced E5->E2 after source/test-pointer review; the only independently auditable material here is source/test code, and the host result remains operator-attested, not falsified and not E4/E5 proof (P3-EVIDENCE-HONESTY-CARRY).",
       "historical": true
     },
     {
@@ -10762,6 +10762,40 @@
         "No detection-rule or 23-rule matrix measurement; no soak, loss-rate, install, signing, production simulation, E6 or E7 claim.",
         "The agent session remained non-elevated (admin=False); all host actions were performed by the user's Admin session and are evidenced by its transcript, not by agent execution.",
         "No zero-loss-ever claim; the 36.52 h soak remains HISTORICAL at a53eda8. Release identity remains v1.1 / 466a226 / a53eda8, 6/6 gates PASS (0 open)."
+      ]
+    },
+    {
+      "id": "P3-P1-RECORDS-HONESTY-CARRY-20261124",
+      "head_sha": "03bb86d98ea5925170157b6d0f9b63ed12f4c858",
+      "timestamp": "2026-11-24",
+      "title": "P3/P1 carry-forward: four source-pointer E5 entries downgraded to E2 and FAILURE_MODEL backpressure table marked HISTORICAL",
+      "level": "E2",
+      "component": "EVIDENCE_INDEX.json, docs/architecture/FAILURE_MODEL.md",
+      "flow_id": "evidence registry + doc truth -> validators -> records (no source flow)",
+      "description": "Records-only honesty slice: no operator install/health artifact exists for four 2026-11-18 windows, so their levels were reduced E5->E2 after source/test-pointer review; the four narratives stay operator-attested and are not falsified. FAILURE_MODEL.md no longer claims AUTHORITATIVE for the fill-percent backpressure table, which is superseded by the binary admission in src/pipeline/event_queue.zig. The 48 unresolvable artifact pointers already carry valid historical/missing statuses and were left unchanged.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-P3-EVI06-DOWNGRADE-20261124.md",
+        "analysis/current-head/MASTER-AUDIT-P1-FAILURE-MODEL-20261124.md",
+        "analysis/current-head/MASTER-AUDIT-P3-20261124.md",
+        "EVIDENCE_INDEX.json",
+        "docs/architecture/FAILURE_MODEL.md"
+      ],
+      "tests": [
+        "python scripts/check_summary.py -> SUMMARY_VALID (E2 153->157->158 with this entry; E5 123->119)",
+        "python -m pytest -q tests/release/test_evidence_index_valid.py tests/security/test_evidence_index_integrity.py -> 12 passed",
+        "python scripts/doc_checker.py -> 0 FAIL, 0 WARN",
+        "bad-link check -> none",
+        "python tools/truth.py verify -> TRUTH_VALID @ 03bb86d",
+        "python tools/release_engineering.py --verify -> 674/674 digests"
+      ],
+      "result": "PASS_E2",
+      "finding": "Honesty carry-forwards from P3 (EVI-06) and P1 (FAILURE_MODEL) are executed as records corrections. No host artifact was invented, no E4/E5 claim is added, and current source truth is described from src/pipeline/event_queue.zig instead of an obsolete fill-percent table.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P3-EVI06-DOWNGRADE-20261124.md",
+      "limitations": [
+        "Records-only E2: no new runtime measurement, no source/build change, no host verification.",
+        "The four 2026-11-18 host narratives remain operator-attested; no install/health capture was recovered.",
+        "48 unresolvable pointers remain unrecovered (18 historical with locators, 30 missing with basis); no pointer was fabricated.",
+        "Release identity unchanged v1.1 / 466a226 / a53eda8, 6/6 gates PASS (0 open)."
       ]
     }
   ],
@@ -17410,7 +17444,7 @@
       "status": "CLOSED",
       "severity": "P2",
       "title": "Command-line visibility is unavailable from both process lanes; R2003 is an accepted limitation",
-      "description": "Resolved half (E5, PROC-LAYER-001-E5-20261118): the layer follows the event kind, so process-create rows reach the kernel_process automaton and R2004 fires on a real certutil launch. The remaining question was answered at E5 on 2026-11-18: the ETW helper was rebuilt with WINEVENT_KEYWORD_PROCESS and the service restarted after install, process_start advanced with zero drops, and a marker launch produced a 306-byte ETW process row without the marker. Get-WinEvent shows every ProcessStart template (v0..v4) has ImageName and no CommandLine field, so no keyword mask can add it. The minifilter lane pushes only the image path (61 bytes) by construction. R2003 cannot match a host process row; R2001/R2002/R2005 still match image names and R2004 was proven live earlier.",
+      "description": "Resolved half (now E2; originally recorded E5, PROC-LAYER-001-E5-20261118): the layer follows the event kind, so process-create rows reach the kernel_process automaton and R2004 fires on a real certutil launch. The remaining question was answered in the 2026-11-18 operator-attested window (now E2 in this index): the ETW helper was rebuilt with WINEVENT_KEYWORD_PROCESS and the service restarted after install, process_start advanced with zero drops, and a marker launch produced a 306-byte ETW process row without the marker. Get-WinEvent shows every ProcessStart template (v0..v4) has ImageName and no CommandLine field, so no keyword mask can add it. The minifilter lane pushes only the image path (61 bytes) by construction. R2003 cannot match a host process row; R2001/R2002/R2005 still match image names and R2004 was proven live earlier.",
       "recorded_by": "analysis/current-head/PROCESS-CMDLINE-001-20261118.md",
       "next_step": "No v1.1 action. A future v1.2 feature can add a command-line source (NT Kernel Logger with EVENT_TRACE_FLAG_PROCESS, or privileged driver-side enrichment) and then retarget R2003; retargeting to an image name alone was rejected as a false-positive generator."
     },
@@ -17434,14 +17468,14 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 43,
-    "E2_count": 153,
+    "E2_count": 158,
     "E3_count": 16,
     "E4_count": 4,
-    "E5_count": 123,
+    "E5_count": 119,
     "E6_count": 1,
     "E7_count": 5,
-    "E5_with_artifact_count": 73,
-    "E5_with_resolvable_artifact_count": 41,
+    "E5_with_artifact_count": 69,
+    "E5_with_resolvable_artifact_count": 37,
     "E5_with_unresolvable_artifact_count": 32,
     "unresolvable_artifact_pointer_count": 48,
     "known_gaps_count": 287

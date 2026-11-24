@@ -1,6 +1,6 @@
 # Failure Model
 
-**Status**: AUTHORITATIVE
+**Status**: HISTORICAL in part — fail-soft model current; backpressure table superseded by `src/pipeline/event_queue.zig` (2026-11-24, P1 carry-forward)
 **Source**: `docs/architecture/ARCHITECTURE_CANONICAL.md` Section 8
 
 ---
@@ -188,18 +188,26 @@ EnforcementResult{
 
 ---
 
-## Backpressure Model
+## Backpressure Model (current source: `src/pipeline/event_queue.zig:220-299`)
 
-When the event fabric queue fills up:
+Admission is binary; there are no fill-percent tiers and no priority-drop by
+occupancy. The former NORMAL/ELEVATED/HIGH/CRITICAL table above is HISTORICAL and
+must not be used as current truth:
 
-| Fill % | Level | Action |
-|--------|-------|--------|
-| < 50% | NORMAL | Accept all events |
-| 50-80% | ELEVATED | Accept all (warning) |
-| 80-95% | HIGH | Drop low-priority events |
-| > 95% | CRITICAL | Reject new events |
+- Queue full (`depth >= PIPELINE_QUEUE_SIZE`, 16384): refuse and count
+  `g_queue_drops` (plus per-source/per-kind counters).
+- Host telemetry beyond the working tail (`WORKING_HOST_TAIL`, 14336): refuse and
+  count `g_reserved_tail_shed`.
+- One host source beyond `SOURCE_OCCUPANCY_CAP` (7168): refuse and count
+  `g_source_quota_shed`.
+- `RESERVED_NETWORK_SLOTS` (1024) and `CRITICAL_SLOTS` (1024) are reservations,
+  not occupancy levels; protected System32/SysWOW64 FIM writes use the full host
+  tail.
+- Oversize payloads truncate to a `MAX_PAYLOAD_BYTES` (1500) prefix; the wire
+  claim is kept verbatim and no priority-drop branch exists.
 
-**Rule**: Queue count never exceeds capacity (bounded, no OOM).
+**Rule**: Queue count never exceeds capacity (bounded, no OOM); producers are
+refused/drop-counted, never blocked.
 
 ---
 

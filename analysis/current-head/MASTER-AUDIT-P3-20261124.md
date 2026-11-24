@@ -62,7 +62,7 @@
 - **Reason:** the pointers are source/test files, not host captures. Inspection confirms the host measurement is *narrated* with a build hash, not accompanied by a host artifact in the checked tree. That is insufficient to prove E5 independently here, but it does **not** prove the measurement was falsified.
 - **Replacement (this patch):** each entry gets `artifact_status: historical`, `artifact_locator` = its source pointer, `artifact_status_basis` stating the primary artifact is a source/test file and the host narrative is operator-attested, plus `historical: true`. No level downgrade is asserted without artifact proof.
 - **Acceptance:** the limitation is visible in the registry; no E4/E5 claim is added for these entries by this slice.
-- **แนะนำเพิ่ม (not done):** obtain the operator's install/health output for each window, or downgrade the level after a source+artifact review. Not claimed as fixed.
+- **แนะนำเพิ่ม (executed, records-only, 2026-11-24):** no operator install/health artifact for the four 2026-11-18 windows exists in the worktree, `D:\aegis-tmp` or the visible archive; after source/test-pointer review the four entries were downgraded E5->E2 (E2_count +4, E5_count -4, E5_with_artifact/resolvable -4). Host narratives remain operator-attested, not falsified, and not E4/E5 proof. Evidence: `analysis/current-head/MASTER-AUDIT-P3-EVI06-DOWNGRADE-20261124.md`.
 
 ## 7. EVI-07 — historical gap closure with null / invalid head · ตรวจพบ
 
@@ -136,4 +136,4 @@ NEW  registry         -> historical/missing locators, VOIDED result, operator-at
 
 ## Completion gate
 
-**PASS (E2, records-only).** Requires: `check_summary.py` SUMMARY_VALID with split counts; targeted release tests pass; `TRUTH_VALID @ 661fb76`; 674/674 digests; no bad links. Remaining: 30 unrecovered historical artifacts and four source-pointer E5 entries stay explicitly operator-attested (EVI-06 recommendation not executed).
+**PASS (E2, records-only).** Requires: `check_summary.py` SUMMARY_VALID with split counts; targeted release tests pass; `TRUTH_VALID @ 661fb76`; 674/674 digests; no bad links. Remaining: 30 unrecovered historical artifacts stay explicitly operator-attested; the four source-pointer entries were downgraded to E2 and stay operator-attested (EVI-06 recommendation executed as a records-only downgrade; no host artifact recovered).
