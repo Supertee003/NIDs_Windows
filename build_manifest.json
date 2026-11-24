@@ -1292,8 +1292,8 @@
     },
     {
       "path": "scripts/doc_checker.py",
-      "size": 11606,
-      "sha256": "3b333c3944eb2128006e3c0890991fcc6245ae66e3224d37462469a5fc048ab3",
+      "size": 11951,
+      "sha256": "396c8893137a02e0156b9182f0c1161adb346c3d1c66007e35364ea1441150df",
       "language": "python/cython"
     },
     {
