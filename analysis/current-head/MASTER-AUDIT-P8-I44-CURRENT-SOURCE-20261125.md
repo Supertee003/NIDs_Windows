@@ -2,7 +2,14 @@
 
 **BUILD SOURCE (unchanged):** `a26c5731afe154890e4f3d205d9736a5e1ead78a` (no source/build-tree commit in this slice; ADR-0008)
 **RECORDS HEAD AT READ:** `f9173a2b5bb68ea99fd22553c3deb8ed86dac058`
-**STATUS:** PASS_E3 + PASS_E4_E5 — narrow canonical-pipe `-inject` proof at the current source; no wire/rule/authority/host-effect/release change.
+**STATUS:** PASS_E3 + PASS_E4_E5 — narrow canonical-pipe `-inject` proof at the recorded source `a26c573`; no wire/rule/authority/host-effect/release change.
+
+> **SUPERSEDED FOR CURRENT-SOURCE CLAIMS (2026-11-25):** build source later
+> advanced to `43a8bcc` by a comment-only Go Nose hygiene slice. The E3/E4/E5
+> results below remain faithful records of what was executed at `a26c573`, but
+> they are **HISTORICAL** with respect to the new build source and are not
+> current-source proof at `43a8bcc`. See
+> `MASTER-AUDIT-FINAL-RESIDUALS-20261125.md` §4.
 
 ## PATCH DECLARATION
 

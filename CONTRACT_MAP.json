@@ -1,5 +1,5 @@
 {
-  "head_sha": "a26c5731afe154890e4f3d205d9736a5e1ead78a",
+  "head_sha": "43a8bcc02358076380fa938b0e5632870643d3c5",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "historical_source_note": "P6-DOC-TRUTH: shared/abi/pep_abi.md is a source-path ABI snapshot whose enforcement / FINAL security authority narrative predates RETIRE-HOST-EFFECT-001. ABI bytes are unchanged; current authority is AUTHORITY_MAP.json (detection-only, is_final_enforcement=false, no host-effect authority). In-file banner tracked in issue #45.",

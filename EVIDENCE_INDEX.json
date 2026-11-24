@@ -1,7 +1,7 @@
 {
-  "head_sha": "a26c5731afe154890e4f3d205d9736a5e1ead78a",
+  "head_sha": "43a8bcc02358076380fa938b0e5632870643d3c5",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-23",
+  "last_updated_at": "2026-11-25",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; tracked files were retained in the operator archive and restored to the ignored admin-evidence/ directory. At the 2026-11-24 audit, 48 primary evidence_artifact pointers do not resolve in a fresh worktree (18 have exact operator-archive locators recorded as artifact_locator, 30 are marked artifact_status=missing and are not independently auditable from this tree). 61 entries cite admin-evidence paths in files_verified, 133 mention them anywhere, and only primary evidence_artifact pointers are validator-checked. The 3,229 clean / 4,009 lossy rate bracketing and all other historical host claims remain records, not current-source verification.",
@@ -10910,6 +10910,33 @@
         "The agent session remained non-elevated (admin=False); all host actions were performed by the operator Admin session and are evidenced by its transcript, not by agent execution.",
         "No zero-loss-ever claim; the 36.52 h soak remains HISTORICAL at a53eda8. Release identity remains v1.1 / 466a226 / a53eda8, 6/6 gates PASS (0 open)."
       ]
+    },
+    {
+      "id": "P4-F1-F2-GO-COMMENT-HYGIENE-E2-20261125",
+      "head_sha": "43a8bcc02358076380fa938b0e5632870643d3c5",
+      "timestamp": "2026-11-25",
+      "title": "Final source-hygiene slice: remaining P4 F1/F2 Go comments closed",
+      "level": "E2",
+      "component": "Go Nose writer -> Windows named pipe -> Zig pipe reader",
+      "flow_id": "P4-RUNTIME-TRUTH, GO-NOSE-TRANSPORT",
+      "description": "Comment/field hygiene only. nose/pipe_writer.go: pipeConn and dialPipe now state named-pipe-only transport (os.OpenFile, no TCP fallback) and the unused useSocket field is removed; the header already used real src/capture paths at a26c573. nose/canonical_test.go: the non-existent core/canonical_event.zig path is replaced with src/contract/canonical_event.zig. The docs pin now forbids both stale strings across all three files. No wire bytes, framing, counters, rules, authority, host effect or release identity changed. Build source advanced a26c573 -> 43a8bcc; the a26c573 issue #44 -inject proof is now HISTORICAL with respect to this source and elevated E4/E5 re-execution is pending operator action.",
+      "files_changed": [
+        "nose/pipe_writer.go",
+        "nose/canonical_test.go",
+        "tests/docs/test_doc_truth_labels.py"
+      ],
+      "tests": [
+        "gofmt -l nose/pipe_writer.go nose/canonical_test.go -> clean",
+        "cd nose && go test ./... -> exit 0",
+        "go build -o D:\\aegis-tmp\\src_hygiene_nose.exe . -> exit 0",
+        "zig build test / zig build -> exit 0",
+        "tests/docs/test_doc_truth_labels.py -> pass"
+      ],
+      "result": "PASS",
+      "finding": "All in-repository P1-P8 audit findings are now closed or explicitly dispositioned as documented design/recommendations. Owner/external items and the elevated host re-proof remain outside this E2 claim.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-FINAL-RESIDUALS-20261125.md",
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS recorded at build source 43a8bcc; E2 source/unit proof only, no new host verdict"
     }
   ],
   "known_gaps": [
@@ -17582,7 +17609,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 43,
-    "E2_count": 159,
+    "E2_count": 160,
     "E3_count": 17,
     "E4_count": 4,
     "E5_count": 120,

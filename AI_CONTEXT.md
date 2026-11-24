@@ -4,15 +4,23 @@
 
 
 
-**HEAD:** `a26c5731afe154890e4f3d205d9736a5e1ead78a` (build source commit — ADR-0008)
+**HEAD:** `43a8bcc02358076380fa938b0e5632870643d3c5` (build source commit — ADR-0008)
 
-**RECORDS TIP:** `9cad2eb` (records head before this final residuals closeout; a commit cannot contain its own SHA)
+**RECORDS TIP:** `1f83eeb` (records head before the final source-hygiene slice; a commit cannot contain its own SHA)
 
 **BRANCH:** `main`
 
 **GENERATED:** 2026-11-03T14:45:00+07:00
 
 **GENERATOR:** Manus + `tools/rebuild_truth.py` (ADR-0008 source-commit stamp)
+
+> **SOURCE CHANGE (2026-11-25):** build source advanced `a26c573` → `43a8bcc`
+> by a comment-only Go Nose hygiene slice (P4 F1/F2). No wire, schema,
+> golden-vector, rule, authority, host-effect or release change. The issue #44
+> `-inject` E3/E4/E5 proof recorded at `a26c573` is **HISTORICAL** with respect
+> to this new build source; an elevated E4/E5 re-execution is required before
+> any new current-source host claim. See
+> `analysis/current-head/MASTER-AUDIT-FINAL-RESIDUALS-20261125.md`.
 
 > **RELEASE UPDATE (2026-11-22):** `v1.1` was published from signed candidate
 > `466a226` (build source `a53eda8`) with all six gates PASS and a genuine
