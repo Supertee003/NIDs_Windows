@@ -1,4 +1,16 @@
-﻿//! injection_detector.zig - AEGIS NIDS Phase 37 Ext 7: Full T1055 Process Injection Detection
+﻿//! HISTORICAL / NOT WIRED — unit-tested logic only (DET-04 / S2-03).
+//! This module implements T1055 correlation, but NO production component
+//! constructs an `InjectionEvent` or calls `InjectionDetector.ingest()`.
+//! `src/contract/runtime_manifest.zig:109-117` reports
+//! `has_injection_detector = false`; `src/daemon.zig:43-50` records why the
+//! detector is absent from the daemon. The only call sites are unit tests
+//! (`src/all_tests.zig:154`) and the test-only CLI
+//! (`src/tests/cli/injection_detector_cli.zig:3`).
+//! The "real-time" / "actual event-driven detection" wording below is
+//! HISTORICAL. Do not treat alerts from this module as live detection
+//! evidence until a real ETW producer is wired in a separate E5-gated slice.
+//!
+//! injection_detector.zig - AEGIS NIDS Phase 37 Ext 7: Full T1055 Process Injection Detection
 //!
 //! Real-time detection of process injection techniques using ETW Thread provider
 //! and Windows API hook patterns. Replaces the heuristic-based approach in Ext 3

@@ -198,8 +198,13 @@ fn logModeTransition(last: *source_arbiter.Mode, d: source_arbiter.Decision) voi
 /// quiet, exit on supervisor stop. Driver-absent hosts sleep-retry and
 /// stamp the labeled `unavailable` provider state (queue.stats renders
 /// it). When the packet path owns ingress, kernel records are still
-/// drained but counted as shadow rows and never submitted — one
-/// authority at a time, no duplicated flow accounting.
+/// drained but counted as shadow rows and never submitted — normally one
+/// authority at a time, no duplicated flow accounting. DOCUMENTED EXCEPTION
+/// (F4): `kernel_fallback` with reason `nose_stalled` admits BOTH sources
+/// (`packet_may_submit=true`, `kernel_may_submit=true`) for the bounded
+/// stall-recovery window; duplicate flow rows are possible there and the
+/// mode/reason pair is published for control-plane visibility. `nose_absent`
+/// remains kernel-only.
 pub fn telemetryLoop(stopSignal: *std.atomic.Value(bool)) void {
     var ring: [RING_BUF]u8 = undefined;
     diag.info("[WFP TELEMETRY] loop starting (submit-only, no inspect/block)", .{});

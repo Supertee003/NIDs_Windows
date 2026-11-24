@@ -170,3 +170,37 @@ def test_application_and_outreach_content_is_removed() -> None:
     assert "recruiter-demo" not in demo
     interview = _read("docs/portfolio/INTERVIEW_PREP.md")
     assert "[Apply now]" not in interview
+
+
+def test_pep_abi_narrative_is_historical_but_abi_bytes_frozen() -> None:
+    text = _read("shared/abi/pep_abi.md")
+    assert "HISTORICAL AUTHORITY NARRATIVE (P6-DOC-TRUTH / issue #45)" in text
+    assert "detection-only policy/evidence authority" in text
+    assert "is_final_enforcement: false" in text
+    for marker in (
+        "FINAL security authority",
+        "ONLY final enforcement authority",
+        "Action Dispatcher (block via WFP",
+    ):
+        for line in text.splitlines():
+            if marker in line and not line.lstrip().startswith(">"):
+                assert "HISTORICAL" in line, line
+    for frozen in (
+        "PepRequest is 64 bytes (extern struct, no padding)",
+        "PepResponse is 24 bytes (extern struct",
+        "PepAssessmentResponse is 16 bytes; host_effect_confirmed is always zero",
+        "int aegis_pep_read_events(",
+    ):
+        assert frozen in text, frozen
+
+
+def test_source_comments_no_longer_claim_removed_core_paths_or_tcp_fallback() -> None:
+    writer = _read("nose/pipe_writer.go")
+    cli = _read("src/tests/cli/nose_pipe_e2e_cli.zig")
+    assert "core/nose_pipe_reader.zig" not in writer
+    assert "core/nose_pipe_e2e_cli.zig" not in cli
+    assert "src/capture/nose_pipe_reader.zig" in writer
+    assert "capture/nose_pipe_reader.zig" in cli
+    assert "src/tests/cli/nose_pipe_e2e_cli.zig" in cli
+    assert "TCP loopback" not in writer
+    assert "no TCP fallback is implemented" in writer

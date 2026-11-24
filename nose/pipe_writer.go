@@ -2,11 +2,11 @@
 // pipe_writer.go - AEGIS NOSE -> Zig Core Canonical Event pipe sink
 // =====================================================================
 // Writes frozen 109-byte CanonicalEvent wire frames to the named pipe
-// that the Zig core consumes (core/nose_pipe_reader.zig). Windows uses
-// \\.\pipe\<name>; non-Windows falls back to a TCP loopback socket so
-// the capture path is still testable/functional on dev boxes.
+// that the Zig core consumes (src/capture/nose_pipe_reader.zig). Windows uses
+// \\.\pipe\<name>; no TCP fallback is implemented (dialPipe uses os.OpenFile only).
+// `core/*` names in manifests are module-ID aliases, not filesystem paths.
 //
-// Frame protocol (shared with core/nose_pipe_reader.zig):
+// Frame protocol (shared with src/capture/nose_pipe_reader.zig):
 //
 //	u32 LE length (109 v1, 133 v2, or 165..1189 v3) followed by raw wire bytes.
 //	v1/v2 are metadata-only compatibility frames; v3 carries bounded payload

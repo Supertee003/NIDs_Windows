@@ -80,3 +80,11 @@ def test_architecture_doc_does_not_call_the_detector_realtime() -> None:
         "docs/ARCHITECTURE.md still claims a real-time ETW path for the injection "
         "detector, which the daemon never runs"
     )
+
+
+def test_injection_module_header_says_not_wired() -> None:
+    body = _text(ROOT / "src" / "detection" / "injection_detector.zig")
+    assert "HISTORICAL / NOT WIRED" in body
+    assert "unit-tested logic only" in body
+    assert "has_injection_detector = false" in body
+    assert "NO production component" in body

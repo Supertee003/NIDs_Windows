@@ -5,11 +5,21 @@
 **Status:** FROZEN
 **Languages:** Zig, Rust
 
+> **HISTORICAL AUTHORITY NARRATIVE (P6-DOC-TRUTH / issue #45).** The authority
+> wording below — `FINAL security authority`, `Action Dispatcher (block via WFP, …)`,
+> and `ONLY final enforcement authority` — predates RETIRE-HOST-EFFECT-001 and is
+> **HISTORICAL**. It does not describe current runtime authority. Current authority:
+> `AUTHORITY_MAP.json` — Rust PEP is a detection-only policy/evidence authority,
+> `is_final_enforcement: false`, with no host-effect authority; no component may
+> install an AEGIS WFP filter or claim a verified host effect. ABI bytes, struct
+> layouts, ordinals, FFI signatures and all frozen request/response sizes below are
+> **UNAFFECTED and remain FROZEN**. See `CONTRACT_MAP.json:historical_source_note`.
+
 ## Purpose
 
 Defines the boundary between Zig Runtime and Rust PEP.
 Zig sends PEP requests; Rust validates, authorizes, and returns decisions.
-Rust is the FINAL security authority - no bypass allowed.
+Rust is the FINAL security authority - no bypass allowed. *(HISTORICAL — see banner; current authority is detection-only policy/evidence.)*
 
 ## Request/Response Types
 
@@ -176,7 +186,7 @@ PepResponse (decision + reason + quota + signature)
 Zig Runtime
     │
     ▼
-Action Dispatcher (block via WFP, quarantine, escalate, etc.)
+Action Dispatcher (block via WFP, quarantine, escalate, etc.) *(HISTORICAL flow label; no host effect is available in production.)*
 ```
 
 ## Invariants
@@ -185,7 +195,7 @@ Action Dispatcher (block via WFP, quarantine, escalate, etc.)
 - PepResponse is 24 bytes (extern struct: decision + reason + quota + signed_by + filter_id)
 - PepAssessmentResponse is 16 bytes; host_effect_confirmed is always zero and reserved bytes are zero
 - PepContext is 24 bytes; PepFilterState is 20 bytes (packed)
-- Rust PEP is the ONLY final enforcement authority
+- Rust PEP is the ONLY final enforcement authority *(HISTORICAL; current: only detection-policy/evidence authority, `is_final_enforcement: false`)*
 - No component may bypass PEP for privileged actions
 - PEP responses are signed (Ed25519) for audit trail
 - Quota is per-source-IP, decremented on rate_limit decisions

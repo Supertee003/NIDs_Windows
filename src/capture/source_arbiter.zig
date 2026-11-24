@@ -24,6 +24,12 @@
 //!   |                 | lab interfaces only)                       |        |        |
 //!   | none            | neither source available                   | -      | -      |
 //!
+//! F4: `kernel_fallback`/`nose_stalled` is a deliberate TWO-SUBMITTER
+//! exception — Nose's own rows are still real while the kernel covers the
+//! gap. Overlap is bounded by records already in flight and is published as
+//! mode=kernel_fallback/reason=nose_stalled; it is the sole documented
+//! exception to single-submitter detection ingress.
+//!
 //! "shadow" means the kernel ring is still DRAINED (never let a 2 MB ring
 //! overflow) but its rows are counted in `g_wfp_shadow_rows` and NOT
 //! submitted to the pipeline. A shadow row is evidence the kernel saw
@@ -148,6 +154,8 @@ pub const Arbiter = struct {
         const stalled = in.kernel_available and
             self.kernel_rows_while_nose_idle > 0 and
             (in.now_ms - self.last_nose_progress_ms) >= STALL_MS;
+        // F4: dual submit is intentional here; do not gate Nose off — a
+        // resumed Nose must be admitted on the next evaluate().
         if (stalled) {
             return .{ .mode = .kernel_fallback, .reason = .nose_stalled, .packet_may_submit = true, .kernel_may_submit = true };
         }

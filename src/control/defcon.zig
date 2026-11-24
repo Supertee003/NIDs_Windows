@@ -14,6 +14,15 @@
 //!               (receipt-verified host effects only — QUAR-RCPT-112 widens
 //!               the input from blocks-only; ladder thresholds unchanged)
 //!
+//! F10 (lab-only rungs): `confirmed` is incremented only by
+//! ActionDispatcher.dispatchWithReceipt, reached solely through the lab
+//! prevention gate (`build.zig:21-25`, default false; `runtime_manifest.json`
+//! says no production receipt can be minted). Therefore in production the
+//! reachable ladder is: MAXIMUM only via critical >= 10, SEVERE via
+//! critical >= 5, HIGH via total >= 5 or critical >= 1, ELEVATED via
+//! total >= 1. The `confirmed >= 5` / `confirmed >= 3` rungs are retained
+//! for the lab gate and are NOT production-reachable; no host effect is claimed.
+//!
 //! Thresholds are the pre-existing three-surface consensus (desktop, web,
 //! mouth agreed on these numbers); only the ownership changes. Labels use
 //! the MAXIMUM/SEVERE/HIGH/ELEVATED/SAFE vocabulary those three share.
@@ -41,6 +50,8 @@ pub const Label = enum(u8) {
 };
 
 /// Single DEFCON ladder. Pure: same inputs always give the same level.
+/// F10: confirmed-based rungs are lab-only (see module header); production
+/// escalation uses only `total`/`critical`.
 pub fn level(total: u64, critical: u64, confirmed: u64) u8 {
     if (critical >= 10 or confirmed >= 5) return 1;
     if (critical >= 5 or confirmed >= 3) return 2;

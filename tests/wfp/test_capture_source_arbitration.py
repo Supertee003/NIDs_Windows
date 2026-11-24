@@ -135,3 +135,17 @@ def test_docs_name_the_acquisition_states() -> None:
     for mode in ("npcap_primary", "kernel_fallback", "split_lab"):
         assert mode in text
     assert "shadow" in text.lower()
+
+
+def test_dual_submit_exception_is_disclosed_not_hidden() -> None:
+    arbiter = _read(ARBITER)
+    telemetry = _read(TELEMETRY)
+    assert "TWO-SUBMITTER" in arbiter
+    assert "F4: dual submit is intentional here" in arbiter
+    assert "DOCUMENTED EXCEPTION" in telemetry
+    assert "(F4): `kernel_fallback`" in telemetry
+    assert "duplicate flow rows are possible" in telemetry
+    assert "`nose_absent`" in telemetry
+    assert "remains kernel-only" in telemetry
+    # The behavioral E2 pin stays: the stalled mode still admits both sources.
+    assert ".packet_may_submit = true, .kernel_may_submit = true" in arbiter

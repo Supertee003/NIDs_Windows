@@ -1,5 +1,15 @@
 ﻿//! windows_capture.zig - AEGIS NIDS WFP Kernel Traffic Reader (Thread 3)
 //!
+//! HISTORICAL — QUARANTINED, NEVER IMPORTED BY PRODUCTION (F5 / REBUILD-004).
+//! The retired reader and its legacy `rust_pep.block_ip()` call below are NOT
+//! live enforcement. `build.zig:30` roots the daemon at src/main.zig; this
+//! module is referenced only by the orphaned src/core/nids_main.zig and by
+//! src/all_tests.zig. `src/core/rust_pep.zig:291-295` fails closed (returns
+//! false, "receipt API required"), so no filter can be installed here. The
+//! production kernel path is src/capture/wfp_telemetry.zig — submit-only,
+//! no inspect/block. Do not wire this in: that would restore a P0-class
+//! Zig-to-WFP enforcement bypass (RETIRE-HOST-EFFECT-001, issue #25).
+//!
 //! M4+BP2: Uses rust_pep.read_events(). If WFP device was already
 //! opened by bridge_init.initAll(), skips re-opening.
 
@@ -96,9 +106,10 @@ fn ipv4OctetsFromMemoryLayout(source_ip_net: u32) [4]u8 {
 /// DeviceIoControl (IOCTL_AEGIS_READ_EVENTS). Each event is parsed as
 /// WfpEventHeader + payload, then forwarded to nids_analyze.inspect_packet().
 ///
-/// If the WFP device is not available, retries every 10 seconds until the
-/// driver loads. If a packet matches a high-severity rule (severity >= 2),
-/// calls rust_pep.block_ip() to install a kernel WFP block filter.
+/// HISTORICAL (quarantined reader only; not current behavior): the retired
+/// loop retried every 10 s for the driver and contained a legacy
+/// `rust_pep.block_ip()` call for severity >= 2. In production no host block
+/// is installed; that shim is unreachable and fails closed.
 ///
 /// Parameters `allocator` and `address` are currently unused (reserved for
 /// future filtering features).
@@ -222,6 +233,8 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                     // Prevents attacker from spoofing source to use NIDS as DoS amplifier
                     if (header.severity >= 2) {
                         if (isBlockableSourceIp(ctx.source_ip)) {
+                            // HISTORICAL/QUARANTINED: always returns false
+                            // (src/core/rust_pep.zig:291-295); never a host effect.
                             _ = rust_pep.block_ip(ctx.source_ip);
                         } else {
                             std.log.warn("[WFP] Refusing to block non-routable source IP: {d}.{d}.{d}.{d}", .{ a, b, c, d });

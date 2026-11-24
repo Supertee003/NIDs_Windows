@@ -72,3 +72,16 @@ def test_packet_callback_is_be_canonical():
     src = _text(PACKET_CALLBACK)
     assert "readInt(u32" in src and ".big" in src
     assert "@bitCast(src_bytes)" not in src
+
+
+def test_quarantined_reader_is_labeled_and_stays_out_of_production() -> None:
+    root = REPO_ROOT / "src" / "capture"
+    quarantined = _text(root / "windows_capture.zig")
+    pep = _text(REPO_ROOT / "src" / "core" / "rust_pep.zig")
+    telemetry = _text(root / "wfp_telemetry.zig")
+    assert "HISTORICAL — QUARANTINED, NEVER IMPORTED BY PRODUCTION" in quarantined
+    assert "HISTORICAL/QUARANTINED: always returns false" in quarantined
+    assert "windows_capture" not in _text(DAEMON)
+    assert "return false;" in pep
+    assert "receipt API required" in pep
+    assert "must stay retired" in telemetry

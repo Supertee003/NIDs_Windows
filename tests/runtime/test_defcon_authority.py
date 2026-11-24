@@ -133,3 +133,12 @@ def test_get_defcon_rejects_garbage_daemon_values():
             # Must not propagate garbage: falls through to the
             # diagnostic bridge/file path (None in this environment).
             assert control_api.get_defcon() is None
+
+
+def test_confirmed_effect_rungs_are_labeled_lab_only() -> None:
+    ladder = (REPO_ROOT / "src" / "control" / "defcon.zig").read_text(encoding="utf-8")
+    assert "F10 (lab-only rungs)" in ladder
+    assert "NOT production-reachable" in ladder
+    assert "confirmed-based rungs are lab-only" in ladder
+    manifest = (REPO_ROOT / "runtime_manifest.json").read_text(encoding="utf-8")
+    assert "no receipt can now be minted" in manifest

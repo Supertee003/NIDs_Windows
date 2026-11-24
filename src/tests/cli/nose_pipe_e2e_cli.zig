@@ -1,7 +1,7 @@
 // nose_pipe_e2e_cli.zig - T2 E2E harness: named-pipe server + fabric sink
 //
 // USAGE:
-//   zig run core/nose_pipe_e2e_cli.zig -- [-seconds N]
+//   zig run src/tests/cli/nose_pipe_e2e_cli.zig -- [-seconds N]
 //
 // Creates \\.\pipe\aegis_nose, spawns the reader loop, waits N seconds
 // (default 10), then prints fabric + reader stats and exits 1 if no
