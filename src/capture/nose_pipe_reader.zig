@@ -182,9 +182,9 @@ extern "kernel32" fn GetLastError() callconv(.C) u32;
 // Helpers
 // ============================================================
 
-const PIPE_NAME: [20:0]u16 = .{ '\\', '\\', '.', '\\', 'p', 'i', 'p', 'e', '\\', 'a', 'e', 'g', 'i', 's', '_', 'n', 'o', 's', 'e', 0 };
+const DEFAULT_PIPE_NAME: [20:0]u16 = .{ '\\', '\\', '.', '\\', 'p', 'i', 'p', 'e', '\\', 'a', 'e', 'g', 'i', 's', '_', 'n', 'o', 's', 'e', 0 };
 
-fn createPipeServer() !usize {
+fn createPipeServer(pipe_name: [*:0]const u16) !usize {
     // During orderly lifecycle recovery the previous owner can have closed
     // its control pipe while the Nose pipe handle is still draining. Keep the
     // single-instance authority (nMaxInstances=1), but give that owner a
@@ -217,7 +217,7 @@ fn createPipeServer() !usize {
     defer _ = LocalFree(pipe_sd);
     while (attempt < 120) { // 60 seconds at 500 ms intervals
         const handle = CreateNamedPipeW(
-            &PIPE_NAME,
+            pipe_name,
             PIPE_ACCESS_INBOUND,
             PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_NOWAIT,
             1, // single instance: never allow duplicate Nose authorities
@@ -303,7 +303,16 @@ pub fn getReaderStats() PipeReaderStats {
 /// Call from a dedicated thread at startup:
 ///   const t = try std.Thread.spawn(.{}, runPipeReaderLoop, .{&stop_flag});
 pub fn runPipeReaderLoop(stopSignal: *std.atomic.Value(bool)) void {
-    const server = createPipeServer() catch |e| {
+    runPipeReaderLoopNamed(stopSignal, &DEFAULT_PIPE_NAME);
+}
+
+/// I44-E3-SEAM: identical production reader loop with an explicit pipe name.
+/// The runtime entrypoint above is unchanged and still binds the canonical
+/// \\.\pipe\aegis_nose. This seam exists only so an isolated exact-delta
+/// harness can own its own single-instance pipe without displacing a live
+/// daemon; it adds no new ingress path, authority or wire contract.
+pub fn runPipeReaderLoopNamed(stopSignal: *std.atomic.Value(bool), pipe_name: [*:0]const u16) void {
+    const server = createPipeServer(pipe_name) catch |e| {
         std.log.err("[NOSE PIPE] create pipe server failed: {} (GetLastError={d})", .{ e, GetLastError() });
         runtime_state.markWorkerFailure(.nose);
         return;

@@ -4,20 +4,23 @@
 // the module root (Zig 0.13 rejects its `../../` imports when this file is the
 // standalone root); `zig run src/tests/cli/nose_pipe_e2e_cli.zig` is NOT valid.
 // Compile via a `src/`-root wrapper (or a build.zig step), then pass:
-//   [-inject] [-seconds N]
+//   [-inject] [-seconds N] [-pipe <last-segment>]
 //
-// Creates \\.\pipe\aegis_nose, spawns the reader loop, waits N seconds
-// (default 10), then prints fabric + reader stats and exits 1 if no
-// event made it into the fabric (so E2E scripts can gate on success).
+// Creates \\.\pipe\<name> (default: aegis_nose), spawns the reader loop,
+// waits N seconds (default 10), then prints fabric + reader stats and exits 1
+// if no event made it into the fabric (so E2E scripts can gate on success).
 //
 // `-inject` is the issue #44 exact-delta proof. It opens a real named-pipe
 // client and feeds three failing frames (close-before-payload, absurd length,
 // invalid-but-drainable length followed by a valid frame), asserting the exact
 // authoritative + local counter delta for each. It needs no Go producer.
 //
-// ISOLATED HOST ONLY: stop the AegisNids service before `-inject` so the
-// harness owns \\.\pipe\aegis_nose; never inject failing frames into a live
-// daemon. Without `-inject`, runs alongside:  cd nose && go run . -capture
+// SAFETY: the canonical name is single-instance. Never inject failing frames
+// into a live daemon. On a host where AegisNids is running, pass a private
+// name, e.g. `-pipe aegis_nose_i44`, which uses the same production reader
+// loop through its explicit-name seam; the live daemon keeps its own pipe.
+// `-pipe` accepts ASCII only. Without `-inject`, the default name runs
+// alongside a real producer:  cd nose && go run . -capture
 
 const std = @import("std");
 const win = std.os.windows;
@@ -38,23 +41,42 @@ extern "kernel32" fn CreateFileW(
     hTemplateFile: ?win.HANDLE,
 ) callconv(.C) win.HANDLE;
 
-const PIPE_NAME: [20:0]u16 = .{ '\\', '\\', '.', '\\', 'p', 'i', 'p', 'e', '\\', 'a', 'e', 'g', 'i', 's', '_', 'n', 'o', 's', 'e', 0 };
 const GENERIC_WRITE_V: win.DWORD = 0x40000000;
 const OPEN_EXISTING_V: win.DWORD = 3;
 const FILE_ATTRIBUTE_NORMAL_V: win.DWORD = 0x80;
 
-fn openClient() !win.HANDLE {
-    const h = CreateFileW(&PIPE_NAME, GENERIC_WRITE_V, 0, null, OPEN_EXISTING_V, FILE_ATTRIBUTE_NORMAL_V, null);
+fn pipeNameZ(alloc: std.mem.Allocator, ascii_name: []const u8) ![:0]u16 {
+    if (ascii_name.len == 0) return error.EmptyPipeName;
+    const buf = try alloc.alloc(u16, ascii_name.len + 1);
+    for (ascii_name, 0..) |c, i| {
+        if (c > 0x7f) return error.NonAsciiPipeName;
+        buf[i] = c;
+    }
+    buf[ascii_name.len] = 0;
+    return buf[0..ascii_name.len :0];
+}
+
+fn openClient(pipe_name: [*:0]const u16) !win.HANDLE {
+    const h = CreateFileW(pipe_name, GENERIC_WRITE_V, 0, null, OPEN_EXISTING_V, FILE_ATTRIBUTE_NORMAL_V, null);
     if (h == win.INVALID_HANDLE_VALUE) return error.OpenPipeFailed;
     return h;
 }
 
-fn waitForPipe(timeout_ms: i64) !win.HANDLE {
+fn waitForPipe(pipe_name: [*:0]const u16, timeout_ms: i64) !win.HANDLE {
     const deadline = std.time.milliTimestamp() + timeout_ms;
     while (std.time.milliTimestamp() < deadline) {
-        if (openClient()) |h| return h else |_| std.time.sleep(20 * std.time.ns_per_ms);
+        if (openClient(pipe_name)) |h| return h else |_| std.time.sleep(20 * std.time.ns_per_ms);
     }
     return error.PipeUnavailable;
+}
+
+// The listener polls ConnectNamedPipe in NOWAIT mode every 50 ms. A real Nose
+// client keeps its handle open for the life of the capture; mirror that here so
+// the server observes the connection before any frame bytes are written.
+fn connectedClient(pipe_name: [*:0]const u16) !win.HANDLE {
+    const h = try waitForPipe(pipe_name, 5_000);
+    std.time.sleep(250 * std.time.ns_per_ms);
+    return h;
 }
 
 fn writeAllPipe(h: win.HANDLE, bytes: []const u8) !void {
@@ -147,13 +169,17 @@ fn waitForDelta(label: []const u8, before: CounterSnap, exp: Expected) !CounterS
     return error.CounterDeltaTimeout;
 }
 
-fn injectExactDeltaCases() !void {
+fn injectExactDeltaCases(pipe_name: [*:0]const u16) !void {
     // 1. Valid length header, then close before the payload. The reader has
     //    committed to a frame: pipe error + midframe drop, exactly once each.
+    std.debug.print("[INJECT] case1 start\n", .{});
     var before = snapshot();
-    var h = try waitForPipe(5_000);
+    var h = try connectedClient(pipe_name);
+    std.debug.print("[INJECT] case1 connected\n", .{});
     try writeU32Le(h, @intCast(canonical.WIRE_PAYLOAD_SIZE));
+    std.debug.print("[INJECT] case1 header written\n", .{});
     win.CloseHandle(h);
+    std.debug.print("[INJECT] case1 closed\n", .{});
     _ = try waitForDelta("close-before-payload", before, .{
         .total = 1,
         .midframe = 1,
@@ -165,9 +191,9 @@ fn injectExactDeltaCases() !void {
 
     // 2. Absurd length (above MAX_DISCARD_BYTES): resync branch. Framing drop
     //    plus pipe error; no midframe, shape or capacity movement.
-    std.time.sleep(50 * std.time.ns_per_ms);
+    std.time.sleep(250 * std.time.ns_per_ms);
     before = snapshot();
-    h = try waitForPipe(5_000);
+    h = try connectedClient(pipe_name);
     try writeU32Le(h, pipe_reader.MAX_DISCARD_BYTES + 1);
     win.CloseHandle(h);
     _ = try waitForDelta("absurd-length", before, .{
@@ -181,9 +207,9 @@ fn injectExactDeltaCases() !void {
 
     // 3. Invalid-but-drainable length, then a real v1 frame on the same
     //    connection. Framing drop only; the following frame must be accepted.
-    std.time.sleep(50 * std.time.ns_per_ms);
+    std.time.sleep(250 * std.time.ns_per_ms);
     before = snapshot();
-    h = try waitForPipe(5_000);
+    h = try connectedClient(pipe_name);
     const bad_len: u32 = @intCast(canonical.WIRE_PAYLOAD_SIZE - 1);
     try writeU32Le(h, bad_len);
     var garbage: [canonical.WIRE_PAYLOAD_SIZE]u8 = [_]u8{0} ** canonical.WIRE_PAYLOAD_SIZE;
@@ -211,6 +237,7 @@ pub fn main() !void {
 
     var seconds: u64 = 10;
     var inject = false;
+    var pipe_segment: []const u8 = "aegis_nose";
     var args = try std.process.argsWithAllocator(alloc);
     defer args.deinit();
     _ = args.next(); // program name
@@ -219,17 +246,24 @@ pub fn main() !void {
             inject = true;
         } else if (std.mem.eql(u8, arg, "-seconds")) {
             if (args.next()) |v| seconds = std.fmt.parseInt(u64, v, 10) catch 10;
+        } else if (std.mem.eql(u8, arg, "-pipe")) {
+            if (args.next()) |v| pipe_segment = v;
         }
     }
+    const pipe_full = try std.fmt.allocPrint(alloc, "\\\\.\\pipe\\{s}", .{pipe_segment});
+    defer alloc.free(pipe_full);
+    const pipe_name = try pipeNameZ(alloc, pipe_full);
+    defer alloc.free(pipe_name);
+    std.debug.print("[E2E] pipe={s}\n", .{pipe_full});
 
     // Initialize the fabric with room for events.
     try nose_contract.initFabric(alloc, .{ .capacity_per_priority = 256 });
     defer nose_contract.shutdownFabric(alloc);
 
     // Blocks on accept; run in a worker thread.
-    const reader = try std.Thread.spawn(.{}, pipe_reader.runPipeReaderLoop, .{&stop_flag});
+    const reader = try std.Thread.spawn(.{}, pipe_reader.runPipeReaderLoopNamed, .{ &stop_flag, pipe_name.ptr });
 
-    if (inject) try injectExactDeltaCases();
+    if (inject) try injectExactDeltaCases(pipe_name.ptr);
 
     const deadline: i128 = std.time.nanoTimestamp() + @as(i128, @intCast(seconds)) * std.time.ns_per_s;
 
