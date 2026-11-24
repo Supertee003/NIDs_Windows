@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-24T12:21:35.071044+00:00",
+  "generated_at": "2026-11-24T13:33:03.186955+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
   "total_files": 3196,
@@ -4434,7 +4434,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 505991
+      "size": 506160
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4692,7 +4692,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 10225
+      "size": 9877
     },
     {
       "path": "pytest.ini",
@@ -4710,7 +4710,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 409297
+      "size": 409430
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -15342,7 +15342,7 @@
       "path": "src/capture/nose_pipe_reader.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 26976
+      "size": 27553
     },
     {
       "path": "src/capture/npcap_adapter.zig",
@@ -16308,7 +16308,7 @@
       "path": "src/tests/cli/nose_pipe_e2e_cli.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 10226
+      "size": 11907
     },
     {
       "path": "src/tests/cli/perf_benchmark_cli.zig",
@@ -19191,5 +19191,5 @@
       "size": 624
     }
   ],
-  "source_commit": "e406cbb"
+  "source_commit": "03bb86d"
 }

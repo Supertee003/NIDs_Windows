@@ -1,5 +1,5 @@
 {
-  "head_sha": "e406cbb3512b4faae8441e9f1eb70b481971c75c",
+  "head_sha": "03bb86d98ea5925170157b6d0f9b63ed12f4c858",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-23",
   "generator_version": "3.0",
@@ -10678,9 +10678,50 @@
       "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P8-I44-20261124.md",
       "limitations": [
         "E1/E2 only: no Windows host, E4/E5, soak, install, signing or production-simulation verification at this source.",
-        "The exact-delta -inject pipe harness is compiled and source-pinned but was not run against the live daemon; an isolated-host run is required for E3/E4.",
+        "At this source the -inject pipe harness was compiled and source-pinned but not run against the live daemon; the later P8-I44-E3 entry records the real isolated-pipe E3 execution at source 03bb86d.",
         "Cause counters are diagnostic subsets of g_nose_frames_dropped and detector counters are not event loss; neither enters soak LOSS_COUNTERS and no zero-loss-ever claim is made.",
         "No new release tag, signature, key, gate, rule, wire layout or authority behavior; release identity remains v1.1 / 466a226 / a53eda8."
+      ]
+    },
+    {
+      "id": "P8-I44-E3-ISOLATED-INJECT",
+      "head_sha": "03bb86d98ea5925170157b6d0f9b63ed12f4c858",
+      "timestamp": "2026-11-24",
+      "title": "P8 / issue #44 E3: real named-pipe -inject exact-delta proof via explicit pipe-name seam",
+      "level": "E3",
+      "component": "src/capture/nose_pipe_reader.zig, src/tests/cli/nose_pipe_e2e_cli.zig",
+      "flow_id": "nose ingress -> pipe reader -> canonical decoder -> queue -> authoritative counters (issue #44 E3)",
+      "description": "Adds an explicit pipe-name seam to the same production reader loop so the -inject harness can own a private single-instance named pipe while a live AegisNids service keeps the canonical pipe, then actually runs the three exact-delta cases on Windows. No wire layout, golden vector, rule, authority, host-effect or release-identity change; production runPipeReaderLoop still binds \\\\.\\pipe\\aegis_nose with nMaxInstances=1 and the same SDDL.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-P8-I44-E3-20261124.md",
+        "src/capture/nose_pipe_reader.zig",
+        "src/tests/cli/nose_pipe_e2e_cli.zig",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "zig build-exe src/i44_e3_wrapper.zig -femit-bin=... -> exit 0 (src/ module root; wrapper removed)",
+        "i44_e3_check.exe -inject -pipe aegis_nose_i44d -seconds 2 -> exit 0",
+        "close-before-payload -> +1 midframe, +1 pipe error (exact)",
+        "absurd-length -> +1 framing, +1 pipe error (exact)",
+        "drain-then-valid -> +1 framing, +1 submitted, no pipe error (exact)",
+        "reader stats: read=1 drop=3 submitted=1 pipe_errors=2",
+        "zig build test -> exit 0",
+        "zig build -> exit 0",
+        "python -m pytest -q -m 'not host_live' -> 1486 passed, 1 skipped, 18 deselected, 27 subtests passed",
+        "python tools/truth.py verify -> TRUTH_VALID @ 03bb86d",
+        "python tools/release_engineering.py --verify -> 674/674 digests",
+        "python scripts/doc_checker.py -> 0 FAIL, 0 WARN",
+        "python scripts/check_summary.py -> SUMMARY_VALID",
+        "python D:/aegis-tmp/check_links.py -> BAD LINKS none"
+      ],
+      "result": "PASS_E3",
+      "finding": "The issue #44 exact-delta counter proof is now real execution evidence (E3), not source-pinned-only: all three failing-frame cases moved exactly the authoritative and local counters asserted by the harness. The live LocalSystem daemon was never stopped (service STATE 4 RUNNING, PIDs 82112/58924 unchanged before and after).",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P8-I44-E3-20261124.md",
+      "limitations": [
+        "E3 only: no E4/E5, no Windows-host soak, no install, no signing, no production simulation.",
+        "The harness runs in its own process with a fabric sink; it does not exercise the AegisNids service or the Go Nose producer, and it is not a loss-rate measurement.",
+        "The private pipe name is a test seam, not a new ingress path; production still binds the canonical pipe with single-instance authority.",
+        "No zero-loss-ever claim; the 36.52 h soak remains HISTORICAL at a53eda8. Release identity remains v1.1 / 466a226 / a53eda8."
       ]
     }
   ],
@@ -17354,7 +17395,7 @@
     "E0_count": 0,
     "E1_count": 43,
     "E2_count": 153,
-    "E3_count": 15,
+    "E3_count": 16,
     "E4_count": 4,
     "E5_count": 122,
     "E6_count": 1,

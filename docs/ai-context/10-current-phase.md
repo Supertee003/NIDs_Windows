@@ -3,9 +3,10 @@
 > **UPDATE (2026-11-22):** the published release is now `v1.1` (signed candidate
 > `466a226`, build source `a53eda8`, 6/6 gates PASS, genuine 36.52 h soak, 0 open
 > gaps). The v2.0.0 status below is HISTORICAL for release identity; `a53eda8`
-> descends from `7c604d5`. The current build source is `e406cbb`
+> descends from `7c604d5`. The current build source is `03bb86d`
 > (P2-44 `9105ff5`, P2a `d2f129e`, P2b `661fb76`, P8 source-truth `2129dcd`,
-> P8-I44 observability `e406cbb`; P3–P7 and the P8 V&R-08 closeout are records-only).
+> P8-I44 observability `e406cbb`, P8-I44-E3 isolated `-inject` proof `03bb86d`;
+> P3–P7 and the P8 V&R-08 closeout are records-only).
 > The immutable v1.1 release identity above is unchanged. Authority:
 > `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`.
 
