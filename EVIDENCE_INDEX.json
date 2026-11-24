@@ -10946,7 +10946,7 @@
       "level": "E3",
       "component": "Go/Nose pipe contract -> Zig pipe reader -> queue -> authoritative counters",
       "flow_id": "NOSE-INGRESS-EXACT-DELTA",
-      "description": "Harness recompiled from unmodified current source via a temporary src/ module-root wrapper (deleted after compile; git status clean). Private pipe \\\\.\\\\pipe\\\\aegis_nose_i44e used in a non-elevated agent session; three injected failure frames produced exact deltas: close-before-payload +1 midframe/+1 pipe error, absurd-length +1 framing/+1 pipe error, drain-then-valid +1 framing/+1 submitted/no pipe error. Fabric counters stayed zero; canonical pipe and live service untouched. Canonical-pipe E4/E5 at this source remains pending operator action.",
+      "description": "Harness recompiled from unmodified current source via a temporary src/ module-root wrapper (deleted after compile; git status clean). Private pipe \\\\.\\\\pipe\\\\aegis_nose_i44e used in a non-elevated agent session; three injected failure frames produced exact deltas: close-before-payload +1 midframe/+1 pipe error, absurd-length +1 framing/+1 pipe error, drain-then-valid +1 framing/+1 submitted/no pipe error. Fabric counters stayed zero; canonical pipe and live service untouched. Canonical-pipe E4/E5 at this source was subsequently executed by the owner; see P8-I44-43A8BCC-E4E5-20261125.",
       "files_changed": [
         "analysis/current-head/MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E3-20261125.md"
       ],
@@ -10960,6 +10960,45 @@
       "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E3-20261125.md",
       "status": "CLOSED",
       "status_basis": "entry.result=PASS_E3 recorded at build source 43a8bcc; E3 only"
+    },
+    {
+      "id": "P8-I44-43A8BCC-E4E5-20261125",
+      "head_sha": "43a8bcc02358076380fa938b0e5632870643d3c5",
+      "timestamp": "2026-11-25",
+      "title": "P8 / issue #44 E4/E5 at current build source: owner-run elevated canonical-pipe -inject with verified stop/restore lifecycle",
+      "level": "E5",
+      "component": "Windows host lifecycle + src/capture/nose_pipe_reader.zig canonical pipe path",
+      "flow_id": "elevated host lifecycle -> canonical pipe -> reader loop -> decoder/queue -> authoritative counters -> host restore (issue #44 E4/E5, current source)",
+      "description": "The agent session is non-elevated; the owner ran the prepared #Requires -RunAsAdministrator script from an elevated PowerShell. Harness recompiled from unmodified current source with SHA256 09EAEAB7...02E9 (verified in-script). Pre-state captured, SCM failure actions disabled, AegisNids stopped to STATE 1 STOPPED, aegis-nose stopped and the canonical pipe freed, then -inject -seconds 2 was run on the canonical Windows named pipe aegis_nose, followed by restore of failure actions, service and Nose command line in a finally block. The raw inject transcript starts with a Windows PowerShell NativeCommandError wrapper around the first Zig stderr line; this is a stream artifact, not a harness failure (exit 0, all gated exact deltas passed). The a26c573 E4/E5 entry remains HISTORICAL.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E4E5-20261125.md",
+        "D:/aegis-tmp/i44_e45_43a8bcc_prestate.txt",
+        "D:/aegis-tmp/i44_e45_43a8bcc_inject.txt",
+        "D:/aegis-tmp/i44_e45_43a8bcc_elevated_run.txt"
+      ],
+      "tests": [
+        "i44_e45_43a8bcc_elevated_run.ps1 via elevated PowerShell -> DONE inject_exit=0",
+        "harness SHA256 09EAEAB79800446C926B0FCD7AAB4C04AA655D15770BBB61F033BAF9952302E9 (checked by script)",
+        "sc failure AegisNids actions=none before window; restored to reset=86400 restart/5000/restart/15000/restart/60000",
+        "sc stop -> STATE 1 STOPPED; aegis-nose stopped; canonical pipe free",
+        "inject on canonical pipe -> exit 0; close-before-payload +1 midframe/+1 pipe error (exact)",
+        "absurd-length -> +1 framing/+1 pipe error (exact); drain-then-valid -> +1 framing/+1 submitted/no pipe error (exact)",
+        "reader read=1 drop=3 submitted=1 pipe_errors=2; fabric pending=0 accepted=0 rejected=0 dropped=0",
+        "sc start -> STATE 4 RUNNING PID 78728; Nose restart ReturnValue=0 ProcessId=41440; final processes aegis_nids:78728 aegis-nose:41440",
+        "single aegis_nose pipe after restore; independent read-only re-check matched failure config and running state",
+        "python tools/truth.py verify -> TRUTH_VALID @ 43a8bcc; 674/674 digests; doc checker 0 FAIL/0 WARN"
+      ],
+      "result": "PASS_E4_E5",
+      "finding": "The issue #44 exact-delta counter proof is verified at the CURRENT build source 43a8bcc on the canonical Windows named pipe under a real elevated stop/inject/restore lifecycle. All three cases moved exactly the asserted counters, harness exit 0, and service config, running state, Nose command line and the single canonical pipe were restored.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E4E5-20261125.md",
+      "limitations": [
+        "Narrow E4/E5 scope: canonical pipe + elevated host lifecycle; harness is the pipe server with a fabric sink, not AegisNids-consumer or Go-Nose-producer verification.",
+        "Raw transcripts are local-only operator evidence under D:/aegis-tmp and do not resolve in a fresh worktree; they are not synthesized or re-labeled.",
+        "No detection-rule matrix, soak, loss-rate, install, signing, production simulation, E6/E7 or zero-loss claim.",
+        "Release identity unchanged v1.1 / 466a226 / a53eda8, 6/6 gates PASS; 36.52 h soak remains HISTORICAL at a53eda8."
+      ],
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS_E4_E5 recorded at build source 43a8bcc; operator-run elevated host evidence"
     }
   ],
   "known_gaps": [
@@ -17635,11 +17674,11 @@
     "E2_count": 160,
     "E3_count": 18,
     "E4_count": 4,
-    "E5_count": 120,
+    "E5_count": 121,
     "E6_count": 1,
     "E7_count": 5,
-    "E5_with_artifact_count": 70,
-    "E5_with_resolvable_artifact_count": 38,
+    "E5_with_artifact_count": 71,
+    "E5_with_resolvable_artifact_count": 39,
     "E5_with_unresolvable_artifact_count": 32,
     "unresolvable_artifact_pointer_count": 48,
     "known_gaps_count": 287

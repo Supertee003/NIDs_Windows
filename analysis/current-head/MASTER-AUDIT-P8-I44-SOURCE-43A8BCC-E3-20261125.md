@@ -54,13 +54,15 @@ The private `aegis_nose_i44e` pipe is a test seam only; the canonical
 
 ## Limits and pending work
 
-- No canonical-pipe E4/E5 run is claimed here. The `a26c573` E4/E5 record is
-  HISTORICAL with respect to build source `43a8bcc`; an elevated operator run
-  is required before any new current-source host claim.
+- This entry claims E3 only. The `a26c573` E4/E5 record is HISTORICAL with
+  respect to build source `43a8bcc`; the elevated canonical-pipe re-run at this
+  source was subsequently executed by the owner and is recorded in
+  `MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E4E5-20261125.md`.
 - No rule matrix, soak, loss-rate, install, signing, production simulation,
   E6/E7 or zero-loss claim. The 36.52 h soak remains HISTORICAL at `a53eda8`.
 - Release identity unchanged: `v1.1` / `466a226` / `a53eda8`, 6/6 gates PASS.
 
 ## Completion gate
 
-**PASS_E3** for build source `43a8bcc`; **E4/E5 PENDING** operator action.
+**PASS_E3** for build source `43a8bcc`; E4/E5 at the same source is recorded
+separately in `MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E4E5-20261125.md`.

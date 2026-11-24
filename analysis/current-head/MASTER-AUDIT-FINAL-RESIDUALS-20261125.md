@@ -71,9 +71,13 @@ now **HISTORICAL with respect to the current build source** even though the
 changed bytes are Go comments and one unused Go field. E3 has been re-executed
 at `43a8bcc` on a private pipe with exact deltas
 (`MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E3-20261125.md`, harness SHA256
-`09EAEAB7…02E9`). An elevated E4/E5 re-execution on the canonical pipe is
-still pending operator action; the prepared harness and script are described
-in the closeout comment. No new E4/E5/soak/E6/E7 verdict is asserted.
+`09EAEAB7…02E9`). The elevated E4/E5 re-execution on the canonical pipe was
+then run by the owner from an Admin session and passed with the same exact
+deltas and a verified stop/inject/restore lifecycle
+(`MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E4E5-20261125.md`). The earlier `a26c573`
+E4/E5 record remains HISTORICAL. The PowerShell `NativeCommandError` wrapper at
+the head of the raw inject transcript is a stderr-stream artifact, not a harness
+failure, and the raw transcript is unmodified. No soak/E6/E7 verdict is asserted.
 
 ---
 
@@ -93,20 +97,21 @@ rebaseline (records):
   python scripts/doc_checker.py                       -> 0 FAIL, 0 WARN
   python tools/release_engineering.py --verify        -> 674/674 digests
   python -m pytest -q -p no:cacheprovider tests/docs tests/release -> 262 passed
-  python -m pytest -q -p no:cacheprovider -m "not host_live" -> 1486 passed, 1 skipped, 18 deselected, 27 subtests passed
+  python -m pytest -q -p no:cacheprovider -m "not host_live" -> 1486 passed, 1 skipped, 18 deselected, 27 subtests passed (earlier run); 1483 passed, 4 skipped, 18 deselected, 27 subtests passed (final re-run, exit 0, no failures)
   git diff --check                                    -> clean
 ```
 
 Local `C:` ENOSPC was worked around by deleting ignored build caches
-(`AppData/Local/go-build`, `aegis_dashboard/target`) and redirecting
+(`AppData/Local/go-build`, `aegis_dashboard/target`, `target`) and redirecting
 `CARGO_TARGET_DIR` to `D:\aegis-tmp\cargo-target`; no source or tracked file
-was changed to obtain test space.
+was changed to obtain test space. The full-suite skip count varies with local
+cargo/cache state (1 vs 4); both runs exited 0 with no failures.
 
 ## Completion gate
 
-**PASS (E1/E2, plus E3 at `43a8bcc`) for all in-repository audit findings.**
-Records residuals are closed; source findings are closed or explicitly
-dispositioned as documented design/recommendations; owner/external items remain
-named. No wire/rule/authority/host-effect/release change and no new host
-verdict. **Pending:** operator-run elevated E4/E5 re-proof at build source
-`43a8bcc` before any new current-source host claim.
+**PASS (E1/E2, plus E3 and E4/E5 at `43a8bcc`) for all in-repository audit
+findings.** Records residuals are closed; source findings are closed or
+explicitly dispositioned as documented design/recommendations; owner/external
+items remain named. No wire/rule/authority/host-effect/release change. The
+narrow host claim is limited to the canonical-pipe `-inject` exact deltas and
+the verified host restore; no soak/E6/E7 or production verdict is asserted.

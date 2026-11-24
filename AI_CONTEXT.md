@@ -18,9 +18,11 @@
 > by a comment-only Go Nose hygiene slice (P4 F1/F2). No wire, schema,
 > golden-vector, rule, authority, host-effect or release change. The issue #44
 > `-inject` E3/E4/E5 proof recorded at `a26c573` is **HISTORICAL** with respect
-> to this new build source; an elevated E4/E5 re-execution is required before
-> any new current-source host claim. See
-> `analysis/current-head/MASTER-AUDIT-FINAL-RESIDUALS-20261125.md`.
+> to this new build source. E3 was re-executed on a private pipe, and the owner
+> subsequently ran the elevated canonical-pipe E4/E5 with a verified
+> stop/inject/restore lifecycle; both passed at `43a8bcc`. See
+> `analysis/current-head/MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E4E5-20261125.md`
+> and `analysis/current-head/MASTER-AUDIT-FINAL-RESIDUALS-20261125.md`.
 
 > **RELEASE UPDATE (2026-11-22):** `v1.1` was published from signed candidate
 > `466a226` (build source `a53eda8`) with all six gates PASS and a genuine
