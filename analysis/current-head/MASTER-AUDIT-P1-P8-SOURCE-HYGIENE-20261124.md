@@ -76,8 +76,11 @@ Zig caches were redirected to `D:\aegis-tmp\zig-local` / `zig-global` because th
 ## LIMITS / HISTORICAL EVIDENCE
 
 - No host effect, no WFP mutation, no Signed-IR/HLK/Microsoft attestation.
-- No E3/E4/E5 re-run at `a26c573`: the `-inject` exact-delta proof remains
-  CLOSED_AT_RECORDED_HEAD at `03bb86d` and is not claimed at the new source.
+- At this 2026-11-24 slice there was no E3/E4/E5 re-run at `a26c573`: the
+  `-inject` exact-delta proof then remained CLOSED_AT_RECORDED_HEAD at `03bb86d`.
+  This limitation is superseded for the `-inject` flow by the 2026-11-25
+  re-execution recorded in `MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md`;
+  the `03bb86d` entry remains historical, not a substitute.
 - No soak, loss-rate, install, signing, production simulation, E6/E7 or
   zero-loss claim. The 36.52 h soak remains HISTORICAL at `a53eda8`.
 - Records-only E2 rebaseline (maps, docs, digests) follows this source commit;

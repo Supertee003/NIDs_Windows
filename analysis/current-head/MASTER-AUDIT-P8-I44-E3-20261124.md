@@ -4,6 +4,9 @@
 **TARGET BUILD SOURCE:** `e406cbb3512b4faae8441e9f1eb70b481971c75c`
 **SOURCE COMMIT AFTER PATCH:** `03bb86d98ea5925170157b6d0f9b63ed12f4c858`
 **STATUS:** PASS_E3 — exact-delta harness executed on a real named pipe, no host-effect or wire change.
+**CURRENT-SOURCE FOLLOW-UP:** re-executed at build source `a26c573` on 2026-11-25
+(`MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md`); this entry remains the
+historical proof at `03bb86d`, not a substitute for that run.
 
 ---
 

@@ -3,6 +3,9 @@
 **RECORDS HEAD AT READ:** `8cfecc02e34d82bca503ee15fd04c02f258b1145` (clean `main`, synced with `origin/main`)
 **BUILD SOURCE (UNCHANGED):** `03bb86d98ea5925170157b6d0f9b63ed12f4c858` (no source/build-tree commit in this slice; ADR-0008)
 **STATUS:** PASS_E4 / PASS_E5 — real `-inject` on the canonical Windows named pipe with an elevated stop → inject → restore lifecycle, host restored.
+**CURRENT-SOURCE FOLLOW-UP:** re-executed at build source `a26c573` on 2026-11-25
+(`MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md`); this entry remains the
+historical proof at `03bb86d`, not a substitute for that run.
 
 ---
 
