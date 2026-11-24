@@ -9,7 +9,7 @@
 > The v1.1 **release-identity** board is `docs/gates/T20_100pct_audit.md` → SHIPPABLE, 6/6 PASS
 > (0 open), recorded at signed candidate `466a226` / build source `a53eda8`; release record
 > `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`. That board is **not** a re-run at the
-> current build source (`2129dcd` at the 2026-11-24 audit); no current-source E5/soak claim is made here.
+> current build source (`e406cbb` at the 2026-11-24 audit); no current-source E5/soak claim is made here.
 >
 > **Evidence-retention limit.** The board's `clean_host_e5` and `soak_24h` inputs are owner-attested
 > operator files under ignored `admin-evidence/`. They are not reproducible from a fresh clone;

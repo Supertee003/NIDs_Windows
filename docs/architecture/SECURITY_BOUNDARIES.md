@@ -1,6 +1,6 @@
 # Security Boundaries and Privilege Separation
 
-> Verified against current source at build source `2129dcd`. This is a design/boundary document,
+> Verified against current source at build source `e406cbb`. This is a design/boundary document,
 > not a penetration test. **Do not use `CONTRACT_MAP.json` CONTRACT-04 as current control-plane
 > truth** — it still describes the frozen v1 IPC; the active path is v2 source code cited below.
 > Related: [Threat model](../SECURITY_THREAT_MODEL.md), [Security policy](../../SECURITY.md),

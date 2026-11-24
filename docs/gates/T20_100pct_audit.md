@@ -6,7 +6,7 @@
 >
 > **Scope (P3-EVIDENCE-HONESTY, 2026-11-24).** This is the immutable v1.1 **release-identity** board:
 > signed candidate `466a226`, build source `a53eda8`. It is not a re-run at the current build
-> source (`2129dcd` at this audit), and no current-source E5/soak result is claimed. The
+> source (`e406cbb` at this audit), and no current-source E5/soak result is claimed. The
 > `clean_host_e5` and `soak_24h` inputs below are owner-attested operator files under ignored
 > `admin-evidence/`; a fresh clone cannot reproduce them from repository content. PASS state,
 > gate count (6/6) and release identity are unchanged by this clarification.

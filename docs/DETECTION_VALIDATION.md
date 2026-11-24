@@ -7,9 +7,11 @@
 > change). The matrix has **not** been re-measured on the host at `a53eda8`; no
 > E5 is claimed for this branch. See `analysis/current-head/RECONCILE-DOCS-READINESS-20261119.md`.
 
-> **Current source (P8-I45-SOURCE-TRUTH, 2026-11-24):** the build source is now `2129dcd`
+> **Current source (P8-I44-OBSERVABILITY, 2026-11-24):** the build source is now `e406cbb`
 > (P2-44 `9105ff5` added observability counters, P2b `661fb76` tightened wire-length decoding;
-> P8 source-truth added only authority/quarantine disclosure comments).
+> P8 source-truth `2129dcd` added only authority/quarantine disclosure comments; P8-I44 split
+> nose drop causes by exclusive counter, counted detector allocation failures as detection
+> degradation, and named the lifecycle fresh-loss input).
 > Neither change came with a host re-measurement of this matrix. The E5/E6 rows below remain
 > HISTORICAL at `f4cde3c`; no current-source E5 is claimed. `docs/portfolio/DETECTION_CATALOG.md`
 > now separates code-path 23/23 from host-evaluable 22/23 (R2003/FN-1).

@@ -8,8 +8,8 @@
 
 > **Provenance (P5-DETECTION-TRUTH).** The rule matrix and E5/E6 rows below were measured at build
 > source `f4cde3c`; the immutable release identity is `a53eda8`; the current build source is
-> `2129dcd`. The intervening delta is recorded as additive control-plane/observability work, but
-> the matrix has **not** been re-measured at `2129dcd`. Treat every E5/E6 row here as HISTORICAL at
+> `e406cbb`. The intervening delta is recorded as additive control-plane/observability work, but
+> the matrix has **not** been re-measured at `e406cbb`. Treat every E5/E6 row here as HISTORICAL at
 > its recorded source, not as current-source verification. See `docs/DETECTION_VALIDATION.md`.
 
 ## 1. Three different meanings of "coverage"

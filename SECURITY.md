@@ -5,7 +5,7 @@
 | Version | Status |
 |---|---|
 | `v1.1` (published, immutable) | Supported as the current release record |
-| `main` development head | Best-effort; current build source `2129dcd` (ADR-0008; confirm in `AGENTS.md` and `build_manifest.json`). `v1.1` stays immutable |
+| `main` development head | Best-effort; current build source `e406cbb` (ADR-0008; confirm in `AGENTS.md` and `build_manifest.json`). `v1.1` stays immutable |
 
 AEGIS is a **research and development** Windows kernel-assisted NIDS. It is released for
 development, qualification, and observe-only lab operation. It is **not** an IPS, does not block

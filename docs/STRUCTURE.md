@@ -1,8 +1,8 @@
-﻿# AEGIS NIDS — Source Tree Structure (current HEAD)
+# AEGIS NIDS — Source Tree Structure (current HEAD)
 
 | Field | Value |
 |---|---|
-| Document status | **CURRENT** — rebased on the source tree at build source `2129dcd` (ADR-0008) |
+| Document status | **CURRENT** — rebased on the source tree at build source `e406cbb` (ADR-0008) |
 | Records HEAD | see `git rev-parse HEAD`; this document is records-only under ADR-0008 |
 | Canonical entrypoint | `src/main.zig` (`runtime_manifest.json:4`) |
 | Source of truth for roles | `SYSTEM_MAP.json`, `FLOW_MAP.json`, `AUTHORITY_MAP.json`, `runtime_manifest.json`, `AGENTS.md` |
@@ -97,7 +97,7 @@ part of the one production runtime described in `AGENTS.md` and `runtime_manifes
 2. **No import-time host effects.** Product modules must be importable without binding sockets, serving, printing banners, or calling `sys.exit`.
 3. **Tests never write tracked state.** Use `tmp_path`; result stamps and `logs/*.json` are producer-owned.
 4. **No host effects.** Detection-only means no WFP mutation, no quarantine, and no `BLOCKED_CONFIRMED` claim from a `BLOCK` label.
-5. **Records vs source.** A docs-only commit moves records HEAD only; machine maps keep carrying build source `2129dcd` until source actually changes (ADR-0008).
+5. **Records vs source.** A docs-only commit moves records HEAD only; machine maps keep carrying build source `e406cbb` until source actually changes (ADR-0008).
 6. **Historical labels.** Mark superseded documents `HISTORICAL` rather than deleting evidence.
 
 ---
@@ -105,7 +105,7 @@ part of the one production runtime described in `AGENTS.md` and `runtime_manifes
 ## 4. Verify after any change
 
 ```powershell
-python tools/truth.py verify          # TRUTH_VALID; build source 2129dcd
+python tools/truth.py verify          # TRUTH_VALID; build source e406cbb
 git ls-files | Select-String -Pattern '\.(exe|dll|pdb|obj|o|so|ilk|exp|lib)$'   # empty
 python -m pytest tests/release -q     # release/index consistency gates
 ```
