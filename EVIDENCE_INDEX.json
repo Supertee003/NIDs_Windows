@@ -10584,6 +10584,55 @@
         "Build source remains 661fb76; release identity remains v1.1 / 466a226 / a53eda8.",
         "Source findings in issues #44/#45 remain open."
       ]
+    },
+    {
+      "id": "P8-I45-SOURCE-TRUTH-E2",
+      "head_sha": "2129dcd7a166ef47226a9ae4afd8144d787ebbf0",
+      "timestamp": "2026-11-24",
+      "title": "P8 / issue #45: source authority narratives labelled historical without ABI change",
+      "level": "E2",
+      "component": "shared/abi/pep_abi.md, nose/pipe_writer.go, src/capture/source_arbiter.zig, src/capture/wfp_telemetry.zig, src/capture/windows_capture.zig, src/control/defcon.zig, src/detection/injection_detector.zig, src/tests/cli/nose_pipe_e2e_cli.zig, scripts/doc_checker.py, tests/docs/test_doc_truth_labels.py, tests/wfp/test_capture_source_arbitration.py, tests/host_telemetry/test_t11_single_convention_ingress.py, tests/runtime/test_defcon_authority.py, tests/security/test_capability_claims.py",
+      "flow_id": "CONTRACT-02, DET-04, F4, F5, F10",
+      "description": "Build-source slice closing the source-path findings deferred by P4/P5/P6. pep_abi.md authority narrative is marked HISTORICAL with detection-only current authority and frozen ABI bytes; Go writer and CLI usage use real src/capture paths and state that no TCP fallback exists; F4 dual-submitter stall window is disclosed; quarantined F5 WFP reader, lab-only F10 DEFCON rungs and NOT-WIRED DET-04 detector are labelled from source. A records-only doc_checker fix accepts valid hyphenated aegisctl commands without treating options as commands. No rule, wire, ABI, authority behavior or release identity change.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-P8-I45-20261124.md",
+        "shared/abi/pep_abi.md",
+        "nose/pipe_writer.go",
+        "src/capture/source_arbiter.zig",
+        "src/capture/wfp_telemetry.zig",
+        "src/capture/windows_capture.zig",
+        "src/control/defcon.zig",
+        "src/detection/injection_detector.zig",
+        "src/tests/cli/nose_pipe_e2e_cli.zig",
+        "scripts/doc_checker.py",
+        "tests/docs/test_doc_truth_labels.py",
+        "tests/wfp/test_capture_source_arbitration.py",
+        "tests/host_telemetry/test_t11_single_convention_ingress.py",
+        "tests/runtime/test_defcon_authority.py",
+        "tests/security/test_capability_claims.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "zig build test -> exit 0",
+        "zig build -> aegis_nids.exe present",
+        "cd nose && go build -o aegis-nose-i45.exe . -> artifact present",
+        "pytest targeted source-truth pins -> 41 passed",
+        "python -m pytest -q -m 'not host_live' -> 1483 passed, 1 skipped, 18 deselected, 27 subtests passed",
+        "python scripts/check_summary.py -> SUMMARY_VALID",
+        "python scripts/doc_checker.py --self-test -> Self-test: ALL PASS",
+        "python scripts/doc_checker.py -> 0 FAIL, 0 WARN",
+        "python D:/aegis-tmp/check_links.py -> BAD LINKS none",
+        "python tools/truth.py verify -> TRUTH_VALID @ 2129dcd",
+        "python tools/release_engineering.py --verify -> 674/674 digests"
+      ],
+      "result": "PASS_E2",
+      "finding": "Source truth now matches current records truth: historical enforcement/WFP wording is scoped, unwired or quarantined modules are not advertised as live, the F4 dual-submitter exception is disclosed, and valid hyphenated CLI commands no longer produce a doc-checker contradiction. ABI bytes and runtime behavior are unchanged.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P8-I45-20261124.md",
+      "limitations": [
+        "E1/E2 only: no Windows host, E4/E5, soak, install, signing or production-simulation verification at this source.",
+        "Issue #44 counter-delta/observability source slice remains open.",
+        "No new release tag, signature, key, gate, rule, wire layout or authority behavior; release identity remains v1.1 / 466a226 / a53eda8."
+      ]
     }
   ],
   "known_gaps": [
@@ -17255,7 +17304,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 43,
-    "E2_count": 151,
+    "E2_count": 152,
     "E3_count": 15,
     "E4_count": 4,
     "E5_count": 122,

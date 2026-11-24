@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-24T11:05:21.651700+00:00",
+  "generated_at": "2026-11-24T11:20:12.771976+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3194,
+  "total_files": 3195,
   "by_class": {
-    "canonical-docs": 557,
+    "canonical-docs": 558,
     "canonical-build": 312,
     "unclassified": 27,
     "canonical-source": 1791,
@@ -1009,6 +1009,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 14359
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-P8-I45-20261124.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 13170
     },
     {
       "path": "analysis/current-head/NATIVE-BUILD-001-20261114.md",
@@ -4314,7 +4320,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1612920
+      "size": 1616773
     },
     {
       "path": "FLOW_MAP.json",
@@ -4422,7 +4428,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 505822
+      "size": 505823
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4680,7 +4686,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 10225
+      "size": 9877
     },
     {
       "path": "pytest.ini",
@@ -14592,7 +14598,7 @@
       "path": "scripts/doc_checker.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 11606
+      "size": 11951
     },
     {
       "path": "scripts/e5-clean-host.ps1",
@@ -17448,7 +17454,7 @@
       "path": "tests/docs/test_doc_truth_labels.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 8948
+      "size": 9303
     },
     {
       "path": "tests/docs/test_stale_doc_sweep.py",
