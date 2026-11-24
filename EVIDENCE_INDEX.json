@@ -10633,6 +10633,55 @@
         "Issue #44 counter-delta/observability source slice remains open.",
         "No new release tag, signature, key, gate, rule, wire layout or authority behavior; release identity remains v1.1 / 466a226 / a53eda8."
       ]
+    },
+    {
+      "id": "P8-I44-OBSERVABILITY-E2",
+      "head_sha": "e406cbb3512b4faae8441e9f1eb70b481971c75c",
+      "timestamp": "2026-11-24",
+      "title": "P8 / issue #44: exclusive nose-drop causes, detector-degradation counters and named lifecycle input",
+      "level": "E2",
+      "component": "src/capture/nose_pipe_reader.zig, src/control/state_machine.zig, src/daemon.zig, src/pipeline/event_processor.zig, src/pipeline/event_queue.zig, src/pipeline/runtime_state.zig, src/tests/cli/nose_pipe_e2e_cli.zig, tools/aegisctl/api/control_api.py, tests/security/test_soak_verdict.py, tests/tools/test_control_retry.py, tests/wfp/test_capture_source_arbitration.py, tests/wfp/test_kernel_bidirectional_capture.py, tests/docs/test_doc_truth_labels.py",
+      "flow_id": "nose ingress -> queue -> detection -> health -> control API (issue #44 / F4 / F6 / F7)",
+      "description": "Build-source slice closing issue #44 STOP-THE-LINE silent-event-loss triage without a wire/rule/authority change. Four exclusive diagnostic drop causes (framing, midframe, shape, capacity) are recorded behind recordNoseFrameDrop and sum to g_nose_frames_dropped; the midframe payload/connect error path now increments authoritative pipe-error and drop counters in the same patch; pushDecodedFrameDetailed distinguishes shape refusal from capacity shed while preserving the bool facade; detector allocation failures are counted as separate detector_degradation signals while the event keeps flowing and never feeds data_loss_observed; the lifecycle fresh-loss input is renamed fresh_loss_observed so cumulative health loss and fresh runtime loss are not conflated; additive cause/detector keys are exposed in health JSON and the control API. Cause keys are diagnostic subsets of the parent counter and are never added to soak LOSS_COUNTERS; Go capture-side drops remain a distinct pre-pipe boundary. No CanonicalEvent wire layout, golden vector, rule, release identity, tag, signature or key change.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-P8-I44-20261124.md",
+        "src/capture/nose_pipe_reader.zig",
+        "src/control/state_machine.zig",
+        "src/daemon.zig",
+        "src/pipeline/event_processor.zig",
+        "src/pipeline/event_queue.zig",
+        "src/pipeline/runtime_state.zig",
+        "src/tests/cli/nose_pipe_e2e_cli.zig",
+        "tools/aegisctl/api/control_api.py",
+        "tests/security/test_soak_verdict.py",
+        "tests/tools/test_control_retry.py",
+        "tests/wfp/test_capture_source_arbitration.py",
+        "tests/wfp/test_kernel_bidirectional_capture.py",
+        "tests/docs/test_doc_truth_labels.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "zig build test -> exit 0",
+        "zig build -> exit 0",
+        "cd nose && go build -o aegis-nose-i44.exe . -> exit 0, artifact present",
+        "E2E harness compile via src/-root wrapper -> exit 0",
+        "targeted pins (control/retry, soak, capture arbitration, direction, doc truth) -> 60 passed",
+        "python -m pytest -q -m 'not host_live' -> 1486 passed, 1 skipped, 18 deselected, 27 subtests passed",
+        "python scripts/check_summary.py -> SUMMARY_VALID",
+        "python scripts/doc_checker.py -> 0 FAIL, 0 WARN, 23 total",
+        "python D:/aegis-tmp/check_links.py -> BAD LINKS none",
+        "python tools/truth.py verify -> TRUTH_VALID @ e406cbb",
+        "python tools/release_engineering.py --verify -> 674/674 digests"
+      ],
+      "result": "PASS_E2",
+      "finding": "Silent-loss paths now have authoritative, distinguishable counters and operator surfaces: nose drops are split by exclusive cause, midframe read/connect failures move the authoritative counters, detector allocation failures are visible as detection degradation without event-loss claims, and the lifecycle fresh-loss input is named so DEGRADED health can coexist with a RUNNING recovery state. No wire, rule, authority, host-effect or release-identity change.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P8-I44-20261124.md",
+      "limitations": [
+        "E1/E2 only: no Windows host, E4/E5, soak, install, signing or production-simulation verification at this source.",
+        "The exact-delta -inject pipe harness is compiled and source-pinned but was not run against the live daemon; an isolated-host run is required for E3/E4.",
+        "Cause counters are diagnostic subsets of g_nose_frames_dropped and detector counters are not event loss; neither enters soak LOSS_COUNTERS and no zero-loss-ever claim is made.",
+        "No new release tag, signature, key, gate, rule, wire layout or authority behavior; release identity remains v1.1 / 466a226 / a53eda8."
+      ]
     }
   ],
   "known_gaps": [
@@ -17304,7 +17353,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 43,
-    "E2_count": 152,
+    "E2_count": 153,
     "E3_count": 15,
     "E4_count": 4,
     "E5_count": 122,

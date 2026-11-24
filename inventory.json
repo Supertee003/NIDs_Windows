@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-24T12:14:31.125374+00:00",
+  "generated_at": "2026-11-24T12:21:35.071044+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3195,
+  "total_files": 3196,
   "by_class": {
-    "canonical-docs": 558,
+    "canonical-docs": 559,
     "canonical-build": 312,
     "unclassified": 27,
     "canonical-source": 1791,
@@ -258,13 +258,13 @@
       "path": "AGENTS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9288
+      "size": 9323
     },
     {
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 59599
+      "size": 60591
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -1009,6 +1009,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 14359
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-P8-I44-20261124.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 10114
     },
     {
       "path": "analysis/current-head/MASTER-AUDIT-P8-I45-20261124.md",
@@ -2040,7 +2046,7 @@
       "path": "AUTHORITY_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 18281
+      "size": 18760
     },
     {
       "path": "brain/__init__.py",
@@ -2400,13 +2406,13 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 136219
+      "size": 140466
     },
     {
       "path": "build_truth.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 4373
+      "size": 4493
     },
     {
       "path": "Cargo.lock",
@@ -2610,7 +2616,7 @@
       "path": "CONTRACT_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 13517
+      "size": 13796
     },
     {
       "path": "contracts/fixtures/abi/event_boundaries.json",
@@ -2940,7 +2946,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 72100
+      "size": 72132
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3222,7 +3228,7 @@
       "path": "docs/DETECTION_VALIDATION.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9534
+      "size": 9706
     },
     {
       "path": "docs/ENV_VARS.md",
@@ -3894,7 +3900,7 @@
       "path": "docs/STRUCTURE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8274
+      "size": 8271
     },
     {
       "path": "docs/TECHNOLOGY_DECISIONS.md",
@@ -4320,13 +4326,13 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1599453
+      "size": 1621548
     },
     {
       "path": "FLOW_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 32719
+      "size": 33492
     },
     {
       "path": "go/aggregator/alert.go",
@@ -4428,7 +4434,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 505990
+      "size": 505991
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4686,7 +4692,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9758
+      "size": 10225
     },
     {
       "path": "pytest.ini",
@@ -14334,7 +14340,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23280
+      "size": 23828
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -17106,7 +17112,7 @@
       "path": "SYSTEM_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 24008
+      "size": 24686
     },
     {
       "path": "tests/__init__.py",
