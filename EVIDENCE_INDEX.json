@@ -10937,6 +10937,29 @@
       "evidence_artifact": "analysis/current-head/MASTER-AUDIT-FINAL-RESIDUALS-20261125.md",
       "status": "CLOSED",
       "status_basis": "entry.result=PASS recorded at build source 43a8bcc; E2 source/unit proof only, no new host verdict"
+    },
+    {
+      "id": "P8-I44-43A8BCC-E3-20261125",
+      "head_sha": "43a8bcc02358076380fa938b0e5632870643d3c5",
+      "timestamp": "2026-11-25",
+      "title": "Issue #44 exact-delta E3 re-executed at build source 43a8bcc",
+      "level": "E3",
+      "component": "Go/Nose pipe contract -> Zig pipe reader -> queue -> authoritative counters",
+      "flow_id": "NOSE-INGRESS-EXACT-DELTA",
+      "description": "Harness recompiled from unmodified current source via a temporary src/ module-root wrapper (deleted after compile; git status clean). Private pipe \\\\.\\\\pipe\\\\aegis_nose_i44e used in a non-elevated agent session; three injected failure frames produced exact deltas: close-before-payload +1 midframe/+1 pipe error, absurd-length +1 framing/+1 pipe error, drain-then-valid +1 framing/+1 submitted/no pipe error. Fabric counters stayed zero; canonical pipe and live service untouched. Canonical-pipe E4/E5 at this source remains pending operator action.",
+      "files_changed": [
+        "analysis/current-head/MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E3-20261125.md"
+      ],
+      "tests": [
+        "zig build-exe ... -> exit 0",
+        "i44_e3_check_43a8bcc.exe -inject -pipe aegis_nose_i44e -seconds 2 -> exit 0",
+        "harness SHA256 09EAEAB79800446C926B0FCD7AAB4C04AA655D15770BBB61F033BAF9952302E9"
+      ],
+      "result": "PASS_E3",
+      "finding": "Private-pipe exact-delta proof is current at build source 43a8bcc; no canonical-pipe or elevated host claim is included.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E3-20261125.md",
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS_E3 recorded at build source 43a8bcc; E3 only"
     }
   ],
   "known_gaps": [
@@ -17610,7 +17633,7 @@
     "E0_count": 0,
     "E1_count": 43,
     "E2_count": 160,
-    "E3_count": 17,
+    "E3_count": 18,
     "E4_count": 4,
     "E5_count": 120,
     "E6_count": 1,

@@ -68,10 +68,12 @@ HISTORICAL at `a53eda8`.
 The issue #44 `-inject` E3/E4/E5 results were produced at build source
 `a26c573`. This slice advances the build source to `43a8bcc`, so those runs are
 now **HISTORICAL with respect to the current build source** even though the
-changed bytes are Go comments and one unused Go field. They are not re-claimed
-as current-source proof here. An elevated E4/E5 re-execution on the canonical
-pipe is pending operator action; the prepared harness and commands are in the
-closeout comment. No new E4/E5/soak/E6/E7 verdict is asserted.
+changed bytes are Go comments and one unused Go field. E3 has been re-executed
+at `43a8bcc` on a private pipe with exact deltas
+(`MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E3-20261125.md`, harness SHA256
+`09EAEAB7…02E9`). An elevated E4/E5 re-execution on the canonical pipe is
+still pending operator action; the prepared harness and script are described
+in the closeout comment. No new E4/E5/soak/E6/E7 verdict is asserted.
 
 ---
 
@@ -102,9 +104,9 @@ was changed to obtain test space.
 
 ## Completion gate
 
-**PASS (E1/E2) for all in-repository audit findings.** Records residuals are
-closed; source findings are closed or explicitly dispositioned as documented
-design/recommendations; owner/external items remain named. No wire/rule/
-authority/host-effect/release change and no new host verdict. **Pending:**
-operator-run elevated E4/E5 re-proof at build source `43a8bcc` before any new
-current-source host claim.
+**PASS (E1/E2, plus E3 at `43a8bcc`) for all in-repository audit findings.**
+Records residuals are closed; source findings are closed or explicitly
+dispositioned as documented design/recommendations; owner/external items remain
+named. No wire/rule/authority/host-effect/release change and no new host
+verdict. **Pending:** operator-run elevated E4/E5 re-proof at build source
+`43a8bcc` before any new current-source host claim.
