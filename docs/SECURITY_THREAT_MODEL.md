@@ -1,7 +1,7 @@
 # Security Threat Model — AEGIS NIDS Windows
 
 > Scope: the detection-only production runtime described in `README.md`, `SYSTEM_MAP.json`,
-> `FLOW_MAP.json`, and `AUTHORITY_MAP.json` at build source `661fb76`.
+> `FLOW_MAP.json`, and `AUTHORITY_MAP.json` at build source `2129dcd`.
 > This is a design-level threat model, not a penetration test result. Controls are listed with the
 > layer that owns them; where a control is only partially implemented, it is marked as such.
 
