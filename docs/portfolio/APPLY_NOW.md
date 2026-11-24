@@ -33,7 +33,7 @@ seven toolchains; C/C++ is one adapter family; TypeScript is advisory-only), but
 owns the pipeline and no layer can promote "detected" into "blocked." Published `v1.1` is an
 Ed25519-signed, detection-only build from signed candidate `466a226` / build source `a53eda8`,
 with a genuine 36.52 h owner-run soak PASS and a bounded Windows host detection proof that has a
-negative control. Current build source is `03bb86d`; no current-source E5/soak result is claimed.
+negative control. Current build source is `a26c573`; no current-source E5/soak result is claimed.
 
 ---
 

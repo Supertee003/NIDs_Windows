@@ -1,5 +1,5 @@
 {
-  "head_sha": "03bb86d98ea5925170157b6d0f9b63ed12f4c858",
+  "head_sha": "a26c5731afe154890e4f3d205d9736a5e1ead78a",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-23",
   "generator_version": "3.0",
@@ -10797,6 +10797,41 @@
         "48 unresolvable pointers remain unrecovered (18 historical with locators, 30 missing with basis); no pointer was fabricated.",
         "Release identity unchanged v1.1 / 466a226 / a53eda8, 6/6 gates PASS (0 open)."
       ]
+    },
+    {
+      "id": "P1-P8-SOURCE-HYGIENE-CARRY-20261124",
+      "head_sha": "a26c5731afe154890e4f3d205d9736a5e1ead78a",
+      "timestamp": "2026-11-24",
+      "title": "P1/P8 source hygiene: stale production label removed and Go Nose writer rejects oversize wires",
+      "level": "E2",
+      "component": "src/windows/ips_simulation.zig, nose/pipe_writer.go, nose/pipe_writer_test.go",
+      "flow_id": "Go Nose sendWire -> u32 length prefix -> Zig canonical pipe reader",
+      "description": "Source-level honesty and defense-in-depth slice. The ENFORCE lab mode is labelled HISTORICAL (no live host-effect authority under RETIRE-HOST-EFFECT-001); the Go writer now rejects wires longer than EventV3MaxWireSize (1189) instead of truncating/slicing past the fixed frame buffer, so the u32 length prefix stays in sync with emitted bytes. A new Go unit test pins sent=0/dropped=1 and an empty file. Wire layout, rules, authority, host effects and release identity are unchanged. The -inject E3/E4/E5 proof remains CLOSED_AT_RECORDED_HEAD at 03bb86d, not claimed at this source.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-P1-P8-SOURCE-HYGIENE-20261124.md",
+        "src/windows/ips_simulation.zig",
+        "nose/pipe_writer.go",
+        "nose/pipe_writer_test.go"
+      ],
+      "tests": [
+        "gofmt -l nose/pipe_writer.go nose/pipe_writer_test.go -> no output",
+        "cd nose && go test ./... -> ok aegis-nose",
+        "cd nose && go build -o aegis-nose.exe . -> exit 0",
+        "zig build test / zig build (D: caches) -> exit 0",
+        "python -m pytest -q -m 'not host_live' -> 1486 passed, 1 skipped, 18 deselected, 27 subtests passed",
+        "python tools/rebuild_truth.py + tools/truth.py verify -> TRUTH_VALID @ a26c573",
+        "python scripts/check_summary.py -> SUMMARY_VALID; doc checker 0 FAIL/0 WARN; no bad links",
+        "python tools/release_engineering.py --refresh-digests / --verify -> digests refreshed and verified"
+      ],
+      "result": "PASS_E2",
+      "finding": "Two historical/defense-in-depth source issues are corrected without changing behavior on valid frames. The oversize guard is fail-closed, counted as a normal dropped frame, and cannot desynchronise the length prefix. No host re-measurement or current-source E3/E4/E5 is claimed.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-P1-P8-SOURCE-HYGIENE-20261124.md",
+      "limitations": [
+        "E2 source/unit proof only: no Windows host run, no -inject re-execution at a26c573.",
+        "No wire-layout, schema, golden-vector, rule, authority, host-effect or release-identity change.",
+        "No soak, install, signing, production simulation, E6/E7 or zero-loss claim; 36.52 h soak remains HISTORICAL at a53eda8.",
+        "Release identity unchanged v1.1 / 466a226 / a53eda8, 6/6 gates PASS (0 open)."
+      ]
     }
   ],
   "known_gaps": [
@@ -17468,7 +17503,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 43,
-    "E2_count": 158,
+    "E2_count": 159,
     "E3_count": 16,
     "E4_count": 4,
     "E5_count": 119,

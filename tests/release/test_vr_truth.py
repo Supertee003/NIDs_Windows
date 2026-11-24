@@ -87,7 +87,7 @@ def test_soak_gate_requires_ordered_timestamps() -> None:
 def test_build_manifest_component_commits_match_source_commit() -> None:
     manifest = json.loads(_read("build_manifest.json"))
     source = manifest["source_commit"]
-    assert source == "03bb86d"
+    assert source == "a26c573"
     assert manifest["components"], "expected component provenance"
     for component in manifest["components"]:
         assert component["commit"] == source, component["id"]
@@ -143,4 +143,4 @@ def test_current_security_docs_carry_the_current_build_source() -> None:
     ):
         text = _read(rel)
         assert "ab0fa17" not in text, rel
-        assert "03bb86d" in text, rel
+        assert "a26c573" in text, rel

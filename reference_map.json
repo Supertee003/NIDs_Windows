@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-24T13:33:03.192893+00:00",
+  "generated_at": "2026-11-24T16:51:34.053825+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 3196,
+  "total_files": 3200,
   "by_role": {
-    "documentation": 544,
+    "documentation": 548,
     "build-config": 301,
     "other": 27,
     "lockfile": 6,
@@ -958,6 +958,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/MASTER-AUDIT-P1-FAILURE-MODEL-20261124.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/MASTER-AUDIT-P2-20261124.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -971,6 +975,10 @@
       "role": "documentation"
     },
     "analysis/current-head/MASTER-AUDIT-P3-20261124.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-P3-EVI06-DOWNGRADE-20261124.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -991,6 +999,14 @@
       "role": "documentation"
     },
     "analysis/current-head/MASTER-AUDIT-P8-I44-20261124.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-P8-I44-E3-20261124.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-P8-I44-E4E5-20261124.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -13111,5 +13127,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "03bb86d"
+  "source_commit": "a26c573"
 }

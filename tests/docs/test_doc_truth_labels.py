@@ -30,7 +30,7 @@ def test_ai_context_has_no_live_enforcement_authority_claim() -> None:
     assert "Detection-only policy/evidence authority:" in text
     assert "no host-effect authority exists" in text
     assert "HISTORICAL @ 2026-11-03" in text
-    assert "current build source is `03bb86d`" in text
+    assert "current build source is `a26c573`" in text
 
 
 def test_ai_context_labels_source_path_abi_snapshot_as_historical() -> None:
@@ -63,7 +63,7 @@ def test_ai_context_fragments_are_detection_only() -> None:
     assert "Rust PEP (ENFORCE)" not in spine
     phase = _read("docs/ai-context/10-current-phase.md")
     assert "current build source after AUDIT-CLOSE-20261123" not in phase
-    assert "The current build source is `03bb86d`" in phase
+    assert "The current build source is `a26c573`" in phase
 
 
 def test_architecture_authority_docs_are_scoped() -> None:

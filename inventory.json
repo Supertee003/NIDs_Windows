@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-24T13:33:03.186955+00:00",
+  "generated_at": "2026-11-24T16:51:34.049138+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3196,
+  "total_files": 3200,
   "by_class": {
-    "canonical-docs": 559,
+    "canonical-docs": 563,
     "canonical-build": 312,
     "unclassified": 27,
     "canonical-source": 1791,
@@ -258,13 +258,13 @@
       "path": "AGENTS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9323
+      "size": 9372
     },
     {
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 60591
+      "size": 60142
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -963,6 +963,12 @@
       "size": 10348
     },
     {
+      "path": "analysis/current-head/MASTER-AUDIT-P1-FAILURE-MODEL-20261124.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2402
+    },
+    {
       "path": "analysis/current-head/MASTER-AUDIT-P2-20261124.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -984,7 +990,13 @@
       "path": "analysis/current-head/MASTER-AUDIT-P3-20261124.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 14470
+      "size": 14878
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-P3-EVI06-DOWNGRADE-20261124.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4569
     },
     {
       "path": "analysis/current-head/MASTER-AUDIT-P4-20261124.md",
@@ -1015,6 +1027,18 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 10114
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-P8-I44-E3-20261124.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 8229
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-P8-I44-E4E5-20261124.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 9423
     },
     {
       "path": "analysis/current-head/MASTER-AUDIT-P8-I45-20261124.md",
@@ -2946,7 +2970,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 72132
+      "size": 72289
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3036,7 +3060,7 @@
       "path": "docs/architecture/FAILURE_MODEL.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5613
+      "size": 6426
     },
     {
       "path": "docs/architecture/FILE_REGISTRY.csv",
@@ -3228,7 +3252,7 @@
       "path": "docs/DETECTION_VALIDATION.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9706
+      "size": 9832
     },
     {
       "path": "docs/ENV_VARS.md",
@@ -4326,7 +4350,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1621548
+      "size": 1632655
     },
     {
       "path": "FLOW_MAP.json",
@@ -4434,7 +4458,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 506160
+      "size": 506159
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4626,13 +4650,13 @@
       "path": "nose/pipe_writer.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 5464
+      "size": 5975
     },
     {
       "path": "nose/pipe_writer_test.go",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 675
+      "size": 1472
     },
     {
       "path": "nose/README_DEPLOY.txt",
@@ -4692,7 +4716,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9877
+      "size": 10225
     },
     {
       "path": "pytest.ini",
@@ -17028,7 +17052,7 @@
       "path": "src/windows/ips_simulation.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 23055
+      "size": 23106
     },
     {
       "path": "src/windows/registry_monitor.zig",
@@ -19191,5 +19215,5 @@
       "size": 624
     }
   ],
-  "source_commit": "03bb86d"
+  "source_commit": "a26c573"
 }

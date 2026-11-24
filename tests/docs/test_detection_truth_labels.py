@@ -34,7 +34,7 @@ def test_catalog_and_validation_carry_current_source_provenance() -> None:
     catalog = _read("docs/portfolio/DETECTION_CATALOG.md")
     validation = _read("docs/DETECTION_VALIDATION.md")
     for text in (catalog, validation):
-        assert "03bb86d" in text
+        assert "a26c573" in text
         assert "been re-measured" in text
         assert "HISTORICAL" in text
 
