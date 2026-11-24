@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "2129dcd",
+      "commit": "e406cbb",
       "source": "src/main.zig",
       "classification": "CANONICAL"
     },
@@ -38,7 +38,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "2129dcd",
+      "commit": "e406cbb",
       "source": "rust-src/lib.rs",
       "classification": "CANONICAL"
     },
@@ -49,7 +49,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "2129dcd",
+      "commit": "e406cbb",
       "source": "src/windows/aegis_wfp.c",
       "classification": "CANONICAL"
     },
@@ -60,7 +60,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "2129dcd",
+      "commit": "e406cbb",
       "source": "src/windows/etw_native.c",
       "classification": "CANONICAL"
     },
@@ -71,7 +71,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "2129dcd",
+      "commit": "e406cbb",
       "source": "src/windows/fim_native.c",
       "classification": "CANONICAL"
     },
@@ -82,7 +82,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "go-nose-build-test",
-      "commit": "2129dcd",
+      "commit": "e406cbb",
       "source": "nose/main.go",
       "classification": "CANONICAL"
     },
@@ -93,7 +93,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-aggregator-build-test",
-      "commit": "2129dcd",
+      "commit": "e406cbb",
       "source": "go/aggregator/main.go",
       "classification": "SUPPORT"
     },
@@ -104,7 +104,7 @@
       "type": "library",
       "required": false,
       "ci_job": "shield-build",
-      "commit": "2129dcd",
+      "commit": "e406cbb",
       "source": "shield/src/lib.rs",
       "classification": "SUPPORT"
     },
@@ -115,7 +115,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "2129dcd",
+      "commit": "e406cbb",
       "source": "tools/aegisctl.py",
       "classification": "CANONICAL"
     },
@@ -126,7 +126,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "2129dcd",
+      "commit": "e406cbb",
       "source": "tools/installer.py"
     },
     {
@@ -136,7 +136,7 @@
       "type": "toolchain",
       "required": false,
       "ci_job": "ts-policy-build",
-      "commit": "2129dcd",
+      "commit": "e406cbb",
       "source": "ts_policy/",
       "classification": "SUPPORT",
       "note": "Advisory policy authoring only; no runtime artifact or enforcement authority."
@@ -148,7 +148,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "2129dcd",
+      "commit": "e406cbb",
       "source": "brain/"
     }
   ],
@@ -1035,7 +1035,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23280,
-      "sha256": "a1b9f2b72780b23d9a23c0cee87d85ae5a6171cd6c53fc8bc29a2177a5415357",
+      "sha256": "a80c653311c7b8659892c1ea1e281d61d0718e71d838e2bff6ae1e80326261e2",
       "language": "json"
     },
     {
@@ -1898,8 +1898,8 @@
     },
     {
       "path": "src/capture/nose_pipe_reader.zig",
-      "size": 26468,
-      "sha256": "9cd0342ab82a67361c7e67e7033ce904996053bd309f4f964c1fd4a23c1c9ee6",
+      "size": 26976,
+      "sha256": "fe2f930755f577d4c3c8f41ce984583bd98c0e8ac502ac846f387c4e55f6f13d",
       "language": "zig"
     },
     {
@@ -2060,8 +2060,8 @@
     },
     {
       "path": "src/control/state_machine.zig",
-      "size": 39836,
-      "sha256": "6d9014f0a8b7f4f1c35774f1d37d6fe0538e0faee65cda39e4eea2d06d4c30eb",
+      "size": 45462,
+      "sha256": "3dcff78aa5dbe32bde28c9f879f93cce39fbff2154536fe4007e9c67c25b8bf3",
       "language": "zig"
     },
     {
@@ -2198,8 +2198,8 @@
     },
     {
       "path": "src/daemon.zig",
-      "size": 54087,
-      "sha256": "0eac2762f4a31095e233aafadddd4e677a43c79b6dbb0ecf797bba217ee4da47",
+      "size": 54105,
+      "sha256": "22adfea0dc5b8e4c8cf9b2de56f951a14dccdfe7f98789fefa6d305a156d3518",
       "language": "zig"
     },
     {
@@ -2522,14 +2522,14 @@
     },
     {
       "path": "src/pipeline/event_processor.zig",
-      "size": 66731,
-      "sha256": "b1eb0c9be68db36c0133b3bc295e84b46db0c49e34532a36b97fc7b110e96e86",
+      "size": 70166,
+      "sha256": "823d29858cdbe92fd6027e3ad3fa5a8c7c3afa27b103a9eda4e01123a8c04dc2",
       "language": "zig"
     },
     {
       "path": "src/pipeline/event_queue.zig",
-      "size": 60346,
-      "sha256": "b264120b0ed02a0b3f4fcfcfe88976b28799e643fca0152b3d944457e9540c30",
+      "size": 62709,
+      "sha256": "50e32bb78ef7bf3a424253e19876e500a6289ad47be9768a533f926cca9bb607",
       "language": "zig"
     },
     {
@@ -2558,8 +2558,8 @@
     },
     {
       "path": "src/pipeline/runtime_state.zig",
-      "size": 35689,
-      "sha256": "edea53c17b7d7e2a2a9e58f3e2d44549aee73348319dc0f9e36ebd33d3871674",
+      "size": 38599,
+      "sha256": "f93e7240adb82c95be7a8e42f20ba0970050c4507f638e06678b797e371e8fc8",
       "language": "zig"
     },
     {
@@ -2858,8 +2858,8 @@
     },
     {
       "path": "src/tests/cli/nose_pipe_e2e_cli.zig",
-      "size": 2336,
-      "sha256": "bbe3e9db1f9ea247eda741310c12fec33add9464905ea28195eb0fcb3568acc6",
+      "size": 10226,
+      "sha256": "fae17ac1e894e8bf09811ddf0fbc323723d6550bde94ea2649e8cd577dc50586",
       "language": "zig"
     },
     {
@@ -3674,8 +3674,8 @@
     },
     {
       "path": "tools/aegisctl/api/control_api.py",
-      "size": 69094,
-      "sha256": "ed31bc6dd70269ed5819c943e60dbc7553bb1a6d358a7eb49c001f007ab3927d",
+      "size": 70534,
+      "sha256": "aeed642d796518b685c436d50c17a638a2ef184cea26c660a43407eb59ca38ca",
       "language": "python/cython"
     },
     {
