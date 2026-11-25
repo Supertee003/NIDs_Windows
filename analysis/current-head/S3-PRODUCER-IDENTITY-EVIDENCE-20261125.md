@@ -53,6 +53,11 @@ before; only provenance-bearing v3 frames make identity claims.
 | `python -m pytest -q -p no:cacheprovider -m "not host_live"` | exit 0 |
 | `python tools/rebuild_truth.py` | exit 0 |
 | `python tools/truth.py verify` | `TRUTH_VALID` at build source `f1f89c1` |
+| `python tools/release_engineering.py --verify` | `683 artifacts match their recorded digests (source_commit=f1f89c1)` |
+| `python scripts/check_summary.py` | `SUMMARY_VALID` |
+| `python scripts/doc_checker.py` | `0 FAIL, 0 WARN, 23 total` |
+| `python -m pytest -q -p no:cacheprovider tests/docs tests/release` | `262 passed` |
+| `python tools/final_audit.py --release-check` | exit 1 at current source: `release_signature` and `soak_24h` OPEN; immutable `v1.1` release identity remains 6/6 |
 
 Logs: `D:\aegis-tmp\s3_zig.log`, `D:\aegis-tmp\s3_zig_direct.log`,
 `D:\aegis-tmp\s3_zig_build.log`, `D:\aegis-tmp\s3_pytest.log`,
@@ -95,6 +100,10 @@ claimed as S3 proof and NOT claimed as an S3 regression. The CI-equivalent
 - Detection matrix remains NOT RE-MEASURED at this source (last measured
   `f4cde3c`). Full current-head Windows E5 / kernel IDS qualification remains
   `NOT_PROVEN`. Soak/install/signing/E6/E7 remain OPEN.
+- The current-source release check is honestly NOT SHIPPABLE (4/6 PASS):
+  `release_signature` and `soak_24h` are OPEN because their evidence predates
+  this runtime source. This does not change the immutable `v1.1` release
+  identity and its historical 6/6 result.
 
 ## Rollback
 
