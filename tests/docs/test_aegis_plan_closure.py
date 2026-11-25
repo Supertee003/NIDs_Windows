@@ -17,6 +17,7 @@ DOCS = {
     "AEGIS-009-KERNEL": "docs/runtime/KERNEL_LIFECYCLE.md",
     "AEGIS-011-FORENSIC": "docs/forensics/FORENSIC_CHAIN_STATUS.md",
     "AEGIS-012-PERFORMANCE": "docs/portfolio/PERFORMANCE_REPORT.md",
+    "AEGIS-013-VERIFICATION": "docs/portfolio/VERIFICATION_SUMMARY.md",
     "AEGIS-015-DOCS": "docs/DOCS_LIFECYCLE.md",
     "AEGIS-017-FUZZ": "docs/testing/FAULT_INJECTION_INVENTORY.md",
     "AEGIS-018-CI": "docs/CI_QUALITY_GATES.md",
@@ -115,6 +116,15 @@ def test_fuzz_inventory_records_the_real_smoke_run() -> None:
     assert "0xDEADBEEF" in text
     assert "deterministic E2 fuzz smoke run" in text
     assert "not a coverage-guided campaign" in text
+
+
+def test_verification_summary_uses_current_build_source() -> None:
+    text = _read(DOCS["AEGIS-013-VERIFICATION"])
+    assert "4dd33936909de1314099652a7523e52c40bb2c44" in text
+    assert "`7822f4c` (HISTORICAL at `4dd3393`)" in text
+    assert "45675880854" in text
+    assert "1,518 passed" in text
+    assert "`4dd3393`" in text
 
 
 def test_ci_page_records_real_actions_runs_without_e5_claim() -> None:

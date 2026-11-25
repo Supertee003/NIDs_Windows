@@ -125,3 +125,39 @@ PASS when all 20 items have a deliverable or evidence entry, the pin tests pass,
 doc checker is 0/0, docs/release tests pass, truth is `TRUTH_VALID @ 4dd3393`,
 summary is `SUMMARY_VALID`, and the diff is clean. No item is promoted above E1
 by this patch.
+
+---
+
+## FOLLOW-UP TRANSACTIONS — same build source `4dd3393` (2026-11-26)
+
+The completion gate above was PASS for the documentation slice. Four of its
+listed OPEN BLOCKERS were then closed with **real executed work at the same
+build source**. This section supersedes only those rows; the original patch
+record is unchanged and no historical result is relabelled.
+
+| Original blocker | Follow-up work | Honest new status |
+|---|---|---|
+| Controlled fixed-rate benchmark | `zig build core-tools -Doptimize=ReleaseFast` + `aegis_perf_bench.exe quick/latency`, binary SHA-256 `8829E03D…DA476` | **E2 PASS in-process microbenchmark**; fixed-rate host benchmark still **NOT RUN** (`PERF-MICRO-E2-4DD3393-20261126`) |
+| Fuzz campaign | `zig build fuzz` + `aegis_fuzz.exe`, binary SHA-256 `7681B52F…C621`, seed `0xDEADBEEF`, 1,000 inputs, leak guard clean | **E2 PASS deterministic smoke**; coverage-guided campaign still **NOT_RUN** (`FUZZ-SMOKE-E2-4DD3393-20261126`) |
+| Real GitHub Actions run URL | push run `45675880854` and dispatch run `45676093328`, both `conclusion=success` at records HEAD `e64ea25` | **E4 PASS hosted CI**; still **not E5/E6/E7** (`CI-GREEN-E4-4DD3393-20261125`) |
+| Two `host_live` loopback tests failing | direct probe + installed-hash check: installed binary is historical `466a226`/`a53eda8` (`FBD9BDB3…185474`), not `4dd3393`; loopback needs explicit `AEGIS_NOSE_IFACE` | **E1 diagnosis only**; tests still fail, nothing relaxed, no fake PASS (`HOST-LIVE-DIAGNOSIS-E1-4DD3393-20261126`) |
+
+An additional locator tool now reports the unresolved evidence pointers
+read-only: **52** = 4 repo-resolvable + 18 archive-resolvable + 30 genuinely
+missing. Archive-resolvable is not fresh-clone reproducible; no artifact was
+copied or synthesized (`EVIDENCE-LOCATOR-REPORT-E1-4DD3393-20261126`).
+
+Follow-up commits: `8292aa0`, `4f15be9`, `04d8d15`, `66e82d0`, `e64ea25`,
+`2fc4df8` (plus their digest records commits).
+
+### STILL OPEN — genuinely external
+
+- Elevated owner run: R2003 E5, S2 replay denial, S3 identity E3/E5, kernel
+  load/unload/cleanup, detection matrix, compatibility matrix, forensic host
+  re-proof, and the two loopback E6 tests with an explicit interface pin.
+- `release_signature` and `soak_24h` (both predate the current runtime source).
+- Controlled fixed-rate network benchmark, coverage-guided fuzz campaign,
+  installer/sign/tag/soak, and any E5/E6/E7 qualification.
+
+No follow-up entry promotes anything above E4, and none changes the immutable
+release identity `v1.1` / `466a226` / `a53eda8`.
