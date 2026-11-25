@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-25T15:47:34.629860+00:00",
+  "generated_at": "2026-11-25T16:42:08.414089+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3232,
+  "total_files": 3236,
   "by_class": {
-    "canonical-docs": 590,
+    "canonical-docs": 591,
     "canonical-build": 313,
     "unclassified": 27,
-    "canonical-source": 1793,
-    "canonical-test": 413,
+    "canonical-source": 1795,
+    "canonical-test": 414,
     "canonical-config": 62,
     "legacy": 34
   },
@@ -258,13 +258,13 @@
       "path": "AGENTS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10057
+      "size": 10115
     },
     {
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 63707
+      "size": 63768
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -1419,6 +1419,12 @@
       "size": 4546
     },
     {
+      "path": "analysis/current-head/S3-SOURCE-PATCH-DECLARATION-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2826
+    },
+    {
       "path": "analysis/current-head/SERVICE-EXISTS-001-20261114.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -2544,7 +2550,7 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 140469
+      "size": 141653
     },
     {
       "path": "build_truth.json",
@@ -2754,7 +2760,7 @@
       "path": "CONTRACT_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 13853
+      "size": 14814
     },
     {
       "path": "contracts/fixtures/abi/event_boundaries.json",
@@ -3084,7 +3090,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 74845
+      "size": 75501
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3372,7 +3378,7 @@
       "path": "docs/DETECTION_VALIDATION.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 11597
+      "size": 11648
     },
     {
       "path": "docs/ENV_VARS.md",
@@ -4512,7 +4518,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1674984
+      "size": 1677301
     },
     {
       "path": "FLOW_MAP.json",
@@ -4620,7 +4626,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 511399
+      "size": 512799
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4716,7 +4722,7 @@
       "path": "nose/capture.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 18015
+      "size": 18222
     },
     {
       "path": "nose/capture_hermetic_test.go",
@@ -4827,6 +4833,18 @@
       "size": 1472
     },
     {
+      "path": "nose/producer_identity.go",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5863
+    },
+    {
+      "path": "nose/producer_identity_test.go",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 2859
+    },
+    {
       "path": "nose/README_DEPLOY.txt",
       "class": "canonical-docs",
       "role": "documentation",
@@ -4884,7 +4902,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 10225
+      "size": 10541
     },
     {
       "path": "pytest.ini",
@@ -4902,7 +4920,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 413609
+      "size": 414778
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -4968,7 +4986,7 @@
       "path": "release/release-status.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 5937
+      "size": 6061
     },
     {
       "path": "release/T20-final/466a226/brain/__init__.py",
@@ -15438,7 +15456,7 @@
       "path": "shared/protocol/wire_v3.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7301
+      "size": 8217
     },
     {
       "path": "shared/runtime/components.json",
@@ -15498,7 +15516,7 @@
       "path": "src/all_tests.zig",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 12014
+      "size": 12064
     },
     {
       "path": "src/capture/flow_engine.zig",
@@ -15540,7 +15558,7 @@
       "path": "src/capture/nose_pipe_reader.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 27553
+      "size": 30021
     },
     {
       "path": "src/capture/npcap_adapter.zig",
@@ -15571,6 +15589,12 @@
       "class": "canonical-source",
       "role": "production-source",
       "size": 13443
+    },
+    {
+      "path": "src/capture/producer_identity.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 7631
     },
     {
       "path": "src/capture/proto/l7_payload.zig",
@@ -15624,7 +15648,7 @@
       "path": "src/contract/canonical_event.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 72209
+      "size": 73681
     },
     {
       "path": "src/contract/event.zig",
@@ -15702,7 +15726,7 @@
       "path": "src/control/state_machine.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 45462
+      "size": 50915
     },
     {
       "path": "src/control.zig",
@@ -16002,7 +16026,7 @@
       "path": "src/forensic/alert_log.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 8695
+      "size": 10375
     },
     {
       "path": "src/forensic/crc32_slicing.zig",
@@ -16176,13 +16200,13 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 70166
+      "size": 70833
     },
     {
       "path": "src/pipeline/event_queue.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 62709
+      "size": 63146
     },
     {
       "path": "src/pipeline/fim_dedup.zig",
@@ -16212,7 +16236,7 @@
       "path": "src/pipeline/runtime_state.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 38599
+      "size": 39867
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",
@@ -19407,5 +19431,5 @@
       "size": 624
     }
   ],
-  "source_commit": "4bc8244"
+  "source_commit": "f1f89c1"
 }

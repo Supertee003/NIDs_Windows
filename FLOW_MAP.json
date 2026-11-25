@@ -1,5 +1,5 @@
 {
-  "head_sha": "4bc8244bace1010029417ad15c186baaeceb234f",
+  "head_sha": "f1f89c183ee86410dbfdc748155dc3d22c086420",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -43,10 +43,13 @@
           "owner": "Go Nose -> Zig",
           "component": "go_nose",
           "input": "CanonicalEvent frame (u32 LE length + 109-byte v1 or 133-byte v2 wire bytes)",
-          "output": "Validated CanonicalEvent admitted to EventQueue",
+          "output": "Validated CanonicalEvent admitted to EventQueue; v3 duplicate/regression frames refused before queue",
           "file": "nose/pipe_writer.go",
           "consumer_file": "src/capture/nose_pipe_reader.zig",
-          "boundary": "Windows named pipe \\\\.\\pipe\\aegis_nose only; no TCP fallback is implemented (P4-RUNTIME-TRUTH: nose/pipe_writer.go dials via os.OpenFile only)"
+           "producer_identity_file": "nose/producer_identity.go",
+           "ingress_guard_file": "src/capture/producer_identity.zig",
+          "boundary": "Windows named pipe \\\\.\\pipe\\aegis_nose only; no TCP fallback is implemented (P4-RUNTIME-TRUTH: nose/pipe_writer.go dials via os.OpenFile only)",
+           "note": "S3: Go issues a durable per-interface generation plus dedicated capture_sequence in the v3 envelope; Zig validates the tuple, rejects exact replay/regression, and counts identity drops. Identity is evidence only and never authorizes enforcement."
         },
         {
           "step": 4,

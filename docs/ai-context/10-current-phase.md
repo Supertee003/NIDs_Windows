@@ -3,13 +3,14 @@
 > **UPDATE (2026-11-22):** the published release is now `v1.1` (signed candidate
 > `466a226`, build source `a53eda8`, 6/6 gates PASS, genuine 36.52 h soak, 0 open
 > gaps). The v2.0.0 status below is HISTORICAL for release identity; `a53eda8`
-> descends from `7c604d5`. The current build source is `4bc8244`
+> descends from `7c604d5`. The current build source is `f1f89c1`
 > (P2-44 `9105ff5`, P2a `d2f129e`, P2b `661fb76`, P8 source-truth `2129dcd`,
 > P8-I44 observability `e406cbb`, P8-I44-E3 isolated `-inject` proof `03bb86d`
 > (same source then received records-only E4/E5 elevated Windows-host `-inject`
 > proof on the canonical pipe), P1/P8 hygiene `a26c573`, F1/F2 hygiene `43a8bcc`,
 > C6 capture visibility/shutdown/monotonic source `7822f4c`, S1 R2003
-> command-line producer `493648f`, S2 active control-v2 replay guard `4bc8244`; P3–P7 and the
+> command-line producer `493648f`, S2 active control-v2 replay guard `4bc8244`, S3 durable
+> v3 producer identity issuance/admission `f1f89c1`; P3–P7 and the
 > P8 V&R-08 closeout are records-only. E3/E4/E5 at `43a8bcc` is HISTORICAL;
 > E3 and narrow E4/E5 at `7822f4c` are current (`-inject` exact deltas on the
 > private and elevated canonical pipes with a verified host restore). Full Windows
@@ -1147,11 +1148,21 @@ See `analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md` and
   All Python producers share `tools/aegisctl/envelope.py`; token-derived role
   authority is unchanged. No daemon swap or live replay E3/E5 was performed.
   Evidence: `analysis/current-head/S2-CONTROL-REPLAY-EVIDENCE-20261125.md`.
+- S3 (`f1f89c1`, build source): the cross-process producer-identity source gap
+  is closed at E2. Go Nose issues a durable per-interface restart generation
+  from `AEGIS_NOSE_STATE_FILE` (or the user config dir) under an exclusive lock;
+  a dedicated `capture_sequence` is stamped in the v3 envelope. Zig ingress
+  validates a complete nonzero tuple and rejects duplicate/regression frames
+  before queue admission; gaps/evictions stay visible in health, and admitted
+  identity rides additively into alert evidence. No wire layout, rule ID,
+  policy hash, authority, or host-effect change. Live current-build E3/E5 proof
+  remains owner action. Evidence:
+  `analysis/current-head/S3-PRODUCER-IDENTITY-EVIDENCE-20261125.md`.
 - Honestly open: full current-head Windows E5 / kernel IDS qualification, the
   23-rule matrix at this source (last measured `f4cde3c`), detection efficacy,
   R2003 host E5 re-measurement (source producer now proven at E2), live E3/E5
-  replay proof for the S2 server (source enforcement now proven at E2),
-  cross-process monotonic identity, the Zig-vs-TS policy-hash byte-stream
-  question, a host measurement of the C6 VLAN/QinQ and IPv6 extension walk,
-  and soak/install/signing/E6/E7. Release identity remains
+  replay proof for the S2 server (source enforcement now proven at E2), live
+  current-build E3/E5 proof of the S3 producer identity, the Zig-vs-TS
+  policy-hash byte-stream question, a host measurement of the C6 VLAN/QinQ and
+  IPv6 extension walk, and soak/install/signing/E6/E7. Release identity remains
   `v1.1` / `466a226` / `a53eda8`, 6/6 gates PASS, production observe-only.

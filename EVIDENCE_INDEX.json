@@ -1,5 +1,5 @@
 {
-  "head_sha": "4bc8244bace1010029417ad15c186baaeceb234f",
+  "head_sha": "f1f89c183ee86410dbfdc748155dc3d22c086420",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-25",
   "generator_version": "3.0",
@@ -11350,6 +11350,48 @@
       ],
       "status": "CLOSED",
       "status_basis": "entry.result=PASS_E2 recorded at build source 4bc8244; source gap closed, live pipe proof explicitly out of scope"
+    },
+    {
+      "id": "S3-PRODUCER-IDENTITY-E2-F1F89C1-20261125",
+      "head_sha": "f1f89c183ee86410dbfdc748155dc3d22c086420",
+      "timestamp": "2026-11-25",
+      "title": "S3: durable v3 producer identity issuance and Zig ingress admission",
+      "level": "E2",
+      "component": "Go Nose -> v3 envelope -> Zig ingress guard -> queue/alert/health evidence",
+      "flow_id": "NOSE-CAPTURE-V3 -> ZIG-PIPE-INGRESS -> QUEUE -> ALERT/HEALTH EVIDENCE",
+      "description": "Go Nose now issues a durable per-interface restart generation from the user config dir (AEGIS_NOSE_STATE_FILE override) under an exclusive lock and stamps a dedicated monotonic capture_sequence in the v3 envelope. Zig validates a complete nonzero tuple, refuses exact replay/regression before queue admission, counts gaps/evictions in health, and carries admitted identity additively into alert evidence. No wire layout, rule ID, policy hash, FFI ABI or authority change.",
+      "files_verified": [
+        "nose/producer_identity.go",
+        "nose/producer_identity_test.go",
+        "nose/capture.go",
+        "src/contract/canonical_event.zig",
+        "src/capture/producer_identity.zig",
+        "src/capture/nose_pipe_reader.zig",
+        "src/pipeline/runtime_state.zig",
+        "src/pipeline/event_queue.zig",
+        "src/pipeline/event_processor.zig",
+        "src/forensic/alert_log.zig",
+        "src/control/state_machine.zig",
+        "shared/protocol/wire_v3.md"
+      ],
+      "tests": [
+        "go test ./... -> ok aegis-nose 9.453s",
+        "go vet ./... -> exit 0",
+        "zig fresh-cache test -> 2154 passed; 10 skipped; 0 failed",
+        "zig build -> exit 0",
+        "python -m pytest tests/ tests/e2e -q -> 2 failed, 1510 passed, 1 skipped, 27 subtests passed (only host_live loopback E6; running daemon predates source)"
+      ],
+      "result": "PASS_E2",
+      "finding": "Source-level producer identity gap closed at E2; live current-build E3/E5 proof is NOT_PROVEN until rebuilt Go Nose and Zig daemon are owner-run.",
+      "evidence_artifact": "analysis/current-head/S3-PRODUCER-IDENTITY-EVIDENCE-20261125.md",
+      "limitations": [
+        "Guard is process-local and bounded to 64 producer keys; eviction is counted, never silent.",
+        "Stale lock or unwritable state fails capture startup closed; state lives in the user config dir unless overridden.",
+        "No CanonicalEvent wire layout, golden vector, rule ID, policy hash, FFI ABI or authority change.",
+        "Full pytest retained two host_live loopback E6 failures against the old running daemon; no E3/E4/E5, E6/E7, soak, install or signing claim."
+      ],
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS_E2 recorded at build source f1f89c1; source gap closed, live host proof explicitly out of scope"
     }
   ],
   "known_gaps": [
@@ -18022,7 +18064,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 48,
-    "E2_count": 163,
+    "E2_count": 164,
     "E3_count": 19,
     "E4_count": 4,
     "E5_count": 122,

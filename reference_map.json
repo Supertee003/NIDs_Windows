@@ -1,22 +1,22 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-25T15:47:34.634857+00:00",
+  "generated_at": "2026-11-25T16:42:08.420411+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 3232,
+  "total_files": 3236,
   "by_role": {
-    "documentation": 575,
+    "documentation": 576,
     "build-config": 302,
     "other": 27,
     "lockfile": 6,
     "rust-build": 4,
-    "source": 1494,
+    "source": 1495,
     "architecture-decision": 13,
-    "test-artifact": 413,
+    "test-artifact": 414,
     "config-data": 62,
     "step-document": 2,
     "go-source": 8,
     "makefile": 1,
-    "production-source": 291,
+    "production-source": 292,
     "legacy-source": 33,
     "quarantined": 1
   },
@@ -45,6 +45,7 @@
     "src/capture/npcap_capture.zig",
     "src/capture/packet_decoder.zig",
     "src/capture/pipe_monitor.zig",
+    "src/capture/producer_identity.zig",
     "src/capture/proto/l7_payload.zig",
     "src/capture/proto/parsers.zig",
     "src/capture/source_arbiter.zig",
@@ -1260,6 +1261,10 @@
       "role": "documentation"
     },
     "analysis/current-head/S2-SOURCE-PATCH-DECLARATION-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/S3-SOURCE-PATCH-DECLARATION-20261125.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -3532,6 +3537,14 @@
       "role": "source"
     },
     "nose/pipe_writer_test.go": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "nose/producer_identity.go": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "nose/producer_identity_test.go": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -10699,6 +10712,10 @@
       "class": "canonical-source",
       "role": "production-source"
     },
+    "src/capture/producer_identity.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
     "src/capture/proto/l7_payload.zig": {
       "class": "canonical-source",
       "role": "production-source"
@@ -13256,5 +13273,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "4bc8244"
+  "source_commit": "f1f89c1"
 }
