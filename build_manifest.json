@@ -872,8 +872,8 @@
     },
     {
       "path": "nose/capture.go",
-      "size": 18015,
-      "sha256": "6d21ea2bf537e69e342adbed5d0b0412689ec38168f6953495d760237673d444",
+      "size": 18222,
+      "sha256": "1da410ee8ddc52bb138cc730ade500d84aa3a4ce98e38ca7f369cc5830095341",
       "language": "go"
     },
     {
@@ -985,6 +985,18 @@
       "language": "go"
     },
     {
+      "path": "nose/producer_identity.go",
+      "size": 5863,
+      "sha256": "4e6734c93a63f4dc227fcf4e31925228fd105bcd2d65757ea4eecf8226c6c7b9",
+      "language": "go"
+    },
+    {
+      "path": "nose/producer_identity_test.go",
+      "size": 2859,
+      "sha256": "38989a6c4f52087e95c13e0ea5eb7f3dc04123fea1973e1f1cc1635ecd1c4822",
+      "language": "go"
+    },
+    {
       "path": "nose/run_nose.bat",
       "size": 1274,
       "sha256": "b901c8611ddaf05a128ed6ef51e2b3cbd9db72cfc46fc62e0d12c66d554dcf4a",
@@ -1041,7 +1053,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23280,
-      "sha256": "2613cffff1d621722e13adb131a878d3c57f1048acb8c3e69e50c4ed5200cc0e",
+      "sha256": "2d54a0af477fd38bbee539d790881f7315a035652040f862a8b912bf286562da",
       "language": "json"
     },
     {
@@ -1862,8 +1874,8 @@
     },
     {
       "path": "src/all_tests.zig",
-      "size": 12014,
-      "sha256": "2d669b310d274db3c12fbed9a522d6452877c07e23a2ca04a39a237a303ec4c4",
+      "size": 12064,
+      "sha256": "4972a088903e4f6a9fef7f4153f61ac540d5dd4d273a52529ef4dec2385f18dc",
       "language": "zig"
     },
     {
@@ -1904,8 +1916,8 @@
     },
     {
       "path": "src/capture/nose_pipe_reader.zig",
-      "size": 27553,
-      "sha256": "8fbcdf899d9bfda92a19652069e1b2e307c22972a47ee66c6d5b4435f8dab606",
+      "size": 30021,
+      "sha256": "bb1d366bcc5b0dc79174254277341d1a13cb59574950a358fea0d5f8b5a8b830",
       "language": "zig"
     },
     {
@@ -1936,6 +1948,12 @@
       "path": "src/capture/pipe_monitor.zig",
       "size": 13443,
       "sha256": "ce35c031e438454ad8b24ed6c5d0d9a05aaef1b81cabecb2cdaa716ec1a71f74",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/producer_identity.zig",
+      "size": 7631,
+      "sha256": "bc1be6981067805b4279f116f2b84a62e0f8eb2da9110ee2660fade01d52f5b8",
       "language": "zig"
     },
     {
@@ -1988,8 +2006,8 @@
     },
     {
       "path": "src/contract/canonical_event.zig",
-      "size": 72209,
-      "sha256": "666a85b0db2ac8d1c57e4672a5b33a9d387f4e022ab9f5f5ea07bf903002507d",
+      "size": 73681,
+      "sha256": "ed47a858bb613a5dd36e91fbb1300c1f3c1d6f42325a024e15e0e217a1dccad9",
       "language": "zig"
     },
     {
@@ -2072,8 +2090,8 @@
     },
     {
       "path": "src/control/state_machine.zig",
-      "size": 45462,
-      "sha256": "3dcff78aa5dbe32bde28c9f879f93cce39fbff2154536fe4007e9c67c25b8bf3",
+      "size": 49928,
+      "sha256": "d0c059bc2671055838046c4e8aac82c95a15ced1f580cbb9c6c7537364b6d116",
       "language": "zig"
     },
     {
@@ -2366,8 +2384,8 @@
     },
     {
       "path": "src/forensic/alert_log.zig",
-      "size": 8695,
-      "sha256": "840d56ec26a6d23e0c8f5b7010f9ffd917e5e117e5ab88a039d7abcc2fddf774",
+      "size": 10375,
+      "sha256": "133c51a6355d88c32d3cc3ebd23f201d27ae76e56a797790c9f313149a28643c",
       "language": "zig"
     },
     {
@@ -2540,14 +2558,14 @@
     },
     {
       "path": "src/pipeline/event_processor.zig",
-      "size": 70166,
-      "sha256": "823d29858cdbe92fd6027e3ad3fa5a8c7c3afa27b103a9eda4e01123a8c04dc2",
+      "size": 70833,
+      "sha256": "cffd5539aff4248b5bdf8427c6e29a131ffc86328b2e0e24a50c51fe0b024add",
       "language": "zig"
     },
     {
       "path": "src/pipeline/event_queue.zig",
-      "size": 62709,
-      "sha256": "50e32bb78ef7bf3a424253e19876e500a6289ad47be9768a533f926cca9bb607",
+      "size": 63146,
+      "sha256": "78eed60b4513b92def5943c4a4470d0594ede0769863bcadaaf96136dec3bb4d",
       "language": "zig"
     },
     {
@@ -2576,8 +2594,8 @@
     },
     {
       "path": "src/pipeline/runtime_state.zig",
-      "size": 38599,
-      "sha256": "f93e7240adb82c95be7a8e42f20ba0970050c4507f638e06678b797e371e8fc8",
+      "size": 39867,
+      "sha256": "a424580a8304eace78976c65a3bbe4fd5d6dd72becf1912a9134842fb8fc48ef",
       "language": "zig"
     },
     {
