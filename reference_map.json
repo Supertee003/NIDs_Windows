@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-25T17:30:02.828346+00:00",
+  "generated_at": "2026-11-25T17:39:16.886897+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 3249,
+  "total_files": 3250,
   "by_role": {
-    "documentation": 580,
+    "documentation": 581,
     "build-config": 303,
     "other": 27,
     "lockfile": 6,
@@ -1099,6 +1099,10 @@
       "role": "documentation"
     },
     "analysis/current-head/OWNER-DECISIONS-EXTENDED-20261119.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/OWNER-RUN-HOST-PROOF-RUNBOOK-20261126.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },

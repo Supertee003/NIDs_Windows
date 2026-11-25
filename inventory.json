@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-25T17:30:02.823263+00:00",
+  "generated_at": "2026-11-25T17:39:16.880883+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3249,
+  "total_files": 3250,
   "by_class": {
-    "canonical-docs": 595,
+    "canonical-docs": 596,
     "canonical-build": 314,
     "unclassified": 27,
     "canonical-source": 1801,
@@ -1173,6 +1173,12 @@
       "size": 3960
     },
     {
+      "path": "analysis/current-head/OWNER-RUN-HOST-PROOF-RUNBOOK-20261126.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 9123
+    },
+    {
       "path": "analysis/current-head/PAYLOAD-ENVELOPE-V3-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -1434,7 +1440,7 @@
       "path": "analysis/current-head/S4-CANONICAL-POLICY-BYTES-EVIDENCE-20261126.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6267
+      "size": 6735
     },
     {
       "path": "analysis/current-head/S4-SOURCE-PATCH-DECLARATION-20261126.md",
@@ -2574,7 +2580,7 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 142235
+      "size": 143691
     },
     {
       "path": "build_truth.json",
@@ -4650,7 +4656,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 514678
+      "size": 514860
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4926,7 +4932,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 10225
+      "size": 9877
     },
     {
       "path": "pytest.ini",
@@ -4944,7 +4950,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 416339
+      "size": 416487
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
