@@ -1059,7 +1059,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23280,
-      "sha256": "252a47ae8e66443d246bff8c2e87f72e7700511cb5913b45496751514770d1e3",
+      "sha256": "59cb37cde845545de3be9c609247cb31e40de27d12e1428ddbd54eeb0be579ec",
       "language": "json"
     },
     {
@@ -4204,6 +4204,12 @@
       "path": "tools/upgrade_rollback.py",
       "size": 8482,
       "sha256": "c150249e746a040f96443416a1c8f1d54d6bbdf99e0678260e81eadbd4a18791",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/verify_evidence_locators.py",
+      "size": 1993,
+      "sha256": "965d676f52b7c5f1d4e62c851f2f464275f5f3641e93133db5a3ec563f6a5cd3",
       "language": "python/cython"
     },
     {
