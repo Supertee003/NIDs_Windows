@@ -77,7 +77,7 @@ def test_ci_doc_records_real_workflow_paths() -> None:
     assert ".github/workflows/ci.yml" in text
     assert ".github/workflows/host-regression.yml" in text
     assert "ci_coverage.json" in text
-    assert "NOT RECORDED IN THIS TREE" in text
+    assert "E4 PASS" in text
 
 
 def test_compatibility_doc_has_no_fake_pass_rows() -> None:
@@ -115,6 +115,16 @@ def test_fuzz_inventory_records_the_real_smoke_run() -> None:
     assert "0xDEADBEEF" in text
     assert "deterministic E2 fuzz smoke run" in text
     assert "not a coverage-guided campaign" in text
+
+
+def test_ci_page_records_real_actions_runs_without_e5_claim() -> None:
+    text = _read("docs/CI_QUALITY_GATES.md")
+    assert "45675880854" in text
+    assert "45676093328" in text
+    assert "e64ea2500dec840a1c2d9af77bc2b3b3b3385d76" in text
+    assert "E4 PASS" in text
+    assert "not** E5" in text
+    assert "NOT RECORDED IN THIS TREE" not in text
 
 
 def test_performance_report_records_real_e2_microbenchmark() -> None:

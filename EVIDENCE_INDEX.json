@@ -11603,6 +11603,38 @@
       ],
       "status": "CLOSED",
       "status_basis": "entry.result=PASS_E2 executed at build source 4dd3393"
+    },
+    {
+      "id": "CI-GREEN-E4-4DD3393-20261125",
+      "head_sha": "4dd33936909de1314099652a7523e52c40bb2c44",
+      "timestamp": "2026-11-25",
+      "title": "Real GitHub Actions green runs at records HEAD e64ea25 / build source 4dd3393",
+      "level": "E4",
+      "component": ".github/workflows/ci.yml -> all canonical and support jobs -> ci-matrix required gate",
+      "flow_id": "PUSH -> HOSTED_MULTILANGUAGE_CI -> CI_MATRIX_REQUIRED_GATE -> RUN_URL",
+      "description": "Observed two real GitHub Actions runs for records HEAD e64ea2500dec840a1c2d9af77bc2b3b3b3385d76 (build source 4dd3393): push run 45675880854 and manual workflow_dispatch run 45676093328, both conclusion success. Push run started 2026-11-25T18:30:37Z and last updated 2026-11-25T18:48:26Z. All jobs succeeded, including Kernel Drivers WDK build, Python truth/build-manifest gates, Zig build+test (14m32s), and the required Cross-language CI Matrix. Tag-only installer/sign/release steps were correctly skipped. Recorded in docs/CI_QUALITY_GATES.md section 4a.",
+      "files_verified": [
+        ".github/workflows/ci.yml",
+        "docs/CI_QUALITY_GATES.md",
+        "tests/docs/test_aegis_plan_closure.py"
+      ],
+      "tests": [
+        "gh run watch 45675880854 --exit-status --interval 30 -> exit 0, run conclusion success",
+        "gh run view 45675880854 --json ... -> status completed, conclusion success, headSha e64ea2500dec840a1c2d9af77bc2b3b3b3385d76",
+        "gh run view 45676093328 --json ... -> status completed, conclusion success, same headSha",
+        "python -m pytest tests/docs/test_aegis_plan_closure.py -q -> 15 passed"
+      ],
+      "result": "PASS_E4",
+      "finding": "Hosted CI system integration is green for the current build source. This is E4 only: not E5 (no production host/Npcap/driver/control-daemon path), not E6, not E7 (no tag, installer payload, signature or soak). host_live tests are deselected by the workflow.",
+      "evidence_artifact": "docs/CI_QUALITY_GATES.md",
+      "artifact_locator": "https://github.com/Supertee003/NIDs_Windows/actions/runs/45675880854",
+      "limitations": [
+        "Advisory annotations only: Node 20 deprecation, Go cache restore warnings, Zig cache service errors.",
+        "Tag-only installer/sign/release steps were skipped; no release qualification follows.",
+        "A hosted CI runner is not the owner's production Windows host."
+      ],
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS_E4 real hosted CI runs at records HEAD e64ea25"
     }
   ],
   "known_gaps": [
@@ -18277,7 +18309,7 @@
     "E1_count": 51,
     "E2_count": 167,
     "E3_count": 19,
-    "E4_count": 4,
+    "E4_count": 5,
     "E5_count": 122,
     "E6_count": 1,
     "E7_count": 5,
