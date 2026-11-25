@@ -1,14 +1,14 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-25T18:05:24.041068+00:00",
+  "generated_at": "2026-11-25T18:23:26.493507+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3262,
+  "total_files": 3264,
   "by_class": {
-    "canonical-docs": 607,
+    "canonical-docs": 608,
     "canonical-build": 314,
     "unclassified": 27,
-    "canonical-source": 1801,
+    "canonical-source": 1802,
     "canonical-test": 417,
     "canonical-config": 62,
     "legacy": 34
@@ -1182,7 +1182,7 @@
       "path": "analysis/current-head/OWNER-RUN-HOST-PROOF-RUNBOOK-20261126.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9123
+      "size": 9491
     },
     {
       "path": "analysis/current-head/PAYLOAD-ENVELOPE-V3-001-20261109.md",
@@ -3444,7 +3444,7 @@
       "path": "docs/evidence/PROVENANCE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4631
+      "size": 5014
     },
     {
       "path": "docs/evidence/README.md",
@@ -4194,7 +4194,13 @@
       "path": "docs/testing/FAULT_INJECTION_INVENTORY.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2627
+      "size": 3564
+    },
+    {
+      "path": "docs/testing/HOST_LIVE_DIAGNOSIS.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4232
     },
     {
       "path": "docs/testing/RESULTS.md",
@@ -4614,7 +4620,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1686862
+      "size": 1691262
     },
     {
       "path": "FLOW_MAP.json",
@@ -4722,7 +4728,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 515035
+      "size": 516823
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4998,7 +5004,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9758
+      "size": 9877
     },
     {
       "path": "pytest.ini",
@@ -5016,7 +5022,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 416629
+      "size": 418009
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -14652,7 +14658,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23280
+      "size": 23828
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -17808,7 +17814,7 @@
       "path": "tests/docs/test_aegis_plan_closure.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 3336
+      "size": 4620
     },
     {
       "path": "tests/docs/test_detection_truth_labels.py",
@@ -19453,6 +19459,12 @@
       "class": "canonical-source",
       "role": "source",
       "size": 8482
+    },
+    {
+      "path": "tools/verify_evidence_locators.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1993
     },
     {
       "path": "tools/verify_release_digest.py",

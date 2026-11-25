@@ -54,6 +54,11 @@
 2. Evidence entries carry `head_sha` = build source, not merely the records commit.
 3. `evidence_level_summary` is recomputed by `python scripts/check_summary.py --write`.
 4. Unresolvable artifact pointers are labelled `historical` / `missing`, never hidden.
+   `python tools/verify_evidence_locators.py` reports the split read-only:
+   **52** unresolved primary pointers = **4** repo-resolvable (locator is a
+   tracked worktree file), **18** archive-resolvable (locator exists under the
+   operator archive on this host), **30** genuinely missing (no locator, or
+   locator absent here). Archive-resolvable is not fresh-clone reproducible.
 5. No local-only transcript is copied into the repo and presented as if it were
    reproducible; its location and limits are stated.
 6. Release identity is immutable: no new tag, signature, key or `v2.1.0` follows from

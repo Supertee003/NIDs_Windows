@@ -138,7 +138,12 @@ queue/alert/health evidence`.
    `tests/integration/test_e6_attack_burst.py::test_a_localhost_port_scan_is_captured_and_scored`
    and
    `tests/integration/test_e6_l4_scan_detection.py::test_a_syn_scan_is_tagged_by_an_l4_rule`.
-   Record their real outcome; do not convert a failure into a PASS.
+   The installed binary is the historical release identity `466a226` / `a53eda8`
+   (SHA-256 `FBD9BDB3...185474`), not `4dd3393`, and Nose auto-selection excludes
+   loopback (`nose/capture.go:68-90`). Pin Nose explicitly with
+   `AEGIS_NOSE_IFACE=\Device\NPF_Loopback` before the run and record the selector.
+   Full diagnosis: `docs/testing/HOST_LIVE_DIAGNOSIS.md`. Record their real
+   outcome; do not convert a failure into a PASS.
 4. Gate: the "NOT RE-MEASURED at current source" marker may only be replaced
    after every rule row is evidence-backed at build source `4dd3393`. Matrix rows
    at `f4cde3c` remain HISTORICAL otherwise.

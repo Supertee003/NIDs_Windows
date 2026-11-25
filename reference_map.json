@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-25T18:05:24.047115+00:00",
+  "generated_at": "2026-11-25T18:23:26.500503+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 3262,
+  "total_files": 3264,
   "by_role": {
-    "documentation": 592,
+    "documentation": 593,
     "build-config": 303,
     "other": 27,
     "lockfile": 6,
     "rust-build": 4,
-    "source": 1499,
+    "source": 1500,
     "architecture-decision": 13,
     "test-artifact": 417,
     "config-data": 62,
@@ -3115,6 +3115,10 @@
       "role": "documentation"
     },
     "docs/testing/FAULT_INJECTION_INVENTORY.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/testing/HOST_LIVE_DIAGNOSIS.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -13287,6 +13291,10 @@
       "role": "source"
     },
     "tools/upgrade_rollback.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "tools/verify_evidence_locators.py": {
       "class": "canonical-source",
       "role": "source"
     },

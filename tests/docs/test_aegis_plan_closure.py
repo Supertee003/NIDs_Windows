@@ -92,3 +92,34 @@ def test_case_study_lists_real_limits() -> None:
     assert "No current-head full Windows E5" in text
     assert "No controlled fixed-rate throughput ceiling" in text
     assert "6/6 gates PASS at that identity only" in text
+
+
+def test_host_live_diagnosis_names_stale_binary_and_no_fake_pass() -> None:
+    text = _read("docs/testing/HOST_LIVE_DIAGNOSIS.md")
+    assert "FBD9BDB3456C9C7DAFCBF1B0C3FBDAD9778F61C3186167856E373CC376185474" in text
+    assert "a53eda8" in text
+    assert "AEGIS_NOSE_IFACE" in text
+    assert "Not established" in text
+    assert "no test was relaxed" in text
+
+
+def test_runbook_requires_loopback_pin_for_e6_tests() -> None:
+    text = _read("analysis/current-head/OWNER-RUN-HOST-PROOF-RUNBOOK-20261126.md")
+    assert "AEGIS_NOSE_IFACE=\\Device\\NPF_Loopback" in text
+    assert "HOST_LIVE_DIAGNOSIS.md" in text
+
+
+def test_fuzz_inventory_records_the_real_smoke_run() -> None:
+    text = _read("docs/testing/FAULT_INJECTION_INVENTORY.md")
+    assert "7681B52FC91CC0DE8F8A50143BC98630EB77D666275D6854CFEAE7DEE0B1C621" in text
+    assert "0xDEADBEEF" in text
+    assert "deterministic E2 fuzz smoke run" in text
+    assert "not a coverage-guided campaign" in text
+
+
+def test_provenance_records_locator_split_and_tool() -> None:
+    text = _read("docs/evidence/PROVENANCE.md")
+    assert "tools/verify_evidence_locators.py" in text
+    for count in ("52", "4", "18", "30"):
+        assert count in text
+    assert (_read("tools/verify_evidence_locators.py").count("return 0") == 1)

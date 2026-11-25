@@ -11482,6 +11482,69 @@
       ],
       "status": "CLOSED",
       "status_basis": "entry.result=PASS_E1 recorded at build source 4dd3393; closure means the scoped deliverable exists with an honest level, not that physical E5/E6/E7 work was performed"
+    },
+    {
+      "head_sha": "4dd33936909de1314099652a7523e52c40bb2c44",
+      "timestamp": "2026-11-26",
+      "status": "CLOSED",
+      "id": "HOST-LIVE-DIAGNOSIS-E1-4DD3393-20261126",
+      "title": "host_live E6 test failure diagnosis: stale installed binary and unpinned loopback",
+      "level": "E1",
+      "component": "tests/integration -> installed service identity -> Nose interface selection",
+      "flow_id": "HOST_LIVE_FAILURE -> LOG/RULE ANALYSIS -> INSTALLED_HASH -> RUNBOOK UPDATE",
+      "description": "Diagnosed the two failing E6 host_live tests at the current source. A direct read-only probe recorded +1733 capture_npcap frames and 16,127 appended NDJSON rows, all FIM/registry rows (rule 3813986375 and 2), zero rows with src_ip 127.0.0.2 and zero attributable R9006 rows. The installed daemon SHA-256 FBD9BDB3...185474 is the historical release identity 466a226 / a53eda8, not build source 4dd3393, and current Nose auto-selection excludes loopback (nose/capture.go:68-90). The runbook now requires an explicit AEGIS_NOSE_IFACE pin. No test was relaxed or skipped and no host state was changed.",
+      "files_verified": [
+        "docs/testing/HOST_LIVE_DIAGNOSIS.md",
+        "analysis/current-head/OWNER-RUN-HOST-PROOF-RUNBOOK-20261126.md",
+        "tests/docs/test_aegis_plan_closure.py",
+        "tests/integration/test_e6_attack_burst.py",
+        "tests/integration/test_e6_l4_scan_detection.py",
+        "nose/capture.go",
+        "nose/main.go"
+      ],
+      "tests": [
+        "python -m pytest tests/integration/test_e6_attack_burst.py tests/integration/test_e6_l4_scan_detection.py -q -> 2 failed, 2 passed (recorded, not promoted)",
+        "python -m pytest tests/docs/test_aegis_plan_closure.py -q -> 13 passed"
+      ],
+      "result": "PASS_E1",
+      "finding": "The failures are explained by the historical installed binary and missing loopback pin. This is a diagnosis at E1; it does not prove or disprove R9006 at build source 4dd3393 and does not produce an E5/E6 result.",
+      "evidence_artifact": "docs/testing/HOST_LIVE_DIAGNOSIS.md",
+      "limitations": [
+        "No elevated rebuild, install or interface pin was performed in this session.",
+        "The raw probe values are recorded in the tracked diagnosis page, not a fresh evidence bundle.",
+        "No test was changed to hide the failure."
+      ],
+      "status_basis": "entry.result=PASS_E1 diagnosis recorded at build source 4dd3393"
+    },
+    {
+      "head_sha": "4dd33936909de1314099652a7523e52c40bb2c44",
+      "timestamp": "2026-11-26",
+      "status": "CLOSED",
+      "id": "FUZZ-SMOKE-E2-4DD3393-20261126",
+      "title": "Deterministic Zig fuzz smoke run at build source 4dd3393",
+      "level": "E2",
+      "component": "src/fuzz_entry.zig -> src/tests/fuzz_main.zig -> Aho-Corasick + packet decoder",
+      "flow_id": "FUZZ_TARGET -> SEEDED_INPUTS -> ALLOCATOR_LEAK_GUARD -> EXIT_RESULT",
+      "description": "Built the registered Zig fuzz target with isolated D: caches and executed zig-out/bin/aegis_fuzz.exe at build source 4dd3393. The harness uses a fixed DefaultPrng seed 0xDEADBEEF, 1,000 buffers of length 1..1024, three Aho-Corasick patterns and packet_decoder.decode, with GeneralPurposeAllocator leak detection. Exit 0, no leak, no crash. Binary SHA-256 7681B52FC91CC0DE8F8A50143BC98630EB77D666275D6854CFEAE7DEE0B1C621.",
+      "files_verified": [
+        "src/fuzz_entry.zig",
+        "src/tests/fuzz_main.zig",
+        "build.zig",
+        "docs/testing/FAULT_INJECTION_INVENTORY.md"
+      ],
+      "tests": [
+        "zig build fuzz --cache-dir D:\\aegis-tmp\\plan_zig_cache --global-cache-dir D:\\aegis-tmp\\plan_zig_global -> exit 0",
+        "zig-out/bin/aegis_fuzz.exe -> exit 0, no leak"
+      ],
+      "result": "PASS_E2",
+      "finding": "A deterministic E2 fuzz smoke run succeeded at the current source. It is not a coverage-guided campaign, not E3/E4, and not a host proof.",
+      "evidence_artifact": "docs/testing/FAULT_INJECTION_INVENTORY.md",
+      "limitations": [
+        "Fixed seed and fixed iteration count; no new coverage corpus was produced.",
+        "No crash occurred, so no crash-reduction artifact exists.",
+        "No current-host or elevated claim follows from this run."
+      ],
+      "status_basis": "entry.result=PASS_E2 executed at build source 4dd3393"
     }
   ],
   "known_gaps": [
@@ -18153,8 +18216,8 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 49,
-    "E2_count": 165,
+    "E1_count": 50,
+    "E2_count": 166,
     "E3_count": 19,
     "E4_count": 4,
     "E5_count": 122,
