@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-24T20:10:22.463156+00:00",
+  "generated_at": "2026-11-25T10:12:10.671347+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3204,
+  "total_files": 3221,
   "by_class": {
-    "canonical-docs": 567,
-    "canonical-build": 312,
+    "canonical-docs": 582,
+    "canonical-build": 313,
     "unclassified": 27,
     "canonical-source": 1791,
-    "canonical-test": 411,
+    "canonical-test": 412,
     "canonical-config": 62,
     "legacy": 34
   },
@@ -258,13 +258,13 @@
       "path": "AGENTS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9400
+      "size": 9448
     },
     {
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 60390
+      "size": 62067
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -469,6 +469,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 6230
+    },
+    {
+      "path": "analysis/current-head/C6-SOURCE-PATCH-DECLARATION-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4144
     },
     {
       "path": "analysis/current-head/CAPTURE-DUP-WIFI-001-20261117.md",
@@ -957,10 +963,40 @@
       "size": 4085
     },
     {
+      "path": "analysis/current-head/MASTER-AUDIT-AEGIS-001-RELEASE-STATUS-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3797
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-AEGIS-002-014-SCOPE-README-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3364
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-AEGIS-003-006-HEALTH-PROVENANCE-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3951
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-AEGIS-004-005-013-PROTOCOL-VERIFICATION-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3801
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-AEGIS-005-DETECTION-THREAT-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5025
+    },
+    {
       "path": "analysis/current-head/MASTER-AUDIT-FINAL-RESIDUALS-20261125.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7470
+      "size": 10637
     },
     {
       "path": "analysis/current-head/MASTER-AUDIT-P1-20261124.md",
@@ -1044,7 +1080,7 @@
       "path": "analysis/current-head/MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7048
+      "size": 7459
     },
     {
       "path": "analysis/current-head/MASTER-AUDIT-P8-I44-E3-20261124.md",
@@ -1057,6 +1093,18 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 9841
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E3-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3144
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E4E5-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5915
     },
     {
       "path": "analysis/current-head/MASTER-AUDIT-P8-I45-20261124.md",
@@ -3069,6 +3117,12 @@
       "size": 4646
     },
     {
+      "path": "docs/architecture/DIAGRAMS.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5984
+    },
+    {
       "path": "docs/architecture/failure-model.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -3270,13 +3324,19 @@
       "path": "docs/DETECTION_VALIDATION.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9999
+      "size": 10469
     },
     {
       "path": "docs/ENV_VARS.md",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 2620
+    },
+    {
+      "path": "docs/evidence/PROVENANCE.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4200
     },
     {
       "path": "docs/evidence/README.md",
@@ -3603,6 +3663,12 @@
       "size": 4339
     },
     {
+      "path": "docs/operations/QUICK_START.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4385
+    },
+    {
       "path": "docs/OPERATOR_COMMAND_MAP.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -3660,7 +3726,7 @@
       "path": "docs/portfolio/ARCHITECTURE_EN.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10881
+      "size": 10938
     },
     {
       "path": "docs/portfolio/DEMO.md",
@@ -3672,7 +3738,13 @@
       "path": "docs/portfolio/DETECTION_CATALOG.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8479
+      "size": 8706
+    },
+    {
+      "path": "docs/portfolio/DETECTION_MATRIX_CURRENT.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6916
     },
     {
       "path": "docs/portfolio/images/dashboard.png",
@@ -3708,13 +3780,25 @@
       "path": "docs/portfolio/RESUME_PROJECT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5415
+      "size": 5491
+    },
+    {
+      "path": "docs/portfolio/VERIFICATION_SUMMARY.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4060
     },
     {
       "path": "docs/PROJECT_ANALYSIS_2026-09-14.md",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 36498
+    },
+    {
+      "path": "docs/protocol/INDEX.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3718
     },
     {
       "path": "docs/runbooks/RB-001-block-ip-via-pep.md",
@@ -3879,6 +3963,12 @@
       "size": 4577
     },
     {
+      "path": "docs/runtime/HEALTH_MODEL.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5596
+    },
+    {
       "path": "docs/runtime/LIFECYCLE.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -3924,7 +4014,7 @@
       "path": "docs/SECURITY_THREAT_MODEL.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5459
+      "size": 8467
     },
     {
       "path": "docs/SLICE_C_LAB_GATE_DESIGN.md",
@@ -3960,7 +4050,7 @@
       "path": "docs/testing/RESULTS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7172
+      "size": 7236
     },
     {
       "path": "docs/USER_OPERATIONS_GUIDE.md",
@@ -4374,7 +4464,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1643147
+      "size": 1662344
     },
     {
       "path": "FLOW_MAP.json",
@@ -4482,7 +4572,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 506859
+      "size": 507535
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4578,7 +4668,7 @@
       "path": "nose/capture.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 17332
+      "size": 18015
     },
     {
       "path": "nose/capture_hermetic_test.go",
@@ -4593,6 +4683,12 @@
       "size": 4823
     },
     {
+      "path": "nose/capture_visibility_test.go",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1487
+    },
+    {
       "path": "nose/cleanup_nose_mouth.bat",
       "class": "canonical-build",
       "role": "build-config",
@@ -4602,7 +4698,7 @@
       "path": "nose/collectors.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 17082
+      "size": 18608
     },
     {
       "path": "nose/collectors_test.go",
@@ -4644,13 +4740,13 @@
       "path": "nose/inject.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 2115
+      "size": 2109
     },
     {
       "path": "nose/main.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 9722
+      "size": 10548
     },
     {
       "path": "nose/main_test.go",
@@ -4704,7 +4800,7 @@
       "path": "nose/talkers_live.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 8260
+      "size": 8643
     },
     {
       "path": "nose/talkers_live_test.go",
@@ -4752,13 +4848,13 @@
       "path": "README.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 42968
+      "size": 42372
     },
     {
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 409992
+      "size": 410532
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -4819,6 +4915,12 @@
       "class": "canonical-source",
       "role": "source",
       "size": 2363
+    },
+    {
+      "path": "release/release-status.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 4919
     },
     {
       "path": "release/T20-final/466a226/brain/__init__.py",
@@ -15414,7 +15516,7 @@
       "path": "src/capture/packet_decoder.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 8747
+      "size": 15297
     },
     {
       "path": "src/capture/pipe_monitor.zig",
@@ -19239,5 +19341,5 @@
       "size": 624
     }
   ],
-  "source_commit": "43a8bcc"
+  "source_commit": "7822f4c"
 }

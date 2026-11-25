@@ -1,8 +1,9 @@
 # Evidence provenance — what each artifact proves and where it lives
 
-> Scope: current build source `43a8bcc`, records HEAD moves with each patch.
-> This is an index, not a copy of evidence. No artifact is synthesized, cleaned,
-> relabelled or promoted by this document.
+> Scope: current build source `7822f4c`, records HEAD moves with each patch.
+> E3/E4/E5 records at `43a8bcc` are HISTORICAL at that source; E3/E4/E5 at `7822f4c` are
+> **NOT_PROVEN** until owner-run elevated re-proof. This is an index, not a copy of evidence.
+> No artifact is synthesized, cleaned, relabelled or promoted by this document.
 
 ## 1. Artifact map
 

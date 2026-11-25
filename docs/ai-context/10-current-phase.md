@@ -3,12 +3,14 @@
 > **UPDATE (2026-11-22):** the published release is now `v1.1` (signed candidate
 > `466a226`, build source `a53eda8`, 6/6 gates PASS, genuine 36.52 h soak, 0 open
 > gaps). The v2.0.0 status below is HISTORICAL for release identity; `a53eda8`
-> descends from `7c604d5`. The current build source is `a26c573`
+> descends from `7c604d5`. The current build source is `7822f4c`
 > (P2-44 `9105ff5`, P2a `d2f129e`, P2b `661fb76`, P8 source-truth `2129dcd`,
 > P8-I44 observability `e406cbb`, P8-I44-E3 isolated `-inject` proof `03bb86d`
 > (same source then received records-only E4/E5 elevated Windows-host `-inject`
-> proof on the canonical pipe), P1/P8 hygiene `a26c573`; P3–P7 and the P8 V&R-08
-> closeout are records-only).
+> proof on the canonical pipe), P1/P8 hygiene `a26c573`, F1/F2 hygiene `43a8bcc`,
+> C6 capture visibility/shutdown/monotonic source `7822f4c`; P3–P7 and the
+> P8 V&R-08 closeout are records-only. E3/E4/E5 at `43a8bcc` is HISTORICAL;
+> E3/E4/E5 at `7822f4c` is NOT_PROVEN until owner-run elevated re-proof).
 > The immutable v1.1 release identity above is unchanged. Authority:
 > `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`.
 

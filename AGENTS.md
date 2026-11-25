@@ -2,7 +2,7 @@
 ## Version 2.0 — Current-HEAD Vertical Slice Workflow
 
 **RECORDS HEAD:** `git rev-parse HEAD` at read time (records-only commits do not move the build source; see ADR-0008)
-**BUILD SOURCE HEAD:** `43a8bcc02358076380fa938b0e5632870643d3c5` (last commit touching the source/build tree after AUDIT-CLOSE-20261123; see ADR-0008. P2-44 advanced it to `9105ff5`, P2a to `d2f129e`, P2b to `661fb76`, P8 source-truth to `2129dcd`, P8-I44 observability to `e406cbb`, P8-I44-E3 isolated `-inject` proof to `03bb86d`, P1/P8 hygiene to `a26c573`, final P4 F1/F2 Go comment hygiene to `43a8bcc`; P3–P7 and P8 V&R-08 are records-only.)
+**BUILD SOURCE HEAD:** `7822f4c162f7867555754b7f3677ade33c9548dd` (last commit touching the source/build tree after AUDIT-CLOSE-20261123; see ADR-0008. P2-44 advanced it to `9105ff5`, P2a to `d2f129e`, P2b to `661fb76`, P8 source-truth to `2129dcd`, P8-I44 observability to `e406cbb`, P8-I44-E3 isolated `-inject` proof to `03bb86d`, P1/P8 hygiene to `a26c573`, final P4 F1/F2 Go comment hygiene to `43a8bcc`, C6 capture visibility/shutdown/monotonic source slice to `7822f4c`; P3–P7 and P8 V&R-08 are records-only. E3/E4/E5 proof at `43a8bcc` is HISTORICAL; E3/E4/E5 at `7822f4c` is NOT_PROVEN until owner-run elevated re-proof.)
 **Applies to:** All human + AI agents contributing to AEGIS NIDS Windows
 
 ---

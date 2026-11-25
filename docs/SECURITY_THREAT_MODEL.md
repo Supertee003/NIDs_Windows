@@ -1,15 +1,17 @@
 # Security Threat Model — AEGIS NIDS Windows
 
 > Scope: the detection-only production runtime described in `README.md`, `SYSTEM_MAP.json`,
-> `FLOW_MAP.json`, and `AUTHORITY_MAP.json` at current build source `43a8bcc`.
+> `FLOW_MAP.json`, and `AUTHORITY_MAP.json` at current build source `7822f4c`.
 > This is a design-level threat model, not a penetration test result. Controls are listed with the
 > layer that owns them; where a control is only partially implemented, it is marked as such.
 >
-> The earlier scope record at `a26c573` is HISTORICAL; it is not the current build source.
+> The earlier scope records at `a26c573` and `43a8bcc` are HISTORICAL; they are not the current
+> build source.
 >
 > Evidence scope (2026-11-25): E3 and a narrow elevated canonical-pipe E4/E5 proof at
-> `43a8bcc` are recorded in `EVIDENCE_INDEX.json`; they do **not** establish full
-> current-head Windows E5 / kernel IDS qualification, which remains `NOT_PROVEN`
+> `43a8bcc` are HISTORICAL at that source. At `7822f4c` only E2 unit proof exists; E3/E4/E5 are
+> **NOT_PROVEN** until owner-run elevated re-proof. No proof here establishes full current-head
+> Windows E5 / kernel IDS qualification, which remains `NOT_PROVEN`
 > (`runtime_manifest.json:535`). See `docs/evidence/PROVENANCE.md`.
 
 ---
@@ -51,7 +53,7 @@
 | Malformed / oversized IPC message | Bounded framing and explicit rejection path | Codecs + runtime; exact limits in contract docs |
 | Duplicate / replayed events | Exactly-once counters (`duplicate_event_ids`, `nose_non_monotonic_event_ids`) reported by health | Data-plane counters; see `tests/` |
 | Queue exhaustion / resource abuse | Bounded queue with observable shedding on full (drop-on-full, **not** blocking-producer backpressure); `shed_overload` and drop counters exposed to health | Zig runtime; is intentionally observable, not silent |
-| Detection bypass / visibility gap | 23 rules across multiple layers; L4 negative controls are HISTORICAL proof. Current capture misses VLAN/QinQ-tagged frames and does not walk IPv6 extension headers; L7 sees plaintext bytes only | Open visibility gaps at `43a8bcc`: BPF `ip or ip6` (`nose/capture.go:142`), single VLAN unwrap (`src/capture/packet_decoder.zig:133-143`), fixed IPv6 header (`src/capture/packet_decoder.zig:182-194`), LIM-1 in detection docs |
+| Detection bypass / visibility gap | 23 rules across multiple layers; L4 negative controls are HISTORICAL proof. C6 source admits VLAN/QinQ and walks common IPv6 extension headers, but no host measurement of the new path exists; L7 sees plaintext bytes only | Source-level changes at `7822f4c` (BPF `vlan or ip or ip6` in `nose/capture.go`; bounded two-tag VLAN unwrap and IPv6 extension walk in `src/capture/packet_decoder.zig`) are E2-only; detection efficacy at `7822f4c` is NOT_PROVEN. LIM-1 remains open |
 | Forensic record tampering | Hash-chain integrity verification plus `forensic verify` CLI | Forensics; **tamper-evident**, not tamper-proof. Replay is integrity-only, not live pipeline re-execution (`src/control/handler_registry.zig:1943`) |
 | Release binary substitution | Ed25519 signature over `SHA256SUMS`; 674/674 artifact hashes verified against **one** signature; pinned trust anchor | Release engineering; 674 is a hash count, not a signature count |
 | Privilege escalation via enforcement | No host-effect authority: prevention gate closed, block IOCTL unsupported, no AEGIS filter installed | Rust PEP + WFP adapter; `RETIRE-HOST-EFFECT-001` |
@@ -82,22 +84,24 @@
 
 ---
 
-## 6. Open gaps at current build source `43a8bcc`
+## 6. Open gaps at current build source `7822f4c`
 
-These are source-observed gaps, not host-effect claims and not fixed by this records patch. They
-are the boundary of the controls in §3.
+These are source-observed gaps, not host-effect claims. C6 changed capture source at `7822f4c`;
+its unit tests are E2 only, and no host measurement of the new path exists. They are the boundary
+of the controls in §3.
 
 | Gap | Source fact | Status |
 |---|---|---|
-| Active control nonce/replay | `src/control/protocol.zig:296-297` declares `nonce` and `issued_at_ms`; no production handler consumes them. The replay-protected request module is only imported by `src/all_tests.zig:107`. | **OPEN** — declared, not enforced |
-| VLAN / QinQ visibility | Go capture BPF is `ip or ip6` (`nose/capture.go:142`); the Zig decoder unwraps one VLAN tag only (`src/capture/packet_decoder.zig:133-143`). | **OPEN** — tagged frames are not proven visible |
-| IPv6 extension headers | `decodeIpv6` reads one fixed 40-byte header then dispatches L4 (`src/capture/packet_decoder.zig:182-194`); Go retains the full address tail but marks the v1 identity truncated (`nose/capture.go:299-322`). | **OPEN** — no extension-header walk |
-| Event identity / time | Process-local `eventSequence` and wall-clock `UnixNano()` are stamped as `MonotonicNS` (`nose/capture.go:273-275`); the Zig reader comments on restart boundaries (`src/capture/nose_pipe_reader.zig:285,379`). | **OPEN** — cross-process monotonic identity not proven |
-| Capture shutdown | A capture goroutine calls `os.Exit(1)` on error (`nose/main.go:196-199`); the live-talkers loop has no stop channel (`nose/talkers_live.go:193-199`). | **OPEN** — bounded shutdown not proven |
-| Detection matrix at `43a8bcc` | E5/E6 rows were measured at `f4cde3c`; current-source E3/E4/E5 prove only the `-inject` lifecycle. | **NOT RE-MEASURED** — see `docs/portfolio/DETECTION_MATRIX_CURRENT.md` |
+| Active control nonce/replay | `src/control/protocol.zig:296-297` declares `nonce` and `issued_at_ms`; no production handler consumes them. The replay-protected request module is only imported by `src/all_tests.zig:107`. | **OPEN** — declared, not enforced (untouched by C6) |
+| VLAN / QinQ visibility | C6 sets BPF `vlan or ip or ip6` in `nose/capture.go` and unwraps up to two tags (802.1Q + 802.1ad) in `src/capture/packet_decoder.zig`, pinned by Zig tests. | **SOURCE-FIXED / E2 ONLY** — tagged frames not host-proven at `7822f4c` |
+| IPv6 extension headers | C6 walks Hop-by-Hop, Routing, Destination Options, Fragment and AH with an 8-hop fail-closed bound in `src/capture/packet_decoder.zig`; ESP and No-Next-Header stop the walk. Go keeps the full v2 tail (`nose/capture.go:299-322`). | **SOURCE-FIXED / E2 ONLY** — no host proof at `7822f4c` |
+| Event identity / time | C6 stamps `monotonic_ns` from a process-relative origin (`monotonicNowNS`), so the field now matches its schema meaning. `eventSequence` remains process-local and the Zig reader still comments on restart boundaries (`src/capture/nose_pipe_reader.zig:285,379`). | **PARTIAL** — cross-process monotonic identity still not proven |
+| Capture shutdown | C6 returns capture errors to `main` instead of `os.Exit` in the goroutine, gives collectors and the live-talkers loop a stop channel, and uses bounded send/timer selects. | **SOURCE-FIXED / E2 ONLY** — bounded shutdown not host-proven |
+| Detection matrix at `7822f4c` | E5/E6 rows were measured at `f4cde3c`; E3/E4/E5 at `43a8bcc` are HISTORICAL and cover the `-inject` lifecycle only. | **NOT RE-MEASURED / NOT_PROVEN** — see `docs/portfolio/DETECTION_MATRIX_CURRENT.md` |
 
 None of these gaps authorizes a host effect, changes a rule or wire field, or creates a MITRE
-mapping. Implementation would advance the build source and require fresh E3/E4/E5 proof.
+mapping. The remaining OPEN items (active nonce/replay, cross-process identity) require further
+source work and fresh E3/E4/E5 proof.
 
 ---
 

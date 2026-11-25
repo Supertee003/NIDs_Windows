@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `43a8bcc02358076380fa938b0e5632870643d3c5` (build source commit — ADR-0008)
+**HEAD:** `7822f4c162f7867555754b7f3677ade33c9548dd` (build source commit — ADR-0008)
 
 **RECORDS TIP:** `1f83eeb` (records head before the final source-hygiene slice; a commit cannot contain its own SHA)
 
@@ -14,13 +14,28 @@
 
 **GENERATOR:** Manus + `tools/rebuild_truth.py` (ADR-0008 source-commit stamp)
 
-> **SOURCE CHANGE (2026-11-25):** build source advanced `a26c573` → `43a8bcc`
-> by a comment-only Go Nose hygiene slice (P4 F1/F2). No wire, schema,
+> **SOURCE CHANGE (2026-11-25, C6):** build source advanced `43a8bcc` →
+> `7822f4c` by a capture visibility / shutdown / monotonic-time source slice.
+> Go Nose BPF now admits `vlan or ip or ip6`; the Zig decoder unwraps up to two
+> VLAN tags (802.1Q + 802.1ad) and walks common IPv6 extension headers with a
+> bounded, fail-closed chain; `monotonic_ns` now comes from a process-relative
+> origin; capture errors return to main instead of `os.Exit` in the goroutine;
+> collectors and the live-talkers loop observe a stop channel. **No** wire
+> layout, golden vector, rule, authority, host-effect or release identity
+> change. E2 unit proof only (`go test ./...`, Zig decoder tests, full
+> `zig build test` 2142 passed / 10 skipped); E3/E4/E5 at `7822f4c` are
+> **NOT_PROVEN** until owner-run elevated re-proof. See
+> `analysis/current-head/C6-SOURCE-PATCH-DECLARATION-20261125.md` and
+> `analysis/current-head/MASTER-AUDIT-C6-CAPTURE-20261125.md`.
+>
+> **SOURCE CHANGE (2026-11-25, prior):** build source advanced `a26c573` →
+> `43a8bcc` by a comment-only Go Nose hygiene slice (P4 F1/F2). No wire, schema,
 > golden-vector, rule, authority, host-effect or release change. The issue #44
 > `-inject` E3/E4/E5 proof recorded at `a26c573` is **HISTORICAL** with respect
-> to this new build source. E3 was re-executed on a private pipe, and the owner
+> to that source. E3 was re-executed on a private pipe, and the owner
 > subsequently ran the elevated canonical-pipe E4/E5 with a verified
-> stop/inject/restore lifecycle; both passed at `43a8bcc`. See
+> stop/inject/restore lifecycle; both passed at `43a8bcc` and are **HISTORICAL**
+> with respect to `7822f4c`. See
 > `analysis/current-head/MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E4E5-20261125.md`
 > and `analysis/current-head/MASTER-AUDIT-FINAL-RESIDUALS-20261125.md`.
 
@@ -45,7 +60,7 @@
 - Current-head companion documents: `docs/DETECTION_VALIDATION.md` (23-rule coverage/evidence matrix, FP/FN register), `docs/gates/PRODUCTION_READINESS.md` (definition of done, test->evidence->gate map, on-call), `docs/runbooks/RB-020-observability-manual.md` (metric surfaces + production-SRE gaps), `analysis/current-head/RUST-FOUNDATION-STATUS-20261119.md` (Rust authority boundary and retirement commits).
 - Go Nose sends length-prefixed CanonicalEvent frames over `\\.\pipe\aegis_nose` to the Zig reader; C/C++ adapters use separate C ABI contracts.
 - Python Brain inspection is optional. UDP offers are fire-and-forget; opt-in findings return only as advisory sensor events. The Phase-B BrainAdvisor dispatcher is test-harness-only. XDR is advisory recording-only at current HEAD: XDR-WIRE-001 feeds the selected fabric from detection-identity events, and XDR-RECEIPT-002 persists frozen multi-source assessments as IDS Evidence Receipts after forensic hash read-back with replay. The receipt value is discarded; no scoring, policy, PEP, DEFCON, ActionDispatcher, or host-effect consumer exists. Windows E5 for the detection-only path is recorded in `analysis/current-head/PROJECT-CLOSEOUT-20261117.md` (v2.0.0).
-- Earlier Windows E5 evidence was recorded for the historical v2.0.0 build source `7c604d5`; it does not establish kernel qualification, production driver signing, or E7. Published release identity is `v1.1` / signed candidate `466a226` / build source `a53eda8`; current build source is `a26c573`. Treat older deployment/evidence narratives below as historical unless their source commit and current-head proof are explicitly verified.
+- Earlier Windows E5 evidence was recorded for the historical v2.0.0 build source `7c604d5`; it does not establish kernel qualification, production driver signing, or E7. Published release identity is `v1.1` / signed candidate `466a226` / build source `a53eda8`; current build source is `7822f4c`. Treat older deployment/evidence narratives below as historical unless their source commit and current-head proof are explicitly verified.
 - Issue #44 observability is proven at **current build source `a26c573`** (records-only 2026-11-25 re-execution of the unmodified harness: E3 isolated-pipe `-inject` plus E4/E5 elevated Windows-host `-inject` on the canonical `\\.\pipe\aegis_nose` with verified stop/restore lifecycle). The earlier entries at `03bb86d` remain CLOSED_AT_RECORDED_HEAD and are not substituted for this run. Narrow scope: the harness is the pipe server with a fabric sink; no service-consumer/Nose-producer, rule-matrix, soak, install, signing, E6/E7 or zero-loss claim. Evidence: `analysis/current-head/MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md`; historical: `analysis/current-head/MASTER-AUDIT-P8-I44-E4E5-20261124.md` and `analysis/current-head/MASTER-AUDIT-P8-I44-E3-20261124.md`.
 - G2 enforcement lab is retired, not pending (2026-11-17): on a single-host window the signed lab policy matched the 443 canary (`policy=3`) and the installed PEP answered `decision=escalate reason=8 filter_id=0` for block/quarantine (direct FFI probe, `PepRequest` 64 B). `EVI-G2-PEP-CACHE-001-LAB-20261023` is CLOSED as superseded by RETIRE-HOST-EFFECT-001 / issue #25, and the host was restored hash-identically. The direction-verify, duplicate-filter, and unblock steps did not run and are not claimed. Evidence: `analysis/current-head/G2-ENFORCEMENT-RETIRED-20261117.md`.
 - Wi-Fi frame duplication is closed as not reproducible (2026-11-17): the older counter keyed on address/id/seq fields and therefore counted TCP Dup ACKs. A raw-byte probe (equal length + equal sha256 within 2 ms) reproduces 5/14 duplicated host_tx frames in the 02:39 capture and finds 0 in 29,060 frames taken later the same day, including 1,126 fps with the Go Nose handle attached (nose: 26,300 captured / 26,300 canonical / 0 dropped). `CAPTURE-DUP-WIFI-001` is CLOSED; the 02:39 root cause is not claimed. Reopen if the byte-level probe reports a nonzero pair count. Evidence: `analysis/current-head/CAPTURE-DUP-WIFI-20261117.md`.

@@ -1,17 +1,17 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-24T20:10:22.468291+00:00",
+  "generated_at": "2026-11-25T10:12:10.676353+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 3204,
+  "total_files": 3221,
   "by_role": {
-    "documentation": 552,
-    "build-config": 301,
+    "documentation": 567,
+    "build-config": 302,
     "other": 27,
     "lockfile": 6,
     "rust-build": 4,
     "source": 1493,
     "architecture-decision": 13,
-    "test-artifact": 411,
+    "test-artifact": 412,
     "config-data": 62,
     "step-document": 2,
     "go-source": 8,
@@ -630,6 +630,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/C6-SOURCE-PATCH-DECLARATION-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/CAPTURE-DUP-WIFI-001-20261117.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -954,6 +958,26 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/MASTER-AUDIT-AEGIS-001-RELEASE-STATUS-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-AEGIS-002-014-SCOPE-README-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-AEGIS-003-006-HEALTH-PROVENANCE-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-AEGIS-004-005-013-PROTOCOL-VERIFICATION-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-AEGIS-005-DETECTION-THREAT-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/MASTER-AUDIT-FINAL-RESIDUALS-20261125.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -1019,6 +1043,14 @@
       "role": "documentation"
     },
     "analysis/current-head/MASTER-AUDIT-P8-I44-E4E5-20261124.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E3-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E4E5-20261125.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -2362,6 +2394,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/architecture/DIAGRAMS.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "docs/architecture/failure-model.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -2499,6 +2535,10 @@
       "role": "documentation"
     },
     "docs/ENV_VARS.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/evidence/PROVENANCE.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -2718,6 +2758,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/operations/QUICK_START.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "docs/OPERATOR_COMMAND_MAP.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -2766,6 +2810,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/portfolio/DETECTION_MATRIX_CURRENT.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "docs/portfolio/images/dashboard.png": {
       "class": "unclassified",
       "role": "other"
@@ -2790,7 +2838,15 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/portfolio/VERIFICATION_SUMMARY.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "docs/PROJECT_ANALYSIS_2026-09-14.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/protocol/INDEX.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -2899,6 +2955,10 @@
       "role": "documentation"
     },
     "docs/runtime/CONTROLLED_ATTACK_TEST_READINESS.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/runtime/HEALTH_MODEL.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -3378,6 +3438,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "nose/capture_visibility_test.go": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "nose/cleanup_nose_mouth.bat": {
       "class": "canonical-build",
       "role": "build-config"
@@ -3529,6 +3593,10 @@
     "release/aegis-nids-windows-6.0.0-20261017_154714/scripts/install_aegis.ps1": {
       "class": "canonical-source",
       "role": "source"
+    },
+    "release/release-status.json": {
+      "class": "canonical-build",
+      "role": "build-config"
     },
     "release/T20-final/466a226/brain/__init__.py": {
       "class": "canonical-source",
@@ -13143,5 +13211,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "43a8bcc"
+  "source_commit": "7822f4c"
 }

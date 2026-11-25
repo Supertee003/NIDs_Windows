@@ -1,5 +1,5 @@
 {
-  "head_sha": "43a8bcc02358076380fa938b0e5632870643d3c5",
+  "head_sha": "7822f4c162f7867555754b7f3677ade33c9548dd",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-25",
   "generator_version": "3.0",
@@ -11167,6 +11167,48 @@
       ],
       "status": "CLOSED",
       "status_basis": "entry.result=PASS_E1 recorded at build source 43a8bcc; records-only patch"
+    },
+    {
+      "id": "AEGIS-006-C6-CAPTURE-20261125",
+      "head_sha": "7822f4c162f7867555754b7f3677ade33c9548dd",
+      "timestamp": "2026-11-25",
+      "title": "C6: VLAN/QinQ visibility, bounded IPv6 extension walk, bounded shutdown, process-relative monotonic_ns",
+      "level": "E2",
+      "component": "Go Nose capture and Zig packet decoder",
+      "flow_id": "network frame -> Go Nose -> CanonicalEvent -> Zig decoder",
+      "description": "Source slice advancing build source 43a8bcc -> 7822f4c. BPF now admits vlan or ip or ip6; Zig decoder unwraps up to two VLAN tags (802.1Q + 802.1ad) and walks common IPv6 extension headers with an 8-hop fail-closed bound; monotonic_ns comes from a process-relative origin; capture errors return to main; collectors and live-talkers observe stop channels. No wire layout, golden vector, rule, authority, host-effect or release identity change.",
+      "files_verified": [
+        "nose/capture.go",
+        "nose/inject.go",
+        "nose/main.go",
+        "nose/collectors.go",
+        "nose/talkers_live.go",
+        "nose/capture_visibility_test.go",
+        "src/capture/packet_decoder.zig",
+        "analysis/current-head/C6-SOURCE-PATCH-DECLARATION-20261125.md",
+        "analysis/current-head/MASTER-AUDIT-C6-CAPTURE-20261125.md"
+      ],
+      "tests": [
+        "gofmt: no new formatting drift in logical diff scope",
+        "go test ./... from nose/ -> ok aegis-nose",
+        "zig test src/capture/packet_decoder.zig -OReleaseSafe -> 8/8 passed",
+        "cargo build --release -> aegis_pep.dll + import lib",
+        "zig build test --summary all -> 8/8 steps, 2142 passed / 10 skipped",
+        "python tools/rebuild_truth.py -> stamped 10 artifacts to 7822f4c",
+        "python tools/truth.py verify -> TRUTH_VALID @ 7822f4c",
+        "git diff --check -> clean"
+      ],
+      "result": "PASS_E2",
+      "finding": "Capture visibility, IPv6 extension-header and shutdown/monotonic source changes are unit-proven at build source 7822f4c. No host, pipe, soak, install or signing proof is claimed.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-C6-CAPTURE-20261125.md",
+      "limitations": [
+        "E2 only. E3/E4/E5 at 7822f4c are NOT_PROVEN until owner-run elevated re-proof.",
+        "E3/E4/E5 PASS at 43a8bcc is HISTORICAL at that source.",
+        "R2003 FN-1, active nonce/replay and cross-process event identity remain open.",
+        "No MITRE mapping, benchmark ceiling, replay re-execution or zero-loss claim."
+      ],
+      "status": "OPEN",
+      "status_basis": "E2 PASS recorded; higher-level current-source proof is an owner-run blocker"
     }
   ],
   "known_gaps": [
@@ -17839,7 +17881,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 48,
-    "E2_count": 160,
+    "E2_count": 161,
     "E3_count": 18,
     "E4_count": 4,
     "E5_count": 121,

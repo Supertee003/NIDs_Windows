@@ -1,6 +1,7 @@
 # Runtime health model — actual fields, vocabulary mapping, and gaps
 
-> Scope: production observe-only runtime at build source `43a8bcc`.
+> Scope: production observe-only runtime at build source `7822f4c`
+> (prior `43a8bcc` scope is HISTORICAL).
 > This is a **mapping document**, not a source change. It does not rename states,
 > add fields, or claim that an unimplemented field exists. Source of truth for the
 > response schema is [`RUNTIME_CONTRACT.md`](RUNTIME_CONTRACT.md) §2 and §4;

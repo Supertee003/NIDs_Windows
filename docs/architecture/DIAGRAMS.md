@@ -1,6 +1,7 @@
 # AEGIS diagrams — component, lifecycle, trust boundary
 
-> Scope: production `v1.1` observe-only runtime at build source `43a8bcc`.
+> Scope: production `v1.1` observe-only runtime at build source `7822f4c`
+> (prior `43a8bcc` scope is HISTORICAL).
 > These diagrams describe source-described routes; they are not Windows E5 proof.
 > Lab-only host-effect stages are labelled and are not part of production.
 > Data flow and control flow use different edge styles. Validation points are marked `Vn`.

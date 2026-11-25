@@ -7,20 +7,21 @@
 > change). The matrix has **not** been re-measured on the host at `a53eda8`; no
 > E5 is claimed for this branch. See `analysis/current-head/RECONCILE-DOCS-READINESS-20261119.md`.
 
-> **Current source (P1/P8 hygiene, then 2026-11-25 rebase):** `a26c573` was the build source at
-> the 2026-11-24 audit and is now HISTORICAL. The current build source is `43a8bcc`
+> **Current source (P1/P8 hygiene, then 2026-11-25 C6 rebase):** `a26c573` and `43a8bcc` were
+> successive build sources and are now HISTORICAL. The current build source is `7822f4c`
 > (P2-44 `9105ff5` added observability counters, P2b `661fb76` tightened wire-length decoding;
 > P8 source-truth `2129dcd` added only authority/quarantine disclosure comments; P8-I44 `e406cbb`
 > split nose drop causes by exclusive counter, counted detector allocation failures as detection
 > degradation, and named the lifecycle fresh-loss input; P8-I44-E3 `03bb86d` added an explicit
 > pipe-name seam and ran the real `-inject` exact-delta harness on a private pipe at E3;
 > `a26c573` removed a stale "production-ready" label and added an oversize-wire reject guard
-> in the Go Nose writer; `43a8bcc` made Go comment hygiene only — no rule, wire-layout or
-> authority change).
-> The matrix has **not** been re-measured at `43a8bcc`. Current-source E3 and narrow elevated
-> canonical-pipe E4/E5 records prove the `-inject` lifecycle and exact deltas only; they do not
-> re-run the detection matrix, soak, loss rate, install or signing. The E5/E6 rows below remain
-> HISTORICAL at `f4cde3c`; no current-source detection-matrix E5 is claimed.
+> in the Go Nose writer; `43a8bcc` made Go comment hygiene only; `7822f4c` changed capture
+> visibility, shutdown and monotonic-time producers — no rule, wire-layout or authority change).
+> The matrix has **not** been re-measured at `7822f4c`. E3 and narrow elevated canonical-pipe
+> E4/E5 records at `43a8bcc` are HISTORICAL at that source and prove the `-inject` lifecycle and
+> exact deltas only; they do not re-run the detection matrix, soak, loss rate, install or signing.
+> E3/E4/E5 at `7822f4c` are **NOT_PROVEN** until owner-run elevated re-proof. The E5/E6 rows
+> below remain HISTORICAL at `f4cde3c`; no current-source detection-matrix E5 is claimed.
 > `docs/portfolio/DETECTION_CATALOG.md` separates code-path 23/23 from host-evaluable 22/23
 > (R2003/FN-1); the generated 23-row projection is
 > [`docs/portfolio/DETECTION_MATRIX_CURRENT.md`](portfolio/DETECTION_MATRIX_CURRENT.md).
