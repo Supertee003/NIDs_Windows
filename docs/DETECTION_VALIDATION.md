@@ -20,8 +20,9 @@
 > The matrix has **not** been re-measured at `7822f4c`. E3 and narrow elevated canonical-pipe
 > E4/E5 records at `43a8bcc` are HISTORICAL at that source and prove the `-inject` lifecycle and
 > exact deltas only; they do not re-run the detection matrix, soak, loss rate, install or signing.
-> E3 at `7822f4c` is current (narrow private-pipe `-inject` exact deltas); E4/E5 at
-> `7822f4c` are **NOT_PROVEN** until owner-run elevated re-proof. The E5/E6 rows
+> E3 and narrow E4/E5 at `7822f4c` are current (`-inject` exact deltas on a private
+> pipe and on the elevated canonical pipe with a verified host restore); they do not
+> re-run the detection matrix. The E5/E6 rows
 > below remain HISTORICAL at `f4cde3c`; no current-source detection-matrix E5 is claimed.
 > `docs/portfolio/DETECTION_CATALOG.md` separates code-path 23/23 from host-evaluable 22/23
 > (R2003/FN-1); the generated 23-row projection is

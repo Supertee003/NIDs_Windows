@@ -11206,7 +11206,7 @@
       "finding": "Capture visibility, IPv6 extension-header and shutdown/monotonic source changes are unit-proven at build source 7822f4c. No host, pipe, soak, install or signing proof is claimed.",
       "evidence_artifact": "analysis/current-head/MASTER-AUDIT-C6-CAPTURE-20261125.md",
       "limitations": [
-        "E2 only for this entry. E3 at 7822f4c is PASS in entry C6-E3-7822F4C-20261125; E4/E5 remain NOT_PROVEN until owner-run elevated re-proof.",
+        "E2 only for this entry. E3 is PASS in C6-E3-7822F4C-20261125 and narrow E4/E5 in C6-E4E5-7822F4C-20261125; full Windows E5/kernel qualification remains NOT_PROVEN.",
         "E3/E4/E5 PASS at 43a8bcc is HISTORICAL at that source.",
         "R2003 FN-1, active nonce/replay and cross-process event identity remain open.",
         "No MITRE mapping, benchmark ceiling, replay re-execution or zero-loss claim."
@@ -11238,13 +11238,53 @@
       "finding": "Private-pipe exact-delta proof is current at build source 7822f4c; no canonical-pipe or elevated host claim is included.",
       "evidence_artifact": "analysis/current-head/MASTER-AUDIT-C6-E3-CURRENT-SOURCE-20261125.md",
       "limitations": [
-        "E3 only; E4/E5 at 7822f4c remain NOT_PROVEN until owner-run elevated canonical-pipe re-proof.",
+        "E3 only for this entry; narrow E4/E5 at 7822f4c is PASS in C6-E4E5-7822F4C-20261125.",
         "43a8bcc E3/E4/E5 entries are HISTORICAL at their recorded source.",
         "Local transcripts under D:/aegis-tmp are operator evidence and do not resolve in a fresh worktree.",
         "No C6 visibility host measurement, rule matrix, soak, install, signing, E6/E7 or zero-loss claim."
       ],
       "status": "CLOSED",
       "status_basis": "entry.result=PASS_E3 recorded at build source 7822f4c; E3 only; E4/E5 owner-run blocker tracked in AEGIS-006-C6-CAPTURE-20261125"
+    },
+    {
+      "id": "C6-E4E5-7822F4C-20261125",
+      "head_sha": "7822f4c162f7867555754b7f3677ade33c9548dd",
+      "timestamp": "2026-11-25",
+      "title": "Issue #44 narrow E4/E5 at current source: owner-run elevated canonical-pipe -inject with verified stop/restore",
+      "level": "E5",
+      "component": "Windows host lifecycle + src/capture/nose_pipe_reader.zig canonical pipe path",
+      "flow_id": "elevated host lifecycle -> canonical pipe -> reader loop -> decoder/queue -> authoritative counters -> host restore (issue #44 E4/E5, current source)",
+      "description": "The agent session is non-elevated; the owner approved the UAC launcher and ran the prepared #Requires -RunAsAdministrator script from an elevated PowerShell. Harness recompiled from unmodified current source with SHA256 3CAB8A36...C67 (verified in-script). Pre-state captured, SCM failure actions disabled, AegisNids stopped to STATE 1 STOPPED, aegis-nose stopped and the canonical pipe freed, then -inject -seconds 2 was run on \\\\.\\\\pipe\\\\aegis_nose, followed by restore of failure actions, service and Nose command line in a finally block. The raw inject transcript starts with a Windows PowerShell NativeCommandError wrapper around the first Zig stderr line; this is a stream artifact, not a harness failure (exit 0, all gated exact deltas passed). The 43a8bcc E4/E5 entry remains HISTORICAL.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-C6-E4E5-CURRENT-SOURCE-20261125.md",
+        "D:/aegis-tmp/i44_e45_7822f4c_prestate.txt",
+        "D:/aegis-tmp/i44_e45_7822f4c_inject.txt",
+        "D:/aegis-tmp/i44_e45_7822f4c_elevated_run.txt"
+      ],
+      "tests": [
+        "i44_e45_7822f4c_elevated_run.ps1 via elevated PowerShell -> DONE inject_exit=0",
+        "harness SHA256 3CAB8A36C289AE18319071600D8D8412DD97CF299F980914D252F9CAE6F88C67 (checked by script)",
+        "sc failure AegisNids actions=none before window; restored to reset=86400 restart/5000/restart/15000/restart/60000",
+        "sc stop -> STATE 1 STOPPED; aegis-nose stopped; canonical pipe free",
+        "inject on canonical pipe -> exit 0; close-before-payload +1 midframe/+1 pipe error (exact)",
+        "absurd-length -> +1 framing/+1 pipe error (exact); drain-then-valid -> +1 framing/+1 submitted/no pipe error (exact)",
+        "reader read=1 drop=3 submitted=1 pipe_errors=2; fabric pending=0 accepted=0 rejected=0 dropped=0",
+        "sc start -> STATE 4 RUNNING PID 10080; Nose restart ReturnValue=0 ProcessId=19212; final processes aegis_nids:10080 aegis-nose:19212",
+        "single aegis_nose pipe after restore; independent read-only re-check matched failure config and running state",
+        "python tools/truth.py verify -> TRUTH_VALID @ 7822f4c; 674/674 digests; doc checker 0 FAIL/0 WARN"
+      ],
+      "result": "PASS_E4_E5",
+      "finding": "The issue #44 exact-delta counter proof is verified at the CURRENT build source 7822f4c on the canonical Windows named pipe under a real elevated stop/inject/restore lifecycle. All three cases moved exactly the asserted counters, harness exit 0, and service config, running state, Nose command line and the single canonical pipe were restored.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-C6-E4E5-CURRENT-SOURCE-20261125.md",
+      "limitations": [
+        "Narrow E4/E5 scope: canonical pipe + elevated host lifecycle; harness is the pipe server with a fabric sink, not AegisNids-consumer or Go-Nose-producer verification.",
+        "Does not establish full current-head Windows E5 / kernel IDS qualification or detection efficacy; C6 VLAN/QinQ and IPv6 host measurement remains absent.",
+        "Raw transcripts are local-only operator evidence under D:/aegis-tmp and do not resolve in a fresh worktree; they are not synthesized or re-labeled.",
+        "No detection-rule matrix, soak, loss-rate, install, signing, production simulation, E6/E7 or zero-loss claim.",
+        "Release identity unchanged v1.1 / 466a226 / a53eda8, 6/6 gates PASS; 36.52 h soak remains HISTORICAL at a53eda8."
+      ],
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS_E4_E5 recorded at build source 7822f4c; operator-run elevated host evidence"
     }
   ],
   "known_gaps": [
@@ -17920,11 +17960,11 @@
     "E2_count": 161,
     "E3_count": 19,
     "E4_count": 4,
-    "E5_count": 121,
+    "E5_count": 122,
     "E6_count": 1,
     "E7_count": 5,
-    "E5_with_artifact_count": 71,
-    "E5_with_resolvable_artifact_count": 39,
+    "E5_with_artifact_count": 72,
+    "E5_with_resolvable_artifact_count": 40,
     "E5_with_unresolvable_artifact_count": 32,
     "unresolvable_artifact_pointer_count": 48,
     "known_gaps_count": 287

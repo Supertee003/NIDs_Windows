@@ -6,6 +6,12 @@ shutdown / monotonic source slice)
 **STATUS:** PASS_E3 — narrow private-pipe `-inject` exact-delta proof at the current
 source. No E4/E5 claim is made here.
 
+> **SUPERSEDED IN PART (2026-11-25):** Narrow E4/E5 at this source was subsequently
+> executed by the owner on the elevated canonical pipe with a verified
+> stop/inject/restore lifecycle; see
+> `analysis/current-head/MASTER-AUDIT-C6-E4E5-CURRENT-SOURCE-20261125.md`.
+> The E3-only status in this point-in-time record is retained as written.
+
 ## PATCH DECLARATION
 
 ```

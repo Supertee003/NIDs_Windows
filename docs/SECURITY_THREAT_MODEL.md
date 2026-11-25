@@ -9,9 +9,9 @@
 > build source.
 >
 > Evidence scope (2026-11-25): E3 and a narrow elevated canonical-pipe E4/E5 proof at
-> `43a8bcc` are HISTORICAL at that source. At `7822f4c` E2 unit proof and a narrow private-pipe
-> `-inject` E3 exact-delta proof are current; E4/E5 remain **NOT_PROVEN** until owner-run
-> elevated re-proof. No proof here establishes full current-head
+> `43a8bcc` are HISTORICAL at that source. At `7822f4c` E2 unit proof, narrow private-pipe
+> E3 and owner-run elevated canonical-pipe E4/E5 `-inject` exact-delta proofs with a
+> verified host restore are current. No proof here establishes full current-head
 > Windows E5 / kernel IDS qualification, which remains `NOT_PROVEN`
 > (`runtime_manifest.json:535`). See `docs/evidence/PROVENANCE.md`.
 

@@ -25,7 +25,7 @@
 | Integration | **FRESH E3 PASS at current source**: narrow private-pipe `-inject` exact deltas, harness SHA256 `3CAB8A36…C67`. E4/E5 at `7822f4c` remain NOT_PROVEN | `analysis/current-head/MASTER-AUDIT-C6-E3-CURRENT-SOURCE-20261125.md` | `7822f4c` |
 | Protocol | RECORDED: exact-length / trailing-byte / version-downgrade rejection tests in Zig, Go, C++; shared `event_v*` vectors | `src/contract/canonical_event.zig:1624-1635`; `nose/payload_v3_test.go:288-289`; `docs/protocol/INDEX.md` | `43a8bcc` |
 | Runtime | RECORDED: counted drops/shed, worker failure reason, DEGRADED health tests; no fresh probe by this summary | `docs/runtime/HEALTH_MODEL.md`; `src/control/state_machine.zig:651-717` | `43a8bcc` |
-| Live host | RECORDED PASS at **narrow scope, HISTORICAL source**: owner-run elevated canonical-pipe `-inject` with verified stop/restore. E4/E5 at `7822f4c` and full current-head Windows E5 / kernel qualification: **NOT_PROVEN** | `analysis/current-head/MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E4E5-20261125.md`; `runtime_manifest.json:535` | `43a8bcc` HISTORICAL |
+| Live host | **FRESH narrow E4/E5 PASS at current source**: owner-run elevated canonical-pipe `-inject`, exact deltas, verified stop/restore. Full current-head Windows E5 / kernel qualification: **NOT_PROVEN** | `analysis/current-head/MASTER-AUDIT-C6-E4E5-CURRENT-SOURCE-20261125.md`; `runtime_manifest.json:535` | `7822f4c` (narrow) |
 | Detection | 23/23 catalogued and evaluable **at fixture/code-path level**; 22/23 host-evaluable; live positive proof is L4 family only (R9006 strongest). R2003 has no host proof (FN-1) | `docs/portfolio/DETECTION_CATALOG.md`; `README.md:57-71`; `docs/testing/RESULTS.md:60-72` | catalog current; E5 proofs historical at their own commits |
 | Soak | RECORDED PASS **36.52 / 24.0 h**, `problems=[]`, zero loss/shed counters **only in that recorded window**; HISTORICAL at release identity | `analysis/current-head/SOAK-PASS-466A226-20261122.md`; `docs/testing/RESULTS.md:39-58` | `a53eda8` |
 
@@ -36,7 +36,7 @@
 - A synthetic fixture is E1/E2; it does not prove a real sensor produced the event.
 - The narrow `43a8bcc` E4/E5 proof is HISTORICAL at that source; it does not establish detection
   matrix, soak, loss-rate, install, signing, E6/E7 or full host qualification at `7822f4c`.
-- C6 source-level visibility/shutdown changes remain E2 only; the current-source E3 proof covers the pipe-reader exact deltas, not the capture path. No elevated host proof at `7822f4c` exists yet.
+- C6 source-level visibility/shutdown changes remain E2 only; the current-source E3/E4/E5 proof covers the pipe-reader exact deltas and host lifecycle, not the capture path or detection efficacy. Full Windows E5/kernel qualification is not proven.
 - `a26c573`, `03bb86d` and `43a8bcc` proofs are HISTORICAL and do not substitute for current-source proof.
 
 ## Known limitations

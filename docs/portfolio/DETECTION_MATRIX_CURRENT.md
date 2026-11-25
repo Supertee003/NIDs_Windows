@@ -6,9 +6,9 @@
 > The current build source is `7822f4c`. The rule matrix and its E5/E6 rows were last measured at
 > `f4cde3c`; the immutable release identity is `a53eda8`. The earlier `a26c573` and `43a8bcc`
 > sources are HISTORICAL; the matrix has **not** been re-measured at `7822f4c`. E3/E4/E5 proof at
-> `43a8bcc` is HISTORICAL and covers the narrow `-inject` lifecycle only; E3 at `7822f4c` is
-> current for that narrow pipe-reader lifecycle only, and E4/E5 at `7822f4c` are NOT_PROVEN
-> until owner-run elevated re-proof.
+> `43a8bcc` is HISTORICAL and covers the narrow `-inject` lifecycle only; E3 and narrow E4/E5
+> at `7822f4c` are current for that narrow pipe-reader lifecycle only and do not
+> re-measure the matrix.
 >
 
 **Action** below is policy intent. Production is observe-only: `prevention_gate=closed`,

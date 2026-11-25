@@ -10,8 +10,9 @@
 > proof on the canonical pipe), P1/P8 hygiene `a26c573`, F1/F2 hygiene `43a8bcc`,
 > C6 capture visibility/shutdown/monotonic source `7822f4c`; P3–P7 and the
 > P8 V&R-08 closeout are records-only. E3/E4/E5 at `43a8bcc` is HISTORICAL;
-> E3 at `7822f4c` is current (narrow private-pipe `-inject` exact deltas); E4/E5 at
-> `7822f4c` is NOT_PROVEN until owner-run elevated re-proof).
+> E3 and narrow E4/E5 at `7822f4c` are current (`-inject` exact deltas on the
+> private and elevated canonical pipes with a verified host restore). Full Windows
+> E5 / kernel IDS qualification is NOT_PROVEN).
 > The immutable v1.1 release identity above is unchanged. Authority:
 > `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`.
 
