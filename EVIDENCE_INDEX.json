@@ -11572,6 +11572,37 @@
       ],
       "status": "CLOSED",
       "status_basis": "entry.result=PASS_E1 read-only diagnostic at build source 4dd3393"
+    },
+    {
+      "id": "PERF-MICRO-E2-4DD3393-20261126",
+      "head_sha": "4dd33936909de1314099652a7523e52c40bb2c44",
+      "timestamp": "2026-11-26",
+      "title": "Zig ReleaseFast microbenchmark at current source 4dd3393",
+      "level": "E2",
+      "component": "src/perf_bench_main.zig -> src/core/perf_benchmark.zig",
+      "flow_id": "BENCH_BINARY -> QUICK/LATENCY -> THRESHOLD_CHECK -> REPORT",
+      "description": "Built aegis_perf_bench at -Doptimize=ReleaseFast with isolated D: caches and ran quick (warmup 10, 100 iterations) and latency (warmup 10, 200 iterations). All six declared thresholds passed in quick; both modes exited 0. Binary SHA-256 8829E03D841FF3F4BE12223226EBCD7FDE9313DF8D2F245FFE15703BD182A476. Full-pipeline quick run 42,123 ops/sec (23.74 us/op), p50/p95/p99 24.0/28.4/35.6 us. Recorded in docs/portfolio/PERFORMANCE_REPORT.md section 1a.",
+      "files_verified": [
+        "src/perf_bench_main.zig",
+        "src/core/perf_benchmark.zig",
+        "configs/test/perf_benchmark_config.json",
+        "docs/portfolio/PERFORMANCE_REPORT.md"
+      ],
+      "tests": [
+        "zig build core-tools -Doptimize=ReleaseFast --cache-dir D:\\aegis-tmp\\plan_zig_cache --global-cache-dir D:\\aegis-tmp\\plan_zig_global -> exit 0",
+        "zig-out/bin/aegis_perf_bench.exe quick -> exit 0, 6/6 thresholds PASS",
+        "zig-out/bin/aegis_perf_bench.exe latency -> exit 0, p50/p95/p99 recorded"
+      ],
+      "result": "PASS_E2",
+      "finding": "In-process Zig microbenchmark passes at the current source. It is not a fixed-rate network benchmark, not Nose/daemon integration, and establishes no host throughput ceiling.",
+      "evidence_artifact": "docs/portfolio/PERFORMANCE_REPORT.md",
+      "limitations": [
+        "No network load generator, offered-rate control, isolated lab host, or negative control.",
+        "No E5/E6/E7 claim follows from this in-process run.",
+        "Historical T17 values remain a separate, older record."
+      ],
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS_E2 executed at build source 4dd3393"
     }
   ],
   "known_gaps": [
@@ -18244,7 +18275,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 51,
-    "E2_count": 166,
+    "E2_count": 167,
     "E3_count": 19,
     "E4_count": 4,
     "E5_count": 122,

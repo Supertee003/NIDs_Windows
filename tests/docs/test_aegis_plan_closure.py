@@ -117,6 +117,15 @@ def test_fuzz_inventory_records_the_real_smoke_run() -> None:
     assert "not a coverage-guided campaign" in text
 
 
+def test_performance_report_records_real_e2_microbenchmark() -> None:
+    text = _read(DOCS["AEGIS-012-PERFORMANCE"])
+    assert "8829E03D841FF3F4BE12223226EBCD7FDE9313DF8D2F245FFE15703BD182A476" in text
+    assert "1a. Zig microbenchmark actually run" in text
+    assert "E2 in-process microbenchmark" in text
+    assert "not a packet-rate test" in text
+    assert "Controlled fixed-rate benchmark at current source | **NOT RUN**" in text
+
+
 def test_provenance_records_locator_split_and_tool() -> None:
     text = _read("docs/evidence/PROVENANCE.md")
     assert "tools/verify_evidence_locators.py" in text
