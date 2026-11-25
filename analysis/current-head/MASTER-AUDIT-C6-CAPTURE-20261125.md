@@ -64,6 +64,10 @@ EVIDENCE IMPACT:      E2 unit proof at 7822f4c; E3/E4/E5 remain NOT_PROVEN there
 | `cargo build --release` | produced `aegis_pep.dll` + import lib (staged into gitignored `target/release`) |
 | `zig build test --summary all` | 8/8 steps, **2142 passed / 10 skipped** (helper libs staged from `build/` into gitignored `target/helpers`) |
 | `python tools/rebuild_truth.py` | stamped 10 artifacts to `7822f4c` |
+| `python tools/release_engineering.py --refresh-digests` on a clean tree | 674 artifacts kept, 7 digests updated, 0 adopted/dropped; `verify` OK at `source_commit=7822f4c`. Records-only digest restamp; no new artifact, signature, tag or release identity. |
+| `python scripts/doc_checker.py` | 0 FAIL, 0 WARN, 23 total |
+| `python -m pytest tests/docs tests/release tests/security/test_scope_ratchet.py tests/security/test_evidence_index_integrity.py -q` | 273 passed |
+| `python scripts/check_summary.py` | SUMMARY_VALID |
 | `python tools/truth.py verify` | TRUTH_VALID @ 7822f4c |
 | `git diff --check` | clean |
 

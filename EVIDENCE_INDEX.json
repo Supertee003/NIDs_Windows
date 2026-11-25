@@ -11195,6 +11195,10 @@
         "cargo build --release -> aegis_pep.dll + import lib",
         "zig build test --summary all -> 8/8 steps, 2142 passed / 10 skipped",
         "python tools/rebuild_truth.py -> stamped 10 artifacts to 7822f4c",
+        "python tools/release_engineering.py --refresh-digests -> 674 kept, 7 updated, 0 adopted/dropped; verify OK at source_commit=7822f4c",
+        "python scripts/doc_checker.py -> 0 FAIL, 0 WARN, 23 total",
+        "python -m pytest tests/docs tests/release tests/security/test_scope_ratchet.py tests/security/test_evidence_index_integrity.py -q -> 273 passed",
+        "python scripts/check_summary.py -> SUMMARY_VALID",
         "python tools/truth.py verify -> TRUTH_VALID @ 7822f4c",
         "git diff --check -> clean"
       ],
