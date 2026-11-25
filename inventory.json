@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-25T18:23:26.493507+00:00",
+  "generated_at": "2026-11-25T18:25:00.024426+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
   "total_files": 3264,
@@ -2586,7 +2586,7 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 143691
+      "size": 143899
     },
     {
       "path": "build_truth.json",
@@ -4620,7 +4620,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1691262
+      "size": 1693048
     },
     {
       "path": "FLOW_MAP.json",
@@ -4728,7 +4728,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 516823
+      "size": 517114
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5022,7 +5022,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 418009
+      "size": 418232
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",

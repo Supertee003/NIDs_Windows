@@ -11545,6 +11545,33 @@
         "No current-host or elevated claim follows from this run."
       ],
       "status_basis": "entry.result=PASS_E2 executed at build source 4dd3393"
+    },
+    {
+      "id": "EVIDENCE-LOCATOR-REPORT-E1-4DD3393-20261126",
+      "head_sha": "4dd33936909de1314099652a7523e52c40bb2c44",
+      "timestamp": "2026-11-26",
+      "title": "Read-only evidence locator report with honest unresolved-pointer split",
+      "level": "E1",
+      "component": "tools/verify_evidence_locators.py -> EVIDENCE_INDEX.json -> docs/evidence/PROVENANCE.md",
+      "flow_id": "EVIDENCE_INDEX -> LOCATOR_RESOLUTION -> HONEST_SPLIT_REPORT",
+      "description": "Added a read-only diagnostic that reports which unresolved evidence artifact pointers have a locator that exists on this host. Observed split: 52 unresolved = 4 repo-resolvable, 18 archive-resolvable, 30 missing. The tool copies no artifact, changes no status or level, and is not a gate. PROVENANCE.md records the split with the fresh-clone caveat.",
+      "files_verified": [
+        "tools/verify_evidence_locators.py",
+        "docs/evidence/PROVENANCE.md"
+      ],
+      "tests": [
+        "python tools/verify_evidence_locators.py -> repo-resolvable 4, archive-resolvable 18, missing 30, total 52",
+        "python -m pytest tests/docs/test_aegis_plan_closure.py -q -> 13 passed"
+      ],
+      "result": "PASS_E1",
+      "finding": "Locator resolution is now reportable without hiding or fabricating evidence. Archive-resolvable pointers remain non-reproducible in a fresh clone.",
+      "evidence_artifact": "docs/evidence/PROVENANCE.md",
+      "limitations": [
+        "The tool checks existence only; it does not verify content or digest of archived artifacts.",
+        "Missing pointers remain missing; no artifact was synthesized."
+      ],
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS_E1 read-only diagnostic at build source 4dd3393"
     }
   ],
   "known_gaps": [
@@ -18216,7 +18243,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 50,
+    "E1_count": 51,
     "E2_count": 166,
     "E3_count": 19,
     "E4_count": 4,
