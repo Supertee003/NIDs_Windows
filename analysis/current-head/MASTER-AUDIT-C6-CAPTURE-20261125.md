@@ -89,6 +89,10 @@ gitignored and not part of the patch.
 integration), E5 (Windows host), E6/E7 remain **NOT_PROVEN** at `7822f4c` until the owner runs
 the elevated re-proof. This audit does not synthesize host evidence.
 
+> **SUPERSEDED IN PART:** narrow E3 and E4/E5 were subsequently proven at this
+> source; see `analysis/current-head/MASTER-AUDIT-C6-FINAL-CLOSEOUT-20261125.md`.
+> The E2-only text in this point-in-time record is retained as written.
+
 ## ROLLBACK
 
 Revert source commit `7822f4c` and this records rebaseline. No signed release artifact changes.
@@ -104,9 +108,14 @@ Revert source commit `7822f4c` and this records rebaseline. No signed release ar
 
 ## OPEN BLOCKERS
 
-Owner-run elevated E3/E4/E5 re-proof at `7822f4c` is required before any current-source host
-claim. Active nonce/replay and cross-process monotonic identity remain later source work.
+Owner-run elevated E3/E4/E5 re-proof at `7822f4c` was subsequently executed by the owner
+and is recorded in `MASTER-AUDIT-C6-E4E5-CURRENT-SOURCE-20261125.md`; this point-in-time
+list is retained as written. Active nonce/replay, cross-process monotonic identity and full
+Windows E5 / kernel IDS qualification remain later or open work.
 
 ## COMPLETION GATE
 
-**PASS for E2 only.** Full current-source qualification gate remains **OPEN / NOT_PROVEN**.
+**PASS for E2 only.** Full current-source qualification gate remains **OPEN / NOT_PROVEN**
+at the time of this record; narrow E3/E4/E5 were subsequently proven at the same source
+(see `analysis/current-head/MASTER-AUDIT-C6-FINAL-CLOSEOUT-20261125.md`). Detection efficacy
+and full Windows E5 / kernel IDS qualification remain OPEN / NOT_PROVEN.

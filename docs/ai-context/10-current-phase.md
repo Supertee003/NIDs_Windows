@@ -1114,3 +1114,27 @@ See `analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md` and
   `AUDIT-CLOSE-20261123-E3`; E3_count 14 -> 15.
 - E-level: E2/E3 component proof only. No E4/E5 claim, no new soak, no signed-candidate
   change, no re-key. `v1.1` remains immutable.
+
+## Post-patch rebaseline — C6 current-source proof closeout (2026-11-25)
+
+- Records HEAD is `f13bbbe`; build source remains `7822f4c` (ADR-0008: every C6
+  follow-up commit after the source slice is records-only, so machine maps stay
+  TRUTH_VALID at the source commit).
+- Current-source proof inventory: E2 unit (`go test ./...`, Zig decoder tests,
+  full `zig build test` 2142 passed / 10 skipped), narrow private-pipe E3 exact
+  deltas and owner-run elevated canonical-pipe E4/E5 exact deltas with a verified
+  stop/inject/restore lifecycle. Harness SHA256 `3CAB8A36…C67` for both E3 and
+  E4/E5 at this source.
+- Gate results at `f13bbbe`: `SUMMARY_VALID`, doc checker 0 FAIL / 0 WARN,
+  `TRUTH_VALID @ 7822f4c`, 674/674 recorded digests, selected pytest 273 passed,
+  `git diff --check` clean, worktree clean.
+- Consolidated record: `analysis/current-head/MASTER-AUDIT-C6-FINAL-CLOSEOUT-20261125.md`.
+  Historical `43a8bcc` E3/E4/E5 records remain HISTORICAL and are not used as
+  current truth.
+- Honestly open: full current-head Windows E5 / kernel IDS qualification, the
+  23-rule matrix at this source (last measured `f4cde3c`), detection efficacy,
+  R2003 FN-1, active IPC nonce/replay, cross-process monotonic identity, the
+  Zig-vs-TS policy-hash byte-stream question, a host measurement of the C6
+  VLAN/QinQ and IPv6 extension walk, and soak/install/signing/E6/E7. Release
+  identity remains `v1.1` / `466a226` / `a53eda8`, 6/6 gates PASS,
+  production observe-only.

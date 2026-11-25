@@ -30,8 +30,9 @@
 > Windows E5 / kernel IDS qualification and detection efficacy remain
 > **NOT_PROVEN**. See `analysis/current-head/C6-SOURCE-PATCH-DECLARATION-20261125.md`,
 > `analysis/current-head/MASTER-AUDIT-C6-CAPTURE-20261125.md`,
-> `analysis/current-head/MASTER-AUDIT-C6-E3-CURRENT-SOURCE-20261125.md` and
-> `analysis/current-head/MASTER-AUDIT-C6-E4E5-CURRENT-SOURCE-20261125.md`.
+> `analysis/current-head/MASTER-AUDIT-C6-E3-CURRENT-SOURCE-20261125.md`,
+> `analysis/current-head/MASTER-AUDIT-C6-E4E5-CURRENT-SOURCE-20261125.md` and the
+> consolidated `analysis/current-head/MASTER-AUDIT-C6-FINAL-CLOSEOUT-20261125.md`.
 >
 > **SOURCE CHANGE (2026-11-25, prior):** build source advanced `a26c573` →
 > `43a8bcc` by a comment-only Go Nose hygiene slice (P4 F1/F2). No wire, schema,

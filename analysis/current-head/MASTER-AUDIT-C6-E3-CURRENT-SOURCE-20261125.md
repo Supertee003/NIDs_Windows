@@ -67,9 +67,9 @@ passed); the raw transcript is unmodified.
 
 ## Limits and pending work
 
-- This entry claims E3 only. E4/E5 at `7822f4c` remain **NOT_PROVEN** until an
-  owner-run elevated canonical-pipe re-proof. The `43a8bcc` E4/E5 record is
-  HISTORICAL with respect to this source.
+- This entry claims E3 only at the time of this record. Narrow E4/E5 was subsequently
+  proven at `7822f4c` (see `MASTER-AUDIT-C6-E4E5-CURRENT-SOURCE-20261125.md`). The
+  `43a8bcc` E4/E5 record remains HISTORICAL with respect to this source.
 - The prepared owner-run script is
   `D:\aegis-tmp\i44_e45_7822f4c_elevated_run.ps1` (launched by
   `D:\aegis-tmp\run_i44_e45_7822f4c_as_admin.cmd`). It re-verifies the harness
@@ -85,6 +85,7 @@ passed); the raw transcript is unmodified.
 
 ## Completion gate
 
-**PASS_E3** for build source `7822f4c`. Full current-source qualification gate
-remains **OPEN / NOT_PROVEN** for E4/E5 and all detection-efficacy / host
-qualification claims.
+**PASS_E3** for build source `7822f4c`. Narrow E4/E5 PASS was subsequently recorded
+at the same source. Full qualification gate remains **OPEN / NOT_PROVEN** for
+detection efficacy and full Windows E5 / kernel IDS qualification; see
+`analysis/current-head/MASTER-AUDIT-C6-FINAL-CLOSEOUT-20261125.md`.

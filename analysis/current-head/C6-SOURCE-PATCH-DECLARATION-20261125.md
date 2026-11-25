@@ -3,6 +3,12 @@
 **TARGET HEAD:** `46d0955df3906ab19a738fb16f688bb66f99a5c4`
 **BUILD SOURCE BEFORE PATCH:** `43a8bcc02358076380fa938b0e5632870643d3c5`
 
+> **SUPERSEDED IN PART (2026-11-25):** this is a point-in-time patch declaration.
+> E2 was proven at the resulting build source `7822f4c`, and narrow E3 plus
+> owner-run elevated canonical-pipe E4/E5 were subsequently proven there. The
+> "E3/E4/E5 remain NOT_PROVEN" lines below are retained as written for that
+> moment; see `analysis/current-head/MASTER-AUDIT-C6-FINAL-CLOSEOUT-20261125.md`.
+
 ## PATCH DECLARATION
 
 ```
