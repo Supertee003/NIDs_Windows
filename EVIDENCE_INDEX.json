@@ -11099,6 +11099,37 @@
       ],
       "status": "CLOSED",
       "status_basis": "entry.result=PASS_E1 recorded at build source 43a8bcc; records-only patch"
+    },
+    {
+      "id": "AEGIS-004-005-013-PROTOCOL-VERIFICATION-20261125",
+      "head_sha": "43a8bcc02358076380fa938b0e5632870643d3c5",
+      "timestamp": "2026-11-25",
+      "title": "AEGIS-004/005/013: protocol answer sheet and 3-5 minute verification summary",
+      "level": "E1",
+      "component": "protocol and verification documentation",
+      "flow_id": "codec facts -> protocol index -> recorded results -> verification summary",
+      "description": "Added docs/protocol/INDEX.md answering the nine protocol audit questions from the current codec with exact source lines and an explicit source-of-truth order. Added docs/portfolio/VERIFICATION_SUMMARY.md with a recorded-result table carrying evidence location and commit per category, with no fresh PASS claim and no promotion of narrow E4/E5 to full qualification.",
+      "files_verified": [
+        "docs/protocol/INDEX.md",
+        "docs/portfolio/VERIFICATION_SUMMARY.md",
+        "analysis/current-head/MASTER-AUDIT-AEGIS-004-005-013-PROTOCOL-VERIFICATION-20261125.md"
+      ],
+      "tests": [
+        "python scripts/doc_checker.py -> 0 FAIL, 0 WARN, 23 total",
+        "python -m pytest tests/docs tests/release -q -> 262 passed",
+        "git diff --check -> clean",
+        "python tools/truth.py verify -> TRUTH_VALID @ 43a8bcc"
+      ],
+      "result": "PASS_E1",
+      "finding": "Protocol facts and verification numbers are now discoverable without duplicating authoritative specs or inventing evidence.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-AEGIS-004-005-013-PROTOCOL-VERIFICATION-20261125.md",
+      "limitations": [
+        "E1 documentation truth; no fresh build or host run.",
+        "Index tables could drift if codecs change without updating them; source-of-truth order resolves conflicts.",
+        "Verification rows cite different commits by design."
+      ],
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS_E1 recorded at build source 43a8bcc; records-only patch"
     }
   ],
   "known_gaps": [
@@ -17770,7 +17801,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 46,
+    "E1_count": 47,
     "E2_count": 160,
     "E3_count": 18,
     "E4_count": 4,
