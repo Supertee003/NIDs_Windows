@@ -40,6 +40,7 @@ SEAM_ONLY: dict[str, str] = {
     "enforcement_receipt": "versioned alert-only receipt boundary",
     "policy_decision": "alert-only policy adapter",
     "forensic_evidence": "receipt-backed forensic evidence envelope",
+    "policy_canonical_v1": "S4 versioned canonical policy byte encoder (evidence/validation utility; generator/test-only)",
 }
 
 SEAM_MARKER = "SEAM-STATUS: not wired to the production entrypoint"

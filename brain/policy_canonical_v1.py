@@ -1,5 +1,7 @@
 """Pure, versioned canonical policy byte encoder (S4).
 
+SEAM-STATUS: not wired to the production entrypoint
+
 This module is an additive evidence/validation utility. It is intentionally
 NOT wired into the legacy compiler hash, Ed25519 sidecar, or enforcement path.
 See ``shared/policy/policy_canonical_v1.md`` for the byte contract.
