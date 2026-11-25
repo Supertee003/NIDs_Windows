@@ -889,6 +889,12 @@
       "language": "go"
     },
     {
+      "path": "nose/capture_visibility_test.go",
+      "size": 1487,
+      "sha256": "558350958ea19e29909cc8d075317486898f566ba9d7849b764ddc16607b3e49",
+      "language": "go"
+    },
+    {
       "path": "nose/cleanup_nose_mouth.bat",
       "size": 6467,
       "sha256": "75ad9974abe5b9232675c0502db6e4c17a50623a5030820be56e19e90b93a0da",
@@ -1035,7 +1041,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23280,
-      "sha256": "2d0a9d0dd900b91cd99bceb5cfc72838149c9133759e04fd5195fc4f66f3dd6f",
+      "sha256": "2613cffff1d621722e13adb131a878d3c57f1048acb8c3e69e50c4ed5200cc0e",
       "language": "json"
     },
     {
@@ -1856,8 +1862,8 @@
     },
     {
       "path": "src/all_tests.zig",
-      "size": 11969,
-      "sha256": "a917de8ff3473bc9af5c462b8e6d10e6c2772d1a6a43cf2f203bbca0693e855a",
+      "size": 12014,
+      "sha256": "2d669b310d274db3c12fbed9a522d6452877c07e23a2ca04a39a237a303ec4c4",
       "language": "zig"
     },
     {
@@ -2048,14 +2054,20 @@
     },
     {
       "path": "src/control/handler_registry.zig",
-      "size": 174915,
-      "sha256": "c9510ef808be86433c36ee6d2476db6a47345148e8d6f250d40d1a990753605d",
+      "size": 179121,
+      "sha256": "9ddb5c5cd230212aa2d3fbaa8b3d0746c621887d2193a13d06148c4f8fcf1280",
       "language": "zig"
     },
     {
       "path": "src/control/protocol.zig",
       "size": 25480,
       "sha256": "4bca7e26cef2ecc76b8ab57b8f3ea4e9d9b91cba12bf22b18a29a0005ce029ea",
+      "language": "zig"
+    },
+    {
+      "path": "src/control/replay_guard.zig",
+      "size": 5654,
+      "sha256": "cd02d852a6feeb64166ecac830274503a121220cbfe142e954459b40cc0c5570",
       "language": "zig"
     },
     {
@@ -2350,6 +2362,12 @@
       "path": "src/forensic/abi_contract.zig",
       "size": 17937,
       "sha256": "9666d32cd79db136a17bbf783568743e22715aed48591a97b02bdd2b2274f621",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/alert_log.zig",
+      "size": 8695,
+      "sha256": "840d56ec26a6d23e0c8f5b7010f9ffd917e5e117e5ab88a039d7abcc2fddf774",
       "language": "zig"
     },
     {
@@ -3595,6 +3613,12 @@
       "language": "zig"
     },
     {
+      "path": "src/windows/resource_telemetry.zig",
+      "size": 10546,
+      "sha256": "3f8979129e37c43294acfebd6b99f380bacbae991a89336e05081e3a076d5827",
+      "language": "zig"
+    },
+    {
       "path": "src/windows/wfp_ioctl.c",
       "size": 10028,
       "sha256": "07d4e0a0be595c98635d650c2c1b8f933ce998526b0a4d1300646046d2b293e3",
@@ -3674,14 +3698,14 @@
     },
     {
       "path": "tools/aegisctl/api/control_api.py",
-      "size": 70534,
-      "sha256": "aeed642d796518b685c436d50c17a638a2ef184cea26c660a43407eb59ca38ca",
+      "size": 70486,
+      "sha256": "32949d94424862c0f052e0a750506673877d8f95c10420d953c82249bd25e816",
       "language": "python/cython"
     },
     {
       "path": "tools/aegisctl/client.py",
-      "size": 7639,
-      "sha256": "0f0ecda8454ca64853d31213a932e11b6fb91eae5f6b0ec4e11261b039148456",
+      "size": 7876,
+      "sha256": "cdfadcafb5a0bffb6bf8d83dc409c0b55c6773a0875765f1c9e8d8061c770a80",
       "language": "python/cython"
     },
     {
@@ -3709,6 +3733,18 @@
       "language": "python/cython"
     },
     {
+      "path": "tools/aegisctl/envelope.py",
+      "size": 1469,
+      "sha256": "140b53df0d77c033a07b7cb174c4767f574e31fb860806466b74e80c4055e6ff",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/aegisctl/fp_feedback.py",
+      "size": 4448,
+      "sha256": "d188dd68f9265fc7a9043bca57f755e8b24befa215341a86796ed624cc659666",
+      "language": "python/cython"
+    },
+    {
       "path": "tools/aegisctl/graph.py",
       "size": 6560,
       "sha256": "033224535f8d4281a09ef1e7b9684e8c5833d31cfa3348b59ee2160f3d32bf04",
@@ -3716,8 +3752,8 @@
     },
     {
       "path": "tools/aegisctl/utils.py",
-      "size": 5565,
-      "sha256": "5d232be3fb1d906061bbc1910f0169d89f3382fd95c08166f617dc59093965a2",
+      "size": 5881,
+      "sha256": "cd6f076b0a4e6f1d59442e83c6bc02aec5632bee65d4ba3a2388bd133cbd3279",
       "language": "python/cython"
     },
     {
@@ -4046,8 +4082,8 @@
     },
     {
       "path": "tools/probe_control_pipe.py",
-      "size": 2906,
-      "sha256": "a1e17d824314fa619b6e6589aef663959fd9fd931f8a45e97cb2529a5510f399",
+      "size": 2912,
+      "sha256": "cddb9b03f1f2870ceab2bdbbfb7649a2438e38e04d696138e73f4a8f0869ea77",
       "language": "python/cython"
     },
     {
