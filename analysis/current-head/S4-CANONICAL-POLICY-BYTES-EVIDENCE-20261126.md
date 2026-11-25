@@ -64,19 +64,22 @@ non-canonical labels in legacy comment sites.
 | `python -m pytest tests/brain/test_seam_disposition.py -q` | `3 passed` |
 | `python tools/rebuild_truth.py` | exit 0 |
 | `python tools/truth.py verify` | `TRUTH_VALID` at build source `4dd3393` |
-| `python tools/evidence_debt.py` | to be recorded below |
-| `python scripts/check_summary.py` | to be recorded below |
-| `python scripts/doc_checker.py` | to be recorded below |
-| `python -m pytest -q -p no:cacheprovider tests/docs tests/release` | to be recorded below |
-| `python -m pytest -q -p no:cacheprovider -m "not host_live"` | to be recorded below |
-| `python tools/final_audit.py --release-check` | to be recorded below |
-| `python tools/release_engineering.py --verify` | to be recorded below |
+| `python tools/evidence_debt.py` | `product-tracked files: 736; never named by evidence: 0` |
+| `python scripts/check_summary.py` | `SUMMARY_VALID` |
+| `python scripts/doc_checker.py` | `0 FAIL, 0 WARN, 23 total` |
+| `python -m pytest -q -p no:cacheprovider tests/docs tests/release` | `262 passed` |
+| `python -m pytest -q -p no:cacheprovider -m "not host_live"` | `1502 passed, 1 skipped, 18 deselected, 27 subtests passed` |
+| `python tools/final_audit.py --release-check` | exit 1 at current source: `release_signature` and `soak_24h` OPEN; `evidence_debt` PASS (`0 <= 0`); immutable `v1.1` release identity remains historical 6/6 |
+| `python tools/release_engineering.py --verify` | `690 artifacts match their recorded digests (source_commit=4dd3393)` |
 
 Logs: `D:\aegis-tmp\s4_pytest.log`, `D:\aegis-tmp\s4_tsc.log`,
 `D:\aegis-tmp\s4_ts_tests.log`, `D:\aegis-tmp\s4_zig5.log`,
 `D:\aegis-tmp\s4_zig_build.log`, `D:\aegis-tmp\s4_cargo2.log`,
 `D:\aegis-tmp\s4_truth_rebuild2.log`, `D:\aegis-tmp\s4_truth_verify2.log`,
-`D:\aegis-tmp\s4_pytest_nohost.log`, `D:\aegis-tmp\s4_final_audit.log`.
+`D:\aegis-tmp\s4_pytest_nohost.log`, `D:\aegis-tmp\s4_pytest_nohost2.log`,
+`D:\aegis-tmp\s4_docs_release.log`, `D:\aegis-tmp\s4_summary.log`,
+`D:\aegis-tmp\s4_doc.log`, `D:\aegis-tmp\s4_digest_refresh.log`,
+`D:\aegis-tmp\s4_release_verify.log`, `D:\aegis-tmp\s4_final_audit_release.log`.
 
 ### Pin coverage
 
