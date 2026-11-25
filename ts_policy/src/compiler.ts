@@ -277,9 +277,13 @@ function compareKeys(
  * validators can reproduce the exact same hash. The Zig cross-check
  * is deferred to T7/T8 (Policy Signing).
  *
- * Field order in the canonical form is fixed: id, name, priority,
- * conditions, action, enabled, description. Condition fields:
+ * Field order in this LEGACY byte form is fixed: id, name, priority,
+ * action, enabled, description, then conditions. Condition fields:
  * field, operator, valueKind, valueU64, value2Kind?, value2U64?.
+ *
+ * S4 note: the versioned cross-language byte contract is
+ * `canonical_policy_bytes_v1.ts` / `shared/policy/policy_canonical_v1.md`.
+ * This legacy hash is deliberately unchanged; no silent migration is made.
  */
 function canonicalRuleBytes(rule: PolicyRuleDef): Buffer {
   const c: string[] = [];

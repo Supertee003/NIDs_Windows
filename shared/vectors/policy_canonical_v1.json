@@ -1,0 +1,171 @@
+{
+  "cases": [
+    {
+      "expected_rule_bytes_hex": [
+        "5043303152554c45010000000100000001010101010000007200000000000001000000000000000000000000000000"
+      ],
+      "expected_rule_set_digest_hex": "7a6b9c15cddf4c8d4d6d008e859ba25d93e689fb4bbab287f512f27d8d35963b",
+      "expected_signature_digest_hex": "eb32a42c07f5a048a967fa02e807ddb206e7ccfda4d9f2b49f54e3ebb7d200df",
+      "expiry_ms": 9999999999999,
+      "id": "minimal",
+      "ir_hash": "0x0123456789abcdef",
+      "ir_magic": 1347374129,
+      "ir_version": 1,
+      "policy_version": 5,
+      "rules": [
+        {
+          "action": 1,
+          "condition_count": 1,
+          "conditions": [
+            {
+              "field": 0,
+              "operator": 0,
+              "value": "0x0000000000000001",
+              "value2": "0x0000000000000000"
+            }
+          ],
+          "description": "",
+          "enabled": true,
+          "id": 1,
+          "name": "r",
+          "priority": 1
+        }
+      ]
+    },
+    {
+      "expected_rule_bytes_hex": [
+        "5043303152554c4501000000ffffffffff0200020b000000611f620a00e29c93e697a5080000007461696c1f7a000a03040000000000002000ffffffffffffffff080500000000000000000000000000000000"
+      ],
+      "expected_rule_set_digest_hex": "e8817d2fbc65d484739f19440a3fbfc76fa5a2f3d860b13616ecddf5f5f2b30e",
+      "expected_signature_digest_hex": "519f585cf6a69cfbb87d0838dde40f3427b1e389a128dbc6a7692130418dfdaa",
+      "expiry_ms": 1700000000000,
+      "id": "delimiters_unicode_nul",
+      "ir_hash": "0xffffffffffffffff",
+      "ir_magic": 1347374129,
+      "ir_version": 1,
+      "policy_version": 7,
+      "rules": [
+        {
+          "action": 2,
+          "condition_count": 2,
+          "conditions": [
+            {
+              "field": 3,
+              "operator": 4,
+              "value": "0x0020000000000000",
+              "value2": "0xffffffffffffffff"
+            },
+            {
+              "field": 8,
+              "operator": 5,
+              "value": "0x0000000000000000",
+              "value2": "0x0000000000000000"
+            }
+          ],
+          "description": "tail\u001fz\u0000\n",
+          "enabled": false,
+          "id": 4294967295,
+          "name": "a\u001fb\n\u0000\u2713\u65e5",
+          "priority": 255
+        }
+      ]
+    },
+    {
+      "expected_rule_bytes_hex": [
+        "5043303152554c45010000004000000000050104000100004e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e00010000444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444440000000000000000000000000000000000000501000000000000200000000000000000000804feffffffffffffffffffffffffffffff0805bebafecaefbeadde0000000000000000"
+      ],
+      "expected_rule_set_digest_hex": "a8e548c35f1a3b2689ae2275152a55bc40a99b97452a1cbb9d81290a341c5c70",
+      "expected_signature_digest_hex": "dcdca81c84c3ccd584c345c1a8190877ea138bc190568e0a01fd281b1169ca51",
+      "expiry_ms": 0,
+      "id": "max_strings_and_u64_boundary",
+      "ir_hash": "0x0020000000000000",
+      "ir_magic": 1347374129,
+      "ir_version": 1,
+      "policy_version": 0,
+      "rules": [
+        {
+          "action": 5,
+          "condition_count": 4,
+          "conditions": [
+            {
+              "field": 0,
+              "operator": 0,
+              "value": "0x0000000000000000",
+              "value2": "0x0000000000000000"
+            },
+            {
+              "field": 5,
+              "operator": 1,
+              "value": "0x0020000000000000",
+              "value2": "0x0000000000000000"
+            },
+            {
+              "field": 8,
+              "operator": 4,
+              "value": "0xfffffffffffffffe",
+              "value2": "0xffffffffffffffff"
+            },
+            {
+              "field": 8,
+              "operator": 5,
+              "value": "0xdeadbeefcafebabe",
+              "value2": "0x0000000000000000"
+            }
+          ],
+          "description": "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD",
+          "enabled": true,
+          "id": 64,
+          "name": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+          "priority": 0
+        }
+      ]
+    },
+    {
+      "expected_rule_bytes_hex": [
+        "5043303152554c4501000000070000000a000101050000006669727374030000006f6e65010005000000000000000000000000000000",
+        "5043303152554c450100000008000000140400000a0000007365636f6e641fe29c930900000074776f0a7468726565"
+      ],
+      "expected_rule_set_digest_hex": "4e191f06f363f54338006d4c558f803c9232a8691beff793356fa8a421fa8f49",
+      "expected_signature_digest_hex": "f394a2a9863152eeb90977cb6a3c5c8f742933714b668200adb4dd9bd3b14a2f",
+      "expiry_ms": 123456789,
+      "id": "two_rules_order",
+      "ir_hash": "0xdeadbeefcafebabe",
+      "ir_magic": 1347374129,
+      "ir_version": 1,
+      "policy_version": 9,
+      "rules": [
+        {
+          "action": 0,
+          "condition_count": 1,
+          "conditions": [
+            {
+              "field": 1,
+              "operator": 0,
+              "value": "0x0000000000000005",
+              "value2": "0x0000000000000000"
+            }
+          ],
+          "description": "one",
+          "enabled": true,
+          "id": 7,
+          "name": "first",
+          "priority": 10
+        },
+        {
+          "action": 4,
+          "condition_count": 0,
+          "conditions": [],
+          "description": "two\nthree",
+          "enabled": false,
+          "id": 8,
+          "name": "second\u001f\u2713",
+          "priority": 20
+        }
+      ]
+    }
+  ],
+  "format": "POLICY_CANONICAL_BYTES_V1",
+  "generator": "tools/generate_policy_canonical_vectors.py",
+  "note": "Tests are read-only; regenerate only via the explicit --write flag.",
+  "spec": "shared/policy/policy_canonical_v1.md"
+}

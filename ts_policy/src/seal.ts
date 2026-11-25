@@ -14,10 +14,10 @@
  * is the "frozen and handed off" boundary — analogous to how the Zig
  * `verifyPolicy` rejects rollback by tracking `g_highest_accepted_version`.
  *
- * Architecture note: the canonical IR bytes produced by
- * `canonicalRuleBytes` in `compiler.ts` is the SAME byte stream the
- * Zig `policy_signing.canonicalDigest` is supposed to consume in T7.
- * Both sides must agree on field order and value encoding.
+ * Architecture note: this LEGACY newline-joined IR byte form is not the
+ * Zig `policy_signing.canonicalDigest` byte stream. S4 adds the explicit,
+ * versioned cross-language contract in `canonical_policy_bytes_v1.ts`
+ * (`shared/policy/policy_canonical_v1.md`) and leaves this seal unchanged.
  */
 import { createHmac } from "node:crypto";
 import { type PolicyIR, type SealedPolicy, type PolicyExpiry } from "./types.js";

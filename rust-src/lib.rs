@@ -13,6 +13,8 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::missing_safety_doc)]
 
+pub mod policy_canonical_v1;
+
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::ffi::c_int;

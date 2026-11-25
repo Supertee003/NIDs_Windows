@@ -25,3 +25,4 @@ export * from "./compiler.js";
 export * from "./exporter.js";
 export * from "./seal.js";
 export * from "./ed25519.js";
+export * from "./canonical_policy_bytes_v1.js";

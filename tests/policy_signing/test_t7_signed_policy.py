@@ -11,8 +11,9 @@ recomputes the canonical digest (the same algorithm Zig uses — see
 implementation in `ts_policy/src/seal.ts`), and verifies the Ed25519
 signature. No authority is held; this is an offline auditor.
 
-This is the cross-language contract test that proves the TS / Zig /
-Python trio agree on the wire shape of a SignedPolicy.
+This is the legacy cross-language contract test for the JSON-canonical
+validator form. S4 adds a separate versioned byte contract in
+`brain/policy_canonical_v1.py` and does not change this digest.
 
 Required: `pip install cryptography` (already in requirements.txt).
 """

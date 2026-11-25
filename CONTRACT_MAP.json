@@ -248,6 +248,16 @@
       "authority_note": "Producer identity is acquisition evidence only; Zig ingress owns dedup/admission and no component gains enforcement authority from this contract."
     },
     {
+      "id": "POLICY_CANONICAL_BYTES_V1",
+      "name": "Canonical Policy Bytes v1 (additive cross-language byte contract)",
+      "file": "shared/policy/policy_canonical_v1.md",
+      "implementation": "brain/policy_canonical_v1.py (Python), ts_policy/src/canonical_policy_bytes_v1.ts (TypeScript), src/policy/policy_canonical_v1.zig (Zig), rust-src/policy_canonical_v1.rs (Rust)",
+      "schema": "PC01RULE/PC01SETS/PC01SIGN: fixed-width LE integers, length-prefixed UTF-8 strings (0..256 bytes), explicit representation-B ordinals, 1..64 rules and 0..4 conditions; digests are SHA-256 over the versioned pre-image",
+      "version": "1.0",
+      "magic": "0x50433031 (PC01 prefix in ASCII magic fields)",
+      "authority_note": "Pure evidence/validation encoder only. It does not change legacy compiler hashes, policy_signing.canonicalDigest, the seal HMAC, the ADR-0005 exact-file Ed25519 sidecar, or any enforcement authority."
+    },
+    {
       "id": "FORENSIC_RECORD",
       "name": "Forensic Record",
       "file": "src/forensic/forensic_pipeline.zig",

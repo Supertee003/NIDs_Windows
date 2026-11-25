@@ -141,6 +141,10 @@ pub fn build(b: *std.Build) void {
     // Same pattern (file stays in ts_policy/, bytes surface via options).
     const pir_json = std.fs.cwd().readFileAlloc(b.allocator, "ts_policy/tests/fixtures/policy_ir_002.json", 1 * 1024 * 1024) catch "";
     opts.addOption([]const u8, "policy_ir_fixture_json", pir_json);
+    // S4: shared canonical policy vectors stay outside src/; surface via
+    // options so the Zig E2 test reads the same bytes as TS/Python/Rust.
+    const pcv_json = std.fs.cwd().readFileAlloc(b.allocator, "shared/vectors/policy_canonical_v1.json", 1 * 1024 * 1024) catch "";
+    opts.addOption([]const u8, "policy_canonical_v1_vector_json", pcv_json);
 
     const tests = b.addTest(.{
         .root_source_file = b.path("src/all_tests.zig"),
