@@ -28,7 +28,7 @@ subsystems report `RUNNING` and the console shows authoritative daemon data.*
 | Why is it interesting? | One runtime spanning six language families with a strict boundary: no layer may promote "detected" into "blocked" |
 | Stack | Zig runtime spine · Go packet acquisition · C/C++ Windows adapters (C and C++ are two toolchains in one family) · Rust detection-only PEP + crypto · Python analytics · TypeScript advisory policy authoring (no runtime artifact) |
 | Scale | 23 detection rules across L4, L7, kernel file/process, and pipe layers; 12M+ events observed on the current lab host ([measured values](docs/portfolio/OBSERVED_PERFORMANCE.md)) |
-| Proof | [`v1.1` release](https://github.com/Supertee003/NIDs_Windows/releases/tag/v1.1) — SHIPPABLE, 6/6 gates PASS (0 open), 36.52 h owner-run soak PASS, 674/674 signed artifacts; 1,471 Python tests (two-phase run at build source `a53eda8`, 0 skipped) |
+| Proof | [`v1.1` release](https://github.com/Supertee003/NIDs_Windows/releases/tag/v1.1) — SHIPPABLE, **6/6 gates PASS (0 open)**, 36.52 h owner-run soak PASS, 674/674 artifact hashes verified against **one** Ed25519 signature over `SHA256SUMS`; 1,471 Python tests (two-phase run at build source `a53eda8`, 0 skipped). Single source of status: [`release/release-status.json`](release/release-status.json) |
 | Boundary | observe-only; prevention gate closed; `host_effect_capable=false`; no WFP enforcement in production |
 
 *Counting convention: "six language families" groups C and C++ as one adapter family. The
@@ -51,7 +51,7 @@ deliberately out of scope?" No implementation claim here implies a production ho
 | C/C++ WFP / ETW / FIM / Registry adapters | Yes | Observe-only E5 lab proofs for WFP and host-file/FIM telemetry; ETW/Registry coverage is per host profile; other families have synthetic fixtures only | Yes — telemetry evidence |
 | Detection rules (23) | Yes | 23/23 catalog + fixture-level pins; live positive proof on L4/R9006 with negative control; R2003 has an open command-line limitation | Yes — detection only |
 | Correlation / forensics / evidence receipts | Yes | Hash-chain verification on the current host | Yes — evidence only |
-| Release v1.1 | Yes | Signed manifest, 674/674 artifacts, 36.52 h soak PASS | Published, immutable |
+| Release v1.1 | Yes | One Ed25519 signature over `SHA256SUMS`; 674/674 artifact hashes verified; 36.52 h soak PASS | Published, immutable |
 | Host blocking / WFP mutation / quarantine | Lab-only historical code | Lab qualification only | **Out of scope — not planned, not enabled** |
 
 ### Detection coverage — what is and is not proven

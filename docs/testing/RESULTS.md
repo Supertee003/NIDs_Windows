@@ -44,7 +44,7 @@ and [`SOAK-PASS-466A226-20261122.md`](../../analysis/current-head/SOAK-PASS-466A
 
 | Item | Recorded result |
 |---|---|
-| Release gates | **SHIPPABLE (0/6 open)** |
+| Release gates | **SHIPPABLE — 6/6 PASS (0 open)**; single status source: `release/release-status.json` |
 | Published tag | annotated `v1.1` → tag object `0b9287b`, commit `dd8647d` |
 | Signed candidate | `466a226`; build source `a53eda8` |
 | Manifest verification | **674/674 artifacts** |

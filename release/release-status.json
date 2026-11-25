@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "project": "AEGIS Kernel NIDS for Windows",
+  "version": "1.1",
+  "status": "shipped",
+  "operational_mode": "observe_only",
+  "intended_use": [
+    "development",
+    "qualification",
+    "observe-only evaluation"
+  ],
+  "host_enforcement": false,
+  "production_qualified": false,
+  "production_fleet_deployment_qualified": false,
+  "scope_exclusions": [
+    "automatic network blocking",
+    "process termination",
+    "host isolation",
+    "IPS capability claims",
+    "production fleet deployment before qualification"
+  ],
+  "release_identity": {
+    "tag": "v1.1",
+    "signed_candidate": "466a226",
+    "build_source": "a53eda8",
+    "immutable": true,
+    "note": "Release identity is immutable. No re-key, new tag, new signature or v2.1.0 is part of this status."
+  },
+  "current_build_source": "43a8bcc02358076380fa938b0e5632870643d3c5",
+  "current_build_source_note": "Current source is records-descended from the immutable release identity. The 6/6 gate result below belongs to the release identity, not to the current build source.",
+  "qualification_gates": {
+    "passed": 6,
+    "total": 6,
+    "open": 0,
+    "meaning_of_open": "0 open means all six gates PASS; it does not mean zero gates passed.",
+    "gates": [
+      {
+        "name": "truth_artifacts",
+        "status": "PASS",
+        "pass_criteria": "python tools/truth.py --release-check reports TRUTH_VALID; all machine maps carry the release build source a53eda8, an ancestor of the audited HEAD, with a clean source tree",
+        "evidence": "analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md; docs/gates/T20_100pct_audit.md:26",
+        "checked_at": "2026-11-22",
+        "checked_commit": "a53eda8"
+      },
+      {
+        "name": "component_audit",
+        "status": "PASS",
+        "pass_criteria": "Part I modules 66/66 with zero production failures; Part II holds 5/5; golden path declared",
+        "evidence": "docs/gates/T20_100pct_audit.md:27,35-39",
+        "checked_at": "2026-11-22",
+        "checked_commit": "a53eda8"
+      },
+      {
+        "name": "release_signature",
+        "status": "PASS",
+        "pass_criteria": "Ed25519 signature over SHA256SUMS verifies with the pinned public key; the signed tree matches the release build source",
+        "evidence": "release/T20-final/466a226/signatures.json; docs/gates/T20_100pct_audit.md:28",
+        "checked_at": "2026-11-20",
+        "checked_commit": "466a226"
+      },
+      {
+        "name": "clean_host_e5",
+        "status": "PASS",
+        "pass_criteria": "Owner-run clean-host preflight PASS with loader, runtime and driver bound to the pinned installer hashes",
+        "evidence": "docs/gates/T20_100pct_audit.md:29 (owner-attested operator file under ignored admin-evidence/)",
+        "checked_at": "2026-11-20",
+        "checked_commit": "a53eda8"
+      },
+      {
+        "name": "soak_24h",
+        "status": "PASS",
+        "pass_criteria": "Owner-run soak reaches at least 24.0 h with problems=[] and zero loss/shed/drop counters in the recorded window only",
+        "evidence": "docs/gates/T20_100pct_audit.md:30; analysis/current-head/SOAK-PASS-466A226-20261122.md",
+        "checked_at": "2026-11-22",
+        "checked_commit": "a53eda8"
+      },
+      {
+        "name": "evidence_debt",
+        "status": "PASS",
+        "pass_criteria": "Unnamed product files 0, at or below baseline 0",
+        "evidence": "docs/gates/T20_100pct_audit.md:31",
+        "checked_at": "2026-11-22",
+        "checked_commit": "a53eda8"
+      }
+    ]
+  },
+  "signature_scope": {
+    "algorithm": "ed25519",
+    "signed_file": "SHA256SUMS",
+    "signature_count": 1,
+    "artifacts_verified": 674,
+    "signed_digest": "A053C048C8B373CF93E766D9C54F54D191B33D273627075A6121516591E4996C",
+    "statement": "One Ed25519 signature authenticates SHA256SUMS; 674 is the number of artifacts whose hashes were verified against that signed digest. It is not 674 separate signatures and does not by itself prove security validation of each artifact.",
+    "source": "release/T20-final/466a226/signatures.json"
+  },
+  "verification_summary": {
+    "tests": "1,471 passed / 0 skipped, sum of two phases at build source a53eda8 (not a single pytest invocation)",
+    "soak": "36.52 / 24.0 h PASS, HISTORICAL at a53eda8; no current-build-source soak is claimed",
+    "current_source_proof": "E3 and narrow canonical-pipe E4/E5 PASS at build source 43a8bcc; see EVIDENCE_INDEX.json entry P8-I44-43A8BCC-E4E5-20261125",
+    "host_qualification": "NOT_PROVEN for full current-head Windows E5/kernel qualification; narrow issue #44 pipe proof does not establish it"
+  },
+  "authority": {
+    "decision_authority": "Zig runtime",
+    "policy_evaluation": "Rust PEP, detection-only; no host-effect authority",
+    "capability_projection": "host_effect_capable=false in production",
+    "reference": "AUTHORITY_MAP.json; RETIRE-HOST-EFFECT-001"
+  }
+}
