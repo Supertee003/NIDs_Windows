@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "f1f89c1",
+      "commit": "4dd3393",
       "source": "src/main.zig",
       "classification": "CANONICAL"
     },
@@ -38,7 +38,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "f1f89c1",
+      "commit": "4dd3393",
       "source": "rust-src/lib.rs",
       "classification": "CANONICAL"
     },
@@ -49,7 +49,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "f1f89c1",
+      "commit": "4dd3393",
       "source": "src/windows/aegis_wfp.c",
       "classification": "CANONICAL"
     },
@@ -60,7 +60,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "f1f89c1",
+      "commit": "4dd3393",
       "source": "src/windows/etw_native.c",
       "classification": "CANONICAL"
     },
@@ -71,7 +71,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "f1f89c1",
+      "commit": "4dd3393",
       "source": "src/windows/fim_native.c",
       "classification": "CANONICAL"
     },
@@ -82,7 +82,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "go-nose-build-test",
-      "commit": "f1f89c1",
+      "commit": "4dd3393",
       "source": "nose/main.go",
       "classification": "CANONICAL"
     },
@@ -93,7 +93,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-aggregator-build-test",
-      "commit": "f1f89c1",
+      "commit": "4dd3393",
       "source": "go/aggregator/main.go",
       "classification": "SUPPORT"
     },
@@ -104,7 +104,7 @@
       "type": "library",
       "required": false,
       "ci_job": "shield-build",
-      "commit": "f1f89c1",
+      "commit": "4dd3393",
       "source": "shield/src/lib.rs",
       "classification": "SUPPORT"
     },
@@ -115,7 +115,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "f1f89c1",
+      "commit": "4dd3393",
       "source": "tools/aegisctl.py",
       "classification": "CANONICAL"
     },
@@ -126,7 +126,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "f1f89c1",
+      "commit": "4dd3393",
       "source": "tools/installer.py"
     },
     {
@@ -136,7 +136,7 @@
       "type": "toolchain",
       "required": false,
       "ci_job": "ts-policy-build",
-      "commit": "f1f89c1",
+      "commit": "4dd3393",
       "source": "ts_policy/",
       "classification": "SUPPORT",
       "note": "Advisory policy authoring only; no runtime artifact or enforcement authority."
@@ -148,7 +148,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "f1f89c1",
+      "commit": "4dd3393",
       "source": "brain/"
     }
   ],
@@ -391,6 +391,12 @@
       "language": "python/cython"
     },
     {
+      "path": "brain/policy_canonical_v1.py",
+      "size": 7478,
+      "sha256": "557b3806c46b001e8fffbebd0e13505d3c29d3b1907c27265ccf046fbf621d3e",
+      "language": "python/cython"
+    },
+    {
       "path": "brain/policy_decision.py",
       "size": 2442,
       "sha256": "d9b1993acc2e679a6ee4c1a63ef447df812bc4ed12926d925ae10e64e5a66eeb",
@@ -584,8 +590,8 @@
     },
     {
       "path": "build.zig",
-      "size": 15272,
-      "sha256": "f73e63705039cd77642ee0953de593b48c0d8f7ce04c31219a6f6c305ac79b32",
+      "size": 15628,
+      "sha256": "8519e537242613cb8ce141317d64e84303edb077060d945a593f0a3d249d144c",
       "language": "zig"
     },
     {
@@ -1053,7 +1059,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23280,
-      "sha256": "2d54a0af477fd38bbee539d790881f7315a035652040f862a8b912bf286562da",
+      "sha256": "7b6118318e15c29805e43768174ed1e0c567a7f86ecaa929541a202c8fcd75de",
       "language": "json"
     },
     {
@@ -1064,8 +1070,14 @@
     },
     {
       "path": "rust-src/lib.rs",
-      "size": 106371,
-      "sha256": "50262d7e3fb0e9f839ef5599f81b151ef7952a04e543f9aef6897687c871d89f",
+      "size": 106401,
+      "sha256": "aac0e253228fd14e83b4e88c918d361645beddc2ab16cce93789656d9ac26358",
+      "language": "rust"
+    },
+    {
+      "path": "rust-src/policy_canonical_v1.rs",
+      "size": 9593,
+      "sha256": "fa92d15684d374a2b9900be3f88f9663dba60a2ef8e8e6ab9bfb0d56830819dc",
       "language": "rust"
     },
     {
@@ -1874,8 +1886,8 @@
     },
     {
       "path": "src/all_tests.zig",
-      "size": 12064,
-      "sha256": "4972a088903e4f6a9fef7f4153f61ac540d5dd4d273a52529ef4dec2385f18dc",
+      "size": 12121,
+      "sha256": "b38121967efa6a522d36c9342184ce023479af9cefbf30da0f5bfec59875a54b",
       "language": "zig"
     },
     {
@@ -2653,6 +2665,12 @@
       "language": "zig"
     },
     {
+      "path": "src/policy/policy_canonical_v1.zig",
+      "size": 5005,
+      "sha256": "4b57ce7f7e95bbd0e196eddd9db1147f1aaf50275004ab7e7a8e73116451264e",
+      "language": "zig"
+    },
+    {
       "path": "src/policy/policy_contract.zig",
       "size": 18380,
       "sha256": "6cae896db3c4e2c8b74f14bfdbabbe11a06c4863bb415cee780711ebf6c986aa",
@@ -3301,6 +3319,12 @@
       "language": "zig"
     },
     {
+      "path": "src/tests/policy/policy_canonical_v1.zig",
+      "size": 8314,
+      "sha256": "3c146919de5cdabeb36ac83a5bc9765a770353df698fb99ed4bd68638d50e7d3",
+      "language": "zig"
+    },
+    {
       "path": "src/tests/policy/policy_ir.zig",
       "size": 237,
       "sha256": "63c320ccfb09521dc2d8173d533718edb65b72f79b93f9ed1c2c5474c30787bb",
@@ -3853,6 +3877,12 @@
       "language": "python/cython"
     },
     {
+      "path": "tools/generate_policy_canonical_vectors.py",
+      "size": 6275,
+      "sha256": "1f453fb880bdf6fd1417df6405d21d83f71171f5325fdad15553fa1d1a2e62de",
+      "language": "python/cython"
+    },
+    {
       "path": "tools/generate_truth_artifacts.py",
       "size": 10480,
       "sha256": "5b6e8cbf8e4be4f59b0464e5cba5bd485d03eb361f84ff2db0e906ba6356e78d",
@@ -4196,14 +4226,20 @@
     },
     {
       "path": "ts_policy/package.json",
-      "size": 1091,
-      "sha256": "47cd985e0137f43ee561dbb983fecbe2bc42d643987956ed227469209fcd9ddc",
+      "size": 1131,
+      "sha256": "1c8bcb0710ebd178d5f88d3ebc3c0f33bbde346eacc0fbe0251c6a99810ec9c6",
       "language": "json"
     },
     {
+      "path": "ts_policy/src/canonical_policy_bytes_v1.ts",
+      "size": 6832,
+      "sha256": "44986a78c25b96fa9d17e123638990699df1dcc65f27ffa01dadf969164c7024",
+      "language": "typescript"
+    },
+    {
       "path": "ts_policy/src/compiler.ts",
-      "size": 15935,
-      "sha256": "6db33dbc9735a6b92a9a405c6e9d422b177582bad405a2bcace7804c4b399101",
+      "size": 16156,
+      "sha256": "087f044040da7c98de2dd0f141e23b9de2a2c3b383e6f2424e13c88668db0233",
       "language": "typescript"
     },
     {
@@ -4220,20 +4256,26 @@
     },
     {
       "path": "ts_policy/src/index.ts",
-      "size": 1126,
-      "sha256": "dd8e43989d388c54c35911de36dc9f5c84de0f78683dad30de45cc09d335e252",
+      "size": 1174,
+      "sha256": "2619daf259e40bc33465da2b7d96aca1b8fdabd1cc5cef877b089e6825cdb4f6",
       "language": "typescript"
     },
     {
       "path": "ts_policy/src/seal.ts",
-      "size": 6821,
-      "sha256": "c5536c9295c73a97ffa0307044be055ebe20d4a56ed72d1c77bf7164d247d8e3",
+      "size": 6860,
+      "sha256": "703a99c700216dc8d368ecb315ebb7f411b2ec78f875eee2c4592184f6512f8a",
       "language": "typescript"
     },
     {
       "path": "ts_policy/src/types.ts",
       "size": 13189,
       "sha256": "4d1c12589a35ebeb5d7d8343d7cab81d482723b02c1cdc03c9521fb67a07a5b8",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/tests/canonical_policy_bytes_v1.test.ts",
+      "size": 3214,
+      "sha256": "2ed6f9f1b48f8e320b9adca0baee59f9e3ebf4ae86f438af6503d81834a238e7",
       "language": "typescript"
     },
     {
