@@ -1,0 +1,94 @@
+"""AEGIS-PLAN 007-020 closure pins (2026-11-26).
+
+Records-only E1 guards for the documentation deliverables that closed the
+scoped 20-item plan. These tests assert that an honest status page still says
+what it proved and what it did not. They do not run builds, host proofs, or
+any elevated operation.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[2]
+
+DOCS = {
+    "AEGIS-007-QUEUE": "docs/runtime/QUEUE_SEMANTICS.md",
+    "AEGIS-008-SENSOR": "docs/portfolio/SENSOR_COVERAGE.md",
+    "AEGIS-009-KERNEL": "docs/runtime/KERNEL_LIFECYCLE.md",
+    "AEGIS-011-FORENSIC": "docs/forensics/FORENSIC_CHAIN_STATUS.md",
+    "AEGIS-012-PERFORMANCE": "docs/portfolio/PERFORMANCE_REPORT.md",
+    "AEGIS-015-DOCS": "docs/DOCS_LIFECYCLE.md",
+    "AEGIS-017-FUZZ": "docs/testing/FAULT_INJECTION_INVENTORY.md",
+    "AEGIS-018-CI": "docs/CI_QUALITY_GATES.md",
+    "AEGIS-019-COMPAT": "docs/DEPLOYMENT_COMPATIBILITY.md",
+    "AEGIS-020-CASE": "docs/portfolio/CASE_STUDY.md",
+}
+
+
+def _read(rel: str) -> str:
+    return (REPO / rel).read_text(encoding="utf-8")
+
+
+def test_all_closure_docs_exist_and_name_build_source() -> None:
+    for label, rel in DOCS.items():
+        text = _read(rel)
+        assert "4dd3393" in text, label
+        assert len(text.splitlines()) >= 30, label
+
+
+def test_queue_doc_keeps_drop_and_backpressure_distinct() -> None:
+    text = _read(DOCS["AEGIS-007-QUEUE"])
+    assert "queue_dropped_total" in text
+    assert "Blocking-producer backpressure" in text
+    assert "not implemented" in text
+    assert "Silent loss" in text
+
+
+def test_sensor_doc_keeps_measured_and_source_support_separate() -> None:
+    text = _read(DOCS["AEGIS-008-SENSOR"])
+    assert "Measured proof" in text
+    assert "Source-level support" in text
+    assert "NOT_PROVEN" in text
+
+
+def test_kernel_doc_does_not_claim_a_load() -> None:
+    text = _read(DOCS["AEGIS-009-KERNEL"])
+    assert "NOT_PROVEN" in text
+    assert "no kernel object was" in text
+    assert "OWNER-RUN-HOST-PROOF-RUNBOOK-20261126.md" in text
+
+
+def test_forensic_doc_names_the_full_chain() -> None:
+    text = _read(DOCS["AEGIS-011-FORENSIC"])
+    for stage in ("Event", "forensic record", "CRC", "persistence", "verify", "replay", "audit"):
+        assert stage in text, stage
+    assert "HISTORICAL" in text
+
+
+def test_performance_doc_does_not_claim_a_benchmark() -> None:
+    text = _read(DOCS["AEGIS-012-PERFORMANCE"])
+    assert "NOT RUN" in text
+    assert "not a controlled benchmark" in text
+    assert "NOT CLAIMED" in text
+
+
+def test_ci_doc_records_real_workflow_paths() -> None:
+    text = _read(DOCS["AEGIS-018-CI"])
+    assert ".github/workflows/ci.yml" in text
+    assert ".github/workflows/host-regression.yml" in text
+    assert "ci_coverage.json" in text
+    assert "NOT RECORDED IN THIS TREE" in text
+
+
+def test_compatibility_doc_has_no_fake_pass_rows() -> None:
+    text = _read(DOCS["AEGIS-019-COMPAT"])
+    assert "NOT_TESTED" in text
+    assert "A declare-only row is not a PASS row" in text
+    assert "Windows Server 2022" in text
+
+
+def test_case_study_lists_real_limits() -> None:
+    text = _read(DOCS["AEGIS-020-CASE"])
+    assert "No current-head full Windows E5" in text
+    assert "No controlled fixed-rate throughput ceiling" in text
+    assert "6/6 gates PASS at that identity only" in text

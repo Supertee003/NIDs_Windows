@@ -11444,6 +11444,44 @@
       ],
       "status": "CLOSED",
       "status_basis": "entry.result=PASS_E2 recorded at build source 4dd3393 (source 2673bd2 + seam registration 4dd3393); source gap closed, policy migration and live proof explicitly out of scope"
+    },
+    {
+      "id": "AEGIS-PLAN-007-020-CLOSURE-E1-4DD3393-20261126",
+      "head_sha": "4dd33936909de1314099652a7523e52c40bb2c44",
+      "timestamp": "2026-11-26",
+      "title": "AEGIS-PLAN-007..020: scoped 20-item plan closure with honest status pages",
+      "level": "E1",
+      "component": "docs -> tests/docs -> EVIDENCE_INDEX",
+      "flow_id": "SCOPED_PLAN -> PER_ITEM_DELIVERABLE -> PIN_TEST -> EVIDENCE_INDEX",
+      "description": "Closed the remaining 14 items of the scoped 20-item plan with dedicated current-source pages, an item-to-deliverable master audit and pin tests. Queue semantics separates counted shedding from unimplemented blocking backpressure; sensor coverage separates source support from measured proof; kernel lifecycle, forensic chain, performance, fuzz inventory, CI gates, compatibility and case-study pages state their evidence level and owner actions. The earlier statement that no .github/workflows/ existed was corrected: both ci.yml and host-regression.yml are tracked. No source, wire, rule, authority, host effect, signature, soak or E3+ claim is made.",
+      "files_verified": [
+        "docs/runtime/QUEUE_SEMANTICS.md",
+        "docs/portfolio/SENSOR_COVERAGE.md",
+        "docs/runtime/KERNEL_LIFECYCLE.md",
+        "docs/forensics/FORENSIC_CHAIN_STATUS.md",
+        "docs/portfolio/PERFORMANCE_REPORT.md",
+        "docs/DOCS_LIFECYCLE.md",
+        "docs/testing/FAULT_INJECTION_INVENTORY.md",
+        "docs/CI_QUALITY_GATES.md",
+        "docs/DEPLOYMENT_COMPATIBILITY.md",
+        "docs/portfolio/CASE_STUDY.md",
+        "tests/docs/test_aegis_plan_closure.py",
+        "analysis/current-head/MASTER-AUDIT-AEGIS-PLAN-007-020-20261126.md"
+      ],
+      "tests": [
+        "python -m pytest tests/docs/test_aegis_plan_closure.py -q -> 9 passed",
+        "python scripts/doc_checker.py -> 0 FAIL, 0 WARN, 23 total"
+      ],
+      "result": "PASS_E1",
+      "finding": "All 20 scoped items now have a named deliverable or an existing closed evidence entry. Physical proof items remain honestly OPEN/NOT_PROVEN/NOT_RUN at build source 4dd3393; no higher evidence level is inferred from documentation.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-AEGIS-PLAN-007-020-20261126.md",
+      "limitations": [
+        "Documentation and pin tests only; no build, host, detection, soak, install or signing proof.",
+        "Kernel load/unload, current-source matrix, benchmark, fuzz campaign and CI run remain owner actions.",
+        "48 primary evidence pointers remain unresolved in a fresh clone and are not repaired here."
+      ],
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS_E1 recorded at build source 4dd3393; closure means the scoped deliverable exists with an honest level, not that physical E5/E6/E7 work was performed"
     }
   ],
   "known_gaps": [
@@ -18115,7 +18153,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 48,
+    "E1_count": 49,
     "E2_count": 165,
     "E3_count": 19,
     "E4_count": 4,

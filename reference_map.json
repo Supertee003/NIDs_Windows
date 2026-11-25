@@ -1,17 +1,17 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-25T17:39:16.886897+00:00",
+  "generated_at": "2026-11-25T18:05:24.047115+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 3250,
+  "total_files": 3262,
   "by_role": {
-    "documentation": 581,
+    "documentation": 592,
     "build-config": 303,
     "other": 27,
     "lockfile": 6,
     "rust-build": 4,
     "source": 1499,
     "architecture-decision": 13,
-    "test-artifact": 416,
+    "test-artifact": 417,
     "config-data": 62,
     "step-document": 2,
     "go-source": 8,
@@ -979,6 +979,10 @@
       "role": "documentation"
     },
     "analysis/current-head/MASTER-AUDIT-AEGIS-005-DETECTION-THREAT-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-AEGIS-PLAN-007-020-20261126.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -2574,6 +2578,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/CI_QUALITY_GATES.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "docs/CLI_COMMANDS.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -2590,7 +2598,15 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/DEPLOYMENT_COMPATIBILITY.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "docs/DETECTION_VALIDATION.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/DOCS_LIFECYCLE.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -2607,6 +2623,10 @@
       "role": "documentation"
     },
     "docs/FILE_CLASSIFICATION.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/forensics/FORENSIC_CHAIN_STATUS.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -2862,6 +2882,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/portfolio/CASE_STUDY.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "docs/portfolio/DEMO.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -2894,7 +2918,15 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/portfolio/PERFORMANCE_REPORT.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "docs/portfolio/RESUME_PROJECT.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/portfolio/SENSOR_COVERAGE.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -3022,6 +3054,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/runtime/KERNEL_LIFECYCLE.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "docs/runtime/LIFECYCLE.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -3039,6 +3075,10 @@
       "role": "documentation"
     },
     "docs/runtime/PRETEST_SOURCE_AUDIT.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/runtime/QUEUE_SEMANTICS.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -3071,6 +3111,10 @@
       "role": "documentation"
     },
     "docs/TECHNOLOGY_DECISIONS.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/testing/FAULT_INJECTION_INVENTORY.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -12143,6 +12187,10 @@
       "role": "test-artifact"
     },
     "tests/cython/test_cython_profile.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/docs/test_aegis_plan_closure.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

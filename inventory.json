@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-25T17:39:16.880883+00:00",
+  "generated_at": "2026-11-25T18:05:24.041068+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3250,
+  "total_files": 3262,
   "by_class": {
-    "canonical-docs": 596,
+    "canonical-docs": 607,
     "canonical-build": 314,
     "unclassified": 27,
     "canonical-source": 1801,
-    "canonical-test": 416,
+    "canonical-test": 417,
     "canonical-config": 62,
     "legacy": 34
   },
@@ -991,6 +991,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 5025
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-AEGIS-PLAN-007-020-20261126.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6797
     },
     {
       "path": "analysis/current-head/MASTER-AUDIT-C6-CAPTURE-20261125.md",
@@ -3381,6 +3387,12 @@
       "size": 6703
     },
     {
+      "path": "docs/CI_QUALITY_GATES.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2658
+    },
+    {
       "path": "docs/CLI_COMMANDS.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -3405,10 +3417,22 @@
       "size": 8709
     },
     {
+      "path": "docs/DEPLOYMENT_COMPATIBILITY.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2365
+    },
+    {
       "path": "docs/DETECTION_VALIDATION.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 11648
+      "size": 12677
+    },
+    {
+      "path": "docs/DOCS_LIFECYCLE.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3030
     },
     {
       "path": "docs/ENV_VARS.md",
@@ -3420,7 +3444,7 @@
       "path": "docs/evidence/PROVENANCE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4469
+      "size": 4631
     },
     {
       "path": "docs/evidence/README.md",
@@ -3433,6 +3457,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 7419
+    },
+    {
+      "path": "docs/forensics/FORENSIC_CHAIN_STATUS.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3020
     },
     {
       "path": "docs/GATE_REPORTS.md",
@@ -3813,6 +3843,12 @@
       "size": 10938
     },
     {
+      "path": "docs/portfolio/CASE_STUDY.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3543
+    },
+    {
       "path": "docs/portfolio/DEMO.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -3828,7 +3864,7 @@
       "path": "docs/portfolio/DETECTION_MATRIX_CURRENT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6981
+      "size": 7096
     },
     {
       "path": "docs/portfolio/images/dashboard.png",
@@ -3861,10 +3897,22 @@
       "size": 5814
     },
     {
+      "path": "docs/portfolio/PERFORMANCE_REPORT.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2840
+    },
+    {
       "path": "docs/portfolio/RESUME_PROJECT.md",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 5491
+    },
+    {
+      "path": "docs/portfolio/SENSOR_COVERAGE.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3120
     },
     {
       "path": "docs/portfolio/VERIFICATION_SUMMARY.md",
@@ -4053,6 +4101,12 @@
       "size": 5636
     },
     {
+      "path": "docs/runtime/KERNEL_LIFECYCLE.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3470
+    },
+    {
       "path": "docs/runtime/LIFECYCLE.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -4083,6 +4137,12 @@
       "size": 3169
     },
     {
+      "path": "docs/runtime/QUEUE_SEMANTICS.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4516
+    },
+    {
       "path": "docs/runtime/RUNTIME_CONTRACT.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -4098,7 +4158,7 @@
       "path": "docs/SECURITY_THREAT_MODEL.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9064
+      "size": 9698
     },
     {
       "path": "docs/SLICE_C_LAB_GATE_DESIGN.md",
@@ -4129,6 +4189,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4065
+    },
+    {
+      "path": "docs/testing/FAULT_INJECTION_INVENTORY.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2627
     },
     {
       "path": "docs/testing/RESULTS.md",
@@ -4548,7 +4614,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1684008
+      "size": 1686862
     },
     {
       "path": "FLOW_MAP.json",
@@ -4656,7 +4722,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 514860
+      "size": 515035
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4932,7 +4998,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9877
+      "size": 9758
     },
     {
       "path": "pytest.ini",
@@ -4950,7 +5016,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 416487
+      "size": 416629
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -14586,7 +14652,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23828
+      "size": 23280
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -17737,6 +17803,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 4315
+    },
+    {
+      "path": "tests/docs/test_aegis_plan_closure.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3336
     },
     {
       "path": "tests/docs/test_detection_truth_labels.py",
