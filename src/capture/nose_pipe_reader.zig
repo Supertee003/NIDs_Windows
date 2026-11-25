@@ -27,6 +27,7 @@ const canonical = @import("../contract/canonical_event.zig");
 const pipeline_queue = @import("../pipeline/event_queue.zig");
 const runtime_state = @import("../pipeline/runtime_state.zig");
 const source_arbiter = @import("source_arbiter.zig");
+const producer_identity = @import("producer_identity.zig");
 
 // ============================================================
 // OBSERVABILITY-001: bounded Nose backpressure (PACE-MF-001 pattern)
@@ -276,10 +277,15 @@ pub const PipeReaderStats = struct {
     frames_dropped: u64 = 0,
     frames_submitted: u64 = 0,
     frames_rejected: u64 = 0,
+    identity_rejected: u64 = 0,
     pipe_errors: u64 = 0,
 };
 
 var g_reader_stats = PipeReaderStats{};
+// V3-PRODUCER-IDENTITY-001: the guard persists across pipe reconnects so a
+// restarted Nose with a NEW generation can resume sequence 1 without being
+// confused with the previous process, while a replayed old tuple is refused.
+var g_producer_guard = producer_identity.Guard{};
 // This is the last event ID observed by the runtime, retained for health and
 // forensic observability.  Monotonicity is checked per producer connection
 // below, because Go Nose currently starts a new process-local sequence after
@@ -374,11 +380,9 @@ pub fn runPipeReaderLoopNamed(stopSignal: *std.atomic.Value(bool), pipe_name: [*
 }
 
 fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
-    // A connection is a producer generation boundary for the current wire
-    // contract.  Keep duplicate/non-monotonic checks strict within that
-    // connection, but do not compare a restarted Nose sequence with the old
-    // connection's final event ID.  Cross-generation identity continuity is
-    // a separate contract task requiring an epoch/durable identity field.
+    // V3-PRODUCER-IDENTITY-001: identity is keyed by the v3 tuple, not by pipe
+    // connection. The legacy event_id anomaly counters remain for telemetry,
+    // but admission now uses the persistent producer guard below.
     var previous_connection_event_id: u64 = 0;
     while (!stopSignal.load(.acquire)) {
         // Read length header (u32 LE)
@@ -457,6 +461,9 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
         };
         const event = frame.event;
 
+        // Legacy telemetry only: event_id is a base-event identity, not the
+        // producer key. It is still counted/anomalied but never gates a v3
+        // provenance-bearing frame.
         if (event.event_id == previous_connection_event_id) {
             _ = runtime_state.g_nose_duplicate_event_ids.fetchAdd(1, .monotonic);
             std.log.warn("[NOSE PIPE] duplicate event_id={d}", .{event.event_id});
@@ -467,6 +474,42 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
         previous_connection_event_id = event.event_id;
         g_last_event_id = event.event_id;
         runtime_state.g_nose_last_event_id.store(event.event_id, .monotonic);
+
+        // V3-PRODUCER-IDENTITY-001: fail closed on a partial tuple, an exact
+        // replay, or a regression. Gaps/evictions are visible but admitted.
+        const identity_eval = g_producer_guard.evaluate(frame.envelope);
+        switch (identity_eval.decision) {
+            .invalid => {
+                _ = runtime_state.g_nose_producer_invalid.fetchAdd(1, .monotonic);
+                g_reader_stats.identity_rejected += 1;
+                runtime_state.recordNoseFrameDrop(.identity);
+                std.log.warn("[NOSE PIPE] v3 provenance tuple incomplete: event_id={d}", .{event.event_id});
+                continue;
+            },
+            .duplicate => {
+                _ = runtime_state.g_nose_producer_duplicate.fetchAdd(1, .monotonic);
+                g_reader_stats.identity_rejected += 1;
+                runtime_state.recordNoseFrameDrop(.identity);
+                std.log.warn("[NOSE PIPE] duplicate producer sequence: event_id={d}", .{event.event_id});
+                continue;
+            },
+            .regression => {
+                _ = runtime_state.g_nose_producer_regression.fetchAdd(1, .monotonic);
+                g_reader_stats.identity_rejected += 1;
+                runtime_state.recordNoseFrameDrop(.identity);
+                std.log.warn("[NOSE PIPE] non-monotonic producer sequence: event_id={d}", .{event.event_id});
+                continue;
+            },
+            .gap => _ = runtime_state.g_nose_producer_gap.fetchAdd(1, .monotonic),
+            .evicted => _ = runtime_state.g_nose_producer_evictions.fetchAdd(1, .monotonic),
+            .accepted, .legacy => {},
+        }
+        if (identity_eval.identity) |id| {
+            runtime_state.g_nose_last_capture_sequence.store(id.capture_sequence, .monotonic);
+            runtime_state.g_nose_last_producer_epoch.store(id.producer_epoch, .monotonic);
+            runtime_state.g_nose_last_producer_generation.store(id.producer_generation, .monotonic);
+            runtime_state.g_nose_last_interface_id.store(id.interface_id, .monotonic);
+        }
 
         // VISIBILITY-001: enforce the arbiter's packet-side permission AT THE
         // SUBMIT POINT (it used to be log-only). In kernel-primary ingress the

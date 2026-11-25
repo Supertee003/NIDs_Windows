@@ -29,6 +29,7 @@ const hist = @import("../reliability/latency_histogram.zig");
 const clock = @import("../reliability/monotonic_clock.zig");
 const state = @import("runtime_state.zig");
 const queue = @import("event_queue.zig");
+const producer_identity = @import("../capture/producer_identity.zig");
 const siem_mod = @import("../forensic/siem_forwarder.zig");
 const alert_log = @import("../forensic/alert_log.zig");
 const brain_mod = @import("../core/bridge_init.zig");
@@ -747,13 +748,13 @@ fn processEvent(
     // Independent of evidence-log and SIEM (both may be off); fixed file path
     // only, no egress. Advisory: never a host-effect or enforcement claim.
     if (detection_rule_id != 0) {
-        alertAppend(ev, detection_rule_id, ev_severity, policy_action, decision_trace.trace_id, audit_id, qe.src_ipv6, qe.dst_ipv6);
+        alertAppend(ev, detection_rule_id, ev_severity, policy_action, decision_trace.trace_id, audit_id, qe.src_ipv6, qe.dst_ipv6, qe.producer);
     }
 }
 
 /// Project one detection onto the local alert file. Bounded fields only;
 /// no payload bytes are emitted. ALERT-FILE-001.
-fn alertAppend(ev: *const event.IpcEvent, rule_id: u32, severity: event.EventSeverity, action: policy.Action, trace_id: u64, audit_id: u64, src6: ?[16]u8, dst6: ?[16]u8) void {
+fn alertAppend(ev: *const event.IpcEvent, rule_id: u32, severity: event.EventSeverity, action: policy.Action, trace_id: u64, audit_id: u64, src6: ?[16]u8, dst6: ?[16]u8, producer: ?producer_identity.ProducerIdentity) void {
     if (rule_id == 0) return;
     var src_buf: [48]u8 = undefined;
     var dst_buf: [48]u8 = undefined;
@@ -763,6 +764,10 @@ fn alertAppend(ev: *const event.IpcEvent, rule_id: u32, severity: event.EventSev
     var ip4_dst_buf: [15]u8 = undefined;
     const src = if (src6) |s6| formatIp6(s6, &src_buf) else alert_log.formatIp4(&ip4_src_buf, ev.src_ip);
     const dst = if (dst6) |d6| formatIp6(d6, &dst_buf) else alert_log.formatIp4(&ip4_dst_buf, ev.dst_ip);
+    const producer_sequence: ?u64 = if (producer) |p| p.capture_sequence else null;
+    const producer_epoch: ?u32 = if (producer) |p| p.producer_epoch else null;
+    const producer_generation: ?u32 = if (producer) |p| p.producer_generation else null;
+    const producer_interface: ?u32 = if (producer) |p| p.interface_id else null;
     _ = alert_log.append(.{
         .ts_ms = @intCast(@min(ev.timestamp_ns / 1_000_000, @as(u64, @intCast(std.math.maxInt(i64))))),
         .event_id = ev.event_id,
@@ -778,6 +783,10 @@ fn alertAppend(ev: *const event.IpcEvent, rule_id: u32, severity: event.EventSev
         .evidence = "local detection alert; no host effect",
         .trace_id = trace_id,
         .audit_id = audit_id,
+        .producer_capture_sequence = producer_sequence,
+        .producer_epoch = producer_epoch,
+        .producer_generation = producer_generation,
+        .producer_interface_id = producer_interface,
     });
 }
 

@@ -22,6 +22,7 @@ comptime {
     _ = @import("tests/capture/flow_table.zig");
     _ = @import("tests/capture/proto/parsers.zig");
     _ = @import("tests/capture/stream_reassembly.zig");
+    _ = @import("capture/producer_identity.zig");
     _ = @import("pipeline/data_plane_contract.zig");
     // SCOPE-101: fim_dedup carried 7 tests that only executed through a
     // transitive import; the probe contract must run in the canonical suite.

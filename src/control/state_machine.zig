@@ -454,10 +454,38 @@ pub const RuntimeState = struct {
         // counters mirrors the control_api mapping so the daemon itself
         // satisfies RUNTIME_CONTRACT §4.1.
         try writer.print(
-            \\{{"component":"core","version":"{s}","state":"{s}","runtime_state":"{s}","pid":{} ,"uptime_ms":{},"last_event_ms":{},"degraded":{},"rules_loaded":{},"policies_loaded":{},"defcon_level":{},"defcon_label":"{s}","capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},"data_plane":{{"nose_connected":{},"nose_frames_read":{},"nose_frames_rejected":{},"nose_frames_submitted":{},"nose_frames_dropped":{},"nose_pipe_errors":{},"nose_last_event_id":{},"nose_duplicate_event_ids":{},"nose_non_monotonic_event_ids":{}}},"packets_captured":{},"flows_active":{},"counters":{{"in_events":{},"out_events":{},"errors":{},"dropped":{}}},
-        , .{ ver, operational_state, ss.toString(), pid, uptime, runtime_state.lastEventAgeMs(runtime_state.g_last_event_ms.load(.acquire), std.time.milliTimestamp()), health_degraded, runtime_state.g_rules_loaded.load(.acquire), runtime_state.g_policies_loaded.load(.acquire), defcon_level, defcon.labelFor(defcon_level), wfp_ready, cpp_ready, udp_ready, runtime_state.g_nose_connected.load(.acquire), runtime_state.g_nose_frames_read.load(.acquire), runtime_state.g_nose_frames_rejected.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), runtime_state.g_nose_frames_dropped.load(.acquire), runtime_state.g_nose_pipe_errors.load(.acquire), runtime_state.g_nose_last_event_id.load(.acquire), runtime_state.g_nose_duplicate_event_ids.load(.acquire), runtime_state.g_nose_non_monotonic_event_ids.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), diag.metrics.flows_active.get(), runtime_state.g_nose_frames_read.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), runtime_state.g_nose_pipe_errors.load(.acquire), runtime_state.g_nose_frames_dropped.load(.acquire) });
+            \\{{"component":"core","version":"{s}","state":"{s}","runtime_state":"{s}","pid":{} ,"uptime_ms":{},"last_event_ms":{},"degraded":{},"rules_loaded":{},"policies_loaded":{},"defcon_level":{},"defcon_label":"{s}","capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},
+        , .{ ver, operational_state, ss.toString(), pid, uptime, runtime_state.lastEventAgeMs(runtime_state.g_last_event_ms.load(.acquire), std.time.milliTimestamp()), health_degraded, runtime_state.g_rules_loaded.load(.acquire), runtime_state.g_policies_loaded.load(.acquire), defcon_level, defcon.labelFor(defcon_level), wfp_ready, cpp_ready, udp_ready });
+        try writer.print(
+            \\"data_plane":{{"nose_connected":{},"nose_frames_read":{},"nose_frames_rejected":{},"nose_frames_submitted":{},"nose_frames_dropped":{},"nose_pipe_errors":{},"nose_last_event_id":{},"nose_duplicate_event_ids":{},"nose_non_monotonic_event_ids":{},"nose_producer_invalid":{},"nose_producer_duplicate":{},"nose_producer_regression":{},"nose_producer_gap":{},"nose_producer_evictions":{},"nose_last_capture_sequence":{},"nose_last_producer_epoch":{},"nose_last_producer_generation":{},"nose_last_interface_id":{}}},"packets_captured":{},"flows_active":{},"counters":{{"in_events":{},"out_events":{},"errors":{},"dropped":{}}},
+        , .{
+            runtime_state.g_nose_connected.load(.acquire),
+            runtime_state.g_nose_frames_read.load(.acquire),
+            runtime_state.g_nose_frames_rejected.load(.acquire),
+            runtime_state.g_nose_frames_submitted.load(.acquire),
+            runtime_state.g_nose_frames_dropped.load(.acquire),
+            runtime_state.g_nose_pipe_errors.load(.acquire),
+            runtime_state.g_nose_last_event_id.load(.acquire),
+            runtime_state.g_nose_duplicate_event_ids.load(.acquire),
+            runtime_state.g_nose_non_monotonic_event_ids.load(.acquire),
+            runtime_state.g_nose_producer_invalid.load(.acquire),
+            runtime_state.g_nose_producer_duplicate.load(.acquire),
+            runtime_state.g_nose_producer_regression.load(.acquire),
+            runtime_state.g_nose_producer_gap.load(.acquire),
+            runtime_state.g_nose_producer_evictions.load(.acquire),
+            runtime_state.g_nose_last_capture_sequence.load(.acquire),
+            runtime_state.g_nose_last_producer_epoch.load(.acquire),
+            runtime_state.g_nose_last_producer_generation.load(.acquire),
+            runtime_state.g_nose_last_interface_id.load(.acquire),
+            runtime_state.g_nose_frames_submitted.load(.acquire),
+            diag.metrics.flows_active.get(),
+            runtime_state.g_nose_frames_read.load(.acquire),
+            runtime_state.g_nose_frames_submitted.load(.acquire),
+            runtime_state.g_nose_pipe_errors.load(.acquire),
+            runtime_state.g_nose_frames_dropped.load(.acquire),
+        });
         // OBSERVABILITY-001 / issue #44: additive keys inside data_integrity.
-        // The four `nose_frames_dropped_*` keys are DIAGNOSTIC SUBSETS of the
+        // The five `nose_frames_dropped_*` keys are DIAGNOSTIC SUBSETS of the
         // total, not extra loss: they are never summed by the soak gate.
         // `shed_overload` was recorded only on queue.stats before (soak reads
         // health, hence the honesty gap). `process_generation_ms` is captured
@@ -465,13 +493,14 @@ pub const RuntimeState = struct {
         // generation change between soak baseline and delta makes the delta
         // meaningless. It is a PROCESS generation token (not an OS reboot id).
         // Older readers ignore all additive keys.
-        try writer.print("\"data_integrity\":{{\"queue_dropped_total\":{},\"nose_frames_rejected\":{},\"nose_frames_dropped\":{},\"nose_frames_dropped_framing\":{},\"nose_frames_dropped_midframe\":{},\"nose_frames_dropped_shape\":{},\"nose_frames_dropped_capacity\":{},\"nose_pipe_errors\":{},\"pipeline_processing_errors\":{},\"minifilter_ring_dropped\":{},\"minifilter_pipeline_dropped\":{},\"loss_budget\":{},\"shed_overload\":{},\"process_generation_ms\":{}}},", .{
+        try writer.print("\"data_integrity\":{{\"queue_dropped_total\":{},\"nose_frames_rejected\":{},\"nose_frames_dropped\":{},\"nose_frames_dropped_framing\":{},\"nose_frames_dropped_midframe\":{},\"nose_frames_dropped_shape\":{},\"nose_frames_dropped_identity\":{},\"nose_frames_dropped_capacity\":{},\"nose_pipe_errors\":{},\"pipeline_processing_errors\":{},\"minifilter_ring_dropped\":{},\"minifilter_pipeline_dropped\":{},\"loss_budget\":{},\"shed_overload\":{},\"process_generation_ms\":{}}},", .{
             queue_drops,
             nose_rejected,
             nose_dropped,
             runtime_state.g_nose_frames_dropped_framing.load(.acquire),
             runtime_state.g_nose_frames_dropped_midframe.load(.acquire),
             runtime_state.g_nose_frames_dropped_shape.load(.acquire),
+            runtime_state.g_nose_frames_dropped_identity.load(.acquire),
             runtime_state.g_nose_frames_dropped_capacity.load(.acquire),
             nose_pipe_errors,
             pipeline_processing_errors,
@@ -778,6 +807,53 @@ test "healthJson exposes cause splits and detector degradation without double-co
     // non-loss, so this must stay RUNNING. No cause is counted twice.
     try std.testing.expect(std.mem.indexOf(u8, out, "\"state\":\"RUNNING\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"degraded\":false") != null);
+}
+
+test "healthJson exposes v3 producer identity counters additively" {
+    const saved = .{
+        runtime_state.g_nose_producer_invalid.load(.acquire),
+        runtime_state.g_nose_producer_duplicate.load(.acquire),
+        runtime_state.g_nose_producer_regression.load(.acquire),
+        runtime_state.g_nose_producer_gap.load(.acquire),
+        runtime_state.g_nose_producer_evictions.load(.acquire),
+        runtime_state.g_nose_last_capture_sequence.load(.acquire),
+        runtime_state.g_nose_last_producer_epoch.load(.acquire),
+        runtime_state.g_nose_last_producer_generation.load(.acquire),
+        runtime_state.g_nose_last_interface_id.load(.acquire),
+    };
+    defer {
+        runtime_state.g_nose_producer_invalid.store(saved[0], .monotonic);
+        runtime_state.g_nose_producer_duplicate.store(saved[1], .monotonic);
+        runtime_state.g_nose_producer_regression.store(saved[2], .monotonic);
+        runtime_state.g_nose_producer_gap.store(saved[3], .monotonic);
+        runtime_state.g_nose_producer_evictions.store(saved[4], .monotonic);
+        runtime_state.g_nose_last_capture_sequence.store(saved[5], .monotonic);
+        runtime_state.g_nose_last_producer_epoch.store(saved[6], .monotonic);
+        runtime_state.g_nose_last_producer_generation.store(saved[7], .monotonic);
+        runtime_state.g_nose_last_interface_id.store(saved[8], .monotonic);
+    }
+    runtime_state.g_nose_producer_invalid.store(1, .monotonic);
+    runtime_state.g_nose_producer_duplicate.store(2, .monotonic);
+    runtime_state.g_nose_producer_regression.store(3, .monotonic);
+    runtime_state.g_nose_producer_gap.store(4, .monotonic);
+    runtime_state.g_nose_producer_evictions.store(5, .monotonic);
+    runtime_state.g_nose_last_capture_sequence.store(42, .monotonic);
+    runtime_state.g_nose_last_producer_epoch.store(1_700_000_000, .monotonic);
+    runtime_state.g_nose_last_producer_generation.store(2, .monotonic);
+    runtime_state.g_nose_last_interface_id.store(0xCAFE, .monotonic);
+    var rs = RuntimeState{};
+    const workers = WorkerReadiness{ .pipeline = true, .sensor = true, .nose = true, .etw = true, .fim = true, .registry = true, .failed = false, .failure_reason = "", .failure_mask = 0 };
+    const out = try rs.healthJson(std.testing.allocator, 1234, true, true, true, true, workers);
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"nose_producer_invalid\":1") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"nose_producer_duplicate\":2") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"nose_producer_regression\":3") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"nose_producer_gap\":4") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"nose_producer_evictions\":5") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"nose_last_capture_sequence\":42") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"nose_last_producer_epoch\":1700000000") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"nose_last_producer_generation\":2") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"nose_last_interface_id\":51966") != null);
 }
 
 test "healthJson accepts loss at or below the owner-approved budget" {

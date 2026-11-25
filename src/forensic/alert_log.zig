@@ -38,6 +38,12 @@ pub const Alert = struct {
     session_id: ?u64 = null,
     trace_id: ?u64 = null,
     audit_id: ?u64 = null,
+    /// V3-PRODUCER-IDENTITY-001: additive acquisition identity evidence.
+    /// Never a trust verdict; null means legacy/no v3 provenance claim.
+    producer_capture_sequence: ?u64 = null,
+    producer_epoch: ?u32 = null,
+    producer_generation: ?u32 = null,
+    producer_interface_id: ?u32 = null,
 };
 
 /// Pure dotted-quad formatter for a big-endian u32 IPv4 address.
@@ -84,6 +90,10 @@ pub fn formatAlertLine(alert: Alert, writer: anytype) void {
     if (alert.session_id) |v| writer.print(",\"session_id\":{d}", .{v}) catch return;
     if (alert.trace_id) |v| writer.print(",\"trace_id\":{d}", .{v}) catch return;
     if (alert.audit_id) |v| writer.print(",\"audit_id\":{d}", .{v}) catch return;
+    if (alert.producer_capture_sequence) |v| writer.print(",\"producer_capture_sequence\":{d}", .{v}) catch return;
+    if (alert.producer_epoch) |v| writer.print(",\"producer_epoch\":{d}", .{v}) catch return;
+    if (alert.producer_generation) |v| writer.print(",\"producer_generation\":{d}", .{v}) catch return;
+    if (alert.producer_interface_id) |v| writer.print(",\"producer_interface_id\":{d}", .{v}) catch return;
     writer.writeByte('}') catch return;
 }
 
@@ -157,6 +167,27 @@ test "formatAlertLine: schema and bounded fields, no payload key" {
     try testing.expect(std.mem.indexOf(u8, line, "\"rule_id\":9006") != null);
     try testing.expect(std.mem.indexOf(u8, line, "payload") == null);
     try testing.expect(line[line.len - 1] == '}');
+}
+
+test "formatAlertLine: v3 producer identity is additive evidence, not a verdict" {
+    var buf: [1024]u8 = undefined;
+    var stream = std.io.fixedBufferStream(&buf);
+    formatAlertLine(.{
+        .ts_ms = 1763550000123,
+        .event_id = 43,
+        .rule_id = 9006,
+        .severity = 3,
+        .producer_capture_sequence = 17,
+        .producer_epoch = 1_700_000_000,
+        .producer_generation = 2,
+        .producer_interface_id = 0xCAFE,
+    }, stream.writer());
+    const line = stream.getWritten();
+    try testing.expect(std.mem.indexOf(u8, line, "\"producer_capture_sequence\":17") != null);
+    try testing.expect(std.mem.indexOf(u8, line, "\"producer_epoch\":1700000000") != null);
+    try testing.expect(std.mem.indexOf(u8, line, "\"producer_generation\":2") != null);
+    try testing.expect(std.mem.indexOf(u8, line, "\"producer_interface_id\":51966") != null);
+    try testing.expect(std.mem.indexOf(u8, line, "payload") == null);
 }
 
 test "formatAlertLine: escapes quotes and control chars (no log injection)" {

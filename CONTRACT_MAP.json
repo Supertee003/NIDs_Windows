@@ -238,6 +238,16 @@
       "magic": "0x57455631 (WEV1, shared with v1; the version field selects v2)"
     },
     {
+      "id": "WIRE_PROTOCOL_V3",
+      "name": "Wire Protocol v3 (bounded evidence envelope + producer identity)",
+      "file": "shared/protocol/wire_v3.md",
+      "implementation": "src/contract/canonical_event.zig (V3Envelope/validateV3Envelope), src/capture/producer_identity.zig (ingress guard), nose/producer_identity.go (issuance)",
+      "schema": "Canonical v3 payload = 165 + payload_len bytes (v2 133-byte base + 32-byte envelope + 0..1024 bounded payload); on-wire total = 169..1193 including 4-byte LE length prefix; bit1 provenance tuple MUST be complete/nonzero and monotonic per (epoch, generation, interface)",
+      "version": "3.0",
+      "magic": "0x57455631 (WEV1, shared with v1/v2; version field 1|2 selects base, envelope suffix selects v3)",
+      "authority_note": "Producer identity is acquisition evidence only; Zig ingress owns dedup/admission and no component gains enforcement authority from this contract."
+    },
+    {
       "id": "FORENSIC_RECORD",
       "name": "Forensic Record",
       "file": "src/forensic/forensic_pipeline.zig",

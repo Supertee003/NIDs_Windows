@@ -464,18 +464,20 @@ pub var g_nose_frames_rejected = std.atomic.Value(u64).init(0);
 pub var g_nose_frames_submitted = std.atomic.Value(u64).init(0);
 /// Nose frames that reach the reader but are never admitted as events. Real
 /// causes, all exclusive: framing reject (resync/drain), aborted payload read,
-/// post-decode shape refusal, and queue-capacity refusal. `nose_frames_rejected`
-/// is a separate decode failure, not a drop. The four cause counters below are
-/// DIAGNOSTIC SUBSETS of this total; never add them to soak LOSS_COUNTERS.
+/// post-decode shape refusal, producer-identity refusal, and queue-capacity
+/// refusal. `nose_frames_rejected` is a separate decode failure, not a drop.
+/// The five cause counters below are DIAGNOSTIC SUBSETS of this total; never
+/// add them to soak LOSS_COUNTERS.
 pub var g_nose_frames_dropped = std.atomic.Value(u64).init(0);
 pub var g_nose_frames_dropped_framing = std.atomic.Value(u64).init(0);
 pub var g_nose_frames_dropped_midframe = std.atomic.Value(u64).init(0);
 pub var g_nose_frames_dropped_shape = std.atomic.Value(u64).init(0);
+pub var g_nose_frames_dropped_identity = std.atomic.Value(u64).init(0);
 pub var g_nose_frames_dropped_capacity = std.atomic.Value(u64).init(0);
 
 /// The single authority for a Nose frame drop. Every reader branch calls this
 /// once, so the total and exactly one cause counter move in the same operation.
-pub const NoseDropCause = enum { framing, midframe, shape, capacity };
+pub const NoseDropCause = enum { framing, midframe, shape, identity, capacity };
 
 pub fn recordNoseFrameDrop(cause: NoseDropCause) void {
     _ = g_nose_frames_dropped.fetchAdd(1, .monotonic);
@@ -483,6 +485,7 @@ pub fn recordNoseFrameDrop(cause: NoseDropCause) void {
         .framing => _ = g_nose_frames_dropped_framing.fetchAdd(1, .monotonic),
         .midframe => _ = g_nose_frames_dropped_midframe.fetchAdd(1, .monotonic),
         .shape => _ = g_nose_frames_dropped_shape.fetchAdd(1, .monotonic),
+        .identity => _ = g_nose_frames_dropped_identity.fetchAdd(1, .monotonic),
         .capacity => _ = g_nose_frames_dropped_capacity.fetchAdd(1, .monotonic),
     }
 }
@@ -494,6 +497,18 @@ pub var g_nose_pipe_errors = std.atomic.Value(u64).init(0);
 pub var g_nose_last_event_id = std.atomic.Value(u64).init(0);
 pub var g_nose_duplicate_event_ids = std.atomic.Value(u64).init(0);
 pub var g_nose_non_monotonic_event_ids = std.atomic.Value(u64).init(0);
+// V3-PRODUCER-IDENTITY-001: v3 tuple enforcement counters. These are separate
+// from the legacy event_id counters above: a reused event_id under a NEW
+// restart generation is not a duplicate producer observation.
+pub var g_nose_producer_invalid = std.atomic.Value(u64).init(0);
+pub var g_nose_producer_duplicate = std.atomic.Value(u64).init(0);
+pub var g_nose_producer_regression = std.atomic.Value(u64).init(0);
+pub var g_nose_producer_gap = std.atomic.Value(u64).init(0);
+pub var g_nose_producer_evictions = std.atomic.Value(u64).init(0);
+pub var g_nose_last_capture_sequence = std.atomic.Value(u64).init(0);
+pub var g_nose_last_producer_epoch = std.atomic.Value(u32).init(0);
+pub var g_nose_last_producer_generation = std.atomic.Value(u32).init(0);
+pub var g_nose_last_interface_id = std.atomic.Value(u32).init(0);
 /// CTRL-002: monotonic epoch-ms of the last processed event. 0 means no event
 /// has been processed yet. Exposed through the control plane so
 /// `last_event_ms` in RUNTIME_CONTRACT.md §4.1 is real data, never a placeholder.
@@ -663,6 +678,7 @@ test "issue #44 nose drop causes are exclusive and sum to the total" {
         g_nose_frames_dropped_framing.load(.acquire),
         g_nose_frames_dropped_midframe.load(.acquire),
         g_nose_frames_dropped_shape.load(.acquire),
+        g_nose_frames_dropped_identity.load(.acquire),
         g_nose_frames_dropped_capacity.load(.acquire),
     };
     defer {
@@ -670,17 +686,20 @@ test "issue #44 nose drop causes are exclusive and sum to the total" {
         g_nose_frames_dropped_framing.store(saved[1], .monotonic);
         g_nose_frames_dropped_midframe.store(saved[2], .monotonic);
         g_nose_frames_dropped_shape.store(saved[3], .monotonic);
-        g_nose_frames_dropped_capacity.store(saved[4], .monotonic);
+        g_nose_frames_dropped_identity.store(saved[4], .monotonic);
+        g_nose_frames_dropped_capacity.store(saved[5], .monotonic);
     }
 
     recordNoseFrameDrop(.framing);
     recordNoseFrameDrop(.midframe);
     recordNoseFrameDrop(.shape);
+    recordNoseFrameDrop(.identity);
     recordNoseFrameDrop(.capacity);
 
-    try std.testing.expectEqual(saved[0] + 4, g_nose_frames_dropped.load(.acquire));
+    try std.testing.expectEqual(saved[0] + 5, g_nose_frames_dropped.load(.acquire));
     try std.testing.expectEqual(saved[1] + 1, g_nose_frames_dropped_framing.load(.acquire));
     try std.testing.expectEqual(saved[2] + 1, g_nose_frames_dropped_midframe.load(.acquire));
     try std.testing.expectEqual(saved[3] + 1, g_nose_frames_dropped_shape.load(.acquire));
-    try std.testing.expectEqual(saved[4] + 1, g_nose_frames_dropped_capacity.load(.acquire));
+    try std.testing.expectEqual(saved[4] + 1, g_nose_frames_dropped_identity.load(.acquire));
+    try std.testing.expectEqual(saved[5] + 1, g_nose_frames_dropped_capacity.load(.acquire));
 }

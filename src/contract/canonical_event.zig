@@ -524,6 +524,12 @@ pub fn validateV3Envelope(env: *const V3Envelope, payload: []const u8) bool {
     if (!env.provenanceValid()) {
         if (env.capture_sequence != 0 or env.producer_epoch != 0 or
             env.producer_generation != 0 or env.interface_id != 0) return false;
+    } else {
+        // V3-PRODUCER-IDENTITY-001: a producer-valid frame must carry a
+        // complete identity tuple. A partial tuple cannot be deduplicated
+        // safely, so it fails closed instead of being inferred.
+        if (env.capture_sequence == 0 or env.producer_epoch == 0 or
+            env.producer_generation == 0 or env.interface_id == 0) return false;
     }
     return true;
 }
@@ -1660,5 +1666,34 @@ test "validateDecodedFrame rejects v3/v1 shape mixing" {
     // A correctly shaped v3 frame passes.
     const ok = DecodedFrame{ .event = ev3, .src_ipv6 = null, .dst_ipv6 = null, .envelope = env, .payload = &payload };
     try std.testing.expect(validateDecodedFrame(&ok));
+}
+
+test "V3-PRODUCER-IDENTITY-001: provenance-valid requires a complete identity tuple" {
+    const payload = [_]u8{ 1, 2, 3 };
+    const base = V3Envelope{
+        .flags = V3PayloadFlags.PAYLOAD_PRESENT | V3PayloadFlags.PROVENANCE_VALID,
+        .completeness = .complete,
+        .payload_len = payload.len,
+        .original_len = payload.len,
+        .payload_crc32 = std.hash.Crc32.hash(&payload),
+        .capture_sequence = 7,
+        .producer_epoch = 11,
+        .producer_generation = 2,
+        .interface_id = 0xCAFE,
+    };
+    try std.testing.expect(validateV3Envelope(&base, &payload));
+
+    var partial = base;
+    partial.capture_sequence = 0;
+    try std.testing.expect(!validateV3Envelope(&partial, &payload));
+    partial = base;
+    partial.producer_epoch = 0;
+    try std.testing.expect(!validateV3Envelope(&partial, &payload));
+    partial = base;
+    partial.producer_generation = 0;
+    try std.testing.expect(!validateV3Envelope(&partial, &payload));
+    partial = base;
+    partial.interface_id = 0;
+    try std.testing.expect(!validateV3Envelope(&partial, &payload));
 }
 

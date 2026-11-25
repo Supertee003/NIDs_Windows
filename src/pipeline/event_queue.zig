@@ -6,6 +6,7 @@
 const std = @import("std");
 const event = @import("../contract/event.zig");
 const canonical = @import("../contract/canonical_event.zig");
+const producer_identity = @import("../capture/producer_identity.zig");
 const state = @import("runtime_state.zig");
 // KIND-ATTR-001: the reserved process-type byte is written by the minifilter
 // producer through hids.ProcessEventType. Importing the enum keeps the mapping
@@ -125,6 +126,9 @@ pub const QueuedEvent = struct {
     /// Direction from a canonical network event. Null means the producer
     /// did not provide direction metadata; keep it distinct from inbound.
     direction: ?u8 = null,
+    /// V3-PRODUCER-IDENTITY-001: in-memory producer tuple admitted at Zig
+    /// ingress. Null for v1/v2/legacy frames. Never serialized on a wire.
+    producer: ?producer_identity.ProducerIdentity = null,
 };
 
 var g_event_queue: [PIPELINE_QUEUE_SIZE]QueuedEvent = undefined;
@@ -199,13 +203,13 @@ pub fn sourceOccupancy(source: event.EventSource) u64 {
 /// Push an event + optional payload into the pipeline queue.
 /// Returns true if accepted, false if queue is full (event dropped).
 pub fn pushEvent(ev: event.IpcEvent, payload: []const u8) bool {
-    return pushEventFull(ev, payload, null, null, 0, null);
+    return pushEventFull(ev, payload, null, null, 0, null, null);
 }
 
 /// pushEvent with the TCP flags observed by the direct Npcap parser.
 /// The sidecar is in-memory only and is consumed by layer=="L4" matching.
 pub fn pushEventWithTcpFlags(ev: event.IpcEvent, payload: []const u8, tcp_flags: u8) bool {
-    return pushEventFull(ev, payload, null, null, tcp_flags, null);
+    return pushEventFull(ev, payload, null, null, tcp_flags, null, null);
 }
 
 /// pushEvent with v2 full-address sidecars. The sidecars are written into
@@ -214,10 +218,10 @@ pub fn pushEventWithTcpFlags(ev: event.IpcEvent, payload: []const u8, tcp_flags:
 /// sidecars (v1 frames, ETW/FIM/registry/brain sensors, tests) use
 /// pushEvent and queue exactly as before.
 pub fn pushEventWithAddrs(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst_ipv6: ?[16]u8) bool {
-    return pushEventFull(ev, payload, src_ipv6, dst_ipv6, 0, null);
+    return pushEventFull(ev, payload, src_ipv6, dst_ipv6, 0, null, null);
 }
 
-fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst_ipv6: ?[16]u8, tcp_flags: u8, direction: ?u8) bool {
+fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst_ipv6: ?[16]u8, tcp_flags: u8, direction: ?u8, producer: ?producer_identity.ProducerIdentity) bool {
     g_queue_producer_mutex.lock();
     defer g_queue_producer_mutex.unlock();
     const head = g_queue_head.load(.monotonic);
@@ -284,6 +288,7 @@ fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst
     qe.dst_ipv6 = dst_ipv6;
     qe.tcp_flags = tcp_flags;
     qe.direction = direction;
+    qe.producer = producer;
     g_event_queue[head % PIPELINE_QUEUE_SIZE] = qe;
     // Claim the source's occupancy BEFORE the slot is published, so a consumer
     // can never release a slot this producer has not yet counted.
@@ -500,7 +505,7 @@ pub fn pushDecodedFrameDetailed(frame: *const canonical.DecodedFrame, payload: [
     // sidecar the direct Npcap path already uses, so L4 FLAGS predicates
     // match on both acquisition paths. Absence stays 0 ("no evidence").
     const tcp_flags = canonical.getTcpFlags(ce) orelse 0;
-    return if (pushEventFull(ev, payload, frame.src_ipv6, frame.dst_ipv6, tcp_flags, ce.direction))
+    return if (pushEventFull(ev, payload, frame.src_ipv6, frame.dst_ipv6, tcp_flags, ce.direction, producer_identity.ProducerIdentity.fromEnvelope(frame.envelope)))
         .accepted
     else
         .dropped_capacity;

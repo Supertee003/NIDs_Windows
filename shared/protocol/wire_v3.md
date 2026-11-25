@@ -67,8 +67,21 @@ closed (no inferred acceptance, no silent truncation).
 ## Provenance rules
 
 - `flags` bit1 set ⇒ `capture_sequence`, `producer_epoch`,
-  `producer_generation`, `interface_id` are meaningful.
-- `flags` bit1 clear ⇒ all four provenance fields MUST be zero.
+  `producer_generation`, `interface_id` are meaningful and MUST all be
+  nonzero (V3-PRODUCER-IDENTITY-001). A partial tuple fails closed.
+- `flags` bit1 clear ⇒ all four provenance fields MUST be zero; these
+  frames are legacy/metadata-only and carry no producer identity claim.
+- `capture_sequence` is a dedicated producer counter, distinct from the
+  base `CanonicalEvent.event_id`. It MUST increase for each admitted frame
+  from one producer and MUST NOT be reused within the same
+  `(producer_epoch, producer_generation, interface_id)` key.
+- `producer_epoch` is start-time metadata (seconds). `producer_generation`
+  is a durable, per-interface restart generation issued by Go Nose before
+  capture starts; it increments on every live start and is never hardcoded.
+  A new generation may legitimately reuse sequence 1.
+- Zig ingress keys dedup/replay on the full tuple. Exact replay and
+  regression are rejected before queue admission and counted as identity
+  drops; gaps and bounded-table evictions are admitted but visible.
 - Provenance identifies the acquisition producer. It is not a trust
   signature and MUST NOT be used to authorize enforcement.
 

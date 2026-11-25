@@ -166,7 +166,13 @@ func runCapture(iface string, pipe string, stop <-chan struct{}) error {
 	fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] listening on %s -> %s\n", iface, pipe)
 
 	w := NewFrameWriter(pipe)
-	prov := newCaptureProvenance(iface)
+	// S3: fail startup if a durable, exclusive restart generation cannot be
+	// issued. Never stamp a hardcoded generation that would alias a prior
+	// process identity after restart.
+	prov, err := newLiveCaptureProvenance(iface)
+	if err != nil {
+		return fmt.Errorf("nose capture: producer identity: %w", err)
+	}
 
 	count := 0
 	for {
@@ -195,7 +201,7 @@ func runCapture(iface string, pipe string, stop <-chan struct{}) error {
 		ev := eventFromPacket(packet)
 		// Attach the bounded captured frame bytes + provenance. No verdict,
 		// no rule_id, no event_type reinterpretation: Zig decides.
-		payload, env := captureAttachment(data, captureInfo, ev.EventID, prov)
+		payload, env := captureAttachment(data, captureInfo, nextCaptureSequence(), prov)
 		atomic.AddUint64(&stateAtomic.canonical, 1)
 		atomic.AddUint64(&stateAtomic.bytesTotal, uint64(captureInfo.CaptureLength))
 		_ = w.SendWithPayload(ev, env, payload)
@@ -223,23 +229,18 @@ func droppedVia(w *FrameWriter) uint64 {
 // envelope. It identifies the acquisition process and interface so Zig can
 // correlate evidence without trusting a Go-side verdict.
 type captureProvenance struct {
-	epoch      uint32
-	generation uint32
+	epoch       uint32
+	generation  uint32
 	interfaceID uint32
 }
 
-// newCaptureProvenance derives a stable, opaque interface id (FNV-1a of the
-// Npcap device name) plus the producer epoch for this process.
+// newCaptureProvenance is the synthetic/test tuple. Live capture MUST use
+// newLiveCaptureProvenance so the generation is durable and exclusive.
 func newCaptureProvenance(iface string) captureProvenance {
-	var h uint32 = 0x811c9dc5
-	for i := 0; i < len(iface); i++ {
-		h ^= uint32(iface[i])
-		h *= 0x01000193
-	}
 	return captureProvenance{
 		epoch:       uint32(time.Now().Unix()),
 		generation:  1,
-		interfaceID: h,
+		interfaceID: interfaceIDFor(iface),
 	}
 }
 
