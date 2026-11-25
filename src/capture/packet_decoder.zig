@@ -11,6 +11,7 @@ pub const EtherType = enum(u16) {
     arp = 0x0806,
     ipv6 = 0x86DD,
     vlan = 0x8100,
+    vlan_ad = 0x88a8, // 802.1ad provider bridge tag (QinQ)
     mpls = 0x8847,
     _,
 };
@@ -114,6 +115,55 @@ pub const DecodedPacket = struct {
     decode_error: ?[]const u8 = null,
 };
 
+// Bounded traversal limits. A decoder must fail closed rather than loop on a
+// hostile header chain; these limits are local parsing state, not wire fields.
+const max_vlan_tags: u8 = 2; // 802.1Q + 802.1ad (QinQ)
+const max_ipv6_ext_headers: u8 = 8;
+
+const Ipv6Walk = struct {
+    off: usize,
+    proto: u8,
+};
+
+/// Walk the common IPv6 extension headers without allocating. Option-style
+/// headers (0, 43, 60), Fragment (44) and AH (51) have a next-header byte and a
+/// bounded length. ESP (50) and No Next Header (59) stop the walk because their
+/// payload cannot be safely interpreted as a following transport header.
+/// An unsupported value stops with that protocol value; decodeL4 then decides
+/// whether it can consume it. A truncated or over-long chain returns null.
+fn walkIpv6ExtensionHeaders(raw: []const u8, off_in: usize, next_in: u8) ?Ipv6Walk {
+    var off = off_in;
+    var next = next_in;
+    var hops: u8 = 0;
+    while (hops < max_ipv6_ext_headers) {
+        switch (next) {
+            0, 43, 60 => { // Hop-by-Hop, Routing, Destination Options
+                if (raw.len < off + 2) return null;
+                const hdr_len = (@as(usize, raw[off + 1]) + 1) * 8;
+                if (hdr_len < 8 or raw.len < off + hdr_len) return null;
+                next = raw[off];
+                off += hdr_len;
+            },
+            44 => { // Fragment: fixed 8 bytes
+                if (raw.len < off + 8) return null;
+                next = raw[off];
+                off += 8;
+            },
+            51 => { // Authentication Header: (length + 2) * 4 bytes
+                if (raw.len < off + 2) return null;
+                const hdr_len = (@as(usize, raw[off + 1]) + 2) * 4;
+                if (hdr_len < 8 or raw.len < off + hdr_len) return null;
+                next = raw[off];
+                off += hdr_len;
+            },
+            50, 59 => return .{ .off = off, .proto = next }, // ESP / No Next Header
+            else => return .{ .off = off, .proto = next },
+        }
+        hops += 1;
+    }
+    return null; // bound exceeded: fail closed, never loop forever
+}
+
 // ============================================================================
 // Decoding functions
 // ============================================================================
@@ -129,17 +179,21 @@ pub fn decode(raw: []const u8) DecodedPacket {
 
     var off: usize = @sizeOf(EthHdr);
 
-    // VLAN
-    if (dp.ether_type == .vlan) {
+    // VLAN / QinQ: unwrap up to max_vlan_tags tags. vlan_id records the outer
+    // tag for compatibility. A third tag is left as ether_type and falls
+    // through to the non-IP branch rather than being decoded as IP.
+    var vlan_tags: u8 = 0;
+    while ((dp.ether_type == .vlan or dp.ether_type == .vlan_ad) and vlan_tags < max_vlan_tags) {
         if (raw.len < off + 4) {
             dp.decode_error = "truncated-vlan";
             return dp;
         }
         const tci = std.mem.readInt(u16, raw[off..][0..2], .big);
-        dp.vlan_id = tci & 0x0FFF;
+        if (vlan_tags == 0) dp.vlan_id = tci & 0x0FFF;
         const inner_et = std.mem.readInt(u16, raw[off + 2 ..][0..2], .big);
         dp.ether_type = @enumFromInt(inner_et);
         off += 4;
+        vlan_tags += 1;
     }
 
     switch (dp.ether_type) {
@@ -190,8 +244,16 @@ fn decodeIpv6(dp: *DecodedPacket, raw: []const u8, off: usize) void {
     dp.ip_proto = @enumFromInt(ip.next_header);
     @memcpy(&dp.src_ip, &ip.src);
     @memcpy(&dp.dst_ip, &ip.dst);
-    const l4_off = off + @sizeOf(Ipv6Hdr);
-    decodeL4(dp, raw, l4_off, ip.next_header);
+    // Walk any extension headers so L4 sees the real transport protocol and
+    // offset. With no extension headers this returns the fixed-header defaults
+    // and keeps the previous behavior. A truncated/over-long chain fails
+    // closed with a decode_error instead of silently decoding garbage.
+    const ext = walkIpv6ExtensionHeaders(raw, off + @sizeOf(Ipv6Hdr), ip.next_header) orelse {
+        dp.decode_error = "truncated-ipv6-ext";
+        return;
+    };
+    dp.ip_proto = @enumFromInt(ext.proto);
+    decodeL4(dp, raw, ext.off, ext.proto);
 }
 
 fn decodeL4(dp: *DecodedPacket, raw: []const u8, off: usize, proto: u8) void {
@@ -308,4 +370,112 @@ test "decode VLAN-tagged packet" {
     const dp = decode(&pkt);
     try std.testing.expectEqual(@as(u16, 0x0234), dp.vlan_id.?);
     try std.testing.expectEqual(EtherType.ipv4, dp.ether_type);
+}
+
+test "decode QinQ double-tagged packet" {
+    var pkt: [70]u8 = undefined;
+    @memset(&pkt, 0);
+    pkt[12] = 0x81;
+    pkt[13] = 0x00; // outer TPID 802.1Q
+    pkt[14] = 0x12;
+    pkt[15] = 0x34; // outer TCI
+    pkt[16] = 0x88;
+    pkt[17] = 0xa8; // inner TPID 802.1ad
+    pkt[18] = 0x56;
+    pkt[19] = 0x78; // inner TCI
+    pkt[20] = 0x08;
+    pkt[21] = 0x00; // IPv4
+    pkt[22] = 0x45; // ver+ihl
+    pkt[31] = 6; // proto=TCP at 22+9
+    pkt[42] = 0x12;
+    pkt[43] = 0x34; // TCP src port at 22+20
+    pkt[44] = 0x00;
+    pkt[45] = 0x50; // TCP dst port 80
+    pkt[54] = 0x50; // data offset at 42+12
+    const dp = decode(&pkt);
+    try std.testing.expectEqual(@as(u16, 0x0234), dp.vlan_id.?); // outer tag recorded
+    try std.testing.expectEqual(EtherType.ipv4, dp.ether_type);
+    try std.testing.expect(dp.ipv4 != null);
+    try std.testing.expectEqual(IpProto.tcp, dp.ip_proto);
+    try std.testing.expectEqual(@as(u16, 80), dp.dst_port);
+}
+
+test "decode IPv6 with hop-by-hop extension header" {
+    var pkt: [90]u8 = undefined;
+    @memset(&pkt, 0);
+    pkt[12] = 0x86;
+    pkt[13] = 0xdd; // IPv6
+    pkt[20] = 0; // IPv6 next_header = Hop-by-Hop
+    // Hop-by-Hop at 54: next = TCP, hdr ext len = 0 -> 8 bytes
+    pkt[54] = 6;
+    pkt[55] = 0;
+    // TCP at 62
+    pkt[62] = 0x12;
+    pkt[63] = 0x34; // src port
+    pkt[64] = 0x00;
+    pkt[65] = 0x50; // dst port 80
+    pkt[74] = 0x50; // data offset
+    const dp = decode(&pkt);
+    try std.testing.expect(dp.is_ipv6);
+    try std.testing.expectEqual(IpProto.tcp, dp.ip_proto); // transport, not ext header
+    try std.testing.expect(dp.tcp != null);
+    try std.testing.expectEqual(@as(u16, 80), dp.dst_port);
+}
+
+test "decode IPv6 with hop-by-hop and routing extension headers" {
+    var pkt: [100]u8 = undefined;
+    @memset(&pkt, 0);
+    pkt[12] = 0x86;
+    pkt[13] = 0xdd;
+    pkt[20] = 0; // Hop-by-Hop
+    pkt[54] = 43; // Hop-by-Hop next = Routing
+    pkt[55] = 0; // 8 bytes
+    pkt[62] = 6; // Routing next = TCP
+    pkt[63] = 0; // 8 bytes
+    pkt[70] = 0x12;
+    pkt[71] = 0x34; // TCP src port
+    pkt[72] = 0x00;
+    pkt[73] = 0x50; // dst port 80
+    pkt[82] = 0x50; // data offset
+    const dp = decode(&pkt);
+    try std.testing.expect(dp.is_ipv6);
+    try std.testing.expectEqual(IpProto.tcp, dp.ip_proto);
+    try std.testing.expect(dp.tcp != null);
+    try std.testing.expectEqual(@as(u16, 80), dp.dst_port);
+}
+
+test "decode IPv6 extension header chain fails closed at bound" {
+    var pkt: [130]u8 = undefined;
+    @memset(&pkt, 0);
+    pkt[12] = 0x86;
+    pkt[13] = 0xdd;
+    pkt[20] = 43; // Routing
+    var i: usize = 0;
+    while (i < 8) : (i += 1) {
+        const at = 54 + i * 8;
+        pkt[at] = 43; // next = another Routing header
+        pkt[at + 1] = 0; // 8 bytes
+    }
+    const dp = decode(&pkt);
+    try std.testing.expect(dp.decode_error != null);
+    try std.testing.expectEqualStrings("truncated-ipv6-ext", dp.decode_error.?);
+    try std.testing.expect(dp.tcp == null);
+}
+
+test "decode IPv6 without extension headers is unchanged" {
+    var pkt: [90]u8 = undefined;
+    @memset(&pkt, 0);
+    pkt[12] = 0x86;
+    pkt[13] = 0xdd;
+    pkt[20] = 6; // next_header = TCP directly
+    pkt[54] = 0x12;
+    pkt[55] = 0x34; // src port
+    pkt[56] = 0x00;
+    pkt[57] = 0x50; // dst port 80
+    pkt[66] = 0x50; // data offset
+    const dp = decode(&pkt);
+    try std.testing.expect(dp.is_ipv6);
+    try std.testing.expectEqual(IpProto.tcp, dp.ip_proto);
+    try std.testing.expectEqual(@as(u16, 80), dp.dst_port);
+    try std.testing.expect(dp.decode_error == null);
 }

@@ -8,7 +8,7 @@
 // Design rules:
 //   - Opt-in only (--live-talkers). Default behavior is byte-identical:
 //     synthetic talkers, Simulated marked.
-//   - Passive, non-promiscuous capture, BPF "ip or ip6", no pipe writes,
+//   - Passive, non-promiscuous capture, BPF noseCaptureBPF (VLAN/QinQ included), no pipe writes,
 //     no injection. Any open/BPF failure returns an error and the caller
 //     keeps synthetic data (fail-silent with one stderr note).
 //   - Attribution is endpoint-symmetric and needs no local-IP knowledge:
@@ -176,7 +176,7 @@ func applyLiveTalkers(data *TrafficData, numbersOK bool) {
 // startLiveTalkersFeed opens a passive capture handle and feeds observed
 // packets into the live table. It never writes to any pipe and never
 // touches enforcement, policy, or detection state.
-func startLiveTalkersFeed() error {
+func startLiveTalkersFeed(stop <-chan struct{}) error {
         iface, err := firstUpDevice()
         if err != nil {
                 return fmt.Errorf("live talkers: %w", err)
@@ -185,7 +185,7 @@ func startLiveTalkersFeed() error {
         if err != nil {
                 return fmt.Errorf("live talkers: open %s: %w", iface, err)
         }
-        if err := handle.SetBPFFilter("ip or ip6"); err != nil {
+        if err := handle.SetBPFFilter(noseCaptureBPF); err != nil {
                 handle.Close()
                 return fmt.Errorf("live talkers: bpf: %w", err)
         }
@@ -193,9 +193,19 @@ func startLiveTalkersFeed() error {
         go func() {
                 defer handle.Close()
                 for {
+                        select {
+                        case <-stop:
+                                return
+                        default:
+                        }
                         data, _, err := handle.ReadPacketData()
                         if err != nil {
                                 continue
+                        }
+                        select {
+                        case <-stop:
+                                return
+                        default:
                         }
                         packet := gopacket.NewPacket(data, handle.LinkType(), gopacket.NoCopy)
                         nl := packet.NetworkLayer()

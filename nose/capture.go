@@ -44,6 +44,24 @@ type captureState struct {
 var stateAtomic captureState
 var eventSequence uint64
 
+// processStart is the in-process origin for monotonic_ns. The schema defines
+// this field as in-process ordering, not wall-clock time; wall-clock identity
+// remains in timestamp_ms. A negative elapsed value is impossible with Go's
+// monotonic clock reading but is clamped so the u64 wire field stays valid.
+var processStart = time.Now()
+
+func monotonicNowNS() uint64 {
+	elapsed := time.Since(processStart).Nanoseconds()
+	if elapsed < 0 {
+		elapsed = 0
+	}
+	return uint64(elapsed)
+}
+
+// noseCaptureBPF admits untagged and 802.1Q/802.1ad tagged IP frames. A single
+// `vlan` term matches the outer tag, so QinQ frames reach the decoder too.
+const noseCaptureBPF = "vlan or ip or ip6"
+
 // captureDefaultTimeout is the pcap read timeout for live capture.
 const captureDefaultTimeout = time.Second
 
@@ -139,7 +157,7 @@ func runCapture(iface string, pipe string, stop <-chan struct{}) error {
 
 	// Passive capture only — never set promiscuous off-label; keep it
 	// simple and read-only (no injection, no filter state on the wire).
-	if err := handle.SetBPFFilter("ip or ip6"); err != nil {
+	if err := handle.SetBPFFilter(noseCaptureBPF); err != nil {
 		return fmt.Errorf("nose capture: bpf: %w", err)
 	}
 
@@ -272,7 +290,7 @@ func eventFromPacket(packet gopacket.Packet) *CanonicalEvent {
 	ev := &CanonicalEvent{
 		EventID:           atomic.AddUint64(&eventSequence, 1),
 		TimestampMS:       uint64(now.UnixMilli()),
-		MonotonicNS:       uint64(now.UnixNano()),
+		MonotonicNS:       monotonicNowNS(),
 		Source:            SourceNpcapSensor,
 		LayerID:           0, // 0=TCP path (see schema)
 		EventType:         TypeForward,

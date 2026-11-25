@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -192,29 +193,52 @@ func main() {
 			fmt.Fprintf(os.Stderr, "[AEGIS NOSE] cannot publish capture interface: %v\n", err)
 			os.Exit(1)
 		}
+		// Capture errors are returned to main; the goroutine never calls
+		// os.Exit, which would bypass deferred cleanup and leave the pipe
+		// holder in an ambiguous state.
 		stop := make(chan struct{})
+		captureErr := make(chan error, 1)
 		go func() {
-			if err := runCapture(*captureIface, *capturePipe, stop); err != nil {
-				fmt.Fprintf(os.Stderr, "[AEGIS NOSE] capture error: %v\n", err)
-				os.Exit(1)
-			}
+			captureErr <- runCapture(*captureIface, *capturePipe, stop)
 		}()
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, os.Interrupt)
-		<-sig
-		close(stop)
-		return
+		select {
+		case <-sig:
+			close(stop)
+			return
+		case err := <-captureErr:
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "[AEGIS NOSE] capture error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		}
 	}
 
+	// Collectors observe one shutdown channel. Ctrl+C closes it once; a
+	// blocked channel send or timer wait can never outlive the operator stop.
+	collectorStop := make(chan struct{})
+	var stopOnce sync.Once
+	closeCollectors := func() { stopOnce.Do(func() { close(collectorStop) }) }
+	defer closeCollectors()
+	collectorSig := make(chan os.Signal, 1)
+	signal.Notify(collectorSig, os.Interrupt)
+	defer signal.Stop(collectorSig)
+	go func() {
+		<-collectorSig
+		closeCollectors()
+	}()
+
 	// Launch 3 collector goroutines
-	go resourceCollector(resourceCh, startTime)
-	go trafficCollector(trafficCh)
-	go threatCollector(threatCh)
+	go resourceCollector(resourceCh, startTime, collectorStop)
+	go trafficCollector(trafficCh, collectorStop)
+	go threatCollector(threatCh, collectorStop)
 
 	// NOSE-TALK-145: opt-in live talkers feed. Any failure (no Npcap,
 	// no permission) keeps today's synthetic path with one stderr note.
 	if *liveTalkers {
-		if err := startLiveTalkersFeed(); err != nil {
+		if err := startLiveTalkersFeed(collectorStop); err != nil {
 			fmt.Fprintf(os.Stderr, "[AEGIS NOSE] live talkers unavailable, synthetic retained: %v\n", err)
 		}
 	}

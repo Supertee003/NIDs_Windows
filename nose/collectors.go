@@ -111,9 +111,32 @@ type ThreatEntry struct {
         Count int
 }
 
+// Collector shutdown helpers. A stop is observed at the top of each loop,
+// before a channel send and during the sleep, so a collector cannot keep a
+// blocked send alive after the operator has requested shutdown.
+func collectorStopped(stop <-chan struct{}) bool {
+        select {
+        case <-stop:
+                return true
+        default:
+                return false
+        }
+}
+
+func sleepOrStop(stop <-chan struct{}, d time.Duration) bool {
+        timer := time.NewTimer(d)
+        defer timer.Stop()
+        select {
+        case <-stop:
+                return true
+        case <-timer.C:
+                return false
+        }
+}
+
 // ── Goroutine 1: Resource Collector ──
 // v5.0: เพิ่ม HeapInUse, StackInUse, GCPauseMs
-func resourceCollector(ch chan<- ResourceData, startTime time.Time) {
+func resourceCollector(ch chan<- ResourceData, startTime time.Time, stop <-chan struct{}) {
         goVer := runtime.Version()
         goOS := runtime.GOOS
         goArch := runtime.GOARCH
@@ -121,8 +144,11 @@ func resourceCollector(ch chan<- ResourceData, startTime time.Time) {
 
         var m runtime.MemStats
         for {
+                if collectorStopped(stop) {
+                        return
+                }
                 runtime.ReadMemStats(&m)
-                ch <- ResourceData{
+                data := ResourceData{
                         AllocMB:      m.Alloc / 1024 / 1024,
                         SysMB:        m.Sys / 1024 / 1024,
                         HeapObjects:  m.HeapObjects,
@@ -137,7 +163,14 @@ func resourceCollector(ch chan<- ResourceData, startTime time.Time) {
                         StackInUseMB: m.StackInuse / 1024 / 1024,
                         GCPauseMs:    gcPauseAvg(m.PauseTotalNs, m.NumGC),
                 }
-                time.Sleep(2 * time.Second)
+                select {
+                case ch <- data:
+                case <-stop:
+                        return
+                }
+                if sleepOrStop(stop, 2*time.Second) {
+                        return
+                }
         }
 }
 
@@ -167,10 +200,13 @@ func fallbackTraffic(now int64, tick int) TrafficData {
         }
 }
 
-func trafficCollector(ch chan<- TrafficData) {
+func trafficCollector(ch chan<- TrafficData, stop <-chan struct{}) {
         var totalPkts int64
         tick := 0
         for {
+                if collectorStopped(stop) {
+                        return
+                }
                 now := time.Now().Unix()
                 data, err := readTrafficFromSystem()
                 numbersOK := err == nil
@@ -198,9 +234,15 @@ func trafficCollector(ch chan<- TrafficData) {
 
                 totalPkts += data.RxPktsPerSec + data.TxPktsPerSec
                 data.TotalPkts = totalPkts
-                ch <- data
+                select {
+                case ch <- data:
+                case <-stop:
+                        return
+                }
                 tick++
-                time.Sleep(1 * time.Second)
+                if sleepOrStop(stop, 1*time.Second) {
+                        return
+                }
         }
 }
 
@@ -217,10 +259,19 @@ func simulateTopTalkers(now int64) []TopTalkerEntry {
 
 // ── Goroutine 3: Threat Map Collector + Raw Stream ──
 // v5.0: เพิ่ม raw event stream (real-time packet sniffing display)
-func threatCollector(ch chan<- ThreatData) {
+func threatCollector(ch chan<- ThreatData, stop <-chan struct{}) {
         for {
-                ch <- parseThreatMap()
-                time.Sleep(5 * time.Second)
+                if collectorStopped(stop) {
+                        return
+                }
+                select {
+                case ch <- parseThreatMap():
+                case <-stop:
+                        return
+                }
+                if sleepOrStop(stop, 5*time.Second) {
+                        return
+                }
         }
 }
 

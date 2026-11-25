@@ -27,7 +27,7 @@ func runObserveInjection(pipe string, count int) error {
 		ev := &CanonicalEvent{
 			EventID:           atomic.AddUint64(&eventSequence, 1),
 			TimestampMS:       uint64(now.UnixMilli()),
-			MonotonicNS:       uint64(now.UnixNano()),
+			MonotonicNS:       monotonicNowNS(),
 			Source:            SourceNpcapSensor,
 			SourceIP:          0xC0A80164, // 192.168.1.100
 			SourcePort:        uint16(49152 + i),
