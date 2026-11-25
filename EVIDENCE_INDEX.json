@@ -11035,6 +11035,38 @@
       ],
       "status": "CLOSED",
       "status_basis": "entry.result=PASS_E1 recorded at build source 43a8bcc; records-only patch"
+    },
+    {
+      "id": "AEGIS-002-014-SCOPE-README-20261125",
+      "head_sha": "43a8bcc02358076380fa938b0e5632870643d3c5",
+      "timestamp": "2026-11-25",
+      "title": "AEGIS-002/014: observe-only scope wording, top-level limitations and boundary diagrams",
+      "level": "E1",
+      "component": "README and architecture documentation",
+      "flow_id": "scope claim -> README -> diagrams -> operations doc",
+      "description": "Replaced the unqualified production-grade claim with production-oriented, added a short Known limitations box near the top of README with a link to the full list, moved detailed local build/first-start commands to docs/operations/QUICK_START.md, and added three source-described diagrams (component, event lifecycle, trust boundary) with separate data/control edges and marked validation points.",
+      "files_verified": [
+        "README.md",
+        "docs/architecture/DIAGRAMS.md",
+        "docs/operations/QUICK_START.md",
+        "analysis/current-head/MASTER-AUDIT-AEGIS-002-014-SCOPE-README-20261125.md"
+      ],
+      "tests": [
+        "python scripts/doc_checker.py -> 0 FAIL, 0 WARN, 23 total",
+        "python -m pytest tests/docs tests/release -q -> 262 passed",
+        "git diff --check -> clean",
+        "python tools/truth.py verify -> TRUTH_VALID @ 43a8bcc"
+      ],
+      "result": "PASS_E1",
+      "finding": "Scope wording and limitation visibility are now explicit; no historical doc was deleted and no new capability claim was introduced.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-AEGIS-002-014-SCOPE-README-20261125.md",
+      "limitations": [
+        "E1 documentation truth only; diagrams are source-described, not a live host trace.",
+        "Operator proof commands remain in README; moving them is a separate readability slice.",
+        "No source, wire, rule, authority or release change."
+      ],
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS_E1 recorded at build source 43a8bcc; records-only patch"
     }
   ],
   "known_gaps": [
@@ -17706,7 +17738,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 44,
+    "E1_count": 45,
     "E2_count": 160,
     "E3_count": 18,
     "E4_count": 4,

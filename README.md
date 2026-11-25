@@ -6,7 +6,7 @@
 
 AEGIS is a Windows-native, kernel-assisted network intrusion detection system. It combines kernel network telemetry, host telemetry, rule matching, policy evaluation, operator control, and forensic evidence in one supervised runtime. Production behavior is detection-only: findings are recorded and explained, not applied as host blocking or quarantine.
 
-> **Release status:** The repository is maintained with production-grade contracts, authority boundaries, runbooks, and acceptance gates. The current release is approved for development, qualification, and observe-only operation. Enforcement activation is permanently outside the production product scope; historical IPS/WFP proof material is retained only as historical or lab evidence.
+> **Release status:** The repository is maintained with production-oriented contracts, authority boundaries, runbooks, and acceptance gates. The current release is approved for development, qualification, and observe-only operation. Enforcement activation is permanently outside the production product scope; historical IPS/WFP proof material is retained only as historical or lab evidence.
 
 ## AEGIS in 60 seconds
 
@@ -53,6 +53,18 @@ deliberately out of scope?" No implementation claim here implies a production ho
 | Correlation / forensics / evidence receipts | Yes | Hash-chain verification on the current host | Yes — evidence only |
 | Release v1.1 | Yes | One Ed25519 signature over `SHA256SUMS`; 674/674 artifact hashes verified; 36.52 h soak PASS | Published, immutable |
 | Host blocking / WFP mutation / quarantine | Lab-only historical code | Lab qualification only | **Out of scope — not planned, not enabled** |
+
+### Known limitations — read before the proof numbers
+
+- No production host enforcement; the system is detection-only and observe-only.
+- L7 inspection is limited by current packet visibility; TLS payloads are not plaintext-inspected.
+- TCP stream reassembly is implemented but has no production caller; do not claim session-level reassembly.
+- Detection rule live-validation coverage is partial: 22/23 are host-evaluable (R2003/FN-1).
+- Control IPC declares `nonce` and `issued_at_ms` but does not enforce active nonce/replay protection.
+- Windows compatibility is limited to the tested configurations; no current-source full WFP E5 result is claimed.
+
+Full list with evidence boundaries: [Known limitations and open work](#known-limitations-and-open-work).
+Status source: [`release/release-status.json`](release/release-status.json).
 
 ### Detection coverage — what is and is not proven
 
@@ -167,6 +179,9 @@ The Zig daemon is the runtime owner. Production Rust PEP evaluates policy and re
 A policy action named `BLOCK` is not evidence that a host block occurred. A confirmed block requires a valid `EnforcementReceipt` with a verified host postcondition.
 
 ## How to read the architecture
+
+Three boundary diagrams (component architecture, event lifecycle, trust boundary with
+validation points) are in [`docs/architecture/DIAGRAMS.md`](docs/architecture/DIAGRAMS.md).
 
 The architecture is easiest to understand as a sequence of **observation, normalization, detection, decision, authorization, effect, evidence, and presentation**. Each stage has one responsibility and a strict boundary. A later stage may reject an earlier result; it may not silently upgrade an earlier result.
 
@@ -455,71 +470,13 @@ Windows development host / optional target  192.168.126.1
 
 Use a separate target VM when possible. Attacking the development host itself is less reproducible and increases operational risk.
 
-## Obtain the source
+## Build from source — quick pointer
 
-```powershell
-git clone <repository-url> AEGIS-NIDS
-Set-Location .\AEGIS-NIDS
-```
-
-If the repository is delivered as an archive, verify the archive checksum and record the source commit before building. All build, test, installer, and release paths must use the same repository root. Do not mix binaries from `Program Files`, an old release bundle, and the current checkout.
-
-## First-time setup
-
-Open an **elevated PowerShell** only when a step requires administrator access. Keep ordinary source inspection and unit tests unprivileged.
-
-Check the toolchain:
-
-```powershell
-zig version
-rustc --version
-cargo --version
-go version
-python --version
-cmake --version
-```
-
-Create the runtime directories used by the local runbook:
-
-```powershell
-New-Item -ItemType Directory -Force `
-  logs\pids, logs\runtime, logs\health, logs\build, pid | Out-Null
-```
-
-Create a deployment profile from the example and edit only host-specific values:
-
-```powershell
-Copy-Item config\deployment_profile.example.json config\deployment_profile.json
-```
-
-Do not place secrets, private policy signing keys, or production credentials in the repository.
-
-## Build from source
-
-Build from the repository root:
-
-```powershell
-.\scripts\build_all.bat
-```
-
-The build normally covers the native helpers, Zig daemon, Rust components, Go ingress, and Python/Cython support. The script can report `SKIP` when a toolchain is absent; `SKIP` is not a successful production build. For a complete release, every required component must report `OK`, and no required artifact may be missing. If a step reports `FAIL` or an expected component reports `SKIP`, stop and resolve that condition before starting the runtime.
-
-Run the repository verification commands:
-
-```powershell
-python tools\release_engineering.py --manifest
-python tools\release_engineering.py --verify
-python tools\aegisctl.py rules validate
-```
-
-The exact artifact names can change between release profiles. The authoritative artifact manifest and the current build output must agree. The release manifest is authoritative for the Go Nose filename; do not infer readiness from an old filename or from a stale `dist`, `build`, or `target` directory. At minimum, verify the current daemon path:
-
-```powershell
-Get-Item .\zig-out\bin\aegis_nids.exe
-Get-FileHash .\zig-out\bin\aegis_nids.exe -Algorithm SHA256
-```
-
-The running process must later point to this current build, not to an older executable under `C:\Program Files\AEGIS`.
+Toolchain table, source retrieval, directory setup, build command, manifest verification
+and current-daemon path check are in
+[**Local build and first start (detection-only)**](docs/operations/QUICK_START.md).
+`SKIP` is not a successful production build; every required component must report `OK`.
+Do not mix binaries from `Program Files`, an old release bundle and the current checkout.
 
 ## Start and verify detection-only mode
 
@@ -740,6 +697,8 @@ can separate "implemented", "tested at fixture level", and "proven on a live hos
 - [Technical evidence quick reference](docs/portfolio/APPLY_NOW.md)
 - [2:27 demo: traffic → event → detection → dashboard → forensic record](docs/portfolio/DEMO.md)
 - [Architecture explained in English](docs/portfolio/ARCHITECTURE_EN.md)
+- [Component / lifecycle / trust-boundary diagrams](docs/architecture/DIAGRAMS.md)
+- [Local build and first start (detailed commands)](docs/operations/QUICK_START.md)
 - [Resume project section](docs/portfolio/RESUME_PROJECT.md)
 
 **For engineers and operators**
