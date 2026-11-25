@@ -1,9 +1,11 @@
 # Evidence provenance — what each artifact proves and where it lives
 
-> Scope: current build source `7822f4c`, records HEAD moves with each patch.
+> Scope: current build source `4dd3393`, records HEAD moves with each patch.
 > E3/E4/E5 records at `43a8bcc` are HISTORICAL at that source. E3 and narrow E4/E5 at
-> `7822f4c` are current (private-pipe and elevated canonical-pipe `-inject` exact deltas
-> with verified host restore). Full Windows E5 / kernel qualification remains **NOT_PROVEN**.
+> `7822f4c` were current at that source and are now HISTORICAL relative to `4dd3393`
+> (private-pipe and elevated canonical-pipe `-inject` exact deltas with verified host restore).
+> S1/S2/S3/S4 added source-level producer, replay, identity and canonical-policy bytes at E2 only.
+> Full Windows E5 / kernel qualification remains **NOT_PROVEN**.
 > This is an index, not a copy of evidence.
 > No artifact is synthesized, cleaned, relabelled or promoted by this document.
 

@@ -7,9 +7,12 @@
 > change). The matrix has **not** been re-measured on the host at `a53eda8`; no
 > E5 is claimed for this branch. See `analysis/current-head/RECONCILE-DOCS-READINESS-20261119.md`.
 
-> **Current source (P1/P8 hygiene, then 2026-11-25 C6/S1/S2 rebase):** `a26c573`, `43a8bcc`,
-> `7822f4c` and `493648f` were successive build sources and are now HISTORICAL. The current
-> build source is `4bc8244` (S2 added active control-v2 nonce/replay enforcement; S1 added
+> **Current source (P1/P8 hygiene, then 2026-11-25/26 C6/S1/S2/S3/S4 rebase):** `a26c573`,
+> `43a8bcc`, `7822f4c`, `493648f`, `4bc8244` and `f1f89c1` were successive build sources and are
+> now HISTORICAL. The current build source is `4dd3393` (S4 added versioned canonical policy
+> bytes V1 at E2 with brain seam registration at `4dd3393`, source `2673bd2`; S3 added durable
+> v3 producer identity issuance/admission at E2; S2 added active control-v2 nonce/replay
+> enforcement; S1 added
 > the read-only R2003 command-line producer; `7822f4c` carried the C6 capture lifecycle proof;
 > P2-44 `9105ff5` added observability counters, P2b `661fb76` tightened wire-length decoding;
 > P8 source-truth `2129dcd` added only authority/quarantine disclosure comments; P8-I44 `e406cbb`
@@ -19,7 +22,7 @@
 > `a26c573` removed a stale "production-ready" label and added an oversize-wire reject guard
 > in the Go Nose writer; `43a8bcc` made Go comment hygiene only; `7822f4c` changed capture
 > visibility, shutdown and monotonic-time producers — no rule, wire-layout or authority change).
-> The matrix has **not** been re-measured at `4bc8244` (nor at its predecessors `493648f` / `7822f4c`). E3 and narrow elevated canonical-pipe
+> The matrix has **not** been re-measured at `4dd3393` (nor at its predecessors `f1f89c1` / `4bc8244` / `493648f` / `7822f4c`). E3 and narrow elevated canonical-pipe
 > E4/E5 records at `43a8bcc` are HISTORICAL at that source and prove the `-inject` lifecycle and
 > exact deltas only; they do not re-run the detection matrix, soak, loss rate, install or signing.
 > E3 and narrow E4/E5 at `7822f4c` are current (`-inject` exact deltas on a private
@@ -37,6 +40,16 @@
 > No rule/wire/vector/authority change. Host-evaluable coverage remains **22/23** and every
 > E5/E6 row below stays HISTORICAL until a real installed-host `IEX` cradle run re-measures
 > the matrix; see `analysis/current-head/S1-R2003-CMDLINE-PRODUCER-20261125.md`.
+
+> **S3 (`f1f89c1`) / S4 (`2673bd2`, seam `4dd3393`), 2026-11-26.** S3 added durable per-interface
+> v3 producer identity issuance in Go Nose and duplicate/regression refusal at Zig ingress at E2;
+> S4 added an additive `POLICY_CANONICAL_BYTES_V1` encoder with four-language byte equality at E2.
+> Neither changes a rule, wire layout, authority or host effect. Host E3/E5 proof of the rebuilt
+> S2/S3 components and migration of legacy policy hashes remain OPEN; see
+> `analysis/current-head/S3-PRODUCER-IDENTITY-EVIDENCE-20261125.md`,
+> `analysis/current-head/S4-CANONICAL-POLICY-BYTES-EVIDENCE-20261126.md`, and the owner-run
+> `analysis/current-head/OWNER-RUN-HOST-PROOF-RUNBOOK-20261126.md`. Every E5/E6 row below stays
+> HISTORICAL until the matrix is re-measured on the current source.
 
 > Records-only. This document does not change rules, sensors, source, build, or
 > any gate verdict. It states what is actually proven, at which E-level, and
