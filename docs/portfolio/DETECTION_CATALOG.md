@@ -31,6 +31,14 @@ FN-1 means R2003's `CommandLine` field has no producer on the measured host, so 
 satisfy "evidence it can actually receive". A rule may have a complete code path yet remain
 unevaluable on this host; that is recorded as a limitation, never as a pass.
 
+> **S1 update (build source `493648f`, 2026-11-25).** The source half of FN-1 is closed: the ETW
+> helper now recovers `CommandLine` read-only from the started process on Kernel-Process
+> `ProcessStart` and carries it on the existing AEGT TLV kind 2 channel; Zig E2 proves the
+> TLV -> `commandLine()` -> kernel_process automaton -> R2003 path (`S1-R2003-CMDLINE-E2`).
+> No rule, wire field, golden vector or authority changed. Host-evaluable coverage stays
+> **22/23** until the installed daemon is re-measured with a real `IEX` cradle; this catalog's
+> E5/E6 rows remain HISTORICAL at their recorded source.
+
 ## 2. Rule matrix
 
 Evidence key: **E1** static inspection · **E2** unit/fixture proof · **E5** Windows host observation ·

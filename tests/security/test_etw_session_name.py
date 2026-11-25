@@ -71,3 +71,24 @@ def test_provider_registration_is_validated_before_start():
 def test_inconclusive_registration_fails_closed():
     text = src()
     assert "return -7" in text
+
+
+def test_process_command_line_producer_is_real_and_bounded():
+    """PROCESS-CMDLINE-002: recover CommandLine read-only, never fabricate it.
+
+    Kernel-Process ProcessStart v0..v4 have no CommandLine field. The helper
+    must query the started process, carry the bytes on the existing AEGT TLV
+    kind 2 channel, and fail closed on an alien pointer or oversize result.
+    E1 source contract; Zig E2 proves the TLV -> R2003 consumer path.
+    """
+    text = src()
+    assert "NtQueryInformationProcess" in text
+    assert "PROCESS_QUERY_LIMITED_INFORMATION" in text
+    assert "append_process_command_line" in text
+    assert "AEGIS_ETW_TLV_CMDLINE" in text
+    assert "is_kernel_process_start(rec)" in text
+    assert "begin + text->Length > base + need" in text
+    assert "out_len > 4096" in text
+    # No hardcoded command line may be substituted for a real read.
+    assert "IEX" not in text
+    assert "powershell.exe" not in text

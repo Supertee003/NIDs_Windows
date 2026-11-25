@@ -1,5 +1,5 @@
 {
-  "head_sha": "7822f4c162f7867555754b7f3677ade33c9548dd",
+  "head_sha": "493648ff7bbee64851b58fcec09c19737c491393",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-25",
   "generator_version": "3.0",
@@ -11285,6 +11285,37 @@
       ],
       "status": "CLOSED",
       "status_basis": "entry.result=PASS_E4_E5 recorded at build source 7822f4c; operator-run elevated host evidence"
+    },
+    {
+      "id": "S1-R2003-CMDLINE-E2-493648F-20261125",
+      "head_sha": "493648ff7bbee64851b58fcec09c19737c491393",
+      "timestamp": "2026-11-25",
+      "title": "S1: R2003 CommandLine producer recovered read-only from ProcessStart; E2 TLV->AC->R2003 proven",
+      "level": "E2",
+      "component": "ETW native helper -> AEGT TLV kind 2 -> Zig decode -> kernel_process automaton -> R2003",
+      "flow_id": "KERNEL_PROCESS-CMDLINE-R2003",
+      "description": "Kernel-Process ProcessStart v0..v4 publish ImageName but no CommandLine. The helper now queries the started PID via NtQueryInformationProcess(ProcessCommandLineInformation) only on ProcessStart when the provider omitted CommandLine, validates the UNICODE_STRING pointer/length, converts UTF-16LE to UTF-8 and appends the existing AEGT TLV kind 2. Zig decodeTdhPayload -> commandLine() -> kernel_process AhoCorasick yields R2003 (hash 2485705370). No CanonicalEvent field, rule, golden vector, authority or host-effect change. Host E5 re-measurement remains owner action.",
+      "files_verified": [
+        "src/windows/etw_native.c",
+        "src/windows/etw_realtime.zig",
+        "tests/security/test_etw_session_name.py"
+      ],
+      "tests": [
+        "python -m pytest tests/security/test_etw_session_name.py -q -> 6 passed",
+        "zig build test fresh cache -> 2143 passed; 10 skipped; 0 failed",
+        "windows.etw_realtime.test.PROCESS-CMDLINE-002 ... OK",
+        "cmake VS17 x64 aegis_etw_helper compile clean; zig build exit 0"
+      ],
+      "result": "PASS_E2",
+      "finding": "Source half of R2003 FN-1 is closed at E2: a real read-only producer exists and the consumer path fires the unchanged rule. No host E5 claim.",
+      "evidence_artifact": "analysis/current-head/S1-R2003-CMDLINE-PRODUCER-20261125.md",
+      "limitations": [
+        "E2/E1 only; no real PowerShell cradle was detected on the installed daemon.",
+        "Host E5 positive/negative control run remains owner action with the elevated canonical-pipe runbook.",
+        "Detection matrix remains NOT RE-MEASURED at this source; no E6/E7/soak/install/signing claim."
+      ],
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS_E2 recorded at build source 493648f; source gap closed, host qualification explicitly out of scope"
     }
   ],
   "known_gaps": [
@@ -17933,9 +17964,9 @@
       "status": "CLOSED",
       "severity": "P2",
       "title": "Command-line visibility is unavailable from both process lanes; R2003 is an accepted limitation",
-      "description": "Resolved half (now E2; originally recorded E5, PROC-LAYER-001-E5-20261118): the layer follows the event kind, so process-create rows reach the kernel_process automaton and R2004 fires on a real certutil launch. The remaining question was answered in the 2026-11-18 operator-attested window (now E2 in this index): the ETW helper was rebuilt with WINEVENT_KEYWORD_PROCESS and the service restarted after install, process_start advanced with zero drops, and a marker launch produced a 306-byte ETW process row without the marker. Get-WinEvent shows every ProcessStart template (v0..v4) has ImageName and no CommandLine field, so no keyword mask can add it. The minifilter lane pushes only the image path (61 bytes) by construction. R2003 cannot match a host process row; R2001/R2002/R2005 still match image names and R2004 was proven live earlier.",
+      "description": "Resolved half (now E2; originally recorded E5, PROC-LAYER-001-E5-20261118): the layer follows the event kind, so process-create rows reach the kernel_process automaton and R2004 fires on a real certutil launch. The remaining question was answered in the 2026-11-18 operator-attested window (now E2 in this index): the ETW helper was rebuilt with WINEVENT_KEYWORD_PROCESS and the service restarted after install, process_start advanced with zero drops, and a marker launch produced a 306-byte ETW process row without the marker. Get-WinEvent shows every ProcessStart template (v0..v4) has ImageName and no CommandLine field, so no keyword mask can add it. The minifilter lane pushes only the image path (61 bytes) by construction. R2003 cannot match a host process row; R2001/R2002/R2005 still match image names and R2004 was proven live earlier. S1 (493648f) later added a read-only producer so the source half of FN-1 is no longer an accepted limitation; host proof is still pending.",
       "recorded_by": "analysis/current-head/PROCESS-CMDLINE-001-20261118.md",
-      "next_step": "No v1.1 action. A future v1.2 feature can add a command-line source (NT Kernel Logger with EVENT_TRACE_FLAG_PROCESS, or privileged driver-side enrichment) and then retarget R2003; retargeting to an image name alone was rejected as a false-positive generator."
+      "next_step": "S1 (493648f, E2 2026-11-25) added a read-only ProcessStart command-line producer via NtQueryInformationProcess and proved TLV->R2003 at E2. Host E5 re-measurement (long-lived IEX cradle -> one R2003 row, benign/wire-only -> zero) remains owner action; see S1-R2003-CMDLINE-PRODUCER-20261125.md."
     },
     {
       "id": "SUITE-FLAKE-001",
@@ -17957,7 +17988,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 48,
-    "E2_count": 161,
+    "E2_count": 162,
     "E3_count": 19,
     "E4_count": 4,
     "E5_count": 122,

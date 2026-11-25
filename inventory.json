@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-25T10:12:10.671347+00:00",
+  "generated_at": "2026-11-25T14:58:03.877102+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3221,
+  "total_files": 3227,
   "by_class": {
-    "canonical-docs": 582,
+    "canonical-docs": 588,
     "canonical-build": 313,
     "unclassified": 27,
     "canonical-source": 1791,
@@ -258,13 +258,13 @@
       "path": "AGENTS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9448
+      "size": 10002
     },
     {
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 62067
+      "size": 62574
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -474,7 +474,7 @@
       "path": "analysis/current-head/C6-SOURCE-PATCH-DECLARATION-20261125.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4144
+      "size": 4539
     },
     {
       "path": "analysis/current-head/CAPTURE-DUP-WIFI-001-20261117.md",
@@ -993,6 +993,30 @@
       "size": 5025
     },
     {
+      "path": "analysis/current-head/MASTER-AUDIT-C6-CAPTURE-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 7254
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-C6-E3-CURRENT-SOURCE-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4670
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-C6-E4E5-CURRENT-SOURCE-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6116
+    },
+    {
+      "path": "analysis/current-head/MASTER-AUDIT-C6-FINAL-CLOSEOUT-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6292
+    },
+    {
       "path": "analysis/current-head/MASTER-AUDIT-FINAL-RESIDUALS-20261125.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -1369,6 +1393,18 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 5743
+    },
+    {
+      "path": "analysis/current-head/S1-R2003-CMDLINE-PRODUCER-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3530
+    },
+    {
+      "path": "analysis/current-head/S1-SOURCE-PATCH-DECLARATION-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3730
     },
     {
       "path": "analysis/current-head/SERVICE-EXISTS-001-20261114.md",
@@ -2496,7 +2532,7 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 140467
+      "size": 140469
     },
     {
       "path": "build_truth.json",
@@ -3036,7 +3072,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 72316
+      "size": 74133
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3120,7 +3156,7 @@
       "path": "docs/architecture/DIAGRAMS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5984
+      "size": 6024
     },
     {
       "path": "docs/architecture/failure-model.md",
@@ -3324,7 +3360,7 @@
       "path": "docs/DETECTION_VALIDATION.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10469
+      "size": 10781
     },
     {
       "path": "docs/ENV_VARS.md",
@@ -3336,7 +3372,7 @@
       "path": "docs/evidence/PROVENANCE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4200
+      "size": 4469
     },
     {
       "path": "docs/evidence/README.md",
@@ -3738,13 +3774,13 @@
       "path": "docs/portfolio/DETECTION_CATALOG.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8706
+      "size": 8809
     },
     {
       "path": "docs/portfolio/DETECTION_MATRIX_CURRENT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6916
+      "size": 6981
     },
     {
       "path": "docs/portfolio/images/dashboard.png",
@@ -3786,7 +3822,7 @@
       "path": "docs/portfolio/VERIFICATION_SUMMARY.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4060
+      "size": 4701
     },
     {
       "path": "docs/PROJECT_ANALYSIS_2026-09-14.md",
@@ -3798,7 +3834,7 @@
       "path": "docs/protocol/INDEX.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3718
+      "size": 3743
     },
     {
       "path": "docs/runbooks/RB-001-block-ip-via-pep.md",
@@ -3966,7 +4002,7 @@
       "path": "docs/runtime/HEALTH_MODEL.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5596
+      "size": 5636
     },
     {
       "path": "docs/runtime/LIFECYCLE.md",
@@ -4014,7 +4050,7 @@
       "path": "docs/SECURITY_THREAT_MODEL.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8467
+      "size": 9064
     },
     {
       "path": "docs/SLICE_C_LAB_GATE_DESIGN.md",
@@ -4464,7 +4500,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1662344
+      "size": 1654493
     },
     {
       "path": "FLOW_MAP.json",
@@ -4572,7 +4608,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 507535
+      "size": 510337
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4854,7 +4890,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 410532
+      "size": 412752
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -4920,7 +4956,7 @@
       "path": "release/release-status.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 4919
+      "size": 5595
     },
     {
       "path": "release/T20-final/466a226/brain/__init__.py",
@@ -17094,13 +17130,13 @@
       "path": "src/windows/etw_native.c",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 20416
+      "size": 23727
     },
     {
       "path": "src/windows/etw_realtime.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 48775
+      "size": 51041
     },
     {
       "path": "src/windows/fim.zig",
@@ -18162,7 +18198,7 @@
       "path": "tests/security/test_etw_session_name.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 2714
+      "size": 3656
     },
     {
       "path": "tests/security/test_evidence_index_integrity.py",
@@ -19341,5 +19377,5 @@
       "size": 624
     }
   ],
-  "source_commit": "7822f4c"
+  "source_commit": "493648f"
 }

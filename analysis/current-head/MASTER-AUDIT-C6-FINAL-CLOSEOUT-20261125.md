@@ -87,6 +87,9 @@ The 674 figure means artifact hashes verified against **one** Ed25519 signature 
    `#44` pipe lifecycle proof is not a kernel IDS qualification.
 2. Detection efficacy / 23-rule matrix at `7822f4c`: **NOT RE-MEASURED**. The matrix's
    E5/E6 rows were last measured at `f4cde3c`; R2003 has no host proof (FN-1).
+   S1 (`493648f`) closed the FN-1 **source** gap at E2 (read-only ProcessStart
+   command-line producer -> AEGT TLV kind 2 -> Zig -> R2003), but the installed host
+   has not been re-measured; see `S1-R2003-CMDLINE-PRODUCER-20261125.md`.
 3. C6 visibility path host measurement: VLAN/QinQ BPF admission and the bounded IPv6
    extension walk are E2-only; no Npcap host measurement exists at this source.
 4. Active IPC nonce/replay and cross-process monotonic identity remain later source work;

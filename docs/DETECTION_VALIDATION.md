@@ -7,9 +7,11 @@
 > change). The matrix has **not** been re-measured on the host at `a53eda8`; no
 > E5 is claimed for this branch. See `analysis/current-head/RECONCILE-DOCS-READINESS-20261119.md`.
 
-> **Current source (P1/P8 hygiene, then 2026-11-25 C6 rebase):** `a26c573` and `43a8bcc` were
-> successive build sources and are now HISTORICAL. The current build source is `7822f4c`
-> (P2-44 `9105ff5` added observability counters, P2b `661fb76` tightened wire-length decoding;
+> **Current source (P1/P8 hygiene, then 2026-11-25 C6/S1 rebase):** `a26c573` and `43a8bcc` were
+> successive build sources and are now HISTORICAL. The current build source is `493648f`
+> (S1 added the read-only R2003 command-line producer; `7822f4c` is HISTORICAL as the
+> immediate predecessor with the C6 capture lifecycle proof;
+> P2-44 `9105ff5` added observability counters, P2b `661fb76` tightened wire-length decoding;
 > P8 source-truth `2129dcd` added only authority/quarantine disclosure comments; P8-I44 `e406cbb`
 > split nose drop causes by exclusive counter, counted detector allocation failures as detection
 > degradation, and named the lifecycle fresh-loss input; P8-I44-E3 `03bb86d` added an explicit
@@ -17,7 +19,7 @@
 > `a26c573` removed a stale "production-ready" label and added an oversize-wire reject guard
 > in the Go Nose writer; `43a8bcc` made Go comment hygiene only; `7822f4c` changed capture
 > visibility, shutdown and monotonic-time producers — no rule, wire-layout or authority change).
-> The matrix has **not** been re-measured at `7822f4c`. E3 and narrow elevated canonical-pipe
+> The matrix has **not** been re-measured at `493648f` (nor at its predecessor `7822f4c`). E3 and narrow elevated canonical-pipe
 > E4/E5 records at `43a8bcc` are HISTORICAL at that source and prove the `-inject` lifecycle and
 > exact deltas only; they do not re-run the detection matrix, soak, loss rate, install or signing.
 > E3 and narrow E4/E5 at `7822f4c` are current (`-inject` exact deltas on a private
@@ -27,6 +29,14 @@
 > `docs/portfolio/DETECTION_CATALOG.md` separates code-path 23/23 from host-evaluable 22/23
 > (R2003/FN-1); the generated 23-row projection is
 > [`docs/portfolio/DETECTION_MATRIX_CURRENT.md`](portfolio/DETECTION_MATRIX_CURRENT.md).
+>
+> **S1 (`493648f`, 2026-11-25).** The source half of FN-1 is closed at E2: the ETW helper
+> recovers `CommandLine` read-only from the started process on Kernel-Process `ProcessStart`
+> via `NtQueryInformationProcess` and emits the existing AEGT TLV kind 2; a Zig test proves
+> TLV decode -> `commandLine()` -> kernel_process automaton -> R2003 (hash `2485705370`).
+> No rule/wire/vector/authority change. Host-evaluable coverage remains **22/23** and every
+> E5/E6 row below stays HISTORICAL until a real installed-host `IEX` cradle run re-measures
+> the matrix; see `analysis/current-head/S1-R2003-CMDLINE-PRODUCER-20261125.md`.
 
 > Records-only. This document does not change rules, sensors, source, build, or
 > any gate verdict. It states what is actually proven, at which E-level, and

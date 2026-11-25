@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-25T10:12:10.676353+00:00",
+  "generated_at": "2026-11-25T14:58:03.884667+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 3221,
+  "total_files": 3227,
   "by_role": {
-    "documentation": 567,
+    "documentation": 573,
     "build-config": 302,
     "other": 27,
     "lockfile": 6,
@@ -978,6 +978,22 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/MASTER-AUDIT-C6-CAPTURE-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-C6-E3-CURRENT-SOURCE-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-C6-E4E5-CURRENT-SOURCE-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-C6-FINAL-CLOSEOUT-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/MASTER-AUDIT-FINAL-RESIDUALS-20261125.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -1227,6 +1243,14 @@
       "role": "documentation"
     },
     "analysis/current-head/RUST-FOUNDATION-STATUS-20261119.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/S1-R2003-CMDLINE-PRODUCER-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/S1-SOURCE-PATCH-DECLARATION-20261125.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -13211,5 +13235,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "7822f4c"
+  "source_commit": "493648f"
 }

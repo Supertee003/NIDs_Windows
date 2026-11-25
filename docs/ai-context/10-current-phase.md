@@ -3,12 +3,13 @@
 > **UPDATE (2026-11-22):** the published release is now `v1.1` (signed candidate
 > `466a226`, build source `a53eda8`, 6/6 gates PASS, genuine 36.52 h soak, 0 open
 > gaps). The v2.0.0 status below is HISTORICAL for release identity; `a53eda8`
-> descends from `7c604d5`. The current build source is `7822f4c`
+> descends from `7c604d5`. The current build source is `493648f`
 > (P2-44 `9105ff5`, P2a `d2f129e`, P2b `661fb76`, P8 source-truth `2129dcd`,
 > P8-I44 observability `e406cbb`, P8-I44-E3 isolated `-inject` proof `03bb86d`
 > (same source then received records-only E4/E5 elevated Windows-host `-inject`
 > proof on the canonical pipe), P1/P8 hygiene `a26c573`, F1/F2 hygiene `43a8bcc`,
-> C6 capture visibility/shutdown/monotonic source `7822f4c`; P3–P7 and the
+> C6 capture visibility/shutdown/monotonic source `7822f4c`, S1 R2003
+> command-line producer `493648f`; P3–P7 and the
 > P8 V&R-08 closeout are records-only. E3/E4/E5 at `43a8bcc` is HISTORICAL;
 > E3 and narrow E4/E5 at `7822f4c` are current (`-inject` exact deltas on the
 > private and elevated canonical pipes with a verified host restore). Full Windows
@@ -1131,10 +1132,18 @@ See `analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md` and
 - Consolidated record: `analysis/current-head/MASTER-AUDIT-C6-FINAL-CLOSEOUT-20261125.md`.
   Historical `43a8bcc` E3/E4/E5 records remain HISTORICAL and are not used as
   current truth.
+- S1 (`493648f`, build source): the R2003 FN-1 **source** gap is closed at E2.
+  `src/windows/etw_native.c` recovers `CommandLine` read-only from the started
+  process on Kernel-Process `ProcessStart` via `NtQueryInformationProcess` and
+  emits the existing AEGT TLV kind 2; `src/windows/etw_realtime.zig` proves
+  TLV -> `commandLine()` -> kernel_process automaton -> R2003 (hash
+  `2485705370`) with image-only/wire negative controls. No rule, wire, vector,
+  authority or host-effect change. Host E5 re-measurement remains owner action.
+  Evidence: `analysis/current-head/S1-R2003-CMDLINE-PRODUCER-20261125.md`.
 - Honestly open: full current-head Windows E5 / kernel IDS qualification, the
   23-rule matrix at this source (last measured `f4cde3c`), detection efficacy,
-  R2003 FN-1, active IPC nonce/replay, cross-process monotonic identity, the
-  Zig-vs-TS policy-hash byte-stream question, a host measurement of the C6
-  VLAN/QinQ and IPv6 extension walk, and soak/install/signing/E6/E7. Release
-  identity remains `v1.1` / `466a226` / `a53eda8`, 6/6 gates PASS,
-  production observe-only.
+  R2003 host E5 re-measurement (source producer now proven at E2), active IPC
+  nonce/replay, cross-process monotonic identity, the Zig-vs-TS policy-hash
+  byte-stream question, a host measurement of the C6 VLAN/QinQ and IPv6
+  extension walk, and soak/install/signing/E6/E7. Release identity remains
+  `v1.1` / `466a226` / `a53eda8`, 6/6 gates PASS, production observe-only.

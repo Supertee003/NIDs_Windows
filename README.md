@@ -72,10 +72,10 @@ Status source: [`release/release-status.json`](release/release-status.json).
 |---|---|---|
 | Rule catalog | 23/23 rules have `match_pattern`, `regex_pattern`, a fixture vector, and a shared rule-ID hash | rule-ID census pinned by `tests/security/test_detection_contract_pin.py`; lab attack scripts are opt-in and skipped on a fresh clone |
 | Code-path evaluable | 23/23 | Zig evaluates `match_pattern`; Python `regex_pattern` is advisory Tier-2 analytics |
-| Host-evaluable | 22/23 | R2003 is blocked by FN-1: ProcessStart v0–v4 carry no `CommandLine` and no producer exists |
+| Host-evaluable | 22/23 | R2003 is blocked by FN-1 on the measured host: ProcessStart v0–v4 carry no `CommandLine`. Since `493648f` a read-only producer recovers it at E2; host re-measurement is pending |
 | Synthetic proof | 23/23 at fixture level | E1/E2 pins only — not a claim of detection efficacy on live traffic |
 | Live host-positive proof | L4 family only; strongest on R9006 with a 40-port positive and 10-port negative control | one lab host/interface; loopback is a self-test binding |
-| Known gap | R2003 (PowerShell cradle) is FN-1 | process telemetry has no `CommandLine` field in v0–v4; a real command-line source is not implemented |
+| Known gap | R2003 (PowerShell cradle) is FN-1 on the measured host | process telemetry has no `CommandLine` field in v0–v4; since `493648f` a read-only `NtQueryInformationProcess` producer is proven at E2 but the installed host has not been re-measured |
 
 A synthetic fixture and a live detector firing are different evidence levels. There is no
 authoritative MITRE ATT&CK mapping in this repository. Details:
@@ -682,7 +682,7 @@ at build source `ab0fa17`; the remaining items are still open.
 | 5 | ABI framing contradiction (fixed at `ab0fa17`, issue #43 closed) | Active pipe framing is a 4-byte length prefix + payload (`113/137/169..1193` bytes); the old `125-byte` WEV1 contract is explicitly scoped as legacy |
 | 6 | Control IPC v2 declares `nonce` and `issued_at_ms` fields but does not enforce replay protection | Token-derived per-command authorization exists; active nonce/replay enforcement does not |
 | 7 | Loopback capture is a self-test binding, not a general live-network proof | The live host-positive proof is the bounded SYN burst from `192.168.1.39` to `192.0.2.1:1..40` on one interface, with a 10-port negative control |
-| 8 | R2003 (PowerShell cradle) is a known false negative | Process telemetry in v0–v4 has no `CommandLine` field; no real command-line source is implemented |
+| 8 | R2003 (PowerShell cradle) is a known false negative on the measured host | Process telemetry in v0–v4 has no `CommandLine` field; since `493648f` a read-only source is proven at E2 but the installed host has not been re-measured |
 | 9 | No authoritative MITRE ATT&CK mapping, Splunk content, published fuzz campaign, fixed-rate offered-load ceiling, clean install/uninstall campaign, or full WFP E5 result for the current source | These are future work, not existing evidence |
 | 10 | The current lab snapshot has nonzero drop/shed counters (`minifilter_ring_dropped=1,341,156`, `alert_file.failed=7,028`) | The v1.1 soak measured zero loss **only during its recorded 36.52 h window**; never claim "zero loss ever" on this host |
 
