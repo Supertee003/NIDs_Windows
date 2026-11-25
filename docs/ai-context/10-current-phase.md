@@ -3,14 +3,15 @@
 > **UPDATE (2026-11-22):** the published release is now `v1.1` (signed candidate
 > `466a226`, build source `a53eda8`, 6/6 gates PASS, genuine 36.52 h soak, 0 open
 > gaps). The v2.0.0 status below is HISTORICAL for release identity; `a53eda8`
-> descends from `7c604d5`. The current build source is `f1f89c1`
+> descends from `7c604d5`. The current build source is `4dd3393`
 > (P2-44 `9105ff5`, P2a `d2f129e`, P2b `661fb76`, P8 source-truth `2129dcd`,
 > P8-I44 observability `e406cbb`, P8-I44-E3 isolated `-inject` proof `03bb86d`
 > (same source then received records-only E4/E5 elevated Windows-host `-inject`
 > proof on the canonical pipe), P1/P8 hygiene `a26c573`, F1/F2 hygiene `43a8bcc`,
 > C6 capture visibility/shutdown/monotonic source `7822f4c`, S1 R2003
 > command-line producer `493648f`, S2 active control-v2 replay guard `4bc8244`, S3 durable
-> v3 producer identity issuance/admission `f1f89c1`; P3–P7 and the
+> v3 producer identity issuance/admission `f1f89c1`, S4 canonical policy bytes
+> `2673bd2` (seam registration `4dd3393`); P3–P7 and the
 > P8 V&R-08 closeout are records-only. E3/E4/E5 at `43a8bcc` is HISTORICAL;
 > E3 and narrow E4/E5 at `7822f4c` are current (`-inject` exact deltas on the
 > private and elevated canonical pipes with a verified host restore). Full Windows
@@ -1158,11 +1159,23 @@ See `analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md` and
   policy hash, authority, or host-effect change. Live current-build E3/E5 proof
   remains owner action. Evidence:
   `analysis/current-head/S3-PRODUCER-IDENTITY-EVIDENCE-20261125.md`.
+- S4 (`2673bd2` + seam registration `4dd3393`, build source): the canonical
+  policy byte-stream gap is addressed by a new versioned, additive contract
+  `POLICY_CANONICAL_BYTES_V1` (`shared/policy/policy_canonical_v1.md`) with one
+  shared vector manifest consumed read-only by Python, TypeScript, Zig and
+  Rust. Exact bytes and digests match across all four languages at E2,
+  including delimiters, NUL, newline, Unicode, the 256-byte string cap and
+  u64 values above `2^53-1`. The legacy compiler hash, `canonicalDigest`,
+  seal text bytes, T7 JSON validator and ADR-0005 exact-file sidecar are
+  deliberately unchanged; migration of published hashes is a separate
+  reviewed change. Evidence:
+  `analysis/current-head/S4-CANONICAL-POLICY-BYTES-EVIDENCE-20261126.md`.
 - Honestly open: full current-head Windows E5 / kernel IDS qualification, the
   23-rule matrix at this source (last measured `f4cde3c`), detection efficacy,
   R2003 host E5 re-measurement (source producer now proven at E2), live E3/E5
   replay proof for the S2 server (source enforcement now proven at E2), live
-  current-build E3/E5 proof of the S3 producer identity, the Zig-vs-TS
-  policy-hash byte-stream question, a host measurement of the C6 VLAN/QinQ and
+  current-build E3/E5 proof of the S3 producer identity, migration of the
+  legacy policy hashes to the S4 V1 byte stream (published hashes/signatures
+  unchanged), a host measurement of the C6 VLAN/QinQ and
   IPv6 extension walk, and soak/install/signing/E6/E7. Release identity remains
   `v1.1` / `466a226` / `a53eda8`, 6/6 gates PASS, production observe-only.

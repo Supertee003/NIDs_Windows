@@ -26,8 +26,8 @@
     "immutable": true,
     "note": "Release identity is immutable. No re-key, new tag, new signature or v2.1.0 is part of this status."
   },
-  "current_build_source": "f1f89c183ee86410dbfdc748155dc3d22c086420",
-  "current_build_source_note": "Current source is records-descended from the immutable release identity. The 6/6 gate result below belongs to the release identity, not to the current build source. S1 (493648f) added a read-only ProcessStart CommandLine producer and proved TLV -> R2003 at E2; S2 (4bc8244) added active control-v2 nonce/replay/freshness enforcement at E2; S3 (f1f89c1) added durable v3 producer identity issuance at Go ingress and duplicate/regression refusal at Zig ingress at E2. Host E5 re-measurement, S2/S3 live replay E3, full current-source matrix, soak/install/signing and E6/E7 remain open.",
+  "current_build_source": "4dd33936909de1314099652a7523e52c40bb2c44",
+  "current_build_source_note": "Current source is records-descended from the immutable release identity. The 6/6 gate result below belongs to the release identity, not to the current build source. S1 (493648f) added a read-only ProcessStart CommandLine producer and proved TLV -> R2003 at E2; S2 (4bc8244) added active control-v2 nonce/replay/freshness enforcement at E2; S3 (f1f89c1) added durable v3 producer identity issuance at Go ingress and duplicate/regression refusal at Zig ingress at E2; S4 (2673bd2, seam registration 4dd3393) added versioned canonical policy bytes V1 with four-language byte equality at E2. Host E5 re-measurement, S2/S3 live replay E3, full current-source matrix, legacy policy hash migration, soak/install/signing and E6/E7 remain open.",
   "qualification_gates": {
     "passed": 6,
     "total": 6,

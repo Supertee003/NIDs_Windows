@@ -1,7 +1,7 @@
 {
-  "head_sha": "f1f89c183ee86410dbfdc748155dc3d22c086420",
+  "head_sha": "4dd33936909de1314099652a7523e52c40bb2c44",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-25",
+  "last_updated_at": "2026-11-26",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; tracked files were retained in the operator archive and restored to the ignored admin-evidence/ directory. At the 2026-11-24 audit, 48 primary evidence_artifact pointers do not resolve in a fresh worktree (18 have exact operator-archive locators recorded as artifact_locator, 30 are marked artifact_status=missing and are not independently auditable from this tree). 61 entries cite admin-evidence paths in files_verified, 133 mention them anywhere, and only primary evidence_artifact pointers are validator-checked. The 3,229 clean / 4,009 lossy rate bracketing and all other historical host claims remain records, not current-source verification.",
@@ -11392,6 +11392,58 @@
       ],
       "status": "CLOSED",
       "status_basis": "entry.result=PASS_E2 recorded at build source f1f89c1; source gap closed, live host proof explicitly out of scope"
+    },
+    {
+      "id": "S4-POLICY-CANONICAL-BYTES-E2-4DD3393-20261126",
+      "head_sha": "4dd33936909de1314099652a7523e52c40bb2c44",
+      "timestamp": "2026-11-26",
+      "title": "S4: versioned canonical policy byte stream with four-language byte equality",
+      "level": "E2",
+      "component": "Python encoder/generator -> shared vector -> TypeScript/Zig/Rust encoders -> SHA-256 byte pins",
+      "flow_id": "POLICY_AUTHORING -> CANONICAL_BYTES_V1 -> CROSS_LANGUAGE_VECTOR -> DIGEST EVIDENCE",
+      "description": "One additive versioned contract POLICY_CANONICAL_BYTES_V1 defines PC01RULE/PC01SETS/PC01SIGN pre-images using fixed-width LE integers and length-prefixed UTF-8 strings (0..256 bytes) with explicit representation-B ordinals. A single producer-owned vector manifest is consumed read-only by Python, TypeScript, Zig and Rust tests, which pin exact bytes and rule-set/signature digests. Legacy compiler hashes, policy_signing.canonicalDigest, seal text bytes, T7 JSON validator and the ADR-0005 exact-file Ed25519 sidecar are unchanged; no policy decision, enforcement authority, ABI, wire layout or host effect is introduced.",
+      "files_verified": [
+        "brain/policy_canonical_v1.py",
+        "rust-src/policy_canonical_v1.rs",
+        "shared/policy/policy_canonical_v1.md",
+        "shared/vectors/policy_canonical_v1.json",
+        "src/policy/policy_canonical_v1.zig",
+        "src/tests/policy/policy_canonical_v1.zig",
+        "tools/generate_policy_canonical_vectors.py",
+        "ts_policy/src/canonical_policy_bytes_v1.ts",
+        "ts_policy/tests/canonical_policy_bytes_v1.test.ts",
+        "tests/policy_signing/test_canonical_policy_bytes_v1.py",
+        "tests/brain/test_seam_disposition.py",
+        "CONTRACT_MAP.json",
+        "build.zig",
+        "src/all_tests.zig",
+        "rust-src/lib.rs",
+        "ts_policy/src/index.ts",
+        "ts_policy/package.json",
+        "ts_policy/src/compiler.ts",
+        "ts_policy/src/seal.ts",
+        "tests/policy_signing/test_t7_signed_policy.py",
+        "analysis/current-head/S4-CANONICAL-POLICY-BYTES-EVIDENCE-20261126.md"
+      ],
+      "tests": [
+        "python tools/generate_policy_canonical_vectors.py --write -> vector_sha256=5012763e91c8e9b24a736c0826210510cdc9791451296e6c121439910c4d67c6; cases=4",
+        "python -m pytest tests/policy_signing/test_canonical_policy_bytes_v1.py -q -> 6 passed",
+        "cd ts_policy && npm run typecheck -> exit 0; npm run test:all -> 82 passed, 0 failed",
+        "zig build --cache-dir D:\\aegis-tmp\\s4_zig_cache --global-cache-dir D:\\aegis-tmp\\s4_zig_global test -> exit 0",
+        "zig build (same caches) -> exit 0",
+        "cargo test --release policy_canonical_v1 -> 2 passed, 0 failed",
+        "python -m pytest tests/brain/test_seam_disposition.py -q -> 3 passed"
+      ],
+      "result": "PASS_E2",
+      "finding": "Source-level canonical-byte gap closed at E2. Exact bytes and digests agree across all four languages on one shared vector; no legacy hash, signature, authority, ABI or host-effect change. This does not prove policy migration, E3/E4/E5, matrix, soak/install/signing or E6/E7.",
+      "evidence_artifact": "analysis/current-head/S4-CANONICAL-POLICY-BYTES-EVIDENCE-20261126.md",
+      "limitations": [
+        "Legacy byte streams remain in use; migration of published hashes/signatures is a separate reviewed change.",
+        "Pure encoder only: no runtime, daemon, PEP or host path consumes these bytes in this patch.",
+        "No E3/E4/E5, E6/E7, matrix, soak, install or signing claim."
+      ],
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS_E2 recorded at build source 4dd3393 (source 2673bd2 + seam registration 4dd3393); source gap closed, policy migration and live proof explicitly out of scope"
     }
   ],
   "known_gaps": [
@@ -18064,7 +18116,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 48,
-    "E2_count": 164,
+    "E2_count": 165,
     "E3_count": 19,
     "E4_count": 4,
     "E5_count": 122,
