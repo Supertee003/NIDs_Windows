@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "43a8bcc",
+      "commit": "7822f4c",
       "source": "src/main.zig",
       "classification": "CANONICAL"
     },
@@ -38,7 +38,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "43a8bcc",
+      "commit": "7822f4c",
       "source": "rust-src/lib.rs",
       "classification": "CANONICAL"
     },
@@ -49,7 +49,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "43a8bcc",
+      "commit": "7822f4c",
       "source": "src/windows/aegis_wfp.c",
       "classification": "CANONICAL"
     },
@@ -60,7 +60,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "43a8bcc",
+      "commit": "7822f4c",
       "source": "src/windows/etw_native.c",
       "classification": "CANONICAL"
     },
@@ -71,7 +71,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "43a8bcc",
+      "commit": "7822f4c",
       "source": "src/windows/fim_native.c",
       "classification": "CANONICAL"
     },
@@ -82,7 +82,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "go-nose-build-test",
-      "commit": "43a8bcc",
+      "commit": "7822f4c",
       "source": "nose/main.go",
       "classification": "CANONICAL"
     },
@@ -93,7 +93,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-aggregator-build-test",
-      "commit": "43a8bcc",
+      "commit": "7822f4c",
       "source": "go/aggregator/main.go",
       "classification": "SUPPORT"
     },
@@ -104,7 +104,7 @@
       "type": "library",
       "required": false,
       "ci_job": "shield-build",
-      "commit": "43a8bcc",
+      "commit": "7822f4c",
       "source": "shield/src/lib.rs",
       "classification": "SUPPORT"
     },
@@ -115,7 +115,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "43a8bcc",
+      "commit": "7822f4c",
       "source": "tools/aegisctl.py",
       "classification": "CANONICAL"
     },
@@ -126,7 +126,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "43a8bcc",
+      "commit": "7822f4c",
       "source": "tools/installer.py"
     },
     {
@@ -136,7 +136,7 @@
       "type": "toolchain",
       "required": false,
       "ci_job": "ts-policy-build",
-      "commit": "43a8bcc",
+      "commit": "7822f4c",
       "source": "ts_policy/",
       "classification": "SUPPORT",
       "note": "Advisory policy authoring only; no runtime artifact or enforcement authority."
@@ -148,7 +148,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "43a8bcc",
+      "commit": "7822f4c",
       "source": "brain/"
     }
   ],
@@ -872,8 +872,8 @@
     },
     {
       "path": "nose/capture.go",
-      "size": 17332,
-      "sha256": "2b9a2e53c11e1408f4ea535cefba7527a510e06a8d294e3b94cc6951d7c014cb",
+      "size": 18015,
+      "sha256": "6d21ea2bf537e69e342adbed5d0b0412689ec38168f6953495d760237673d444",
       "language": "go"
     },
     {
@@ -896,8 +896,8 @@
     },
     {
       "path": "nose/collectors.go",
-      "size": 17082,
-      "sha256": "c171260d6225c4247363fca28ffe2754d462590c5719b835677273a531ff83e9",
+      "size": 18608,
+      "sha256": "b1833f5b26d3de9c4dc680bdd888bb1c0f76c4304b2aa6c7869b94177b5c7249",
       "language": "go"
     },
     {
@@ -938,14 +938,14 @@
     },
     {
       "path": "nose/inject.go",
-      "size": 2115,
-      "sha256": "641c4b235906bf571528204871dd5487c3a78980ee0196bfe839a5f94e114764",
+      "size": 2109,
+      "sha256": "c539cee11bc63879c5104a33c2534c53fde33d8eb13f87a4989376e3fbaaea4f",
       "language": "go"
     },
     {
       "path": "nose/main.go",
-      "size": 9722,
-      "sha256": "fb8b0d680a4370859295e3164d4177504459d0dfe395b1a08714228fd6e82852",
+      "size": 10548,
+      "sha256": "0d38ab5e8a8f7c16b809f8b8c87fbf75d21a25716a7053b8130cd018ecf283ec",
       "language": "go"
     },
     {
@@ -992,8 +992,8 @@
     },
     {
       "path": "nose/talkers_live.go",
-      "size": 8260,
-      "sha256": "c2cfc1f8a4c0576153fe253a7a15905b98949285d4a8bbbecb719552aa711967",
+      "size": 8643,
+      "sha256": "2c87a52cf8988e2f8dddb0325b6b440966981997611b0b5ae5df05c568805dd7",
       "language": "go"
     },
     {
@@ -1035,7 +1035,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23280,
-      "sha256": "d10409b8c0b60079986b4f008f3dc9317e4436dc9e5b9cecb5cf6fecfbc63a96",
+      "sha256": "e515c03a1423d02cdd5f8bdfa075c73d0e57613b239677d507af268fa25fe780",
       "language": "json"
     },
     {
@@ -1922,8 +1922,8 @@
     },
     {
       "path": "src/capture/packet_decoder.zig",
-      "size": 8747,
-      "sha256": "45f5e55f300d3ca571b8e7cfc7c7fc311e48fbd4224cc9014bc68b74c3337613",
+      "size": 15297,
+      "sha256": "54a0b07ed9de2186f1909504a64931be99a2b4290741c84a3336faed96586a57",
       "language": "zig"
     },
     {
