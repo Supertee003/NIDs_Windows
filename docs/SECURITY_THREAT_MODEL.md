@@ -1,9 +1,16 @@
 # Security Threat Model — AEGIS NIDS Windows
 
 > Scope: the detection-only production runtime described in `README.md`, `SYSTEM_MAP.json`,
-> `FLOW_MAP.json`, and `AUTHORITY_MAP.json` at build source `a26c573`.
+> `FLOW_MAP.json`, and `AUTHORITY_MAP.json` at current build source `43a8bcc`.
 > This is a design-level threat model, not a penetration test result. Controls are listed with the
 > layer that owns them; where a control is only partially implemented, it is marked as such.
+>
+> The earlier scope record at `a26c573` is HISTORICAL; it is not the current build source.
+>
+> Evidence scope (2026-11-25): E3 and a narrow elevated canonical-pipe E4/E5 proof at
+> `43a8bcc` are recorded in `EVIDENCE_INDEX.json`; they do **not** establish full
+> current-head Windows E5 / kernel IDS qualification, which remains `NOT_PROVEN`
+> (`runtime_manifest.json:535`). See `docs/evidence/PROVENANCE.md`.
 
 ---
 

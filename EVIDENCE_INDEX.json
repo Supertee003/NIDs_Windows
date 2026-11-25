@@ -11067,6 +11067,38 @@
       ],
       "status": "CLOSED",
       "status_basis": "entry.result=PASS_E1 recorded at build source 43a8bcc; records-only patch"
+    },
+    {
+      "id": "AEGIS-003-006-HEALTH-PROVENANCE-20261125",
+      "head_sha": "43a8bcc02358076380fa938b0e5632870643d3c5",
+      "timestamp": "2026-11-25",
+      "title": "AEGIS-003/006: documented health vocabulary mapping and evidence provenance index",
+      "level": "E1",
+      "component": "runtime health and evidence documentation",
+      "flow_id": "health state -> documented fields -> evidence provenance -> scope clarity",
+      "description": "Added docs/runtime/HEALTH_MODEL.md mapping HEALTHY/DEGRADED/FAILED/UNKNOWN to production states and listing emitted health fields with source lines; reason is worker-scoped while last_transition, impact, recovery_state and UNKNOWN are marked not implemented. Added docs/evidence/PROVENANCE.md with per-artifact proof limits. Updated the threat-model banner to current build source 43a8bcc with explicit narrow-E4/E5 vs full-qualification scope.",
+      "files_verified": [
+        "docs/runtime/HEALTH_MODEL.md",
+        "docs/evidence/PROVENANCE.md",
+        "docs/SECURITY_THREAT_MODEL.md",
+        "analysis/current-head/MASTER-AUDIT-AEGIS-003-006-HEALTH-PROVENANCE-20261125.md"
+      ],
+      "tests": [
+        "python scripts/doc_checker.py -> 0 FAIL, 0 WARN, 23 total",
+        "python -m pytest tests/docs tests/release -q -> 262 passed",
+        "python tools/truth.py verify -> TRUTH_VALID @ 43a8bcc",
+        "git diff --check -> clean"
+      ],
+      "result": "PASS_E1",
+      "finding": "Health vocabulary and evidence limits are explicit without inventing unimplemented fields or renaming code states; scope contradiction between narrow E4/E5 and full qualification is documented.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-AEGIS-003-006-HEALTH-PROVENANCE-20261125.md",
+      "limitations": [
+        "E1 documentation truth only; no live health probe or host proof.",
+        "RUNTIME_CONTRACT state-count inconsistency is recorded, not fixed.",
+        "Health field implementation remains a later source slice requiring fresh E3/E4/E5 proof."
+      ],
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS_E1 recorded at build source 43a8bcc; records-only patch"
     }
   ],
   "known_gaps": [
@@ -17738,7 +17770,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 45,
+    "E1_count": 46,
     "E2_count": 160,
     "E3_count": 18,
     "E4_count": 4,
