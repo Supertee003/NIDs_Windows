@@ -67,9 +67,9 @@ static SRWLOCK g_lifecycle_lock = SRWLOCK_INIT;
 /* Microsoft-Windows-Kernel-Process: the pipeline only consumes ProcessStart
  * (Id 1); Thread/Image/Stop records are dropped by the pre-decode gate. Enable
  * only WINEVENT_KEYWORD_PROCESS (0x10) so the provider does not emit the rest.
- * This does NOT add command-line visibility: on this host every ProcessStart
- * template (v0..v4) carries ImageName and no CommandLine field, so R2003
- * cannot match a host process row (PROCESS-CMDLINE-001, E5 2026-11-18). */
+ * The provider template (v0..v4) carries ImageName and no CommandLine field
+ * (PROCESS-CMDLINE-001, E5 2026-11-18); PROCESS-CMDLINE-002 now recovers the
+ * command line read-only from the started process on this same event. */
 static const uint8_t k_kernel_process_guid[16] = {
     0xD6, 0x2C, 0xFB, 0x22, 0x7B, 0x0E, 0x2B, 0x42,
     0xA0, 0xC7, 0x2F, 0xAD, 0x1F, 0xD0, 0xE7, 0x16,
@@ -105,6 +105,55 @@ static int append_tlv(uint16_t kind, const uint8_t* data, uint16_t len, uint16_t
     return 1;
 }
 
+/* PROCESS-CMDLINE-002: Kernel-Process ProcessStart (Id 1, v0..v4) has no
+ * CommandLine field (PROCESS-CMDLINE-001, E5 2026-11-18). Recover it read-only
+ * from the started process and carry the bytes on the EXISTING AEGT TLV kind 2
+ * channel. No CanonicalEvent field, rule, golden vector, authority or
+ * host-effect change. NtQueryInformationProcess is resolved dynamically so the
+ * helper keeps its current import table. */
+typedef struct {
+    unsigned short Length;
+    unsigned short MaximumLength;
+    wchar_t* Buffer;
+} aegis_unicode_string_t;
+typedef long aegis_ntstatus_t;
+typedef aegis_ntstatus_t (NTAPI *aegis_query_process_info_fn)(
+    HANDLE, int, void*, unsigned long, unsigned long*);
+
+static int append_process_command_line(uint32_t process_id, uint16_t* used) {
+    if (process_id == 0 || used == NULL) return 0;
+    HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
+    if (ntdll == NULL) return 0;
+    aegis_query_process_info_fn query = (aegis_query_process_info_fn)
+        GetProcAddress(ntdll, "NtQueryInformationProcess");
+    if (query == NULL) return 0;
+
+    HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, process_id);
+    if (process == NULL) return 0; /* short-lived process: counted as no command line */
+
+    uint8_t raw[8192];
+    unsigned long need = 0;
+    aegis_ntstatus_t status = query(process, 60, raw, (unsigned long)sizeof(raw), &need);
+    CloseHandle(process);
+    if (status < 0 || need < (unsigned long)sizeof(aegis_unicode_string_t) ||
+        need > (unsigned long)sizeof(raw)) return 0;
+
+    const aegis_unicode_string_t* text = (const aegis_unicode_string_t*)raw;
+    if (text->Length == 0 || text->Length > 4096 || (text->Length % sizeof(wchar_t)) != 0) return 0;
+    uintptr_t base = (uintptr_t)raw;
+    uintptr_t begin = (uintptr_t)text->Buffer;
+    if (begin < base || begin + text->Length > base + need) return 0; /* reject alien pointer */
+
+    int wide_len = (int)(text->Length / sizeof(wchar_t));
+    int out_len = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+        (const wchar_t*)begin, wide_len, NULL, 0, NULL, NULL);
+    if (out_len <= 0 || out_len > 4096) return 0;
+    uint8_t out[4096];
+    if (WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+        (const wchar_t*)begin, wide_len, (char*)out, out_len, NULL, NULL) <= 0) return 0;
+    return append_tlv(AEGIS_ETW_TLV_CMDLINE, out, (uint16_t)out_len, used);
+}
+
 static void append_property_utf8(PEVENT_RECORD rec, LPCWSTR property, uint16_t kind, uint16_t* used) {
     PROPERTY_DATA_DESCRIPTOR desc = {0};
     desc.PropertyName = (ULONGLONG)(ULONG_PTR)property;
@@ -134,13 +183,31 @@ static void append_property_u32(PEVENT_RECORD rec, LPCWSTR property, uint16_t ki
     }
 }
 
+static int is_kernel_process_start(PEVENT_RECORD rec) {
+    return rec->EventHeader.EventDescriptor.Id == 1 &&
+           memcmp(&rec->EventHeader.ProviderId, k_kernel_process_guid, 16) == 0;
+}
+
 static uint16_t decode_tdh_properties(PEVENT_RECORD rec) {
     uint32_t magic = AEGIS_ETW_TLV_MAGIC;
     uint16_t used = sizeof(magic);
     memcpy(g_session.ext_buffer, &magic, sizeof(magic));
     /* Names are intentionally allow-listed; unknown provider properties are ignored. */
     append_property_utf8(rec, L"ImageName", AEGIS_ETW_TLV_IMAGE, &used);
+    /* A provider that really publishes CommandLine wins; otherwise recover it
+     * from the started process on Kernel-Process ProcessStart only. Never
+     * fabricate bytes for a host whose event template has no such field. */
+    const uint16_t cmdline_before = used;
     append_property_utf8(rec, L"CommandLine", AEGIS_ETW_TLV_CMDLINE, &used);
+    if (used == cmdline_before && is_kernel_process_start(rec)) {
+        uint32_t process_id = 0;
+        PROPERTY_DATA_DESCRIPTOR desc = {0};
+        desc.PropertyName = (ULONGLONG)(ULONG_PTR)L"ProcessID";
+        unsigned long size = sizeof(process_id);
+        if (TdhGetProperty(rec, 0, NULL, 1, &desc, size, (PBYTE)&process_id) == ERROR_SUCCESS) {
+            append_process_command_line(process_id, &used);
+        }
+    }
     append_property_utf8(rec, L"FileName", AEGIS_ETW_TLV_FILE, &used);
     append_property_utf8(rec, L"KeyName", AEGIS_ETW_TLV_REGISTRY, &used);
     append_property_u32(rec, L"ParentId", AEGIS_ETW_TLV_PARENT_PID, &used);
