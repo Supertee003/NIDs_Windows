@@ -22,7 +22,7 @@
 |---|---|---|---|
 | Build | FRESH E2 at C6: `go test ./...` PASS and `zig build test --summary all` 8/8 steps, 2142 passed / 10 skipped (helper stubs staged from `build/`; no new release build claimed) | `analysis/current-head/MASTER-AUDIT-C6-CAPTURE-20261125.md` | `7822f4c` |
 | Unit | RECORDED: Python **1,471 passed / 0 skipped** (sum of two phases, not one invocation). Zig snapshots: **2116 / 2114 / 2109 passed** with 10–11 skips — never claim zero skips for Zig | `docs/testing/RESULTS.md:9-37` | `a53eda8` (Python); distinct historical Zig entries |
-| Integration | RECORDED PASS at **historical** source: E3 private-pipe exact deltas. E3 at `7822f4c` is NOT_PROVEN | `analysis/current-head/MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E3-20261125.md` | `43a8bcc` HISTORICAL |
+| Integration | **FRESH E3 PASS at current source**: narrow private-pipe `-inject` exact deltas, harness SHA256 `3CAB8A36…C67`. E4/E5 at `7822f4c` remain NOT_PROVEN | `analysis/current-head/MASTER-AUDIT-C6-E3-CURRENT-SOURCE-20261125.md` | `7822f4c` |
 | Protocol | RECORDED: exact-length / trailing-byte / version-downgrade rejection tests in Zig, Go, C++; shared `event_v*` vectors | `src/contract/canonical_event.zig:1624-1635`; `nose/payload_v3_test.go:288-289`; `docs/protocol/INDEX.md` | `43a8bcc` |
 | Runtime | RECORDED: counted drops/shed, worker failure reason, DEGRADED health tests; no fresh probe by this summary | `docs/runtime/HEALTH_MODEL.md`; `src/control/state_machine.zig:651-717` | `43a8bcc` |
 | Live host | RECORDED PASS at **narrow scope, HISTORICAL source**: owner-run elevated canonical-pipe `-inject` with verified stop/restore. E4/E5 at `7822f4c` and full current-head Windows E5 / kernel qualification: **NOT_PROVEN** | `analysis/current-head/MASTER-AUDIT-P8-I44-SOURCE-43A8BCC-E4E5-20261125.md`; `runtime_manifest.json:535` | `43a8bcc` HISTORICAL |
@@ -36,7 +36,7 @@
 - A synthetic fixture is E1/E2; it does not prove a real sensor produced the event.
 - The narrow `43a8bcc` E4/E5 proof is HISTORICAL at that source; it does not establish detection
   matrix, soak, loss-rate, install, signing, E6/E7 or full host qualification at `7822f4c`.
-- C6 source-level visibility/shutdown changes are E2 only; no host proof at `7822f4c` exists yet.
+- C6 source-level visibility/shutdown changes remain E2 only; the current-source E3 proof covers the pipe-reader exact deltas, not the capture path. No elevated host proof at `7822f4c` exists yet.
 - `a26c573`, `03bb86d` and `43a8bcc` proofs are HISTORICAL and do not substitute for current-source proof.
 
 ## Known limitations

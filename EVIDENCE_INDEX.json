@@ -11206,13 +11206,45 @@
       "finding": "Capture visibility, IPv6 extension-header and shutdown/monotonic source changes are unit-proven at build source 7822f4c. No host, pipe, soak, install or signing proof is claimed.",
       "evidence_artifact": "analysis/current-head/MASTER-AUDIT-C6-CAPTURE-20261125.md",
       "limitations": [
-        "E2 only. E3/E4/E5 at 7822f4c are NOT_PROVEN until owner-run elevated re-proof.",
+        "E2 only for this entry. E3 at 7822f4c is PASS in entry C6-E3-7822F4C-20261125; E4/E5 remain NOT_PROVEN until owner-run elevated re-proof.",
         "E3/E4/E5 PASS at 43a8bcc is HISTORICAL at that source.",
         "R2003 FN-1, active nonce/replay and cross-process event identity remain open.",
         "No MITRE mapping, benchmark ceiling, replay re-execution or zero-loss claim."
       ],
       "status": "OPEN",
       "status_basis": "E2 PASS recorded; higher-level current-source proof is an owner-run blocker"
+    },
+    {
+      "id": "C6-E3-7822F4C-20261125",
+      "head_sha": "7822f4c162f7867555754b7f3677ade33c9548dd",
+      "timestamp": "2026-11-25",
+      "title": "Issue #44 exact-delta E3 re-executed at current build source 7822f4c (C6)",
+      "level": "E3",
+      "component": "Zig pipe reader -> canonical decoder -> queue -> authoritative counters",
+      "flow_id": "NOSE-INGRESS-EXACT-DELTA",
+      "description": "Harness recompiled from unmodified current source via a temporary src/ module-root wrapper (deleted after compile; git status clean). Private pipe \\\\.\\\\pipe\\\\aegis_nose_i44f used in a non-elevated agent session; three injected failure frames produced exact deltas: close-before-payload +1 midframe/+1 pipe error, absurd-length +1 framing/+1 pipe error, drain-then-valid +1 framing/+1 submitted/no pipe error. Fabric counters stayed zero; canonical pipe and live service untouched. Owner-run elevated E4/E5 script was prepared for this source but not executed by the agent.",
+      "files_verified": [
+        "analysis/current-head/MASTER-AUDIT-C6-E3-CURRENT-SOURCE-20261125.md",
+        "D:/aegis-tmp/c6_e3_inject.txt"
+      ],
+      "tests": [
+        "zig build-exe src/i44_e3_wrapper.zig -femit-bin=D:\\aegis-tmp\\i44_e3_check_7822f4c.exe ... -> exit 0",
+        "i44_e3_check_7822f4c.exe -inject -pipe aegis_nose_i44f -seconds 2 -> exit 0",
+        "harness SHA256 3CAB8A36C289AE18319071600D8D8412DD97CF299F980914D252F9CAE6F88C67",
+        "close-before-payload +1 midframe/+1 pipe error; absurd-length +1 framing/+1 pipe error; drain-then-valid +1 framing/+1 submitted/no pipe error",
+        "reader frames_read=1 submitted=1 rejected=0 dropped=3 pipe_errors=2; fabric pending=0 accepted=0 rejected=0 dropped=0"
+      ],
+      "result": "PASS_E3",
+      "finding": "Private-pipe exact-delta proof is current at build source 7822f4c; no canonical-pipe or elevated host claim is included.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-C6-E3-CURRENT-SOURCE-20261125.md",
+      "limitations": [
+        "E3 only; E4/E5 at 7822f4c remain NOT_PROVEN until owner-run elevated canonical-pipe re-proof.",
+        "43a8bcc E3/E4/E5 entries are HISTORICAL at their recorded source.",
+        "Local transcripts under D:/aegis-tmp are operator evidence and do not resolve in a fresh worktree.",
+        "No C6 visibility host measurement, rule matrix, soak, install, signing, E6/E7 or zero-loss claim."
+      ],
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS_E3 recorded at build source 7822f4c; E3 only; E4/E5 owner-run blocker tracked in AEGIS-006-C6-CAPTURE-20261125"
     }
   ],
   "known_gaps": [
@@ -17886,7 +17918,7 @@
     "E0_count": 0,
     "E1_count": 48,
     "E2_count": 161,
-    "E3_count": 18,
+    "E3_count": 19,
     "E4_count": 4,
     "E5_count": 121,
     "E6_count": 1,

@@ -96,7 +96,7 @@
   "verification_summary": {
     "tests": "1,471 passed / 0 skipped, sum of two phases at build source a53eda8 (not a single pytest invocation)",
     "soak": "36.52 / 24.0 h PASS, HISTORICAL at a53eda8; no current-build-source soak is claimed",
-    "current_source_proof": "E2 unit proof only at build source 7822f4c (go test ./..., Zig decoder tests, full zig build test 2142 passed / 10 skipped). E3 and narrow canonical-pipe E4/E5 PASS at 43a8bcc are HISTORICAL; E3/E4/E5 at 7822f4c are NOT_PROVEN until owner-run elevated re-proof. See EVIDENCE_INDEX.json entries P8-I44-43A8BCC-E4E5-20261125 (historical) and AEGIS-006-C6-CAPTURE-20261125 (current E2).",
+    "current_source_proof": "E2 unit proof and narrow private-pipe -inject E3 exact-delta proof at build source 7822f4c (go test ./..., Zig decoder tests, full zig build test 2142 passed / 10 skipped; harness SHA256 3CAB8A36...C67). E3 and narrow canonical-pipe E4/E5 PASS at 43a8bcc are HISTORICAL; E4/E5 at 7822f4c are NOT_PROVEN until owner-run elevated re-proof. See EVIDENCE_INDEX.json entries C6-E3-7822F4C-20261125 (current E3), P8-I44-43A8BCC-E4E5-20261125 (historical) and AEGIS-006-C6-CAPTURE-20261125 (current E2).",
     "host_qualification": "NOT_PROVEN for full current-head Windows E5/kernel qualification; narrow issue #44 pipe proof does not establish it"
   },
   "authority": {

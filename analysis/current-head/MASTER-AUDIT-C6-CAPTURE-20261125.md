@@ -4,6 +4,12 @@
 **SOURCE COMMIT:** `7822f4c162f7867555754b7f3677ade33c9548dd`
 **BUILD SOURCE BEFORE:** `43a8bcc02358076380fa938b0e5632870643d3c5`
 
+> **SUPERSEDED IN PART (2026-11-25):** E3 was subsequently re-executed at this
+> build source with a narrow private-pipe `-inject` exact-delta PASS; see
+> `analysis/current-head/MASTER-AUDIT-C6-E3-CURRENT-SOURCE-20261125.md`. The
+> E2-only proof status in this point-in-time record is retained as written;
+> E4/E5 remain NOT_PROVEN at `7822f4c`.
+
 ## PATCH DECLARATION
 
 ```

@@ -22,11 +22,13 @@
 > origin; capture errors return to main instead of `os.Exit` in the goroutine;
 > collectors and the live-talkers loop observe a stop channel. **No** wire
 > layout, golden vector, rule, authority, host-effect or release identity
-> change. E2 unit proof only (`go test ./...`, Zig decoder tests, full
-> `zig build test` 2142 passed / 10 skipped); E3/E4/E5 at `7822f4c` are
-> **NOT_PROVEN** until owner-run elevated re-proof. See
-> `analysis/current-head/C6-SOURCE-PATCH-DECLARATION-20261125.md` and
-> `analysis/current-head/MASTER-AUDIT-C6-CAPTURE-20261125.md`.
+> change. E2 unit proof plus E3 narrow private-pipe `-inject` exact-delta proof
+> (`go test ./...`, Zig decoder tests, full `zig build test` 2142 passed /
+> 10 skipped; harness SHA256 `3CAB8A36…C67`) are current at `7822f4c`.
+> E4/E5 at `7822f4c` remain **NOT_PROVEN** until owner-run elevated re-proof.
+> See `analysis/current-head/C6-SOURCE-PATCH-DECLARATION-20261125.md`,
+> `analysis/current-head/MASTER-AUDIT-C6-CAPTURE-20261125.md` and
+> `analysis/current-head/MASTER-AUDIT-C6-E3-CURRENT-SOURCE-20261125.md`.
 >
 > **SOURCE CHANGE (2026-11-25, prior):** build source advanced `a26c573` →
 > `43a8bcc` by a comment-only Go Nose hygiene slice (P4 F1/F2). No wire, schema,

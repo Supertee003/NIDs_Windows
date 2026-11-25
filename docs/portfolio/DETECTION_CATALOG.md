@@ -10,8 +10,9 @@
 > source `f4cde3c`; the immutable release identity is `a53eda8`; the current build source is
 > `7822f4c`. The earlier `a26c573` and `43a8bcc` sources are HISTORICAL. The matrix has **not**
 > been re-measured at `7822f4c`: E3 and narrow elevated canonical-pipe E4/E5 records at `43a8bcc`
-> are HISTORICAL and cover the `-inject` lifecycle only, not detection efficacy; E3/E4/E5 at
-> `7822f4c` are NOT_PROVEN until owner-run elevated re-proof. Treat every E5/E6 row here as
+> are HISTORICAL and cover the `-inject` lifecycle only, not detection efficacy; E3 at `7822f4c`
+> is current for that narrow pipe-reader lifecycle only, and E4/E5 at `7822f4c` are NOT_PROVEN
+> until owner-run elevated re-proof. Treat every E5/E6 row here as
 > HISTORICAL at its recorded source, not as current-source verification. See `docs/DETECTION_VALIDATION.md` and
 > [`docs/portfolio/DETECTION_MATRIX_CURRENT.md`](DETECTION_MATRIX_CURRENT.md).
 
