@@ -7,10 +7,10 @@
 > change). The matrix has **not** been re-measured on the host at `a53eda8`; no
 > E5 is claimed for this branch. See `analysis/current-head/RECONCILE-DOCS-READINESS-20261119.md`.
 
-> **Current source (P1/P8 hygiene, then 2026-11-25 C6/S1 rebase):** `a26c573` and `43a8bcc` were
-> successive build sources and are now HISTORICAL. The current build source is `493648f`
-> (S1 added the read-only R2003 command-line producer; `7822f4c` is HISTORICAL as the
-> immediate predecessor with the C6 capture lifecycle proof;
+> **Current source (P1/P8 hygiene, then 2026-11-25 C6/S1/S2 rebase):** `a26c573`, `43a8bcc`,
+> `7822f4c` and `493648f` were successive build sources and are now HISTORICAL. The current
+> build source is `4bc8244` (S2 added active control-v2 nonce/replay enforcement; S1 added
+> the read-only R2003 command-line producer; `7822f4c` carried the C6 capture lifecycle proof;
 > P2-44 `9105ff5` added observability counters, P2b `661fb76` tightened wire-length decoding;
 > P8 source-truth `2129dcd` added only authority/quarantine disclosure comments; P8-I44 `e406cbb`
 > split nose drop causes by exclusive counter, counted detector allocation failures as detection
@@ -19,7 +19,7 @@
 > `a26c573` removed a stale "production-ready" label and added an oversize-wire reject guard
 > in the Go Nose writer; `43a8bcc` made Go comment hygiene only; `7822f4c` changed capture
 > visibility, shutdown and monotonic-time producers — no rule, wire-layout or authority change).
-> The matrix has **not** been re-measured at `493648f` (nor at its predecessor `7822f4c`). E3 and narrow elevated canonical-pipe
+> The matrix has **not** been re-measured at `4bc8244` (nor at its predecessors `493648f` / `7822f4c`). E3 and narrow elevated canonical-pipe
 > E4/E5 records at `43a8bcc` are HISTORICAL at that source and prove the `-inject` lifecycle and
 > exact deltas only; they do not re-run the detection matrix, soak, loss rate, install or signing.
 > E3 and narrow E4/E5 at `7822f4c` are current (`-inject` exact deltas on a private

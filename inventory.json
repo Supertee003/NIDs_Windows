@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-25T14:58:03.877102+00:00",
+  "generated_at": "2026-11-25T15:47:34.629860+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3227,
+  "total_files": 3232,
   "by_class": {
-    "canonical-docs": 588,
+    "canonical-docs": 590,
     "canonical-build": 313,
     "unclassified": 27,
-    "canonical-source": 1791,
-    "canonical-test": 412,
+    "canonical-source": 1793,
+    "canonical-test": 413,
     "canonical-config": 62,
     "legacy": 34
   },
@@ -258,13 +258,13 @@
       "path": "AGENTS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10002
+      "size": 10057
     },
     {
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 62574
+      "size": 63707
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -1014,7 +1014,7 @@
       "path": "analysis/current-head/MASTER-AUDIT-C6-FINAL-CLOSEOUT-20261125.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6292
+      "size": 6530
     },
     {
       "path": "analysis/current-head/MASTER-AUDIT-FINAL-RESIDUALS-20261125.md",
@@ -1405,6 +1405,18 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 3730
+    },
+    {
+      "path": "analysis/current-head/S2-CONTROL-REPLAY-EVIDENCE-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4221
+    },
+    {
+      "path": "analysis/current-head/S2-SOURCE-PATCH-DECLARATION-20261125.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4546
     },
     {
       "path": "analysis/current-head/SERVICE-EXISTS-001-20261114.md",
@@ -2742,7 +2754,7 @@
       "path": "CONTRACT_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 13796
+      "size": 13853
     },
     {
       "path": "contracts/fixtures/abi/event_boundaries.json",
@@ -3072,7 +3084,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 74133
+      "size": 74845
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3360,7 +3372,7 @@
       "path": "docs/DETECTION_VALIDATION.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10781
+      "size": 11597
     },
     {
       "path": "docs/ENV_VARS.md",
@@ -3774,7 +3786,7 @@
       "path": "docs/portfolio/DETECTION_CATALOG.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8809
+      "size": 9420
     },
     {
       "path": "docs/portfolio/DETECTION_MATRIX_CURRENT.md",
@@ -4500,7 +4512,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1654493
+      "size": 1674984
     },
     {
       "path": "FLOW_MAP.json",
@@ -4608,7 +4620,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 510337
+      "size": 511399
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4884,13 +4896,13 @@
       "path": "README.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 42372
+      "size": 42639
     },
     {
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 412752
+      "size": 413609
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -4956,7 +4968,7 @@
       "path": "release/release-status.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 5595
+      "size": 5937
     },
     {
       "path": "release/T20-final/466a226/brain/__init__.py",
@@ -15384,7 +15396,7 @@
       "path": "shared/protocol/control_protocol.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9380
+      "size": 10520
     },
     {
       "path": "shared/protocol/protocol.md",
@@ -15486,7 +15498,7 @@
       "path": "src/all_tests.zig",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 11969
+      "size": 12014
     },
     {
       "path": "src/capture/flow_engine.zig",
@@ -15672,13 +15684,19 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 174915
+      "size": 179121
     },
     {
       "path": "src/control/protocol.zig",
       "class": "canonical-source",
       "role": "production-source",
       "size": 25480
+    },
+    {
+      "path": "src/control/replay_guard.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 5654
     },
     {
       "path": "src/control/state_machine.zig",
@@ -17958,7 +17976,7 @@
       "path": "tests/runtime/conftest.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 23231
+      "size": 23321
     },
     {
       "path": "tests/runtime/README.md",
@@ -18157,6 +18175,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 3018
+    },
+    {
+      "path": "tests/security/test_control_replay_envelope.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3279
     },
     {
       "path": "tests/security/test_detection_contract_pin.py",
@@ -18798,13 +18822,13 @@
       "path": "tools/aegisctl/api/control_api.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 70534
+      "size": 70486
     },
     {
       "path": "tools/aegisctl/client.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 7639
+      "size": 7876
     },
     {
       "path": "tools/aegisctl/components.py",
@@ -18831,6 +18855,12 @@
       "size": 5974
     },
     {
+      "path": "tools/aegisctl/envelope.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1469
+    },
+    {
       "path": "tools/aegisctl/fp_feedback.py",
       "class": "canonical-source",
       "role": "source",
@@ -18846,7 +18876,7 @@
       "path": "tools/aegisctl/utils.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 5565
+      "size": 5881
     },
     {
       "path": "tools/aegisctl/web_dashboard/app.py",
@@ -19182,7 +19212,7 @@
       "path": "tools/probe_control_pipe.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 2906
+      "size": 2912
     },
     {
       "path": "tools/rebuild_truth.py",
@@ -19377,5 +19407,5 @@
       "size": 624
     }
   ],
-  "source_commit": "493648f"
+  "source_commit": "4bc8244"
 }

@@ -1,22 +1,22 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-25T14:58:03.884667+00:00",
+  "generated_at": "2026-11-25T15:47:34.634857+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 3227,
+  "total_files": 3232,
   "by_role": {
-    "documentation": 573,
+    "documentation": 575,
     "build-config": 302,
     "other": 27,
     "lockfile": 6,
     "rust-build": 4,
-    "source": 1493,
+    "source": 1494,
     "architecture-decision": 13,
-    "test-artifact": 412,
+    "test-artifact": 413,
     "config-data": 62,
     "step-document": 2,
     "go-source": 8,
     "makefile": 1,
-    "production-source": 290,
+    "production-source": 291,
     "legacy-source": 33,
     "quarantined": 1
   },
@@ -66,6 +66,7 @@
     "src/control/defcon.zig",
     "src/control/handler_registry.zig",
     "src/control/protocol.zig",
+    "src/control/replay_guard.zig",
     "src/control/state_machine.zig",
     "src/core/authority_review.zig",
     "src/core/brain_engine.zig",
@@ -1251,6 +1252,14 @@
       "role": "documentation"
     },
     "analysis/current-head/S1-SOURCE-PATCH-DECLARATION-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/S2-CONTROL-REPLAY-EVIDENCE-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/S2-SOURCE-PATCH-DECLARATION-20261125.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -10770,6 +10779,10 @@
       "class": "canonical-source",
       "role": "production-source"
     },
+    "src/control/replay_guard.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
     "src/control/state_machine.zig": {
       "class": "canonical-source",
       "role": "production-source"
@@ -12422,6 +12435,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/security/test_control_replay_envelope.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/security/test_detection_contract_pin.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -12870,6 +12887,10 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "tools/aegisctl/envelope.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "tools/aegisctl/fp_feedback.py": {
       "class": "canonical-source",
       "role": "source"
@@ -13235,5 +13256,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "493648f"
+  "source_commit": "4bc8244"
 }

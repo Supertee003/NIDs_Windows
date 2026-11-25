@@ -1,5 +1,5 @@
 {
-  "head_sha": "493648ff7bbee64851b58fcec09c19737c491393",
+  "head_sha": "4bc8244bace1010029417ad15c186baaeceb234f",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-25",
   "generator_version": "3.0",
@@ -11316,6 +11316,40 @@
       ],
       "status": "CLOSED",
       "status_basis": "entry.result=PASS_E2 recorded at build source 493648f; source gap closed, host qualification explicitly out of scope"
+    },
+    {
+      "id": "S2-CONTROL-REPLAY-E2-4BC8244-20261125",
+      "head_sha": "4bc8244bace1010029417ad15c186baaeceb234f",
+      "timestamp": "2026-11-25",
+      "title": "S2: active v2 control envelope enforces version, freshness and single-use nonce",
+      "level": "E2",
+      "component": "Zig named-pipe control server -> replay guard -> audit; Python v2 envelope producers",
+      "flow_id": "CONTROL-REPLAY-001",
+      "description": "The active dispatch path now rejects missing/unknown protocol_version, malformed 32-hex nonce, and issued_at_ms outside a symmetric 60-second window; a bounded 1024-entry process-local ring rejects exact replays with REPLAY_DENIED and audits rejections. All active Python clients/probes use one builder. Caller role remains token-derived; no host-effect authority, CanonicalEvent field or policy hash changed.",
+      "files_verified": [
+        "src/control/handler_registry.zig",
+        "src/control/replay_guard.zig",
+        "tools/aegisctl/envelope.py",
+        "tests/security/test_control_replay_envelope.py"
+      ],
+      "tests": [
+        "zig fresh-cache test -> 2147 passed; 10 skipped; 0 failed",
+        "control.replay_guard 3 pins and CONTROL-REPLAY-001 error-envelope pin OK",
+        "python -m pytest tests/security/test_control_replay_envelope.py -q -> 5 passed",
+        "AC3 + replay + diagnose targeted rerun -> 9 passed",
+        "zig build exit 0"
+      ],
+      "result": "PASS_E2",
+      "finding": "Source-level active-envelope replay defense closed at E2; live canonical-pipe exact replay E3/E5 is NOT_PROVEN until a rebuilt daemon is owner-run.",
+      "evidence_artifact": "analysis/current-head/S2-CONTROL-REPLAY-EVIDENCE-20261125.md",
+      "limitations": [
+        "Replay ring is process-local and resets on daemon restart.",
+        "No HMAC/key distribution was introduced; ACL plus token remains authentication authority.",
+        "Full pytest had 5 failures, one S2-related fixed and four host/timing-related left OPEN; final full rerun required after S3/S4.",
+        "No E3/E5, E6/E7, soak, install or signing claim."
+      ],
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS_E2 recorded at build source 4bc8244; source gap closed, live pipe proof explicitly out of scope"
     }
   ],
   "known_gaps": [
@@ -17988,7 +18022,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 48,
-    "E2_count": 162,
+    "E2_count": 163,
     "E3_count": 19,
     "E4_count": 4,
     "E5_count": 122,
