@@ -1035,7 +1035,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23280,
-      "sha256": "e515c03a1423d02cdd5f8bdfa075c73d0e57613b239677d507af268fa25fe780",
+      "sha256": "2d0a9d0dd900b91cd99bceb5cfc72838149c9133759e04fd5195fc4f66f3dd6f",
       "language": "json"
     },
     {
@@ -3494,14 +3494,14 @@
     },
     {
       "path": "src/windows/etw_native.c",
-      "size": 20416,
-      "sha256": "35fb8ad2eba4d310cff6ba67b25c3e819fd7a9481e621ae81912a0239e02d4dc",
+      "size": 23727,
+      "sha256": "63c91a8aad24d3587a6670a251caf2189c8420d024f0e6979ace3fc3ca7b542f",
       "language": "c/c++"
     },
     {
       "path": "src/windows/etw_realtime.zig",
-      "size": 48775,
-      "sha256": "b7a385790bec0d29ea68a7580f23fc3cd6e8dd6141f36bbb98375de0343306f7",
+      "size": 51041,
+      "sha256": "4a42111a703f448da2d978a7969d8fb7642f0501b19f44cd11a0ee19f9065b21",
       "language": "zig"
     },
     {
