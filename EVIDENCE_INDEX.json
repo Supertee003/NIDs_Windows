@@ -11130,6 +11130,43 @@
       ],
       "status": "CLOSED",
       "status_basis": "entry.result=PASS_E1 recorded at build source 43a8bcc; records-only patch"
+    },
+    {
+      "id": "AEGIS-005-DETECTION-THREAT-20261125",
+      "head_sha": "43a8bcc02358076380fa938b0e5632870643d3c5",
+      "timestamp": "2026-11-25",
+      "title": "AEGIS-005: generated 23-rule matrix and current-source threat-model gaps",
+      "level": "E1",
+      "component": "detection and threat-model documentation",
+      "flow_id": "catalog source -> 23-row matrix -> threat model -> scope clarity",
+      "description": "Generated docs/portfolio/DETECTION_MATRIX_CURRENT.md from configs/Rules.json and docs/DETECTION_VALIDATION.md with all 23 rule IDs and exact catalog identity/action/pattern fields. Rebased live provenance banners to current build source 43a8bcc while keeping a26c573 explicitly HISTORICAL. Updated the threat model to mark active nonce/replay as declared-not-enforced, name capture visibility gaps with source lines, clarify one-signature release verification and add an open-gaps register at 43a8bcc.",
+      "files_verified": [
+        "docs/portfolio/DETECTION_MATRIX_CURRENT.md",
+        "docs/portfolio/DETECTION_CATALOG.md",
+        "docs/DETECTION_VALIDATION.md",
+        "docs/SECURITY_THREAT_MODEL.md",
+        "README.md",
+        "analysis/current-head/MASTER-AUDIT-AEGIS-005-DETECTION-THREAT-20261125.md"
+      ],
+      "tests": [
+        "generator parsed 23 rules from configs/Rules.json and 23 matching rows from docs/DETECTION_VALIDATION.md",
+        "python scripts/doc_checker.py -> 0 FAIL, 0 WARN, 23 total",
+        "python -m pytest tests/docs tests/release -q -> 262 passed",
+        "python -m pytest tests/release tests/docs tests/security/test_scope_ratchet.py tests/security/test_evidence_index_integrity.py -q -> 273 passed",
+        "python scripts/check_summary.py --write / check -> SUMMARY_VALID",
+        "git diff --check -> clean",
+        "python tools/truth.py verify -> TRUTH_VALID @ 43a8bcc"
+      ],
+      "result": "PASS_E1",
+      "finding": "Detection rule counts and evidence levels are displayed without inventing statuses; source-observed threat gaps are explicit at build source 43a8bcc.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-AEGIS-005-DETECTION-THREAT-20261125.md",
+      "limitations": [
+        "E1 documentation truth; no fresh build, host, detection or soak proof.",
+        "The generated matrix derives proof text from docs/DETECTION_VALIDATION.md and must be regenerated if that record changes.",
+        "Threat-model gaps are open source findings, not implemented fixes."
+      ],
+      "status": "CLOSED",
+      "status_basis": "entry.result=PASS_E1 recorded at build source 43a8bcc; records-only patch"
     }
   ],
   "known_gaps": [
@@ -17801,7 +17838,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 47,
+    "E1_count": 48,
     "E2_count": 160,
     "E3_count": 18,
     "E4_count": 4,

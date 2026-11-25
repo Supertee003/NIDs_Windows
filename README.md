@@ -79,7 +79,8 @@ Status source: [`release/release-status.json`](release/release-status.json).
 
 A synthetic fixture and a live detector firing are different evidence levels. There is no
 authoritative MITRE ATT&CK mapping in this repository. Details:
-[detection catalog](docs/portfolio/DETECTION_CATALOG.md) and
+[detection catalog](docs/portfolio/DETECTION_CATALOG.md),
+[23-row current-source matrix](docs/portfolio/DETECTION_MATRIX_CURRENT.md), and
 [source audit](analysis/current-head/SOURCE_AUDIT-20261123.md).
 
 ### Project 2 Runtime Gate
