@@ -184,6 +184,34 @@ Records written before direction metadata was available report `null`.
 Legacy aliases (accepted, same command): `status`, `health`, `health.check`,
 `version`.
 
+### v2 request envelope (ACTIVE, enforced at dispatch)
+
+Every v2 request on `\\.\pipe\aegis_control` MUST be one JSON object with:
+
+```json
+{
+  "command": "system.health",
+  "payload": {},
+  "protocol_version": 2,
+  "request_id": "<32 hex chars>",
+  "nonce": "<32 hex chars>",
+  "issued_at_ms": <integer unix milliseconds>
+}
+```
+
+`src/control/handler_registry.zig` rejects a missing/unknown
+`protocol_version`, a malformed `nonce`, and an `issued_at_ms` outside the
+symmetric 60-second freshness window. `src/control/replay_guard.zig` consumes
+each nonce once in a bounded 1024-entry ring; an exact replay answers
+`REPLAY_DENIED`. Caller role is **never** read from JSON — it comes from the
+impersonated Windows token. The ring is process-local: a daemon restart resets
+it, which is an explicit limitation until a persisted replay ledger exists.
+No HMAC is used: the pipe ACL plus token impersonation authenticate the caller,
+so a shared secret would add a key-distribution fiction rather than authority.
+
+All active Python producers use `tools/aegisctl/envelope.py`; hand-built
+literal control requests are no longer valid v2 requests.
+
 Honest-state notes (read before automating these):
 - `runtime.start` is an idempotent assertion against the serving owner; it
   never creates a second worker set.

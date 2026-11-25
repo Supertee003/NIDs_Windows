@@ -11,6 +11,7 @@ const std = @import("std");
 const protocol = @import("protocol.zig");
 const authorization = @import("authorization.zig");
 const audit = @import("audit.zig");
+const replay_guard = @import("replay_guard.zig");
 const pep_bindings = @import("../policy/pep_bindings.zig");
 const enforcement_receipt = @import("../policy/enforcement_receipt.zig");
 const forensic_pipeline = @import("../forensic/forensic_pipeline.zig");
@@ -178,6 +179,67 @@ pub fn dispatch(
     const root = parsed.value;
     if (root != .object) {
         return sendError(a, pipe, "INVALID_ENVELOPE", "PARSE_ERROR", "Envelope must be a JSON object", ctx.request_id);
+    }
+
+    // CONTROL-REPLAY-001: the active v2 control envelope must carry a version,
+    // a freshness timestamp and a single-use nonce. Token impersonation still
+    // decides WHO may call; these fields stop a captured request from being
+    // replayed verbatim. Versions older than 2 are rejected explicitly rather
+    // than silently downgraded. No key/HMAC is involved by design (see
+    // replay_guard.zig).
+    const version_val = root.object.get("protocol_version") orelse
+        return sendError(a, pipe, "VERSION_UNSUPPORTED", "INVALID_INPUT", "Missing protocol_version", ctx.request_id);
+    if (version_val != .integer or version_val.integer != protocol.CONTROL_PROTOCOL_VERSION) {
+        return sendError(a, pipe, "VERSION_UNSUPPORTED", "INVALID_INPUT", "Unsupported protocol_version", ctx.request_id);
+    }
+    const nonce_val = root.object.get("nonce") orelse
+        return sendError(a, pipe, "INVALID_NONCE", "INVALID_INPUT", "Missing nonce", ctx.request_id);
+    if (nonce_val != .string) {
+        return sendError(a, pipe, "INVALID_NONCE", "INVALID_INPUT", "Nonce must be a string", ctx.request_id);
+    }
+    const issued_val = root.object.get("issued_at_ms") orelse
+        return sendError(a, pipe, "STALE_REQUEST", "REPLAY_DENIED", "Missing issued_at_ms", ctx.request_id);
+    if (issued_val != .integer) {
+        return sendError(a, pipe, "STALE_REQUEST", "REPLAY_DENIED", "issued_at_ms must be an integer", ctx.request_id);
+    }
+    const replay_verdict = replay_guard.g_guard.checkAndRecord(
+        nonce_val.string,
+        issued_val.integer,
+        std.time.milliTimestamp(),
+    );
+    switch (replay_verdict) {
+        .ok => {},
+        .invalid_nonce => return sendError(a, pipe, "INVALID_NONCE", "INVALID_INPUT", "Nonce must be 32 hex characters", ctx.request_id),
+        .stale => {
+            audit_log.record(.{
+                .timestamp_ms = std.time.milliTimestamp(),
+                .request_id = ctx.request_id,
+                .command = .system_health, // safe placeholder: command not parsed yet
+                .command_name = "ENVELOPE_REJECTED",
+                .caller_role = ctx.caller_role,
+                .caller_pid = ctx.caller_pid,
+                .ok = false,
+                .code = "STALE_REQUEST",
+                .latency_ms = @intCast(@divTrunc(std.time.nanoTimestamp() - start, std.time.ns_per_ms)),
+                .payload_len = raw_json.len,
+            });
+            return sendError(a, pipe, "STALE_REQUEST", "REPLAY_DENIED", "issued_at_ms outside freshness window", ctx.request_id);
+        },
+        .replay => {
+            audit_log.record(.{
+                .timestamp_ms = std.time.milliTimestamp(),
+                .request_id = ctx.request_id,
+                .command = .system_health,
+                .command_name = "ENVELOPE_REJECTED",
+                .caller_role = ctx.caller_role,
+                .caller_pid = ctx.caller_pid,
+                .ok = false,
+                .code = "REPLAY_DENIED",
+                .latency_ms = @intCast(@divTrunc(std.time.nanoTimestamp() - start, std.time.ns_per_ms)),
+                .payload_len = raw_json.len,
+            });
+            return sendError(a, pipe, "REPLAY_DENIED", "REPLAY_DENIED", "Nonce already used", ctx.request_id);
+        },
     }
 
     // Extract command
@@ -3378,4 +3440,19 @@ test "DEADCODE-QUARANTINE: runtime.restart refuses until a supervisor exists" {
     try std.testing.expectEqualStrings("NOT_IMPLEMENTED", ctx.failure_code.?);
     try std.testing.expectEqualStrings("UNAVAILABLE", ctx.failure_state.?);
     try std.testing.expect(ctx.failure_message.?.len > 0);
+}
+
+test "CONTROL-REPLAY-001: error envelope is valid JSON with code and audit_id" {
+    // Replay denials rely on clients parsing an explicit code, so the error
+    // envelope's escaped JSON brace and audit_id field are pinned here.
+    const a = std.testing.allocator;
+    const body = try errorEnvelope(a, "REPLAY_DENIED", "REPLAY_DENIED", "Nonce already used", 77);
+    defer a.free(body);
+    const parsed = try std.json.parseFromSlice(std.json.Value, a, body, .{});
+    defer parsed.deinit();
+    const root = parsed.value;
+    try std.testing.expectEqual(false, root.object.get("ok").?.bool);
+    try std.testing.expectEqualStrings("REPLAY_DENIED", root.object.get("code").?.string);
+    try std.testing.expectEqualStrings("REPLAY_DENIED", root.object.get("state").?.string);
+    try std.testing.expectEqual(@as(i64, 77), root.object.get("audit_id").?.integer);
 }

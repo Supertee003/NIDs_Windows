@@ -146,7 +146,7 @@
       "id": "CONTRACT-04",
       "name": "Control Protocol (IPC)",
       "file": "shared/protocol/control_protocol.md",
-      "implementation": "src/control/protocol.zig (CONTROL_PROTOCOL_VERSION = 2) with handlers in src/control/handler_registry.zig; src/policy/control_ipc.zig is an unlinked v1 reference with zero production importers",
+      "implementation": "src/control/protocol.zig (CONTROL_PROTOCOL_VERSION = 2) with handlers in src/control/handler_registry.zig and single-use freshness in src/control/replay_guard.zig; src/policy/control_ipc.zig is an unlinked v1 reference with zero production importers",
       "cli_implementation": "tools/aegisctl.py",
       "producer": "TypeScript/Python CLI",
       "consumer": "Zig Runtime (named pipe)",

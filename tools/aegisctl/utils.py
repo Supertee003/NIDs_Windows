@@ -164,20 +164,21 @@ def control_request(command: str, role: str, transport: str = "pipe", **kwargs: 
     P1: Transport is explicit — no automatic fallback.
     The caller must choose pipe or tcp. Default is pipe.
     """
-    import secrets
     from .client import AegisClient, AegisCtlError
+    from .envelope import build_v2_envelope
 
-    request_id = secrets.token_hex(16)
-    nonce = secrets.token_hex(8)
-
-    # Audit log the attempt
+    # CONTROL-REPLAY-001: audit the exact envelope that goes on the wire.
+    # The caller role is NOT sent -- the daemon derives it from the token.
+    wire = build_v2_envelope(command, kwargs)
+    # Pin the AC3 audit fields explicitly: request_id + nonce + caller must be
+    # visible to auditors even though only the wire envelope is authoritative.
     envelope = {
         "command": command,
-        "role": role,
+        "requested_role": role,
         "caller": "aegisctl",
-        "request_id": request_id,
-        "nonce": nonce,
-        **kwargs,
+        "request_id": wire["request_id"],
+        "nonce": wire["nonce"],
+        **wire,
     }
     CONTROL_AUDIT_LOG.parent.mkdir(parents=True, exist_ok=True)
     with CONTROL_AUDIT_LOG.open("a", encoding="utf-8") as f:
@@ -186,7 +187,7 @@ def control_request(command: str, role: str, transport: str = "pipe", **kwargs: 
     # Actually send to daemon
     try:
         client = AegisClient(transport=transport)
-        resp = client.send(command, kwargs)
+        resp = client.send(command, kwargs, envelope=wire)
         return resp
     except AegisCtlError as e:
         return {"ok": False, "error": str(e)}

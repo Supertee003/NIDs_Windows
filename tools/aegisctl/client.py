@@ -57,7 +57,8 @@ class AegisClient:
         self.transport = transport
         self._audit_log: list[Dict[str, Any]] = []
 
-    def send(self, command: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def send(self, command: str, payload: Optional[Dict[str, Any]] = None,
+             envelope: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Send a command to the daemon via the selected transport.
 
         Raises:
@@ -74,7 +75,7 @@ class AegisClient:
         start = time.monotonic()
         try:
             if self.transport == "pipe":
-                result = self._send_pipe(command, payload)
+                result = self._send_pipe(command, payload, envelope)
             else:
                 raise AegisCtlError(f"unknown transport: {self.transport!r}")
         except AegisCtlError:
@@ -86,7 +87,8 @@ class AegisClient:
         self._audit_entry(command, self.transport, elapsed_ms, result.get("ok", False))
         return result
 
-    def _send_pipe(self, command: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def _send_pipe(self, command: str, payload: Optional[Dict[str, Any]] = None,
+                   envelope: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         try:
             import win32file
             import win32pipe
@@ -115,7 +117,9 @@ class AegisClient:
                     win32pipe.WaitNamedPipe(DEFAULT_NAMED_PIPE, 1000)
             if handle is None:
                 raise last_error or RuntimeError("named pipe remained busy")
-            req = json.dumps({"command": command, "payload": payload or {}}).encode("utf-8")
+            from .envelope import build_v2_envelope, build_v2_request, serialize_envelope
+
+            req = serialize_envelope(envelope) if envelope is not None else build_v2_request(command, payload)
             win32file.WriteFile(handle, req)
             # Size every read to the bytes left in the current message and
             # accumulate until the document parses. PeekNamedPipe's third field

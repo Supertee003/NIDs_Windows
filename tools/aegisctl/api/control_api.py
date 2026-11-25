@@ -101,7 +101,9 @@ def _query_daemon(command: str, payload: Optional[Dict[str, Any]] = None) -> Opt
     """Query the running Zig daemon; return None when it is unavailable."""
     if os.name != "nt":
         return None
-    request = {"command": command, "payload": payload or {}}
+    from ..envelope import build_v2_request
+
+    request_bytes = build_v2_request(command, payload)
     try:
         import ctypes
         from ctypes import wintypes
@@ -130,7 +132,6 @@ def _query_daemon(command: str, payload: Optional[Dict[str, Any]] = None) -> Opt
         if handle == invalid_handle:
             return None
         try:
-            request_bytes = json.dumps(request, separators=(",", ":")).encode("utf-8")
             sent = wintypes.DWORD(0)
             request_buf = ctypes.create_string_buffer(request_bytes)
             if not write_file(handle, request_buf, len(request_bytes), ctypes.byref(sent), None):

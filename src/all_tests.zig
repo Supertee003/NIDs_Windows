@@ -222,6 +222,7 @@ comptime {
     // Control plane contract + handlers (T3-TWOP-023 pins execute here).
     _ = @import("control/protocol.zig");
     _ = @import("control/handler_registry.zig");
+    _ = @import("control/replay_guard.zig");
     _ = @import("control/defcon.zig");
     // IDS-COV-001: direct edges ensure these inline tests execute in zig build test.
     _ = @import("capture/proto/l7_payload.zig");

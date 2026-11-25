@@ -369,9 +369,12 @@ class RuntimeProbe:
                 raise exc from e
             raise
         try:
-            # Use the canonical v2 control command.  The legacy HEALTH op is
-            # not a protocol command and is rejected by Command.fromString().
-            win32file.WriteFile(handle, b'{"command":"system.health","payload":{}}\n')
+            # Use the canonical v2 control command with a fresh nonce. The
+            # legacy HEALTH op is not a protocol command and is rejected by
+            # Command.fromString().
+            from tools.aegisctl.envelope import build_v2_request
+
+            win32file.WriteFile(handle, build_v2_request("system.health", {}))
             # The pipe is byte-mode. ReadFile is allowed to return a partial
             # JSON document, especially for the ~2 KB health payload. Keep
             # reading until one complete JSON object is available instead of

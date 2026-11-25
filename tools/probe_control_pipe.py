@@ -43,7 +43,9 @@ def main() -> int:
         print(json.dumps({"stage": "CreateFileW", "error": ctypes.get_last_error(), "pipe": PIPE}))
         return 1
     try:
-        request = json.dumps({"command": "system.health", "payload": {}}, separators=(",", ":")).encode()
+        from aegisctl.envelope import build_v2_request
+
+        request = build_v2_request("system.health", {})
         sent = wintypes.DWORD()
         ok = k.WriteFile(h, ctypes.create_string_buffer(request), len(request), ctypes.byref(sent), None)
         if not ok:
