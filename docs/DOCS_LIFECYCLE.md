@@ -36,6 +36,8 @@
   pins that state.
 - Stale doc sweep pins in `tests/docs/test_stale_doc_sweep.py` keep CLI/authority
   pages aligned with source.
+- `docs/START-HERE.md` is the single developer onboarding index; it points at
+  the live truth surfaces and the issue dispositions without adding proof.
 - `docs/historical/` holds archived dated material; unfrozen material remains
   in `analysis/current-head/`.
 - The nine root-dated `AEGIS_*_2026-09-*.md` handoffs remain at their tracked
