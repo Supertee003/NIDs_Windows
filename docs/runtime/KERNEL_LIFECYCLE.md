@@ -46,13 +46,13 @@ A valid kernel lifecycle proof at a given build source must record:
   record explicitly states that no E5 functional capture claim was established.
   That honesty is preserved here.
 
-## 4. Status at `4dd3393`
+## 4. Status at `aa3b7b0`
 
 | Check | Status |
 |---|---|
 | Kernel contract documented | E1 PASS (this page) |
-| Load/unload/cleanup executed at `4dd3393` | **NOT_PROVEN** |
-| Signed driver at current source | **NOT_PROVEN** (immutable release identity is `v1.1` / `466a226` / `a53eda8`) |
+| Load/unload/cleanup executed at `aa3b7b0` | **NOT_PROVEN** |
+| Signed driver at current source | **NOT_PROVEN** (immutable release identity is `v1.1` / `466a226` / `a53eda8`; the additive `6c94b47` record verifies a release record, not a signed driver) |
 | Full kernel IDS qualification | **NOT_PROVEN** |
 
 ## 5. Open work

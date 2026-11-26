@@ -19,7 +19,8 @@
 > The immutable v1.1 release identity above is unchanged. Authority:
 > `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`.
 
-> **CURRENT SOURCE CLOSEOUT (2026-11-26):** records tip `ad55d55`, build source
+> **CURRENT SOURCE CLOSEOUT (2026-11-26):** records tip `8f01825` at that
+> re-anchor (check `git rev-parse HEAD` for later records-only commits), build source
 > `aa3b7b0`. Additive signed record `release/T20-final/6c94b47` with owner key
 > `DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU=`; `release_signature` PASS,
 > but the board is **5/6 with `soak_24h` OPEN — NOT SHIPPABLE**. Current-source

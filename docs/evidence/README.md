@@ -24,6 +24,9 @@ home; it adds no new evidence and changes no claim.
    [`MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md`](../../analysis/current-head/MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md).
 5. Release identity remains `v1.1` / signed candidate `466a226` / build source
    `a53eda8` with six fail-closed gates. No entry in this index re-opens or
-   re-signs that immutable release.
+   re-signs that immutable release. The current build source is `aa3b7b0`, which
+   has an **additive** signed record at `release/T20-final/6c94b47` and a 5/6
+   board with `soak_24h` OPEN — NOT SHIPPABLE; see
+   [`CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md`](../../analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md).
 
 Validation: `python scripts/check_summary.py` must print `SUMMARY_VALID`.

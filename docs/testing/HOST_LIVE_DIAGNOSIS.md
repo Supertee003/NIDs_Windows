@@ -43,7 +43,7 @@ audit rows in this log carry no capture source address.
 | Installed service | `AegisNids`, `C:\Program Files\AEGIS NIDS\runtime\aegis_nids.exe`, RUNNING |
 | Installed daemon SHA-256 | `FBD9BDB3456C9C7DAFCBF1B0C3FBDAD9778F61C3186167856E373CC376185474` |
 | What that hash is | Runtime of immutable release identity `v1.1` / `466a226` / build source `a53eda8` (recorded in `analysis/current-head/SOAK-WINDOW-466A226-20261120.md` and `tools/host_preflight.py`) |
-| Current build source | `4dd33936909de1314099652a7523e52c40bb2c44` — **not** `a53eda8` |
+| Current build source | `aa3b7b0161e425e54155d5767737bffcde7939b5` — **not** `a53eda8`. Sections 1–5 describe the restored baseline; the narrow E6 PASS in §6 used swapped current-source binaries and a verified baseline restore |
 | Nose interface selection in current source | `nose/capture.go:68-90` `firstUpDevice` excludes loopback in **auto-selection**; explicit selection is via `AEGIS_NOSE_IFACE` (`nose/main.go:38-46`) |
 
 The installed pair predates the current source and is not pinned to

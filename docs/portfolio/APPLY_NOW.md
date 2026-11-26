@@ -33,7 +33,7 @@ seven toolchains; C/C++ is one adapter family; TypeScript is advisory-only), but
 owns the pipeline and no layer can promote "detected" into "blocked." Published `v1.1` is an
 Ed25519-signed, detection-only build from signed candidate `466a226` / build source `a53eda8`,
 with a genuine 36.52 h owner-run soak PASS and a bounded Windows host detection proof that has a
-negative control. Current build source is `a26c573`; the only current-source E5 is the narrow issue #44 canonical-pipe `-inject` stop/inject/restore proof (`MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md`), not a new soak, detection-matrix, install, signing or production proof.
+negative control. Current build source is `aa3b7b0`; narrow current-source proofs are the loopback E6 pair, S2 replay denial E5, S3 durable identity E5 and a 100 connections/s loopback load E5, with deterministic fuzz/bench at E2. The issue #44 `-inject` proof at `a26c573` is HISTORICAL. There is still no soak PASS, full detection-matrix E5, install/signing qualification or E7 claim at this source; `analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md` records the 5/6 board.
 
 ---
 

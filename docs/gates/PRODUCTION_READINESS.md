@@ -8,8 +8,11 @@
 > **Reading rule.** The conditions below are the historical definition, not the gate board.
 > The v1.1 **release-identity** board is `docs/gates/T20_100pct_audit.md` → SHIPPABLE, 6/6 PASS
 > (0 open), recorded at signed candidate `466a226` / build source `a53eda8`; release record
-> `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`. That board is **not** a re-run at the
-> current build source (`a26c573` at the 2026-11-24 audit); no current-source E5/soak claim is made here.
+> `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`. That board is immutable and is
+> **not** a re-run at the current build source `aa3b7b0`. The current-source board is **5/6 PASS
+> with `soak_24h` OPEN — NOT SHIPPABLE**; see §6 and
+> `analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md`. No current-source soak or
+> E7 claim is made here.
 >
 > **Evidence-retention limit.** The board's `clean_host_e5` and `soak_24h` inputs are owner-attested
 > operator files under ignored `admin-evidence/`. They are not reproducible from a fresh clone;
@@ -78,7 +81,7 @@ baseline. Gate 9 is a recorded decision pending owner sign-off.
 
 | Gate | Test / tool | Evidence (path or ID) | E-level | Current? |
 |---|---|---|---|---|
-| `truth_artifacts` | `python tools/truth.py verify`; `python scripts/check_summary.py` | `TRUTH_VALID` / `SUMMARY_VALID` at build source `aa3b7b0` (records tip `ad55d55`) | E1 | yes |
+| `truth_artifacts` | `python tools/truth.py verify`; `python scripts/check_summary.py` | `TRUTH_VALID` / `SUMMARY_VALID` at build source `aa3b7b0` (records tip `8f01825` at the gate run; check `git rev-parse HEAD` for later records-only commits) | E1 | yes |
 | `component_audit` | `zig build test`; `pytest -q -m "not host_live"` (1520 pass/1 skip/18 deselected/27 subtests); `go test ./...` (ok); RULE-LAYER 5/5 | `analysis/current-head/TEST-MATRIX-AA3B7B0-20261126.md`; `build_manifest.json` (66/66 modules, 0 production failures) | E2 | yes at `aa3b7b0` |
 | `release_signature` | `tools/final_audit.py --release-check`; `sign_release.py --verify`; `verify_detached_signature` | `release/T20-final/6c94b47/signatures.json` (digest `94F65BCC…`, owner anchor `DCNPphsq…`); `analysis/current-head/RELEASE-SIGNATURE-AA3B7B0-20261126.md` | E2 (release record verification only) | yes; published `v1.1`/`466a226` unchanged |
 | `clean_host_e5` | `tools/host_preflight.py`; `tools/upgrade_rollback.py`; driver thumbprint check; duplicate-pair probe | `admin-evidence/e5-clean-host-20261120-final/preflight-20261120.json` PASS, loader bound to pinned installer/runtime/driver hashes | E5 | yes (owner-attested, historical host window) |

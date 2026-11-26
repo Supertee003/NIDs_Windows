@@ -31,6 +31,14 @@ subsystems report `RUNNING` and the console shows authoritative daemon data.*
 | Proof | [`v1.1` release](https://github.com/Supertee003/NIDs_Windows/releases/tag/v1.1) — SHIPPABLE, **6/6 gates PASS (0 open)**, 36.52 h owner-run soak PASS, 674/674 artifact hashes verified against **one** Ed25519 signature over `SHA256SUMS`; 1,471 Python tests (two-phase run at build source `a53eda8`, 0 skipped). Single source of status: [`release/release-status.json`](release/release-status.json) |
 | Boundary | observe-only; prevention gate closed; `host_effect_capable=false`; no WFP enforcement in production |
 
+> **Current source vs published release.** The `v1.1` proof row above is the immutable published
+> release identity (`466a226` / `a53eda8`). The current build source is `aa3b7b0`; its additive
+> signed record is `release/T20-final/6c94b47`, and the current-source board is **5/6 PASS with
+> `soak_24h` OPEN — NOT SHIPPABLE**. Narrow `aa3b7b0` proofs cover the loopback E6 pair, S2
+> replay denial, S3 durable identity and a 100/s loopback load; no full Windows E5, soak, driver
+> or E7 claim is made. Details:
+> [`analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md`](analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md).
+
 *Counting convention: "six language families" groups C and C++ as one adapter family. The
 repository contains seven language toolchains (Zig, Go, C, C++, Rust, Python, TypeScript);
 TypeScript is advisory-only and emits no production artifact.*
@@ -59,9 +67,10 @@ deliberately out of scope?" No implementation claim here implies a production ho
 - No production host enforcement; the system is detection-only and observe-only.
 - L7 inspection is limited by current packet visibility; TLS payloads are not plaintext-inspected.
 - TCP stream reassembly is implemented but has no production caller; do not claim session-level reassembly.
-- Detection rule live-validation coverage is partial: 22/23 are host-evaluable (R2003/FN-1).
-- Control IPC declares `nonce` and `issued_at_ms` but does not enforce active nonce/replay protection.
+- Detection rule live-validation coverage is partial: 22/23 are host-evaluable; the R2003 read-only producer is source-closed at E2 but not re-measured on the host.
+- Control IPC now enforces nonce/replay at the source; exact replay denial has narrow E5 proof at `aa3b7b0`, not a full matrix proof.
 - Windows compatibility is limited to the tested configurations; no current-source full WFP E5 result is claimed.
+- No fresh 24 h soak exists at `aa3b7b0`; two attempts were voided and the board remains NOT SHIPPABLE.
 
 Full list with evidence boundaries: [Known limitations and open work](#known-limitations-and-open-work).
 Status source: [`release/release-status.json`](release/release-status.json).
@@ -678,12 +687,12 @@ at build source `ab0fa17`; the remaining items are still open.
 | 1 | The WFP block handler is still present in the lab driver binary but is not reachable from production code; WFP is fail-open observe-only telemetry | Source call-graph reading only (not disassembly). An old persistent filter can still be recovered at startup; cleanup can only remove a filter with the AEGIS proof-provider GUID |
 | 2 | TCP stream reassembly exists in `src/capture/stream_reassembly.zig` but has no production caller | Detection runs on single-packet prefixes. Do not claim session-level reassembly |
 | 3 | Canonical length/version mismatch (fixed at `ab0fa17`, issue #41 closed) | All codecs now require exact per-version length; a mismatch is rejected and counted in `nose_frames_rejected`. Still no E5 corrupted-frame injection test |
-| 4 | Zig counts `2116/2114/2109 passed, 11 skipped` were historical at `f0baadf` (issue #42 closed) | Those strings are now labelled as historical; the current-source run at `ab0fa17` is `3366/3376 passed, 10 skipped` |
+| 4 | Zig counts `2116/2114/2109 passed, 11 skipped` were historical at `f0baadf` (issue #42 closed) | Those strings and the `ab0fa17` `3366/3376 passed, 10 skipped` run are historical; the current-source Python run at `aa3b7b0` is `1520 passed, 1 skipped, 18 deselected, 27 subtests` |
 | 5 | ABI framing contradiction (fixed at `ab0fa17`, issue #43 closed) | Active pipe framing is a 4-byte length prefix + payload (`113/137/169..1193` bytes); the old `125-byte` WEV1 contract is explicitly scoped as legacy |
-| 6 | Control IPC v2 declares `nonce` and `issued_at_ms` fields but does not enforce replay protection | Token-derived per-command authorization exists; active nonce/replay enforcement does not |
+| 6 | Control IPC v2 nonce/replay was previously only declared | `4bc8244` enforces nonce/freshness/replay at the source; exact replay denial has narrow E5 proof at `aa3b7b0`, not a full matrix proof |
 | 7 | Loopback capture is a self-test binding, not a general live-network proof | The live host-positive proof is the bounded SYN burst from `192.168.1.39` to `192.0.2.1:1..40` on one interface, with a 10-port negative control |
 | 8 | R2003 (PowerShell cradle) is a known false negative on the measured host | Process telemetry in v0–v4 has no `CommandLine` field; since `493648f` a read-only source is proven at E2 but the installed host has not been re-measured |
-| 9 | No authoritative MITRE ATT&CK mapping, Splunk content, published fuzz campaign, fixed-rate offered-load ceiling, clean install/uninstall campaign, or full WFP E5 result for the current source | These are future work, not existing evidence |
+| 9 | No authoritative MITRE ATT&CK mapping, Splunk content, coverage-guided fuzz campaign, clean install/uninstall campaign, or full WFP E5 result for the current source | Deterministic 1,000-case fuzz and in-process bench are E2 PASS at `aa3b7b0`; a fixed-rate 100 connections/s loopback load is narrow E5 PASS. The listed campaign items remain future work, not existing evidence |
 | 10 | The current lab snapshot has nonzero drop/shed counters (`minifilter_ring_dropped=1,341,156`, `alert_file.failed=7,028`) | The v1.1 soak measured zero loss **only during its recorded 36.52 h window**; never claim "zero loss ever" on this host |
 
 Source-side comment/capability overclaims were corrected at `ab0fa17` (issue #40 closed).

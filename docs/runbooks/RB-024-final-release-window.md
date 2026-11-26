@@ -188,7 +188,7 @@ $env:AEGIS_RELEASE_TRUSTED_PUBLIC_KEY = 'txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5k
 python tools\final_audit.py --release-check
 ```
 
-## Result — 2026-11-19 (steps 1-6, current build source)
+## Result — 2026-11-19 (steps 1-6, build source `f4cde3c` at that time)
 
 `admin-evidence/e5-clean-host-20261119-final/RB-024-result.json` records the
 clean rerun against `release/T20-final/b597e71` on build source `f4cde3c`:

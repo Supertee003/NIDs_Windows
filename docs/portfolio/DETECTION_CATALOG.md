@@ -8,12 +8,14 @@
 
 > **Provenance (P5-DETECTION-TRUTH).** The rule matrix and E5/E6 rows below were measured at build
 > source `f4cde3c`; the immutable release identity is `a53eda8`; the current build source is
-> `7822f4c`. The earlier `a26c573` and `43a8bcc` sources are HISTORICAL. The matrix has **not**
-> been re-measured at `7822f4c`: E3 and narrow elevated canonical-pipe E4/E5 records at `43a8bcc`
-> are HISTORICAL and cover the `-inject` lifecycle only, not detection efficacy; E3 and narrow
-> E4/E5 at `7822f4c` are current for that narrow pipe-reader lifecycle only and do not
-> re-measure the matrix. Treat every E5/E6 row here as
-> HISTORICAL at its recorded source, not as current-source verification. See `docs/DETECTION_VALIDATION.md` and
+> `aa3b7b0`. The earlier `7822f4c`, `a26c573` and `43a8bcc` sources are HISTORICAL. The full
+> matrix has **not** been re-measured at `aa3b7b0`: E3/E4/E5 records at `43a8bcc` and narrow
+> E3/E4/E5 at `7822f4c` are HISTORICAL and cover the `-inject` pipe-reader lifecycle only, not
+> detection efficacy. One narrow current-source result exists: R9006 has an E6 PASS at `aa3b7b0`
+> from the two loopback host_live tests with attributable rows
+> (`analysis/current-head/MASTER-AUDIT-LOOPBACK-BPF-E6-AA3B7B0-20261126.md`). Treat every other
+> E5/E6 row here as HISTORICAL at its recorded source, not as current-source verification. See
+> `docs/DETECTION_VALIDATION.md` and
 > [`docs/portfolio/DETECTION_MATRIX_CURRENT.md`](DETECTION_MATRIX_CURRENT.md).
 
 ## 1. Three different meanings of "coverage"

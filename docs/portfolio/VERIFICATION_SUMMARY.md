@@ -28,12 +28,14 @@
 | Live host | Narrow E4/E5 PASS: owner-run elevated canonical-pipe `-inject`, exact deltas, verified stop/restore. Full current-head Windows E5 / kernel qualification: **NOT_PROVEN**; the narrow proof predates S1–S4 and is HISTORICAL at `4dd3393` | `analysis/current-head/MASTER-AUDIT-C6-E4E5-CURRENT-SOURCE-20261125.md`; `runtime_manifest.json:535` | `7822f4c` (HISTORICAL at `4dd3393`) |
 | Detection | 23/23 catalogued and evaluable **at fixture/code-path level**; 22/23 host-evaluable; live positive proof is L4 family only (R9006 strongest). R2003 has no host proof (FN-1) | `docs/portfolio/DETECTION_CATALOG.md`; `README.md:57-71`; `docs/testing/RESULTS.md:60-72` | catalog current; E5 proofs historical at their own commits |
 | Soak | RECORDED PASS **36.52 / 24.0 h**, `problems=[]`, zero loss/shed counters **only in that recorded window**; HISTORICAL at release identity and at `4dd3393` | `analysis/current-head/SOAK-PASS-466A226-20261122.md`; `docs/testing/RESULTS.md:39-58` | `a53eda8` |
-| Fuzz (new) | REAL E2 deterministic smoke: seed `0xDEADBEEF`, 1,000 inputs, leak guard clean, binary SHA-256 `7681B52F…C621`; coverage-guided campaign still NOT_RUN | `docs/testing/FAULT_INJECTION_INVENTORY.md` §1a | `4dd3393` |
-| Microbenchmark (new) | REAL E2 ReleaseFast `quick` 6/6 thresholds PASS, `latency` p50/p95/p99 recorded; binary SHA-256 `8829E03D…DA476`; fixed-rate network benchmark still NOT_RUN | `docs/portfolio/PERFORMANCE_REPORT.md` §1a | `4dd3393` |
+| Fuzz (current) | REAL E2 deterministic smoke at current source: 1,000 cases, thresholds PASS; coverage-guided campaign still **NOT_RUN** | `analysis/current-head/CURRENT_HEAD_FUZZ_BENCH-20261126.md` | `aa3b7b0` |
+| Microbenchmark (current) | REAL E2 ReleaseFast `quick` thresholds PASS with recorded `latency` percentiles at current source; fixed-rate **network** benchmark now PASS narrow E5 at 100 connections/s for 60 s | `analysis/current-head/CURRENT_HEAD_FUZZ_BENCH-20261126.md` (raw `netbench/`) | `aa3b7b0` |
 | CI (new) | REAL E4 hosted CI green: push run `45675880854` and dispatch `45676093328`, both `success` at records HEAD `e64ea25`; all jobs + `ci-matrix` PASS. Not E5/E6/E7 | `docs/CI_QUALITY_GATES.md` §4a | `4dd3393` |
 | Full local suite (new) | `pytest -m "not host_live" -q` → **1,518 passed, 1 skipped, 18 deselected, 27 subtests** | `analysis/current-head/MASTER-AUDIT-AEGIS-PLAN-007-020-20261126.md` follow-up | `4dd3393` (HISTORICAL at `aa3b7b0`) |
 | Full local suite (current) | `pytest -m "not host_live" -q` → **1,520 passed, 1 skipped, 18 deselected, 27 subtests**; `go test ./...` PASS; docs/release 278 passed | this worktree, recorded in `analysis/current-head/MASTER-AUDIT-LOOPBACK-BPF-E6-AA3B7B0-20261126.md` §5 | `aa3b7b0` |
 | Host_live loopback (new) | **E6 PASS, narrow**: both loopback scan tests pass at the current source with 2 attributable R9006 rows and verified elevated restore; not a 23-rule matrix, soak, driver or E7 proof | `analysis/current-head/MASTER-AUDIT-LOOPBACK-BPF-E6-AA3B7B0-20261126.md`; `docs/testing/HOST_LIVE_DIAGNOSIS.md` §6 | `aa3b7b0` |
+| Release record (current) | **PASS E2**: additive Ed25519 record `release/T20-final/6c94b47` verifies under owner anchor `DCNPphsq…`; release-record verification only, not E5/E6/E7 | `analysis/current-head/RELEASE-SIGNATURE-AA3B7B0-20261126.md`; `docs/gates/RELEASE_TRUST_ANCHOR.md` | `aa3b7b0` |
+| Release board (current) | **5/6 PASS with `soak_24h` OPEN — NOT SHIPPABLE**; two soak windows voided, no fresh 24 h verdict | `analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md`; `docs/gates/T20_100pct_audit.md` | `aa3b7b0` |
 
 ## What the numbers do not prove
 
@@ -43,12 +45,15 @@
 - The narrow `43a8bcc` E4/E5 proof is HISTORICAL at that source; it does not establish detection
   matrix, soak, loss-rate, install, signing, E6/E7 or full host qualification at `7822f4c`.
 - C6 source-level visibility/shutdown changes remain E2 only; the current-source E3/E4/E5 proof covers the pipe-reader exact deltas and host lifecycle, not the capture path or detection efficacy. Full Windows E5/kernel qualification is not proven.
-- `a26c573`, `03bb86d` and `43a8bcc` proofs are HISTORICAL and do not substitute for current-source proof.
+- `a26c573`, `03bb86d`, `43a8bcc` and `4dd3393` proofs are HISTORICAL and do not substitute for current-source proof.
+- The current-source S2/S3 and loopback results are narrow E5/E6 proofs; they do not establish the
+  full 23-rule matrix, a 24 h soak, driver/kernel lifecycle, or E7 release qualification.
 
 ## Known limitations
 
 See [`README.md` § Known limitations](../../README.md#known-limitations--read-before-the-proof-numbers)
 and the full list at [`README.md` § Known limitations and open work](../../README.md#known-limitations-and-open-work).
-Highest-priority gaps: R2003 command-line producer, VLAN/IPv6 coverage, collector
-shutdown, active IPC nonce/replay, cross-language ABI byte vector, and owner-side
-signing / attestation.
+Highest-priority open items: fresh 24 h soak, full 23-rule matrix E5, coverage-guided fuzzing,
+driver/kernel lifecycle proof, E7 qualification, and R2003 host re-measurement of the E2 producer.
+R2003 source, VLAN/IPv6, collector shutdown, active IPC nonce/replay and cross-language ABI byte
+vectors are source-closed at E2; only the narrow S2/S3 host proofs are E5.

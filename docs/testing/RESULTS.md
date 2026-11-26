@@ -6,7 +6,7 @@
 
 ---
 
-## 1. Current-head full Python suite (two-phase, zero skips)
+## 1. Historical full Python suite at `a53eda8` (two-phase, zero skips)
 
 From
 [`analysis/current-head/CAPTURE-LOOPBACK-002-FULLPATH-20261122.md`](../../analysis/current-head/CAPTURE-LOOPBACK-002-FULLPATH-20261122.md):
@@ -19,7 +19,12 @@ From
 
 This is the source of the "1,471 passed / 0 skipped" claim in the resume and README. It was a
 **real full-suite run on the then-current source**, with one test deselected in phase 2 because it
-requires the daemon lifecycle state that phase intentionally excludes.
+requires the daemon lifecycle state that phase intentionally excludes. It is HISTORICAL at the
+current build source `aa3b7b0`; the current-source local gate run is
+`pytest -q -m "not host_live"` → **1520 passed, 1 skipped, 18 deselected, 27 subtests passed**,
+recorded in `analysis/current-head/TEST-MATRIX-AA3B7B0-20261126.md`. No test was skipped or
+xfailed to hide a failure: the two `host_live` tests require the installed current-source host and
+passed only in the elevated owner run.
 
 ## 2. Zig suites — different recorded snapshots, not one merged number
 

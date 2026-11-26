@@ -24,11 +24,11 @@ Toolchain versions are pinned in `docs/runtime/TOOLCHAIN_INVENTORY.md` and
 
 | OS build | Architecture | Tested at current source | Evidence |
 |---|---|---|---|
-| Windows 10 x64 lab host | x64 | **NOT_TESTED at `4dd3393`** | Historical soak at release identity `a53eda8` |
-| Windows 11 x64 lab guest | x64 | **NOT_TESTED at `4dd3393`** | Historical isolated-lab records (`192.168.126.20`) at their own commits |
+| Windows 10 x64 lab host | x64 | **NARROW E5/E6 PROOFS at `aa3b7b0`**; not an OS-compatibility matrix result | Loopback E6, S2/S3 E5 and 100/s load records in `analysis/current-head/raw-aa3b7b0-20261126/`; historical soak at `a53eda8` |
+| Windows 11 x64 lab guest | x64 | **NOT_TESTED at `aa3b7b0`** | Historical isolated-lab records (`192.168.126.20`) at their own commits |
 | Windows Server 2019 | x64 | **NOT_TESTED** | none |
 | Windows Server 2022 | x64 | **NOT_TESTED** | none |
-| Any WDK/minifilter-host combination | x64 | **NOT_PROVEN at `4dd3393`** | `docs/runtime/KERNEL_LIFECYCLE.md` |
+| Any WDK/minifilter-host combination | x64 | **NOT_PROVEN at `aa3b7b0`** | `docs/runtime/KERNEL_LIFECYCLE.md` |
 
 A declare-only row is not a PASS row. Do not cite this page as compatibility
 certification.

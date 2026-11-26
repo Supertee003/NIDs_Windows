@@ -21,7 +21,7 @@
 
 ## Source-of-truth order
 
-1. Actual runtime behavior (current source at build source `7822f4c`; `43a8bcc` is HISTORICAL)
+1. Actual runtime behavior (current source at build source `aa3b7b0`; `7822f4c` and `43a8bcc` are HISTORICAL)
 2. `src/contract/canonical_event.zig` — authoritative Zig codec
 3. `shared/event/canonical_event.md` — frozen schema
 4. `shared/protocol/wire_v3.md` — active framing

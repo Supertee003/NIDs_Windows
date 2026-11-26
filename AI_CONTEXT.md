@@ -6,11 +6,11 @@
 
 **HEAD:** `aa3b7b0161e425e54155d5767737bffcde7939b5` (build source commit — ADR-0008)
 
-**RECORDS TIP:** `1f83eeb` (records head before the final source-hygiene slice; a commit cannot contain its own SHA)
+**RECORDS TIP:** `8f01825` at the 2026-11-26 re-anchor; check `git rev-parse HEAD` for the live value (a commit cannot contain its own SHA)
 
 **BRANCH:** `main`
 
-**GENERATED:** 2026-11-03T14:45:00+07:00
+**GENERATED:** 2026-11-26 (current-source closeout re-anchor; later records-only commits do not move the build source)
 
 **GENERATOR:** Manus + `tools/rebuild_truth.py` (ADR-0008 source-commit stamp)
 
@@ -53,7 +53,8 @@
 > Authority: `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`.
 
 > **CURRENT SOURCE STATE (2026-11-26):** build source is `aa3b7b0` and the
-> records tip is `ad55d55`. The published v1.1 identity above is unchanged. A
+> records tip at that re-anchor was `8f01825` (check `git rev-parse HEAD` for
+> later records-only commits). The published v1.1 identity above is unchanged. A
 > new additive owner-approved Ed25519 record exists at
 > `release/T20-final/6c94b47` (public anchor
 > `DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU=`; private key outside the
@@ -82,7 +83,7 @@
 - Go Nose sends length-prefixed CanonicalEvent frames over `\\.\pipe\aegis_nose` to the Zig reader; C/C++ adapters use separate C ABI contracts.
 - Python Brain inspection is optional. UDP offers are fire-and-forget; opt-in findings return only as advisory sensor events. The Phase-B BrainAdvisor dispatcher is test-harness-only. XDR is advisory recording-only at current HEAD: XDR-WIRE-001 feeds the selected fabric from detection-identity events, and XDR-RECEIPT-002 persists frozen multi-source assessments as IDS Evidence Receipts after forensic hash read-back with replay. The receipt value is discarded; no scoring, policy, PEP, DEFCON, ActionDispatcher, or host-effect consumer exists. Windows E5 for the detection-only path is recorded in `analysis/current-head/PROJECT-CLOSEOUT-20261117.md` (v2.0.0).
 - Earlier Windows E5 evidence was recorded for the historical v2.0.0 build source `7c604d5`; it does not establish kernel qualification, production driver signing, or E7. Published release identity is `v1.1` / signed candidate `466a226` / build source `a53eda8`; current build source is `aa3b7b0` (loopback BPF fix; predecessor `4dd3393` with S4 versioned canonical policy bytes at E2, source `2673bd2` + seam registration `4dd3393`; S3 durable v3 producer identity issuance/admission at E2; S2 `4bc8244` added active control-v2 nonce/replay/freshness at E2; S1 `493648f` added the read-only R2003 command-line producer at E2; `7822f4c` is the predecessor with C6 capture proof). At `aa3b7b0` a narrow E6 host proof passes both loopback host_live tests with attributable R9006 rows (`analysis/current-head/MASTER-AUDIT-LOOPBACK-BPF-E6-AA3B7B0-20261126.md`); `4dd3393` and earlier host claims are HISTORICAL. Treat older deployment/evidence narratives below as historical unless their source commit and current-head proof are explicitly verified.
-- Issue #44 observability is proven at **current build source `a26c573`** (records-only 2026-11-25 re-execution of the unmodified harness: E3 isolated-pipe `-inject` plus E4/E5 elevated Windows-host `-inject` on the canonical `\\.\pipe\aegis_nose` with verified stop/restore lifecycle). The earlier entries at `03bb86d` remain CLOSED_AT_RECORDED_HEAD and are not substituted for this run. Narrow scope: the harness is the pipe server with a fabric sink; no service-consumer/Nose-producer, rule-matrix, soak, install, signing, E6/E7 or zero-loss claim. Evidence: `analysis/current-head/MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md`; historical: `analysis/current-head/MASTER-AUDIT-P8-I44-E4E5-20261124.md` and `analysis/current-head/MASTER-AUDIT-P8-I44-E3-20261124.md`.
+- Issue #44 observability was proven at `a26c573` (records-only 2026-11-25 re-execution of the unmodified harness: E3 isolated-pipe `-inject` plus E4/E5 elevated Windows-host `-inject` on the canonical `\\.\pipe\aegis_nose` with verified stop/restore lifecycle). That source and the earlier `03bb86d` entries are HISTORICAL relative to `aa3b7b0`; they are not substituted for current-source proof. At `aa3b7b0` the narrow proofs are the loopback E6 pair, S2 exact replay denial E5, S3 durable identity E5 and a 100/s loopback load E5. No service-consumer/Nose-producer, full rule-matrix, soak, install, signing, E6/E7 or zero-loss claim is made. Evidence: `analysis/current-head/MASTER-AUDIT-LOOPBACK-BPF-E6-AA3B7B0-20261126.md`, `analysis/current-head/S2S3-HOST-PROOF-E5-AA3B7B0-20261126.md`, `analysis/current-head/CURRENT_HEAD_FUZZ_BENCH-20261126.md`; historical: `analysis/current-head/MASTER-AUDIT-P8-I44-CURRENT-SOURCE-20261125.md`.
 - G2 enforcement lab is retired, not pending (2026-11-17): on a single-host window the signed lab policy matched the 443 canary (`policy=3`) and the installed PEP answered `decision=escalate reason=8 filter_id=0` for block/quarantine (direct FFI probe, `PepRequest` 64 B). `EVI-G2-PEP-CACHE-001-LAB-20261023` is CLOSED as superseded by RETIRE-HOST-EFFECT-001 / issue #25, and the host was restored hash-identically. The direction-verify, duplicate-filter, and unblock steps did not run and are not claimed. Evidence: `analysis/current-head/G2-ENFORCEMENT-RETIRED-20261117.md`.
 - Wi-Fi frame duplication is closed as not reproducible (2026-11-17): the older counter keyed on address/id/seq fields and therefore counted TCP Dup ACKs. A raw-byte probe (equal length + equal sha256 within 2 ms) reproduces 5/14 duplicated host_tx frames in the 02:39 capture and finds 0 in 29,060 frames taken later the same day, including 1,126 fps with the Go Nose handle attached (nose: 26,300 captured / 26,300 canonical / 0 dropped). `CAPTURE-DUP-WIFI-001` is CLOSED; the 02:39 root cause is not claimed. Reopen if the byte-level probe reports a nonzero pair count. Evidence: `analysis/current-head/CAPTURE-DUP-WIFI-20261117.md`.
 
@@ -733,9 +734,9 @@ Previous phases:
   DEPLOY-120-E5-ATTEMPT-20261020 (E5 FAIL), DEPLOY-120-E5-20261020 (E5 PASS);
   gap DEPLOY-120-E5 CLOSED; kit gitignored.
 
-- CI truth source-commit semantics (2026-10-20): IMPLEMENTED - ADR-0008; truth.py keys on the last
-  source/build commit (current ee1010e), verifies ancestry + clean source paths; maps/AI_CONTEXT/EVI/
-  build_manifest/runtime_manifest carry the current build source commit (ee1010e); clean-checkout truth PASS + release PASS;
+- CI truth source-commit semantics (2026-10-20 snapshot; HISTORICAL commit ids): IMPLEMENTED - ADR-0008; truth.py keys on the last
+  source/build commit (`ee1010e` at that date), verifies ancestry + clean source paths; maps/AI_CONTEXT/EVI/
+  build_manifest/runtime_manifest carried that build source commit at the time; clean-checkout truth PASS + release PASS;
   full suite 963P/2S/27 subtests (exit 0); tests pinned at tests/release/test_truth_source_commit.py; EVI CI-TRUTH-SOURCE-COMMIT (E2). First
   hosted CI push still operator (no push).
 

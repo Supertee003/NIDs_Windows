@@ -37,16 +37,18 @@
 - `a26c573` and `03bb86d` E3/E4/E5 entries are **HISTORICAL** and are not a
   substitute for current-source proof.
 
-## 3. Current-source status
+## 3. Current-source status (`aa3b7b0`)
 
 | Claim | Status |
 |---|---|
-| TRUTH_VALID at `43a8bcc` | PASS (`python tools/truth.py verify`) |
-| E3 exact-delta proof at `43a8bcc` | PASS, narrow pipe scope |
-| E4/E5 canonical-pipe proof at `43a8bcc` | PASS, narrow scope; owner-run elevated |
-| Detection-rule matrix / soak / loss rate at `43a8bcc` | NOT CLAIMED |
-| Full current-head Windows E5 / kernel IDS qualification | NOT_PROVEN |
-| Release identity | Immutable `v1.1` / `466a226` / `a53eda8`; 6/6 gates PASS at that identity |
+| TRUTH_VALID / SUMMARY_VALID at `aa3b7b0` | PASS (`python tools/truth.py verify`; `scripts/check_summary.py`) |
+| Narrow loopback E6 pair at `aa3b7b0` | PASS; two attributable R9006 rows, verified elevated restore |
+| S2 replay denial / S3 durable identity at `aa3b7b0` | PASS narrow E5; exact `REPLAY_DENIED`, generation `5→6`, zero duplicates |
+| Fixed-rate 100 connections/s loopback load at `aa3b7b0` | PASS narrow E5; 6000/6000, zero loss-counter deltas |
+| Deterministic 1,000-case fuzz + in-process benchmarks at `aa3b7b0` | PASS E2; coverage-guided campaign **NOT_RUN** |
+| Additive signed record `release/T20-final/6c94b47` | PASS E2 release-record verification only; owner anchor `DCNPphsq…` |
+| Full 23-rule matrix / soak / full Windows E5 / kernel IDS / E7 at `aa3b7b0` | **NOT_PROVEN**; `soak_24h` OPEN, board 5/6 — NOT SHIPPABLE |
+| Published release identity | Immutable `v1.1` / `466a226` / `a53eda8`; 6/6 PASS at that identity only, HISTORICAL at `aa3b7b0` |
 
 ## 4. Rules for adding evidence
 

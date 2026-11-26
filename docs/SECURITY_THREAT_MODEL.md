@@ -87,26 +87,28 @@
 
 ---
 
-## 6. Open gaps at current build source `4dd3393`
+## 6. Open gaps at current build source `aa3b7b0`
 
 These are source-observed gaps, not host-effect claims. C6 changed capture source at `7822f4c`
 (now HISTORICAL) and S1/S2/S3/S4 added source-level producers, replay, identity and canonical
-policy bytes at E2; their unit tests are E2 only, and no host measurement of the new paths exists.
+policy bytes. S2 replay denial and S3 durable identity now have narrow E5 host proof at
+`aa3b7b0`; VLAN/IPv6, capture shutdown and S1's R2003 producer remain E2-only until re-measured.
 They are the boundary of the controls in §3.
 
 | Gap | Source fact | Status |
 |---|---|---|
-| Active control nonce/replay | S2 `4bc8244` enforces `protocol_version=2`, 32-hex nonce, ±60 s freshness and a bounded process-local replay ring in the active Zig control handler; the Python builder is `tools/aegisctl/envelope.py`. | **SOURCE-CLOSED / E2 ONLY** — exact replay denial on a rebuilt live daemon is NOT_PROVEN; see S2 evidence and owner-run runbook |
-| VLAN / QinQ visibility | C6 sets BPF `vlan or ip or ip6` in `nose/capture.go` and unwraps up to two tags (802.1Q + 802.1ad) in `src/capture/packet_decoder.zig`, pinned by Zig tests. | **SOURCE-FIXED / E2 ONLY** — tagged frames not host-proven at `4dd3393` |
-| IPv6 extension headers | C6 walks Hop-by-Hop, Routing, Destination Options, Fragment and AH with an 8-hop fail-closed bound in `src/capture/packet_decoder.zig`; ESP and No-Next-Header stop the walk. Go keeps the full v2 tail (`nose/capture.go:299-322`). | **SOURCE-FIXED / E2 ONLY** — no host proof at `4dd3393` |
-| Event identity / time | S3 `f1f89c1` adds durable per-interface v3 provenance (`capture_sequence`, `producer_epoch`, `producer_generation`, `interface_id`) from Go Nose with duplicate/regression refusal at Zig ingress; C6 `monotonic_ns` semantics remain. | **SOURCE-CLOSED / E2 ONLY** — live current-build E3/E5 NOT_PROVEN |
-| Capture shutdown | C6 returns capture errors to `main` instead of `os.Exit` in the goroutine, gives collectors and the live-talkers loop a stop channel, and uses bounded send/timer selects. | **SOURCE-FIXED / E2 ONLY** — bounded shutdown not host-proven at `4dd3393` |
-| Detection matrix at `4dd3393` | E5/E6 rows were measured at `f4cde3c`; E3/E4/E5 at `43a8bcc` and narrow E3/E4/E5 at `7822f4c` are HISTORICAL relative to the current source. | **NOT RE-MEASURED / NOT_PROVEN** — see `docs/portfolio/DETECTION_MATRIX_CURRENT.md` |
+| Active control nonce/replay | S2 `4bc8244` enforces `protocol_version=2`, 32-hex nonce, ±60 s freshness and a bounded process-local replay ring in the active Zig control handler; the Python builder is `tools/aegisctl/envelope.py`. | **PASS narrow E5 at `aa3b7b0`** — exact replay denial on the rebuilt daemon (`REPLAY_DENIED`); see `analysis/current-head/S2S3-HOST-PROOF-E5-AA3B7B0-20261126.md` |
+| VLAN / QinQ visibility | C6 sets BPF `vlan or ip or ip6` in `nose/capture.go` and unwraps up to two tags (802.1Q + 802.1ad) in `src/capture/packet_decoder.zig`, pinned by Zig tests. | **SOURCE-FIXED / E2 ONLY** — tagged frames not host-proven at `aa3b7b0` |
+| IPv6 extension headers | C6 walks Hop-by-Hop, Routing, Destination Options, Fragment and AH with an 8-hop fail-closed bound in `src/capture/packet_decoder.zig`; ESP and No-Next-Header stop the walk. Go keeps the full v2 tail (`nose/capture.go:299-322`). | **SOURCE-FIXED / E2 ONLY** — no host proof at `aa3b7b0` |
+| Event identity / time | S3 `f1f89c1` adds durable per-interface v3 provenance (`capture_sequence`, `producer_epoch`, `producer_generation`, `interface_id`) from Go Nose with duplicate/regression refusal at Zig ingress; C6 `monotonic_ns` semantics remain. | **PASS narrow E5 at `aa3b7b0`** — generation `5→6`, sequence `736→1324`, zero duplicate/regression/invalid rows |
+| Capture shutdown | C6 returns capture errors to `main` instead of `os.Exit` in the goroutine, gives collectors and the live-talkers loop a stop channel, and uses bounded send/timer selects. | **SOURCE-FIXED / E2 ONLY** — bounded shutdown not host-proven at `aa3b7b0` |
+| Detection matrix at `aa3b7b0` | Full matrix rows were measured at `f4cde3c`; E3/E4/E5 at `43a8bcc` and narrow E3/E4/E5 at `7822f4c` are HISTORICAL relative to the current source. | R9006 **PASS narrow E6** at `aa3b7b0`; full 23-rule matrix **NOT RE-MEASURED / NOT_PROVEN** — see `docs/portfolio/DETECTION_MATRIX_CURRENT.md` |
 
 None of these gaps authorizes a host effect, changes a rule or wire field, or creates a MITRE
-mapping. The source-level nonce/replay and cross-process identity gaps are closed at E2; the
-remaining OPEN items are fresh host E3/E4/E5 proof of those rebuilt components, the `IEX` R2003
-host re-measurement, the 23-rule matrix, 24 h soak, install/signing and E6/E7. See
+mapping. The nonce/replay and durable-identity gaps have narrow E5 proof at the current source,
+but S1's read-only R2003 producer remains E2 until re-measured on the host. The remaining OPEN
+items are a fresh 24 h soak, the full 23-rule matrix E5, coverage-guided fuzzing, driver/kernel
+lifecycle proof and E6/E7 qualification. See
 `analysis/current-head/OWNER-RUN-HOST-PROOF-RUNBOOK-20261126.md`.
 
 ---
