@@ -1,9 +1,9 @@
 # Path to complete — remaining work and who can close it
 
 **BUILD SOURCE:** `aa3b7b0161e425e54155d5767737bffcde7939b5` (ADR-0008; unchanged by records commits)  
-**RECORDS TIP:** read `git rev-parse HEAD` for the live value (written at `43fd6612f26f44e1d065cc6d7e4196dad59a0d4c`)  
+**RECORDS TIP:** read `git rev-parse HEAD` for the live value (a commit cannot contain its own SHA)  
 **BOARD:** **5/6 PASS — `soak_24h` OPEN — NOT SHIPPABLE**  
-**FINALIZER:** `D:\aegis-tmp\owner-soak-aa3b7b0-20261126-225843\result.json` was still absent at `2026-11-27T04:12:04+07:00`
+**FINALIZER:** `D:\aegis-tmp\owner-soak-aa3b7b0-20261126-225843\result.json` was still absent at `2026-11-27T04:33:21+07:00`; `finalize.log` shows an active heartbeat (last entry `2026-11-27T04:31:02`, `remaining_seconds=66488`)
 
 This page is a **plan and an owner-input checklist, not evidence**. It does not close a gate, create a signature, add E7, or change a verdict. It exists so that "make everything complete" has one unambiguous meaning: every item the repository side can do is already done; the remaining items require inputs that only the owner or the external SYSTEM finalizer can supply.
 
@@ -29,6 +29,17 @@ The full non-host pytest is **E2** only. It excludes `host_live` tests (18 desel
 | **3. Owner private key and real E7 / signed-driver evidence** | new Ed25519 signature, E7, Authenticode/catalog signing | The private key is owner-held (`D:\aegis-tmp\keys\...`) and is not in the tree; the existing `94F65BCC…` signature covers `SHA256SUMS` of the historical release identity, not driver bytes. `tools/final_audit.py` has no HLK/E7 gate. A soak PASS does not create E7, a new release identity or driver signing. |
 
 No combination of passing tests, documentation edits or static review substitutes for any of these three inputs.
+
+### 2a. Paths located by read-only inspection (no owner input needed to find them)
+
+| Item | Located path | State |
+|---|---|---|
+| Finalizer directory | `D:\aegis-tmp\owner-soak-aa3b7b0-20261126-225843\` | Exists |
+| Finalizer verdict (not yet created) | `...\result.json` | **Absent.** It must be produced by SYSTEM task `AegisNidsSoakFinalize_20261126-225843`; creating it by hand would be fabrication. |
+| Finalizer progress | `...\finalize.log` | Active heartbeat, `WAIT_START target=2026-11-27T22:59:10`, last heartbeat `2026-11-27T04:31:02`, `remaining_seconds=66488`. The log labels hours `Z` but its filesystem `LastWriteTime` matches `+07:00`, so treat these stamps as the operator's local clock rather than UTC. |
+| Inputs and raw transcript | `...\start.json`, `...\baseline.json`, `...\soak.baseline.json`, `...\soak-initial.json`, `...\preflight_0.json`, `...\transcript.txt`, `...\nose.stderr.txt`, `...\minifilter_before.json` | Present; read-only evidence of the running window. |
+| Pinned binaries in `...\backup\` | `aegis_nids.exe`, `aegis-nose.exe`, `aegis_pep.dll` | Present; do not swap or rewrite during the window. |
+| Owner release key | `D:\aegis-tmp\keys\aegis-release-aa3b7b0.ed25519` (32 bytes) | Present but owner-held. Not read, copied, committed or used to mint a new signature in this reconciliation. |
 
 ## 3. Exact sequence once those inputs exist
 
