@@ -38,6 +38,16 @@
   pages aligned with source.
 - `docs/historical/` holds archived dated material; unfrozen material remains
   in `analysis/current-head/`.
+- The nine root-dated `AEGIS_*_2026-09-*.md` handoffs remain at their tracked
+  root paths: `tests/docs/test_doc_truth_labels.py` pins those exact paths and
+  their HISTORICAL banners. They are archived by banner and by this declaration,
+  not by a path move that would force a test edit.
+- `release/T20-final/` is **frozen signed records**, not a second runtime and
+  not a build root. No build input references it; no cleanup commit rewrites its
+  bytes (SHA256SUMS and signatures.json are the identity).
+- Pre-`aa3b7b0` release/E6/E7 records use the logical namespace declared in
+  `analysis/historical/HISTORICAL-NAMESPACE.md`; they are not physically moved
+  because frozen signed trees and current-facing docs reference their paths.
 - 48 primary evidence pointers still do not resolve in a fresh worktree (18
   have exact operator-archive locators, 30 are marked `missing`). This is
   recorded in `EVIDENCE_INDEX.json` and `docs/evidence/PROVENANCE.md`, not
