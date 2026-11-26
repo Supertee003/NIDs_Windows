@@ -1,8 +1,9 @@
 # Security Boundaries and Privilege Separation
 
 > Verified against current source at build source `aa3b7b0`. This is a design/boundary document,
-> not a penetration test. **Do not use `CONTRACT_MAP.json` CONTRACT-04 as current control-plane
-> truth** — it still describes the frozen v1 IPC; the active path is v2 source code cited below.
+> not a penetration test. Source code below is the authority; `CONTRACT_MAP.json` CONTRACT-04 was
+> reconciled on 2026-11-27 to describe enforced active v2 freshness/replay, while the v1 command
+> table remains frozen history. Earlier source labels including `a26c573` are HISTORICAL.
 > Related: [Threat model](../SECURITY_THREAT_MODEL.md), [Security policy](../../SECURITY.md),
 > [Failure matrix](../OPERATIONAL_FAILURE_MATRIX.md).
 
@@ -71,7 +72,7 @@ Source: `src/platform/win32_pipe.zig`, `src/control/protocol.zig`,
 | Authorization | Per-command dispatch checks the token-derived role against the command contract (`handler_registry.zig:183-205`); every mutation requires an elevated caller |
 | Client PID | Best-effort via `GetNamedPipeClientProcessId`; unavailable PID is warned, not promoted to authority |
 | Active protocol | **v2 JSON**, 33 dotted commands + aliases (`shared/protocol/control_protocol.md:106-117`) |
-| **Replay / freshness** | **NOT IMPLEMENTED on active v2.** `Envelope` declares `nonce`/`issued_at_ms` (`protocol.zig:286-298`) but dispatch reads only `command` and `payload`; the v1 `(request_id, nonce)` table is in inactive `src/policy/control_ipc.zig` (`CONTROL-AUTH-001-20261110.md:67-71`) |
+| **Replay / freshness** | **ENFORCED on active v2** (`protocol_version=2`): ±60 s freshness and a single-use 32-hex nonce are checked at dispatch (`src/control/handler_registry.zig:184-215`, `src/control/replay_guard.zig:11-21,65-81`). The 1024-entry ring is process-local, so restart resets it and deterministic eviction can reuse a nonce; no durable or keyed guarantee is claimed |
 
 ### What an unprivileged local process can do
 
@@ -80,9 +81,9 @@ authorization: reads/queries are available at `.operate`, mutations require `.pr
 a privileged command cannot authorize a host effect because no such path exists. A failed
 authentication returns `AUTH_UNAVAILABLE` / `UNAUTHORIZED`.
 
-**Do not claim** nonce/freshness/replay protection, and **do not** treat the stale v1
-`CONTRACT_MAP.json` entry (which claims freshness/replay and `rules.reload` at `OPERATE`) as
-current behavior.
+**Do not claim** durable or keyed nonce/replay protection, and **do not** treat the frozen v1
+command table (`rules.reload` at `OPERATE`) as current behavior. `CONTRACT_MAP.json` CONTRACT-04 is
+now reconciled to active v2, but the source lines above remain the authority.
 
 ## 4. Language and authority boundaries
 
@@ -125,4 +126,4 @@ restrictive DACL and token-derived per-command authorization, single runtime own
 hash-chained records, detection-only PEP.*
 
 Never say: *production IPS, WFP blocking, EV/HLK-signed driver, replay re-executed detection,
-nonce/replay-protected IPC, tamper-proof logging, or confirmed host blocks.*
+durable or keyed nonce/replay-protected IPC, tamper-proof logging, or confirmed host blocks.*

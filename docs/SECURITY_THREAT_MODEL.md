@@ -11,7 +11,7 @@
 > Evidence scope (updated 2026-11-26): E3 and a narrow elevated canonical-pipe E4/E5 proof at
 > `43a8bcc` are HISTORICAL at that source. E2 unit proof, narrow private-pipe E3 and owner-run
 > elevated canonical-pipe E4/E5 `-inject` exact-delta proofs with a verified host restore at
-> `7822f4c` were current at that source and are now HISTORICAL relative to `4dd3393`. S1/S2/S3/S4
+> `7822f4c` were current at that source and are now HISTORICAL relative to `aa3b7b0`. S1/S2/S3/S4
 > added source-level producer, replay, identity and canonical-policy bytes at E2 only. No proof
 > here establishes full current-head
 > Windows E5 / kernel IDS qualification, which remains `NOT_PROVEN`
@@ -51,7 +51,7 @@
 
 | Threat | Control | Owner / notes |
 |---|---|---|
-| IPC spoofing / unauthorized control request | Daemon-owned snapshot and role/ACL checks in the control contract; active nonce/replay is **not enforced** on the production path | `src/control/protocol.zig:296-297` only declares `issued_at_ms`/`nonce`; the replay-protected module `src/policy/control_ipc.zig` is test-only (`src/all_tests.zig:107`). Treat replay defense as an open gap, not a closed control. |
+| IPC spoofing / unauthorized control request | Daemon-owned snapshot and role/ACL checks; active v2 enforces `protocol_version=2`, ±60 s freshness and a single-use nonce at dispatch | `src/control/handler_registry.zig:184-215` and `src/control/replay_guard.zig:11-21,65-81`; the 1024-entry ring is process-local, so restart resets it and eviction can reuse a nonce. Narrow E5 covers exact in-process replay; no durable or keyed guarantee is claimed. |
 | Event injection from a sensor | Schema validation, length-prefixed framing, runtime-owned queue | Normalizer + runtime |
 | Malformed / oversized IPC message | Bounded framing and explicit rejection path | Codecs + runtime; exact limits in contract docs |
 | Duplicate / replayed events | Exactly-once counters (`duplicate_event_ids`, `nose_non_monotonic_event_ids`) reported by health | Data-plane counters; see `tests/` |

@@ -7,6 +7,10 @@
 | `v1.1` (published, immutable) | Supported as the current release record |
 | `main` development head | Best-effort; current build source `aa3b7b0` (ADR-0008; confirm in `AGENTS.md` and `build_manifest.json`). `v1.1` stays immutable |
 
+> Provenance: earlier source labels including `a26c573`, `43a8bcc`, `7822f4c`, `493648f`,
+> `4bc8244`, `f1f89c1` and `4dd3393` are HISTORICAL under ADR-0008; records-only commits do not
+> move the build source. This policy describes the detection-only runtime, not a host-effect product.
+
 AEGIS is a **research and development** Windows kernel-assisted NIDS. It is released for
 development, qualification, and observe-only lab operation. It is **not** an IPS, does not block
 or quarantine hosts in production, and is not a replacement for a production enterprise NIDS/EDR.

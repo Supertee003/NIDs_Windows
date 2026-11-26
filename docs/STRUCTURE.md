@@ -7,6 +7,7 @@
 | Canonical entrypoint | `src/main.zig` (`runtime_manifest.json:4`) |
 | Source of truth for roles | `SYSTEM_MAP.json`, `FLOW_MAP.json`, `AUTHORITY_MAP.json`, `runtime_manifest.json`, `AGENTS.md` |
 | Audit basis | [`analysis/current-head/SOURCE_AUDIT-20261123.md`](../analysis/current-head/SOURCE_AUDIT-20261123.md) (E1/E2) |
+| Provenance | Earlier source labels including `a26c573`, `43a8bcc`, `7822f4c`, `493648f`, `4bc8244`, `f1f89c1` and `4dd3393` are HISTORICAL (ADR-0008) |
 
 > Older project maps that mention `core/*.zig`, `mouth/`, or a root `lib.rs` describe a
 > pre-restructure tree. There is no tracked root `lib.rs` and no tracked `core/` directory today;
@@ -42,7 +43,7 @@ artifacts; no EV/HLK signing or Microsoft attestation is claimed.
 | `src/capture/` | Nose pipe reader, WFP/NPcap readers, flow tracking, protocol parsers | Canonical; `stream_reassembly.zig` is **test-only / unwired** (no production caller) |
 | `src/pipeline/` | Event queue, ingress authority stripping, runtime counters | Canonical |
 | `src/detection/` | Rule engine, correlation, anomaly/proto anomaly rules | Canonical |
-| `src/control/` | v2 control protocol, handler registry, authorizer, state machine | Canonical; `nonce`/`issued_at_ms` are declared but not enforced |
+| `src/control/` | v2 control protocol, handler registry, authorizer, state machine | Canonical; v2 version, ±60 s freshness and single-use nonce are enforced at dispatch via `replay_guard.zig`; state is process-local, not durable or keyed |
 | `src/policy/` | Policy evaluation, Rust PEP bridge, WFP production boundary | Canonical, detection-only |
 | `src/forensic/` | 4096-byte records, CRC32 + SHA-256 chain, replay verification | Canonical; replay is integrity-only |
 | `src/platform/`, `src/windows/` | Named pipe, service, Windows adapters | Canonical; pipe is single-owner with token-derived roles |
