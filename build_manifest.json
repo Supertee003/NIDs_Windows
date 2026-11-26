@@ -596,8 +596,8 @@
     },
     {
       "path": "ci_coverage.json",
-      "size": 5999,
-      "sha256": "174fd0e8e5e222cea73fc317f3da98d4492b46d7849ea07ca7e3f8ba78665283",
+      "size": 6149,
+      "sha256": "a611b875c27cb556018a5660608e78266acbd34bfd378553cf4c3e88e5cf2648",
       "language": "json"
     },
     {
