@@ -11,7 +11,7 @@
 | Item | Value |
 |---|---|
 | Current records HEAD | Moves with each records patch (check `git rev-parse HEAD`) |
-| Current build source | `4dd33936909de1314099652a7523e52c40bb2c44` (S4 canonical policy bytes; S1 `493648f`, S2 `4bc8244`, S3 `f1f89c1`). C6 `7822f4c` and prior records are HISTORICAL at this source. |
+| Current build source | `aa3b7b0161e425e54155d5767737bffcde7939b5` (loopback BPF fix). Predecessor `4dd3393` carried S4 canonical policy bytes; S1 `493648f`, S2 `4bc8244`, S3 `f1f89c1`. `4dd3393`, C6 `7822f4c` and prior records are HISTORICAL at this source. |
 | Release identity (immutable) | `v1.1` / signed candidate `466a226` / build source `a53eda8` |
 | Host family | 64-bit Windows 10/11; isolated lab or disposable VM for host tests |
 | Toolchain | Zig 0.13.0, Rust 1.75+, Go 1.22+, Python 3.11+, CMake 3.27+, VS2022 MSVC, Windows SDK/WDK |
@@ -31,7 +31,9 @@
 | Fuzz (new) | REAL E2 deterministic smoke: seed `0xDEADBEEF`, 1,000 inputs, leak guard clean, binary SHA-256 `7681B52F…C621`; coverage-guided campaign still NOT_RUN | `docs/testing/FAULT_INJECTION_INVENTORY.md` §1a | `4dd3393` |
 | Microbenchmark (new) | REAL E2 ReleaseFast `quick` 6/6 thresholds PASS, `latency` p50/p95/p99 recorded; binary SHA-256 `8829E03D…DA476`; fixed-rate network benchmark still NOT_RUN | `docs/portfolio/PERFORMANCE_REPORT.md` §1a | `4dd3393` |
 | CI (new) | REAL E4 hosted CI green: push run `45675880854` and dispatch `45676093328`, both `success` at records HEAD `e64ea25`; all jobs + `ci-matrix` PASS. Not E5/E6/E7 | `docs/CI_QUALITY_GATES.md` §4a | `4dd3393` |
-| Full local suite (new) | `pytest -m "not host_live" -q` → **1,518 passed, 1 skipped, 18 deselected, 27 subtests** | `analysis/current-head/MASTER-AUDIT-AEGIS-PLAN-007-020-20261126.md` follow-up | `4dd3393` |
+| Full local suite (new) | `pytest -m "not host_live" -q` → **1,518 passed, 1 skipped, 18 deselected, 27 subtests** | `analysis/current-head/MASTER-AUDIT-AEGIS-PLAN-007-020-20261126.md` follow-up | `4dd3393` (HISTORICAL at `aa3b7b0`) |
+| Full local suite (current) | `pytest -m "not host_live" -q` → **1,520 passed, 1 skipped, 18 deselected, 27 subtests**; `go test ./...` PASS; docs/release 278 passed | this worktree, recorded in `analysis/current-head/MASTER-AUDIT-LOOPBACK-BPF-E6-AA3B7B0-20261126.md` §5 | `aa3b7b0` |
+| Host_live loopback (new) | **E6 PASS, narrow**: both loopback scan tests pass at the current source with 2 attributable R9006 rows and verified elevated restore; not a 23-rule matrix, soak, driver or E7 proof | `analysis/current-head/MASTER-AUDIT-LOOPBACK-BPF-E6-AA3B7B0-20261126.md`; `docs/testing/HOST_LIVE_DIAGNOSIS.md` §6 | `aa3b7b0` |
 
 ## What the numbers do not prove
 

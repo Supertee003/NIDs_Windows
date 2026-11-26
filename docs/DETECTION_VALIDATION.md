@@ -9,7 +9,8 @@
 
 > **Current source (P1/P8 hygiene, then 2026-11-25/26 C6/S1/S2/S3/S4 rebase):** `a26c573`,
 > `43a8bcc`, `7822f4c`, `493648f`, `4bc8244` and `f1f89c1` were successive build sources and are
-> now HISTORICAL. The current build source is `4dd3393` (S4 added versioned canonical policy
+> now HISTORICAL. The current build source is `aa3b7b0` (loopback BPF fix on the exact Npcap
+> selector); `4dd3393` added versioned canonical policy
 > bytes V1 at E2 with brain seam registration at `4dd3393`, source `2673bd2`; S3 added durable
 > v3 producer identity issuance/admission at E2; S2 added active control-v2 nonce/replay
 > enforcement; S1 added
@@ -22,13 +23,14 @@
 > `a26c573` removed a stale "production-ready" label and added an oversize-wire reject guard
 > in the Go Nose writer; `43a8bcc` made Go comment hygiene only; `7822f4c` changed capture
 > visibility, shutdown and monotonic-time producers — no rule, wire-layout or authority change).
-> The matrix has **not** been re-measured at `4dd3393` (nor at its predecessors `f1f89c1` / `4bc8244` / `493648f` / `7822f4c`). E3 and narrow elevated canonical-pipe
-> E4/E5 records at `43a8bcc` are HISTORICAL at that source and prove the `-inject` lifecycle and
-> exact deltas only; they do not re-run the detection matrix, soak, loss rate, install or signing.
-> E3 and narrow E4/E5 at `7822f4c` are current (`-inject` exact deltas on a private
-> pipe and on the elevated canonical pipe with a verified host restore); they do not
-> re-run the detection matrix. The E5/E6 rows
-> below remain HISTORICAL at `f4cde3c`; no current-source detection-matrix E5 is claimed.
+> The matrix has **not** been re-measured as a whole at `aa3b7b0` nor at its predecessors
+> `4dd3393` / `f1f89c1` / `4bc8244` / `493648f` / `7822f4c`. All E3/E4/E5 records at `43a8bcc`
+> and narrow E3/E4/E5 at `7822f4c` are HISTORICAL relative to `aa3b7b0` and prove only the
+> `-inject` pipe-reader lifecycle and exact deltas; they do not re-run the detection matrix,
+> soak, loss rate, install or signing. One narrow current-source result exists: R9006 has an
+> E6 PASS at `aa3b7b0` from the two loopback host_live tests with attributable rows
+> (`analysis/current-head/MASTER-AUDIT-LOOPBACK-BPF-E6-AA3B7B0-20261126.md`). The other E5/E6
+> rows below remain HISTORICAL at `f4cde3c`; no full current-source detection-matrix E5 is claimed.
 > `docs/portfolio/DETECTION_CATALOG.md` separates code-path 23/23 from host-evaluable 22/23
 > (R2003/FN-1); the generated 23-row projection is
 > [`docs/portfolio/DETECTION_MATRIX_CURRENT.md`](portfolio/DETECTION_MATRIX_CURRENT.md).

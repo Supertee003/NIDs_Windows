@@ -1,6 +1,6 @@
 # CI quality gates — actual configuration and local tools
 
-> Scope: build source `4dd3393`. AEGIS-PLAN-018.
+> Scope: build source `4dd3393` (HISTORICAL at current source `aa3b7b0`). AEGIS-PLAN-018.
 > This page corrects an earlier statement that no CI workflow existed. The
 > workflow files are present and are listed below.
 

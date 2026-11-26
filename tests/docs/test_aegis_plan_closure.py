@@ -120,8 +120,8 @@ def test_fuzz_inventory_records_the_real_smoke_run() -> None:
 
 def test_verification_summary_uses_current_build_source() -> None:
     text = _read(DOCS["AEGIS-013-VERIFICATION"])
-    assert "4dd33936909de1314099652a7523e52c40bb2c44" in text
-    assert "`7822f4c` (HISTORICAL at `4dd3393`)" in text
+    assert "aa3b7b0161e425e54155d5767737bffcde7939b5" in text
+    assert "HISTORICAL at this source" in text
     assert "45675880854" in text
     assert "1,518 passed" in text
     assert "`4dd3393`" in text

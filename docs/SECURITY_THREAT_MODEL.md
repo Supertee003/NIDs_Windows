@@ -1,7 +1,7 @@
 # Security Threat Model — AEGIS NIDS Windows
 
 > Scope: the detection-only production runtime described in `README.md`, `SYSTEM_MAP.json`,
-> `FLOW_MAP.json`, and `AUTHORITY_MAP.json` at current build source `4dd3393`.
+> `FLOW_MAP.json`, and `AUTHORITY_MAP.json` at current build source `aa3b7b0`.
 > This is a design-level threat model, not a penetration test result. Controls are listed with the
 > layer that owns them; where a control is only partially implemented, it is marked as such.
 >
@@ -56,7 +56,7 @@
 | Malformed / oversized IPC message | Bounded framing and explicit rejection path | Codecs + runtime; exact limits in contract docs |
 | Duplicate / replayed events | Exactly-once counters (`duplicate_event_ids`, `nose_non_monotonic_event_ids`) reported by health | Data-plane counters; see `tests/` |
 | Queue exhaustion / resource abuse | Bounded queue with observable shedding on full (drop-on-full, **not** blocking-producer backpressure); `shed_overload` and drop counters exposed to health | Zig runtime; is intentionally observable, not silent |
-| Detection bypass / visibility gap | 23 rules across multiple layers; L4 negative controls are HISTORICAL proof. C6 source admits VLAN/QinQ and walks common IPv6 extension headers, but no host measurement of the new path exists; L7 sees plaintext bytes only | Source-level changes from `7822f4c` (BPF `vlan or ip or ip6` in `nose/capture.go`; bounded two-tag VLAN unwrap and IPv6 extension walk in `src/capture/packet_decoder.zig`) are E2-only; detection efficacy at `4dd3393` is NOT_PROVEN. LIM-1 remains open |
+| Detection bypass / visibility gap | 23 rules across multiple layers; most L4 negative controls are HISTORICAL proof. C6 source admits VLAN/QinQ on Ethernet and walks common IPv6 extension headers; L7 sees plaintext bytes only | BPF `vlan or ip or ip6` from `7822f4c` remains for Ethernet; `aa3b7b0` uses `ip or ip6` on the exact DLT_NULL loopback selector after a real host failure proved the strict filter aborted capture there. R9006 has a narrow E6 PASS at `aa3b7b0`; full efficacy and VLAN/QinQ on loopback are not claimed. LIM-1 remains open |
 | Forensic record tampering | Hash-chain integrity verification plus `forensic verify` CLI | Forensics; **tamper-evident**, not tamper-proof. Replay is integrity-only, not live pipeline re-execution (`src/control/handler_registry.zig:1943`) |
 | Release binary substitution | Ed25519 signature over `SHA256SUMS`; 674/674 artifact hashes verified against **one** signature; pinned trust anchor | Release engineering; 674 is a hash count, not a signature count |
 | Privilege escalation via enforcement | No host-effect authority: prevention gate closed, block IOCTL unsupported, no AEGIS filter installed | Rust PEP + WFP adapter; `RETIRE-HOST-EFFECT-001` |

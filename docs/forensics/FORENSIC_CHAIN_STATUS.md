@@ -1,6 +1,6 @@
 # Forensic chain status — event to evidence at current source
 
-> Scope: build source `4dd3393`. AEGIS-PLAN-011.
+> Scope: build source `4dd3393` (HISTORICAL at current source `aa3b7b0`). AEGIS-PLAN-011.
 > This page maps the vertical slice and states which stages are proven at which
 > level. It does not re-run a host proof and does not promote historical E5
 > records to current-source proof.

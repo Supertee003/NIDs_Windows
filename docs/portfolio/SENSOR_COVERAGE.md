@@ -1,6 +1,6 @@
 # Sensor coverage — capture variants and proof limits
 
-> Scope: build source `4dd3393`. AEGIS-PLAN-008.
+> Scope: build source `4dd3393` (HISTORICAL at current source `aa3b7b0`). AEGIS-PLAN-008.
 > This page maps what the capture path is **designed** to observe and what has
 > actually been measured. Source-level support is not host proof.
 

@@ -1,5 +1,5 @@
 {
-  "head_sha": "4dd33936909de1314099652a7523e52c40bb2c44",
+  "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-26",
   "generator_version": "3.0",
@@ -11635,6 +11635,46 @@
       ],
       "status": "CLOSED",
       "status_basis": "entry.result=PASS_E4 real hosted CI runs at records HEAD e64ea25"
+    },
+    {
+      "id": "LOOPBACK-BPF-E6-AA3B7B0-20261126",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-26",
+      "title": "Loopback BPF fix and narrow host_live E6 PASS at build source aa3b7b0",
+      "level": "E6",
+      "component": "nose/capture.go -> Go Nose pipe -> Zig queue -> R9006 -> forensic NDJSON",
+      "flow_id": "NPcap loopback -> DLT_NULL BPF -> canonical pipe -> queue -> R9006 -> NDJSON",
+      "description": "The first elevated owner-run at 4dd3393 failed because Nose aborted with 'bpf: no VLAN support for BSD loopback' before dialing the Zig pipe. Source commit aa3b7b0 selects 'ip or ip6' for the exact Npcap loopback selector and keeps 'vlan or ip or ip6' for every other adapter, pinned by a Go unit test. A second UAC-approved owner-run swapped the rebuilt daemon/Nose/PEP, pinned AEGIS_NOSE_IFACE to the loopback adapter, observed '[NOSE PIPE] connected' with zero dropped frames, and ran the two host_live loopback tests. Both passed. Forensic log contains exactly two rule=1745456278 rows with src_ip=127.0.0.2 (ports 50533 and 50586). The script restored binary hashes, service env and machine pin exactly to baseline. Its own preflight poll was defective (reserved PowerShell $args); the raw result JSON is retained verbatim and no field was edited.",
+      "files_verified": [
+        "nose/capture.go",
+        "nose/talkers_live.go",
+        "nose/capture_visibility_test.go",
+        "analysis/current-head/MASTER-AUDIT-LOOPBACK-BPF-E6-AA3B7B0-20261126.md",
+        "admin-evidence/owner-run-e6-v2-20261126-152914/result.json",
+        "admin-evidence/owner-run-e6-v2-20261126-152914/nose.stderr.txt",
+        "admin-evidence/owner-run-e6-v2-20261126-152914/test_a_syn_scan_is_tagged_by_an_l4_rule.txt",
+        "admin-evidence/owner-run-e6-v2-20261126-152914/test_a_localhost_port_scan_is_captured_and_scored.txt"
+      ],
+      "tests": [
+        "go test ./... -run 'TestCaptureBPFForAdapterLinkType|TestNoseCaptureBPFAdmitsVLAN' -count=1 -> ok",
+        "go build -o aegis-nose.exe . -> exit 0; SHA256 8C05FE48...D24D4",
+        "isolated Nose loopback probe -> ALIVE=True, listening + first packet captured",
+        "tests/integration/test_e6_attack_burst.py::test_a_localhost_port_scan_is_captured_and_scored -> 1 passed in 23.70s",
+        "tests/integration/test_e6_l4_scan_detection.py::test_a_syn_scan_is_tagged_by_an_l4_rule -> 1 passed in 23.44s",
+        "C:\\Windows\\System32\\logs\\aegis_core.ndjson -> 2 R9006 rows, both src_ip=127.0.0.2",
+        "elevated restore -> verified=true, all hashes/env equal baseline, service RUNNING"
+      ],
+      "result": "PASS_E6_NARROW",
+      "finding": "Real current-source loopback capture now reaches the canonical pipeline and produces attributable R9006 rows. This is narrow E6 for two tests only; it does not re-measure the 23-rule matrix, a soak, driver lifecycle, install/signing, or E7.",
+      "evidence_artifact": "analysis/current-head/MASTER-AUDIT-LOOPBACK-BPF-E6-AA3B7B0-20261126.md",
+      "limitations": [
+        "No coverage-guided fuzz, fixed-rate network load, production simulation or E7.",
+        "Nose preflight poll in the run script mis-reported connected=false; raw stderr and pytest prove the connection.",
+        "Raw run artifacts live under ignored admin-evidence/ and are not fresh-clone reproducible.",
+        "VLAN/QinQ visibility on DLT_NULL loopback is intentionally not claimed."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Real elevated host run at aa3b7b0 with two passing host_live tests and verified restore."
     }
   ],
   "known_gaps": [
@@ -18311,7 +18351,7 @@
     "E3_count": 19,
     "E4_count": 5,
     "E5_count": 122,
-    "E6_count": 1,
+    "E6_count": 2,
     "E7_count": 5,
     "E5_with_artifact_count": 72,
     "E5_with_resolvable_artifact_count": 40,

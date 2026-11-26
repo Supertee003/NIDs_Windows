@@ -1,6 +1,6 @@
 # Evidence provenance — what each artifact proves and where it lives
 
-> Scope: current build source `4dd3393`, records HEAD moves with each patch.
+> Scope: build source `4dd3393` (HISTORICAL at current source `aa3b7b0`), records HEAD moves with each patch.
 > E3/E4/E5 records at `43a8bcc` are HISTORICAL at that source. E3 and narrow E4/E5 at
 > `7822f4c` were current at that source and are now HISTORICAL relative to `4dd3393`
 > (private-pipe and elevated canonical-pipe `-inject` exact deltas with verified host restore).

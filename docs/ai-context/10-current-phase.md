@@ -3,8 +3,8 @@
 > **UPDATE (2026-11-22):** the published release is now `v1.1` (signed candidate
 > `466a226`, build source `a53eda8`, 6/6 gates PASS, genuine 36.52 h soak, 0 open
 > gaps). The v2.0.0 status below is HISTORICAL for release identity; `a53eda8`
-> descends from `7c604d5`. The current build source is `4dd3393`
-> (P2-44 `9105ff5`, P2a `d2f129e`, P2b `661fb76`, P8 source-truth `2129dcd`,
+> descends from `7c604d5`. The current build source is `aa3b7b0`
+> (loopback BPF fix; predecessor `4dd3393` with P2-44 `9105ff5`, P2a `d2f129e`, P2b `661fb76`, P8 source-truth `2129dcd`,
 > P8-I44 observability `e406cbb`, P8-I44-E3 isolated `-inject` proof `03bb86d`
 > (same source then received records-only E4/E5 elevated Windows-host `-inject`
 > proof on the canonical pipe), P1/P8 hygiene `a26c573`, F1/F2 hygiene `43a8bcc`,
@@ -13,9 +13,9 @@
 > v3 producer identity issuance/admission `f1f89c1`, S4 canonical policy bytes
 > `2673bd2` (seam registration `4dd3393`); P3–P7 and the
 > P8 V&R-08 closeout are records-only. E3/E4/E5 at `43a8bcc` is HISTORICAL;
-> E3 and narrow E4/E5 at `7822f4c` are current (`-inject` exact deltas on the
-> private and elevated canonical pipes with a verified host restore). Full Windows
-> E5 / kernel IDS qualification is NOT_PROVEN).
+> E3 and narrow E4/E5 at `7822f4c` plus all `4dd3393` records are HISTORICAL
+> relative to `aa3b7b0`; the current-source host proof is narrow E6 loopback.
+> Full Windows E5 / kernel IDS qualification is NOT_PROVEN).
 > The immutable v1.1 release identity above is unchanged. Authority:
 > `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`.
 

@@ -1,6 +1,6 @@
 # Fuzz and fault-injection inventory
 
-> Scope: build source `4dd3393`. AEGIS-PLAN-017.
+> Scope: build source `4dd3393` (HISTORICAL at current source `aa3b7b0`). AEGIS-PLAN-017.
 > This is an **inventory and status page**. It does not claim a fuzz campaign
 > was run at the current source.
 

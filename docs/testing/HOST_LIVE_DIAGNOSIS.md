@@ -1,8 +1,8 @@
 # host_live diagnosis — why two E6 tests fail on the installed host
 
-> Scope: build source `4dd3393`, records HEAD after the AEGIS-PLAN closure.
-> This page records a **diagnosis**, not a PASS and not a source fix.
-> No elevated action was taken while writing it.
+> Scope: current build source `aa3b7b0` (loopback BPF fix). Sections 1–5 are the
+> original diagnosis at `4dd3393` and are HISTORICAL; section 6 records the
+> real elevated owner-run and narrow E6 PASS at the current source.
 
 ## 1. Observed failures
 
@@ -72,6 +72,37 @@ reported as a current-source PASS.
 3. Re-run the two tests with the rebuilt pair and record the real outcome.
 4. Only then update matrix provenance. A PASS requires attributable rows with
    the exact source IP and test-owned ports plus the below-threshold control.
+
+## 6. Real owner-run at current source `aa3b7b0` — narrow E6 PASS
+
+The first elevated run at `4dd3393` still failed, but for a newly discovered
+reason: the rebuilt Nose exited before dialing the pipe with
+`[AEGIS NOSE] capture error: nose capture: bpf: no VLAN support for BSD loopback`.
+Npcap's `\Device\NPF_Loopback` is DLT_NULL; the unconditional
+`vlan or ip or ip6` BPF from `nose/capture.go:63` is rejected on that link type.
+
+Source commit `aa3b7b0161e425e54155d5767737bffcde7939b5` now selects
+`ip or ip6` for the exact loopback selector and keeps `vlan or ip or ip6` for
+every other adapter, pinned by `TestCaptureBPFForAdapterLinkType`. A second
+UAC-approved elevated owner-run swapped the rebuilt binaries, pinned the
+interface, waited for the real pipe connection and ran both tests:
+
+| Check | Result |
+|---|---|
+| Daemon / Nose / PEP SHA-256 | `5ECAECE8…AF3C` / `8C05FE48…D24D4` / `6E05AAE1…4926` |
+| Nose stderr | `[NOSE PIPE] connected to \\.\pipe\aegis_nose`, `first canonical frame sent`, `dropped=0` |
+| `test_a_localhost_port_scan_is_captured_and_scored` | **1 passed**, exit 0 |
+| `test_a_syn_scan_is_tagged_by_an_l4_rule` | **1 passed**, exit 0 |
+| Forensic corroboration | exactly 2 `rule:"1745456278"` rows, both `src_ip:"127.0.0.2"` (ports 50533, 50586) |
+| Restore | `verified: true`, all hashes/env equal baseline, service RUNNING |
+
+This is **E6 PASS, narrow** for the two loopback tests only. It does not
+re-measure the 23-rule matrix, prove a soak, load the driver, or establish E7.
+The run script's preflight JSON poll mis-reported `nose_connected: false`
+(reserved PowerShell `$args`); the raw stderr, the passing tests and the
+forensic rows are the authoritative observations. Full record:
+`analysis/current-head/MASTER-AUDIT-LOOPBACK-BPF-E6-AA3B7B0-20261126.md`;
+raw artifacts under ignored `admin-evidence/owner-run-e6-v2-20261126-152914/`.
 
 ---
 

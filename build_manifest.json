@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "4dd3393",
-  "build_date": "2026-10-23T00:00:00.000000+00:00",
+  "source_commit": "aa3b7b0",
+  "build_date": "2026-11-26T08:47:47.332482+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "4dd3393",
+      "commit": "aa3b7b0",
       "source": "src/main.zig",
       "classification": "CANONICAL"
     },
@@ -38,7 +38,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "4dd3393",
+      "commit": "aa3b7b0",
       "source": "rust-src/lib.rs",
       "classification": "CANONICAL"
     },
@@ -49,7 +49,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "4dd3393",
+      "commit": "aa3b7b0",
       "source": "src/windows/aegis_wfp.c",
       "classification": "CANONICAL"
     },
@@ -60,7 +60,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "4dd3393",
+      "commit": "aa3b7b0",
       "source": "src/windows/etw_native.c",
       "classification": "CANONICAL"
     },
@@ -71,7 +71,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "4dd3393",
+      "commit": "aa3b7b0",
       "source": "src/windows/fim_native.c",
       "classification": "CANONICAL"
     },
@@ -82,7 +82,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "go-nose-build-test",
-      "commit": "4dd3393",
+      "commit": "aa3b7b0",
       "source": "nose/main.go",
       "classification": "CANONICAL"
     },
@@ -93,7 +93,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-aggregator-build-test",
-      "commit": "4dd3393",
+      "commit": "aa3b7b0",
       "source": "go/aggregator/main.go",
       "classification": "SUPPORT"
     },
@@ -104,7 +104,7 @@
       "type": "library",
       "required": false,
       "ci_job": "shield-build",
-      "commit": "4dd3393",
+      "commit": "aa3b7b0",
       "source": "shield/src/lib.rs",
       "classification": "SUPPORT"
     },
@@ -115,7 +115,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "4dd3393",
+      "commit": "aa3b7b0",
       "source": "tools/aegisctl.py",
       "classification": "CANONICAL"
     },
@@ -126,7 +126,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "4dd3393",
+      "commit": "aa3b7b0",
       "source": "tools/installer.py"
     },
     {
@@ -136,7 +136,7 @@
       "type": "toolchain",
       "required": false,
       "ci_job": "ts-policy-build",
-      "commit": "4dd3393",
+      "commit": "aa3b7b0",
       "source": "ts_policy/",
       "classification": "SUPPORT",
       "note": "Advisory policy authoring only; no runtime artifact or enforcement authority."
@@ -148,7 +148,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "4dd3393",
+      "commit": "aa3b7b0",
       "source": "brain/"
     }
   ],
@@ -878,8 +878,8 @@
     },
     {
       "path": "nose/capture.go",
-      "size": 18222,
-      "sha256": "1da410ee8ddc52bb138cc730ade500d84aa3a4ce98e38ca7f369cc5830095341",
+      "size": 19201,
+      "sha256": "f56b179f6c9c18bf969038514592b1e2463831ca986145b5e8d4673a37d9c851",
       "language": "go"
     },
     {
@@ -896,8 +896,8 @@
     },
     {
       "path": "nose/capture_visibility_test.go",
-      "size": 1487,
-      "sha256": "558350958ea19e29909cc8d075317486898f566ba9d7849b764ddc16607b3e49",
+      "size": 2601,
+      "sha256": "0d0a7298eac1caa741390bb20884af3c2448fe61e279135342369ccacc8c63d0",
       "language": "go"
     },
     {
@@ -1016,8 +1016,8 @@
     },
     {
       "path": "nose/talkers_live.go",
-      "size": 8643,
-      "sha256": "2c87a52cf8988e2f8dddb0325b6b440966981997611b0b5ae5df05c568805dd7",
+      "size": 6699,
+      "sha256": "8bba21b993339625803a18485e8e5acf20e80b4ba1c191337b24f94c9a1da838",
       "language": "go"
     },
     {
@@ -1059,7 +1059,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23280,
-      "sha256": "975f4d8b3c102a732edef59f166c37204fcbbf58cb22f9a82cd2028c68343088",
+      "sha256": "8091c2744340c426436b255e6a2036a102def101e786b14c67a49de47113e29e",
       "language": "json"
     },
     {

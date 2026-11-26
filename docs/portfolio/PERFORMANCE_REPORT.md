@@ -1,6 +1,6 @@
 # Performance report — method, observed values, and what is not measured
 
-> Scope: build source `4dd3393`. AEGIS-PLAN-012.
+> Scope: build source `4dd3393` (HISTORICAL at current source `aa3b7b0`). AEGIS-PLAN-012.
 > This is a **methodology and status page** plus one real E2 microbenchmark run
 > (section 1a). It is **not** a controlled fixed-rate network benchmark and
 > promotes nothing to E5/E6/E7.

@@ -1,9 +1,9 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "505704f",
+  "commit": "aa3b7b0",
   "declaration": {
     "component_audit": "COMPLETE",
-    "release": "SHIPPABLE"
+    "release": "NOT SHIPPABLE"
   },
   "part_i": {
     "total_modules": 66,
@@ -21,18 +21,27 @@
   "part_iii_golden_path_declared": true,
   "component_audit_complete": true,
   "release": {
-    "shippable": true,
-    "shippable_with_waiver": true,
-    "open": [],
+    "shippable": false,
+    "shippable_with_waiver": false,
+    "open": [
+      "release_signature",
+      "soak_24h"
+    ],
     "waived": [],
-    "unwaived": [],
-    "owners": [],
+    "unwaived": [
+      "release_signature",
+      "soak_24h"
+    ],
+    "owners": [
+      "owner",
+      "time"
+    ],
     "gates": [
       {
         "id": "truth_artifacts",
         "ok": true,
         "owner": "none",
-        "detail": "TRUTH_VALID — artifacts carry build source a53eda8 (ancestor of HEAD; source history and worktree clean)"
+        "detail": "TRUTH_VALID — artifacts carry build source aa3b7b0 (ancestor of HEAD; source history and worktree clean); SUMMARY_VALID: summary and artifact/scope markers match the entries"
       },
       {
         "id": "component_audit",
@@ -42,9 +51,9 @@
       },
       {
         "id": "release_signature",
-        "ok": true,
+        "ok": false,
         "owner": "owner",
-        "detail": "release\\T20-final\\466a226\\signatures.json cryptographically signs SHA256SUMS (A053C048C8B373CF...) with a ed25519 key; commit 466a226 contains runtime a53eda8"
+        "detail": "release\\T20-final\\466a226\\signatures.json was built from 466a226, which does not contain the current runtime commit aa3b7b0161e425e54155d5767737bffcde7939b5; the signed tree predates the shipped runtime"
       },
       {
         "id": "clean_host_e5",
@@ -54,9 +63,9 @@
       },
       {
         "id": "soak_24h",
-        "ok": true,
+        "ok": false,
         "owner": "time",
-        "detail": "admin-evidence\\e5-clean-host-20261120-final\\soak-24h-delta-final.json is PASS at 36.52/24.0 h with no problems"
+        "detail": "admin-evidence\\e5-clean-host-20261120-final\\soak-24h-delta-final.json is PASS at 36.52/24.0 h but it predates the current runtime source commit; it does not cover this build"
       },
       {
         "id": "evidence_debt",

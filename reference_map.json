@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-25T18:25:00.030143+00:00",
+  "generated_at": "2026-11-26T08:47:46.683274+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 3264,
+  "total_files": 3265,
   "by_role": {
-    "documentation": 593,
+    "documentation": 594,
     "build-config": 303,
     "other": 27,
     "lockfile": 6,
@@ -1003,6 +1003,10 @@
       "role": "documentation"
     },
     "analysis/current-head/MASTER-AUDIT-FINAL-RESIDUALS-20261125.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/MASTER-AUDIT-LOOPBACK-BPF-E6-AA3B7B0-20261126.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -13387,5 +13391,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "4dd3393"
+  "source_commit": "aa3b7b0"
 }
