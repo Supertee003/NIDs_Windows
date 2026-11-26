@@ -16,6 +16,37 @@ func TestNoseCaptureBPFAdmitsVLAN(t *testing.T) {
 	}
 }
 
+// LOOPBACK-BPF-001: Npcap's loopback adapter is DLT_NULL. The strict VLAN
+// filter aborts capture there before the Zig pipe is dialed, so the exact
+// loopback selector must use a DLT_NULL-compatible filter while every other
+// selector keeps full VLAN/QinQ visibility.
+func TestCaptureBPFForAdapterLinkType(t *testing.T) {
+	for _, term := range []string{"ip", "ip6", "or"} {
+		if !strings.Contains(noseLoopbackBPF, term) {
+			t.Fatalf("noseLoopbackBPF %q missing %q", noseLoopbackBPF, term)
+		}
+	}
+	if strings.Contains(noseLoopbackBPF, "vlan") {
+		t.Fatalf("noseLoopbackBPF %q still contains unsupported vlan primitive", noseLoopbackBPF)
+	}
+
+	cases := []struct {
+		iface string
+		want  string
+	}{
+		{loopbackInterface, noseLoopbackBPF},
+		{strings.ToUpper(loopbackInterface), noseLoopbackBPF},
+		{"  " + loopbackInterface + " ", noseLoopbackBPF},
+		{`\Device\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}`, noseCaptureBPF},
+		{"", noseCaptureBPF},
+	}
+	for _, tc := range cases {
+		if got := captureBPFFor(tc.iface); got != tc.want {
+			t.Fatalf("captureBPFFor(%q) = %q, want %q", tc.iface, got, tc.want)
+		}
+	}
+}
+
 func TestMonotonicNowNSIsProcessRelative(t *testing.T) {
 	first := monotonicNowNS()
 	// Wall-clock UnixNano is ~1.7e18; process-relative must be < one hour.

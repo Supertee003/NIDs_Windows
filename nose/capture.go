@@ -62,6 +62,27 @@ func monotonicNowNS() uint64 {
 // `vlan` term matches the outer tag, so QinQ frames reach the decoder too.
 const noseCaptureBPF = "vlan or ip or ip6"
 
+// loopbackInterface is Npcap's loopback adapter selector. Its link type is
+// DLT_NULL, not Ethernet: libpcap rejects the `vlan` primitive there
+// ("no VLAN support for BSD loopback"), so the strict filter would abort
+// capture before the Zig pipe is ever dialed.
+const loopbackInterface = `\Device\NPF_Loopback`
+
+// noseLoopbackBPF admits the same untagged IP frames on DLT_NULL. The decoder
+// sees no 802.1Q/QinQ tag on a loopback frame, so dropping only the unsupported
+// primitive preserves visibility without changing canonical wire encoding.
+const noseLoopbackBPF = "ip or ip6"
+
+// captureBPFFor selects a filter valid for the adapter's link type. Ethernet
+// and unknown selectors keep the strict VLAN-aware default; only the exact
+// Npcap loopback selector uses the DLT_NULL-compatible filter.
+func captureBPFFor(iface string) string {
+	if strings.EqualFold(strings.TrimSpace(iface), loopbackInterface) {
+		return noseLoopbackBPF
+	}
+	return noseCaptureBPF
+}
+
 // captureDefaultTimeout is the pcap read timeout for live capture.
 const captureDefaultTimeout = time.Second
 
@@ -157,7 +178,7 @@ func runCapture(iface string, pipe string, stop <-chan struct{}) error {
 
 	// Passive capture only — never set promiscuous off-label; keep it
 	// simple and read-only (no injection, no filter state on the wire).
-	if err := handle.SetBPFFilter(noseCaptureBPF); err != nil {
+	if err := handle.SetBPFFilter(captureBPFFor(iface)); err != nil {
 		return fmt.Errorf("nose capture: bpf: %w", err)
 	}
 
