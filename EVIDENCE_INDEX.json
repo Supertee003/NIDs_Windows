@@ -1,7 +1,7 @@
 {
   "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-26",
+  "last_updated_at": "2026-11-27",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; tracked files were retained in the operator archive and restored to the ignored admin-evidence/ directory. At the 2026-11-24 audit, 48 primary evidence_artifact pointers do not resolve in a fresh worktree (18 have exact operator-archive locators recorded as artifact_locator, 30 are marked artifact_status=missing and are not independently auditable from this tree). 61 entries cite admin-evidence paths in files_verified, 133 mention them anywhere, and only primary evidence_artifact pointers are validator-checked. The 3,229 clean / 4,009 lossy rate bracketing and all other historical host claims remain records, not current-source verification.",
@@ -7953,7 +7953,11 @@
         "The private key lives only at .keys/aegis-release.ed25519 on this host; losing it prevents re-signing with the same identity, and leaking it voids the signature.",
         "The signed tree reflects dist/ as assembled by release_candidate.py, not a fresh rebuild of every component.",
         "Any commit touching src, nose, brain, ts_policy, shared, contracts, drivers, go, build.zig, CMakeLists.txt, Cargo.toml or rust-src after 2026-11-14T22:20:15 invalidates the running soak and requires re-assembly and re-signing."
-      ]
+      ],
+      "build_source": "1fa877c8fca3050eacfcdda000e9831f2743cade",
+      "historical": true,
+      "evidence_namespace": "historical",
+      "historical_basis": "pre-aa3b7b0 release/E6/E7 record retained for provenance; not a current-source evidence claim"
     },
     {
       "id": "RELEASE-WAIVER-001-E2-20261114",
@@ -8039,7 +8043,11 @@
         "detections moved by 1 while anomalies moved by 52: detection strength is weak and ruleset-dependent.",
         "No false-positive rate, no labelled pcap, one host, one protocol family.",
         "policy_ir.loaded false in metrics versus policies_loaded 6 was first reported here as a contradiction and is not one: metrics.policy_ir reflects g_policy_ir (src/control/handler_registry.zig:2175), populated only from the optional TS mirror configs/policy_ir.json, which is absent by design, while the six policies come from configs/policies.json into the runtime PolicySet."
-      ]
+      ],
+      "build_source": "1fa877c8fca3050eacfcdda000e9831f2743cade",
+      "historical": true,
+      "evidence_namespace": "historical",
+      "historical_basis": "pre-aa3b7b0 release/E6/E7 record retained for provenance; not a current-source evidence claim"
     },
     {
       "id": "DRIVER-BUILD-001-E3-20261114",
@@ -8336,7 +8344,11 @@
         "E7 for the release tree and its signature only: the host still runs the previously installed build, so this candidate has not been installed or exercised.",
         "The candidate is named for the records HEAD at build time (9ebee9b), whose build source commit is 7c604d5.",
         "No Windows Authenticode signature was applied; this is the project's ed25519 release signature over SHA256SUMS."
-      ]
+      ],
+      "build_source": "7c604d5b0022157020e20e78045cc2c97a337ddd",
+      "historical": true,
+      "evidence_namespace": "historical",
+      "historical_basis": "pre-aa3b7b0 release/E6/E7 record retained for provenance; not a current-source evidence claim"
     },
     {
       "id": "READY-PROMOTION-001-E5-20261114",
@@ -9175,7 +9187,10 @@
         "The installer sits under dist/, which is ignored and not committed; its sha256 is recorded here instead.",
         "Seven tree files carry no digest: SHA256SUMS, signatures.json, KNOWN_LIMITATIONS.md, ROLLBACK.md and the three generated reports. They are the tree's own metadata, not shipped runtime."
       ],
-      "historical": true
+      "historical": true,
+      "build_source": "4169839bff11937060ed4471b3a74717f11a50c3",
+      "evidence_namespace": "historical",
+      "historical_basis": "pre-aa3b7b0 release/E6/E7 record retained for provenance; not a current-source evidence claim"
     },
     {
       "id": "SUITE-FLAKE-FRESHCACHE-001-E2-20261118",
@@ -9940,7 +9955,11 @@
         "E6/24h soak not claimed and deliberately deferred to last per owner instruction.",
         "Driver signing is lab test signing only (no EV/HLK/Microsoft attestation); installer remains NotSigned.",
         "Signed tree tracks text files only; SHA256SUMS covers artifact-tree binaries that git intentionally ignores."
-      ]
+      ],
+      "build_source": "a53eda8344a20f86ad4f4e4001e9b3d648067671",
+      "historical": true,
+      "evidence_namespace": "historical",
+      "historical_basis": "pre-aa3b7b0 release/E6/E7 record retained for provenance; not a current-source evidence claim"
     },
     {
       "id": "PREFLIGHT-BINDING-001-E2-20261120",
@@ -10121,7 +10140,11 @@
       "limitations": [
         "GitHub asset digests reported by the API were cross-checked against local SHA-256; no independent third-party mirror was used.",
         "Detection-only release; no WFP enforcement or host effect is claimed."
-      ]
+      ],
+      "build_source": "a53eda8344a20f86ad4f4e4001e9b3d648067671",
+      "historical": true,
+      "evidence_namespace": "historical",
+      "historical_basis": "pre-aa3b7b0 release/E6/E7 record retained for provenance; not a current-source evidence claim"
     },
     {
       "id": "SOURCE-AUDIT-20261123-E1",
@@ -11674,7 +11697,10 @@
         "VLAN/QinQ visibility on DLT_NULL loopback is intentionally not claimed."
       ],
       "status": "RESOLVED",
-      "status_basis": "Real elevated host run at aa3b7b0 with two passing host_live tests and verified restore."
+      "status_basis": "Real elevated host run at aa3b7b0 with two passing host_live tests and verified restore.",
+      "build_source": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "historical": false,
+      "evidence_namespace": "current-head"
     },
     {
       "id": "S2S3-HOST-PROOF-E5-AA3B7B0-20261126",

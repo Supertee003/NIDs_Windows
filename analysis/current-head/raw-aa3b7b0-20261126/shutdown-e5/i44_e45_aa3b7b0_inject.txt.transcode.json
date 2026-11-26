@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "record_id": "TRANSCODE-SIDECAR-AA3B7B0-20261126-10",
+  "type": "encoding_transcode_provenance",
+  "file": "analysis/current-head/raw-aa3b7b0-20261126/shutdown-e5/i44_e45_aa3b7b0_inject.txt",
+  "original_encoding": "UTF-16LE with BOM",
+  "original_size_bytes": 3358,
+  "original_sha256": "0156d298f1e3f3725c13862c771324164801ac571405d9673b9279d54290b206",
+  "original_source": "git blob 848c924503fcd4d1881252ed0ed17d7b9a3e137d[^]:analysis/current-head/raw-aa3b7b0-20261126/shutdown-e5/i44_e45_aa3b7b0_inject.txt - byte-identical pre-transcode copy; external operator originals remain outside the tree",
+  "transcoded_encoding": "UTF-8 without BOM, LF line endings",
+  "transcoded_size_bytes": 1647,
+  "transcoded_sha256": "9e2cbf1c9b4952fcda17911aade6ddcee0286c73bd0e3056bb8622fcbd3f6f86",
+  "transcode_verification": "decode the original as UTF-16 (BOM consumed), replace CRLF with LF, encode UTF-8 -> byte-identical to the committed file",
+  "build_source": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+  "transcode_records_commit": "848c924503fcd4d1881252ed0ed17d7b9a3e137d",
+  "evidence_change": "none - encoding normalization only; no value was edited"
+}

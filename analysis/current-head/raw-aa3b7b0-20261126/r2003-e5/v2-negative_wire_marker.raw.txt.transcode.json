@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "record_id": "TRANSCODE-SIDECAR-AA3B7B0-20261126-08",
+  "type": "encoding_transcode_provenance",
+  "file": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-negative_wire_marker.raw.txt",
+  "original_encoding": "UTF-16LE with BOM",
+  "original_size_bytes": 532,
+  "original_sha256": "a2e74dfebd223e451c7b0b54a8c96c3c6713447d40d4bee7ea750eaaeb2c752b",
+  "original_source": "git blob 848c924503fcd4d1881252ed0ed17d7b9a3e137d[^]:analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-negative_wire_marker.raw.txt - byte-identical pre-transcode copy; external operator originals remain outside the tree",
+  "transcoded_encoding": "UTF-8 without BOM, LF line endings",
+  "transcoded_size_bytes": 252,
+  "transcoded_sha256": "1a736396f4578476d11e57c0714359ee0e6270d79f082cb4476c44f78df62e93",
+  "transcode_verification": "decode the original as UTF-16 (BOM consumed), replace CRLF with LF, encode UTF-8 -> byte-identical to the committed file",
+  "build_source": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+  "transcode_records_commit": "848c924503fcd4d1881252ed0ed17d7b9a3e137d",
+  "evidence_change": "none - encoding normalization only; no value was edited"
+}

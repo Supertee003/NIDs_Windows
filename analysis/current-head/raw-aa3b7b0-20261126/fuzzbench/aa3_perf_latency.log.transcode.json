@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "record_id": "TRANSCODE-SIDECAR-AA3B7B0-20261126-01",
+  "type": "encoding_transcode_provenance",
+  "file": "analysis/current-head/raw-aa3b7b0-20261126/fuzzbench/aa3_perf_latency.log",
+  "original_encoding": "UTF-16LE with BOM",
+  "original_size_bytes": 3342,
+  "original_sha256": "3c09d88f2c269ce52c1714d19cd23567f123e5d101735d5373d3ee8713517f37",
+  "original_source": "git blob 848c924503fcd4d1881252ed0ed17d7b9a3e137d[^]:analysis/current-head/raw-aa3b7b0-20261126/fuzzbench/aa3_perf_latency.log - byte-identical pre-transcode copy; external operator originals remain outside the tree",
+  "transcoded_encoding": "UTF-8 without BOM, LF line endings",
+  "transcoded_size_bytes": 1639,
+  "transcoded_sha256": "c8eb8b8ba76305c9791ade8e6302cb92c45c0c94863dc8d73af06dcd3d4be80c",
+  "transcode_verification": "decode the original as UTF-16 (BOM consumed), replace CRLF with LF, encode UTF-8 -> byte-identical to the committed file",
+  "build_source": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+  "transcode_records_commit": "848c924503fcd4d1881252ed0ed17d7b9a3e137d",
+  "evidence_change": "none - encoding normalization only; no value was edited"
+}

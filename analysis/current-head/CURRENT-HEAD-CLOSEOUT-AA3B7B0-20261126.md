@@ -1,7 +1,7 @@
 # Current-head closeout — build source `aa3b7b0` — 2026-11-26
 
 **RECORD-ID:** `CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126`
-**RECORDS HEAD:** moves with records-only patches (last recorded `c7603f7` at the 2026-11-27 reconciliation; this file cannot contain its own later SHA — check `git rev-parse HEAD`); the build source does not move
+**RECORDS HEAD:** moves with records-only patches. This file cannot contain its own later SHA — read `git rev-parse HEAD` for the current records tip; the build source does not move (the 2026-11-27 reconciliation began at `c7603f7`)
 **BUILD SOURCE:** `aa3b7b0161e425e54155d5767737bffcde7939b5` (ADR-0008)
 **BOARD:** **5/6 PASS — NOT SHIPPABLE** (`soak_24h` OPEN). No E7 claim.
 
@@ -42,7 +42,7 @@ All elevated host runs swapped current-source binaries and restored hash-identic
 
 Local suite: `python -m pytest -q -m "not host_live"` → `1520 passed, 1 skipped, 18 deselected, 27 subtests`; `go test ./...` ok. One run of this suite intermittently failed at `tests/brain/test_cython_prefilter.py::test_case2_event_reaches_the_prefilter_without_nameerror`: the `[CYTHON MATCH]` marker appeared before `logs/anomalous.json` had a flushed line, so the probe read an empty file. The same file passed alone and the immediate full rerun passed `1520/1520`. No test was skipped, xfailed, relaxed or edited to hide this; the flake is recorded, not claimed as a product detection failure. A bare `pytest -q` includes two `host_live` tests that require the current-source host to be installed; on the restored baseline they fail because no R9006 rows are attributed to their ports. They passed only in the elevated owner run.
 
-CI hygiene (records-only): `tools/final_audit.py` changed in records commit `ad55d55`, after build source `aa3b7b0`, so `build_manifest.json` still carried the pre-change digest and `python tools/release_engineering.py --verify` failed in CI. `python tools/release_engineering.py --refresh-digests` re-recorded that one digest with `source_commit=aa3b7b0`; no `SOURCE_PATHS` file changed. Ten UTF-16LE raw evidence text files were transcoded to UTF-8/LF for the repository encoding guard; the originals remain outside the tree. No guard, test, gate, verdict or evidence level was relaxed.
+CI hygiene (records-only): `tools/final_audit.py` changed in records commit `ad55d55`, after build source `aa3b7b0`, so `build_manifest.json` still carried the pre-change digest and `python tools/release_engineering.py --verify` failed in CI. `python tools/release_engineering.py --refresh-digests` re-recorded that one digest with `source_commit=aa3b7b0`; no `SOURCE_PATHS` file changed. Ten UTF-16LE raw evidence text files were transcoded to UTF-8/LF for the repository encoding guard; the originals remain outside the tree. The exact pre-transcode bytes are preserved in git at `848c924^`, and per-file sidecars now record each original SHA-256 plus a byte-exactness check (`analysis/current-head/raw-aa3b7b0-20261126/TRANSCODE-SIDECARS.md`). Pre-`aa3b7b0` release/E6/E7 records are labelled in a logical historical namespace (`analysis/historical/HISTORICAL-NAMESPACE.md`); they were not physically moved because frozen signed trees reference their paths. No guard, test, gate, verdict or evidence level was relaxed.
 
 ## 4. Honest failures and voids
 
