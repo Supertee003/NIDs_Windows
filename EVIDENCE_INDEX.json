@@ -11927,6 +11927,31 @@
       ],
       "status": "CURRENT_WITH_OPEN_GAP",
       "status_basis": "Gate board and evidence pointers recomputed at records tip ad55d55."
+    },
+    {
+      "id": "SOAK-ATTEMPT-VOID-GAPS-FIRST-AA3B7B0-20261126",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-26",
+      "title": "Third 24 h soak attempt voided by owner direction before remaining gap closure",
+      "level": "E0",
+      "component": "owner soak start + SYSTEM scheduled finalizer + host restore",
+      "flow_id": "clean window -> SYSTEM finalizer alive -> owner deferral -> task deleted -> verified restore",
+      "description": "Run 20261126-214622 started clean at 21:46:50 with current-source binaries, minifilter gauge 0->0, budget 3500, nose connected and RUNNING. A SYSTEM Scheduled Task finalizer produced independent heartbeats. Owner then directed that remaining evidence gaps be closed first, so the window was voided at 22:28:41 before 24 h. Health at void was DEGRADED with ring 1592603, pipeline 14826 and queue 88485, recorded as observed. The finalizer task was deleted, the exact baseline restored with restore.verified=true, service Running and errors=[]. No PASS claim and no gate credit.",
+      "files_verified": [
+        "analysis/current-head/SOAK-ATTEMPT-VOID-GAPS-FIRST-AA3B7B0-20261126.md",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first/start.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first/void-gaps-first.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first/health-at-void-gaps-first.json"
+      ],
+      "tests": [],
+      "result": "VOIDED_NO_EVIDENCE_CREDIT",
+      "finding": "Owner-directed void with verified restore and deleted SYSTEM finalizer task; soak_24h stays OPEN.",
+      "evidence_artifact": "analysis/current-head/SOAK-ATTEMPT-VOID-GAPS-FIRST-AA3B7B0-20261126.md",
+      "limitations": [
+        "No 24 h window completed, no soak verdict."
+      ],
+      "status": "VOIDED",
+      "status_basis": "void-gaps-first.json with restore.verified=true, finalizer_task_deleted=true and errors=[]."
     }
   ],
   "known_gaps": [
@@ -18597,7 +18622,7 @@
     }
   ],
   "evidence_level_summary": {
-    "E0_count": 2,
+    "E0_count": 3,
     "E1_count": 51,
     "E2_count": 171,
     "E3_count": 19,

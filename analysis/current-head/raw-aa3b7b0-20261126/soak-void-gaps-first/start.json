@@ -1,0 +1,49 @@
+{
+    "run_id":  "20261126-214622",
+    "run_dir":  "D:\\aegis-tmp\\owner-soak-aa3b7b0-20261126-214622",
+    "build_source":  "aa3b7b0161e425e54155d5767737bffcde7939b5",
+    "status":  "VOIDED_DEFERRED_GAPS_FIRST",
+    "elevated":  true,
+    "soak_start":  "2026-11-26T21:46:50",
+    "loss_budget":  3500,
+    "baseline":  {
+                     "service_status":  "Running",
+                     "service_startmode":  "Manual",
+                     "minifilter_status":  "Running",
+                     "service_env":  "AEGIS_LOSS_BUDGET=3500",
+                     "machine_nose_iface":  "\\Device\\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}",
+                     "hashes":  {
+                                    "aegis_pep.dll":  "870CB9626EDD75AD2552F1CDFE6475D8A7804163354E3A588FED1E4360996C5E",
+                                    "aegis-nose.exe":  "AEAB9B6324E3A7EA0498B0A338E406C012139F15D883465AE574CAC773BC79C2",
+                                    "aegis_nids.exe":  "FBD9BDB3456C9C7DAFCBF1B0C3FBDAD9778F61C3186167856E373CC376185474"
+                                }
+                 },
+    "minifilter_reset":  {
+                             "before":  0,
+                             "after":  0,
+                             "budget_unchanged":  3500,
+                             "note":  "AegisMinifilter recycled before soak start; DroppedEvents is a driver-lifetime gauge"
+                         },
+    "preflight":  {
+                      "nose_connected":  true,
+                      "health_state":  "RUNNING"
+                  },
+    "swapped":  {
+                    "aegis_pep.dll":  "6E05AAE1BAE000C8D2C1A841EFF9B65035E5131066FFB43800AD414659564926",
+                    "aegis-nose.exe":  "8C05FE485D2548DF50C83F5BEA792F4228FEAE387306668A439912A39A7D24D4",
+                    "aegis_nids.exe":  "6F548AF7641C1C476FB591D165ED734027ED18D93F980AFEA755C20A716BBB98"
+                },
+    "nose_pid":  20524,
+    "restore":  null,
+    "finalizer":  {
+                      "mode":  "scheduled_task",
+                      "task_name":  "AegisNidsSoakFinalize_20261126-214622",
+                      "scheduled_for":  "2026-11-27T21:48:50",
+                      "wrapper":  "D:\\aegis-tmp\\soak_finalize_20261126-214622.ps1",
+                      "python":  "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+                      "privilege":  "SYSTEM"
+                  },
+    "errors":  [
+
+               ]
+}
