@@ -15,6 +15,7 @@ This page is an onboarding index, not a new proof. It points to the current trut
 4. `docs/gates/PRODUCTION_READINESS.md` and `tools/final_audit.py` — the gate board and the rules that evaluate it.
 5. `analysis/current-head/REMAINING-GAPS-DISPOSITION-AA3B7B0-20261126.md` — separates physical proof from `CLOSED as documented gap`.
 6. `docs/DOCS_LIFECYCLE.md` and `analysis/historical/HISTORICAL-NAMESPACE.md` — what is frozen, archived or historical.
+7. `docs/PATH-TO-COMPLETE.md` — what remains, the three owner inputs required, and the exact closeout sequence. It is a plan, not new proof.
 
 ## 2. Where development actually starts
 
