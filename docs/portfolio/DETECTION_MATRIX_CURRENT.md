@@ -21,7 +21,7 @@
 |---|---|---|
 | Catalog coverage | 23/23 | `rule_id`, `match_pattern`, `regex_pattern`, fixture, shared hash |
 | Code-path coverage | 23/23 | Zig evaluates `match_pattern`; Python `regex_pattern` is advisory |
-| Host-evaluable coverage | 22/23 | R2003 blocked by FN-1 |
+| Host-evaluable coverage | 22/23 | Recorded census where R2003 was blocked by FN-1; at `aa3b7b0` R2003 has one narrow E5 host re-measurement, but the matrix as a whole is not re-measured |
 | Host-positive proof | L4 family only; strongest R9006 | R9006 narrow E6 PASS @ `aa3b7b0` (2 attributable rows); full matrix HISTORICAL @ `f4cde3c` |
 
 ## Per-rule matrix
@@ -42,7 +42,7 @@
 | **R1005** | hosts File Modification | KERNEL_FILE | High | Block | `hosts` | FX-12 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
 | **R2001** | Mimikatz Execution | KERNEL_PROCESS | Critical | Drop | `mimikatz` | FX-13 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
 | **R2002** | svchost Process Hollowing | KERNEL_PROCESS | Critical | Drop | `svchost.exe` | FX-14 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
-| **R2003** | PowerShell Cradle Download | KERNEL_PROCESS | Critical | Block | `IEX` | FX-15 | SYN; **FP-1 CLOSED at E5, FN-1 OPEN** (§5) / E1 | code-path/fixture only @ `4dd3393`; FN-1 OPEN | FN-1: no `CommandLine` producer |
+| **R2003** | PowerShell Cradle Download | KERNEL_PROCESS | Critical | Block | `IEX` | FX-15 | SYN; **FP-1 CLOSED at E5, FN-1 recorded at the historical host** (§5) / E1 | **Narrow E5 PASS @ `aa3b7b0`**: one verified row, two negative controls; see `R2003-CMDLINE-HOST-PROOF-E5-AA3B7B0-20261126.md` | FN-1 closed at current source for one case only; full matrix not re-measured |
 | **R2004** | certutil Download Abuse | KERNEL_PROCESS | High | Block | `certutil` | FX-16 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
 | **R2005** | procdump Credential Harvest | KERNEL_PROCESS | Critical | Drop | `procdump` | FX-17 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
 | **R3001** | Cobalt Strike Named Pipe | L2_PIPE | Critical | Drop | `MSSE-` | FX-18 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |

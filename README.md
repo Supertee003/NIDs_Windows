@@ -57,7 +57,7 @@ deliberately out of scope?" No implementation claim here implies a production ho
 | Zig runtime / event pipeline | Yes | Build, unit/integration tests, Windows E5 lab | Yes — runtime owner |
 | Go Nose packet ingress | Yes | Build + Windows E5 capture preflight | Yes — acquisition only |
 | C/C++ WFP / ETW / FIM / Registry adapters | Yes | Observe-only E5 lab proofs for WFP and host-file/FIM telemetry; ETW/Registry coverage is per host profile; other families have synthetic fixtures only | Yes — telemetry evidence |
-| Detection rules (23) | Yes | 23/23 catalog + fixture-level pins; live positive proof on L4/R9006 with negative control; R2003 has an open command-line limitation | Yes — detection only |
+| Detection rules (23) | Yes | 23/23 catalog + fixture-level pins; live positive proof on L4/R9006 with negative control; R2003 command-line producer narrow E5 at `aa3b7b0`; full matrix not re-measured | Yes — detection only |
 | Correlation / forensics / evidence receipts | Yes | Hash-chain verification on the current host | Yes — evidence only |
 | Release v1.1 | Yes | One Ed25519 signature over `SHA256SUMS`; 674/674 artifact hashes verified; 36.52 h soak PASS | Published, immutable |
 | Host blocking / WFP mutation / quarantine | Lab-only historical code | Lab qualification only | **Out of scope — not planned, not enabled** |
@@ -67,12 +67,14 @@ deliberately out of scope?" No implementation claim here implies a production ho
 - No production host enforcement; the system is detection-only and observe-only.
 - L7 inspection is limited by current packet visibility; TLS payloads are not plaintext-inspected.
 - TCP stream reassembly is implemented but has no production caller; do not claim session-level reassembly.
-- Detection rule live-validation coverage is partial: 22/23 are host-evaluable; the R2003 read-only producer is source-closed at E2 but not re-measured on the host.
+- Detection rule live-validation coverage is partial: the recorded census is 22/23 host-evaluable; R2003 was re-measured on the host at `aa3b7b0` (narrow E5), but the full matrix was not.
 - Control IPC now enforces nonce/replay at the source; exact replay denial has narrow E5 proof at `aa3b7b0`, not a full matrix proof.
 - Windows compatibility is limited to the tested configurations; no current-source full WFP E5 result is claimed.
-- No fresh 24 h soak exists at `aa3b7b0`; two attempts were voided and the board remains NOT SHIPPABLE.
+- No fresh 24 h soak exists at `aa3b7b0`; three attempts were voided and the board remains NOT SHIPPABLE.
 
 Full list with evidence boundaries: [Known limitations and open work](#known-limitations-and-open-work).
+Disposition of the remaining gaps — physical proof versus `CLOSED as documented gap`:
+[`REMAINING-GAPS-DISPOSITION-AA3B7B0-20261126.md`](analysis/current-head/REMAINING-GAPS-DISPOSITION-AA3B7B0-20261126.md).
 Status source: [`release/release-status.json`](release/release-status.json).
 
 ### Detection coverage — what is and is not proven
@@ -81,10 +83,10 @@ Status source: [`release/release-status.json`](release/release-status.json).
 |---|---|---|
 | Rule catalog | 23/23 rules have `match_pattern`, `regex_pattern`, a fixture vector, and a shared rule-ID hash | rule-ID census pinned by `tests/security/test_detection_contract_pin.py`; lab attack scripts are opt-in and skipped on a fresh clone |
 | Code-path evaluable | 23/23 | Zig evaluates `match_pattern`; Python `regex_pattern` is advisory Tier-2 analytics |
-| Host-evaluable | 22/23 | R2003 is blocked by FN-1 on the measured host: ProcessStart v0–v4 carry no `CommandLine`. Since `493648f` a read-only producer recovers it at E2; host re-measurement is pending |
+| Host-evaluable | 22/23 | Recorded census at the measured host, where R2003 was blocked by FN-1: ProcessStart v0–v4 carry no `CommandLine`. Since `493648f` a read-only producer recovers it, and at `aa3b7b0` it has narrow E5 host proof; this census is not a new matrix result |
 | Synthetic proof | 23/23 at fixture level | E1/E2 pins only — not a claim of detection efficacy on live traffic |
 | Live host-positive proof | L4 family only; strongest on R9006 with a 40-port positive and 10-port negative control | one lab host/interface; loopback is a self-test binding |
-| Known gap | R2003 (PowerShell cradle) is FN-1 on the measured host | process telemetry has no `CommandLine` field in v0–v4; since `493648f` a read-only `NtQueryInformationProcess` producer is proven at E2 but the installed host has not been re-measured |
+| Known gap | R2003 (PowerShell cradle) FN-1 on the recorded host | process telemetry has no `CommandLine` field in v0–v4; the read-only `NtQueryInformationProcess` producer has narrow E5 host proof at `aa3b7b0`, so the remaining gap is the un-re-measured full matrix |
 
 A synthetic fixture and a live detector firing are different evidence levels. There is no
 authoritative MITRE ATT&CK mapping in this repository. Details:
@@ -691,8 +693,8 @@ at build source `ab0fa17`; the remaining items are still open.
 | 5 | ABI framing contradiction (fixed at `ab0fa17`, issue #43 closed) | Active pipe framing is a 4-byte length prefix + payload (`113/137/169..1193` bytes); the old `125-byte` WEV1 contract is explicitly scoped as legacy |
 | 6 | Control IPC v2 nonce/replay was previously only declared | `4bc8244` enforces nonce/freshness/replay at the source; exact replay denial has narrow E5 proof at `aa3b7b0`, not a full matrix proof |
 | 7 | Loopback capture is a self-test binding, not a general live-network proof | The live host-positive proof is the bounded SYN burst from `192.168.1.39` to `192.0.2.1:1..40` on one interface, with a 10-port negative control |
-| 8 | R2003 (PowerShell cradle) is a known false negative on the measured host | Process telemetry in v0–v4 has no `CommandLine` field; since `493648f` a read-only source is proven at E2 but the installed host has not been re-measured |
-| 9 | No authoritative MITRE ATT&CK mapping, Splunk content, coverage-guided fuzz campaign, clean install/uninstall campaign, or full WFP E5 result for the current source | Deterministic 1,000-case fuzz and in-process bench are E2 PASS at `aa3b7b0`; a fixed-rate 100 connections/s loopback load is narrow E5 PASS. The listed campaign items remain future work, not existing evidence |
+| 8 | R2003 (PowerShell cradle) FN-1 on the recorded host | Process telemetry in v0–v4 has no `CommandLine` field; the read-only source from `493648f` has narrow E5 host proof at `aa3b7b0`. The `22/23` census stays historical; the full matrix is still not re-measured |
+| 9 | No authoritative MITRE ATT&CK mapping, Splunk content, coverage-guided fuzz campaign, clean install/uninstall campaign, or full WFP E5 result for the current source | Deterministic 1,000-case fuzz and in-process bench are E2 PASS at `aa3b7b0`; a fixed-rate 100 connections/s loopback load is narrow E5 PASS. The listed campaign items stay `NOT_RUN`/`NOT_PROVEN` and are `CLOSED as documented gap`, not evidence |
 | 10 | The current lab snapshot has nonzero drop/shed counters (`minifilter_ring_dropped=1,341,156`, `alert_file.failed=7,028`) | The v1.1 soak measured zero loss **only during its recorded 36.52 h window**; never claim "zero loss ever" on this host |
 
 Source-side comment/capability overclaims were corrected at `ab0fa17` (issue #40 closed).

@@ -55,6 +55,12 @@ A valid kernel lifecycle proof at a given build source must record:
 | Signed driver at current source | **NOT_PROVEN** (immutable release identity is `v1.1` / `466a226` / `a53eda8`; the additive `6c94b47` record verifies a release record, not a signed driver) |
 | Full kernel IDS qualification | **NOT_PROVEN** |
 
+These rows remain `NOT_PROVEN`; they are listed as `CLOSED as documented gap` in
+`analysis/current-head/REMAINING-GAPS-DISPOSITION-AA3B7B0-20261126.md`. That is a
+status-page disposition only — no evidence `status`, `level`, `result`,
+`status_basis` or gate verdict was promoted, and no signed-driver or E7 claim is
+made.
+
 ## 5. Open work
 
 Owner must run the lifecycle section elevated, attach the raw transcript

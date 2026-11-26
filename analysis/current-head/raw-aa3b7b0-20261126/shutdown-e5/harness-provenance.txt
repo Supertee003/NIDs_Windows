@@ -1,0 +1,4 @@
+﻿harness=D:\aegis-tmp\i44_e3_check_aa3b7b0.exe
+sha256=55306B0AFBFF0B91CC45861D186D20BB6800BF6334B9CBCEEADE7B5AD6D710B3
+source=src/tests/cli/nose_pipe_e2e_cli.zig @ aa3b7b0
+wrapper=src/i44_e3_wrapper.zig (temporary, removed; git clean)

@@ -92,8 +92,11 @@
 These are source-observed gaps, not host-effect claims. C6 changed capture source at `7822f4c`
 (now HISTORICAL) and S1/S2/S3/S4 added source-level producers, replay, identity and canonical
 policy bytes. S2 replay denial and S3 durable identity now have narrow E5 host proof at
-`aa3b7b0`; VLAN/IPv6, capture shutdown and S1's R2003 producer remain E2-only until re-measured.
-They are the boundary of the controls in §3.
+`aa3b7b0`. The canonical pipe-reader shutdown and S1's R2003 producer now have narrow E5 host
+proof at this source; VLAN/IPv6 host visibility remains E2-only. The gaps that cannot be
+physically proven here are recorded as `CLOSED as documented gap` in
+`analysis/current-head/REMAINING-GAPS-DISPOSITION-AA3B7B0-20261126.md` — that is a status-page
+disposition, not an evidence promotion. They are the boundary of the controls in §3.
 
 | Gap | Source fact | Status |
 |---|---|---|
@@ -101,14 +104,17 @@ They are the boundary of the controls in §3.
 | VLAN / QinQ visibility | C6 sets BPF `vlan or ip or ip6` in `nose/capture.go` and unwraps up to two tags (802.1Q + 802.1ad) in `src/capture/packet_decoder.zig`, pinned by Zig tests. | **SOURCE-FIXED / E2 ONLY** — tagged frames not host-proven at `aa3b7b0` |
 | IPv6 extension headers | C6 walks Hop-by-Hop, Routing, Destination Options, Fragment and AH with an 8-hop fail-closed bound in `src/capture/packet_decoder.zig`; ESP and No-Next-Header stop the walk. Go keeps the full v2 tail (`nose/capture.go:299-322`). | **SOURCE-FIXED / E2 ONLY** — no host proof at `aa3b7b0` |
 | Event identity / time | S3 `f1f89c1` adds durable per-interface v3 provenance (`capture_sequence`, `producer_epoch`, `producer_generation`, `interface_id`) from Go Nose with duplicate/regression refusal at Zig ingress; C6 `monotonic_ns` semantics remain. | **PASS narrow E5 at `aa3b7b0`** — generation `5→6`, sequence `736→1324`, zero duplicate/regression/invalid rows |
-| Capture shutdown | C6 returns capture errors to `main` instead of `os.Exit` in the goroutine, gives collectors and the live-talkers loop a stop channel, and uses bounded send/timer selects. | **SOURCE-FIXED / E2 ONLY** — bounded shutdown not host-proven at `aa3b7b0` |
-| Detection matrix at `aa3b7b0` | Full matrix rows were measured at `f4cde3c`; E3/E4/E5 at `43a8bcc` and narrow E3/E4/E5 at `7822f4c` are HISTORICAL relative to the current source. | R9006 **PASS narrow E6** at `aa3b7b0`; full 23-rule matrix **NOT RE-MEASURED / NOT_PROVEN** — see `docs/portfolio/DETECTION_MATRIX_CURRENT.md` |
+| Canonical pipe-reader shutdown | C6 bounds the pipe reader's send/timer selects and records exact framing/drop counters. | **PASS narrow E5 at `aa3b7b0`** — `-inject` exact deltas, harness SHA-256 `55306B0A…710B3`, verified restore; see `analysis/current-head/PIPE-READER-SHUTDOWN-E5-AA3B7B0-20261126.md`. The **Go `capture.go` adapter** on a physical NIC remains E2-only / `CLOSED as documented gap` |
+| R2003 `CommandLine` producer | S1 `493648f` recovers `ProcessCommandLineInformation` as AEGT TLV kind 2 on the existing consumer path. | **PASS narrow E5 at `aa3b7b0`** — one verified `rule_id=2485705370` row with two independent negative controls and verified restore; see `analysis/current-head/R2003-CMDLINE-HOST-PROOF-E5-AA3B7B0-20261126.md` |
+| Detection matrix at `aa3b7b0` | Full matrix rows were measured at `f4cde3c`; E3/E4/E5 at `43a8bcc` and narrow E3/E4/E5 at `7822f4c` are HISTORICAL relative to the current source. | R9006 **PASS narrow E6** and R2003 **PASS narrow E5** at `aa3b7b0`; full 23-rule matrix **NOT RE-MEASURED / NOT_PROVEN** — `CLOSED as documented gap`, see `docs/portfolio/DETECTION_MATRIX_CURRENT.md` |
 
 None of these gaps authorizes a host effect, changes a rule or wire field, or creates a MITRE
-mapping. The nonce/replay and durable-identity gaps have narrow E5 proof at the current source,
-but S1's read-only R2003 producer remains E2 until re-measured on the host. The remaining OPEN
-items are a fresh 24 h soak, the full 23-rule matrix E5, coverage-guided fuzzing, driver/kernel
-lifecycle proof and E6/E7 qualification. See
+mapping. The nonce/replay, durable-identity, pipe-reader shutdown and R2003 producer gaps have
+narrow E5 proof at the current source. The full 23-rule matrix, coverage-guided fuzzing,
+VLAN/IPv6 host visibility, Go capture-adapter shutdown, driver/kernel lifecycle, E7 and clean
+install/uninstall remain `NOT_RUN`/`NOT_PROVEN` and are `CLOSED as documented gap` — no gate,
+level, result or `status_basis` was promoted. The only OPEN item is a fresh 24 h soak at
+`aa3b7b0`. See `analysis/current-head/REMAINING-GAPS-DISPOSITION-AA3B7B0-20261126.md` and
 `analysis/current-head/OWNER-RUN-HOST-PROOF-RUNBOOK-20261126.md`.
 
 ---

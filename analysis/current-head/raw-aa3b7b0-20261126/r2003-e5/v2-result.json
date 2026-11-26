@@ -1,0 +1,67 @@
+﻿{
+    "run_id":  "r2003-aa3b7b0-20261126-v2",
+    "build_source":  "aa3b7b0161e425e54155d5767737bffcde7939b5",
+    "elevated":  true,
+    "swapped":  {
+                    "aegis_etw_helper.dll":  "B594EC775B69D1BF799DCCD7FCC2DFAA6C6DB9DF1EB4BC967EB3D4C6BA19EECE",
+                    "aegis_pep.dll":  "6E05AAE1BAE000C8D2C1A841EFF9B65035E5131066FFB43800AD414659564926",
+                    "aegis-nose.exe":  "8C05FE485D2548DF50C83F5BEA792F4228FEAE387306668A439912A39A7D24D4",
+                    "aegis_nids.exe":  "6F548AF7641C1C476FB591D165ED734027ED18D93F980AFEA755C20A716BBB98"
+                },
+    "baseline_hashes":  {
+                            "aegis_etw_helper.dll":  "CBF1547B48CA807939D994471DC5896394511A0DE09C881F069D29F8ADADBAC8",
+                            "aegis_pep.dll":  "870CB9626EDD75AD2552F1CDFE6475D8A7804163354E3A588FED1E4360996C5E",
+                            "aegis-nose.exe":  "AEAB9B6324E3A7EA0498B0A338E406C012139F15D883465AE574CAC773BC79C2",
+                            "aegis_nids.exe":  "FBD9BDB3456C9C7DAFCBF1B0C3FBDAD9778F61C3186167856E373CC376185474"
+                        },
+    "restored_hashes":  {
+                            "aegis_etw_helper.dll":  "CBF1547B48CA807939D994471DC5896394511A0DE09C881F069D29F8ADADBAC8",
+                            "aegis_pep.dll":  "870CB9626EDD75AD2552F1CDFE6475D8A7804163354E3A588FED1E4360996C5E",
+                            "aegis-nose.exe":  "AEAB9B6324E3A7EA0498B0A338E406C012139F15D883465AE574CAC773BC79C2",
+                            "aegis_nids.exe":  "FBD9BDB3456C9C7DAFCBF1B0C3FBDAD9778F61C3186167856E373CC376185474"
+                        },
+    "baseline_env":  "AEGIS_LOSS_BUDGET=3500",
+    "baseline_iface":  "\\Device\\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}",
+    "baseline_r2003":  {
+                           "records_matched":  0,
+                           "ring_records":  8725,
+                           "verified":  true
+                       },
+    "positive":  {
+                     "command":  "powershell.exe -NoProfile -Command \"# AEGIS_R2003_V2_POS_20261126_IEX; Start-Sleep -Seconds 30\"",
+                     "pid":  11992,
+                     "marker_matched":  1,
+                     "r2003_verified_rows":  1,
+                     "rows":  [
+                                  {
+                                      "direction":  null,
+                                      "event_id":  17903,
+                                      "payload_len":  621,
+                                      "record_seq":  8919,
+                                      "rule_id":  2485705370,
+                                      "source":  10,
+                                      "source_name":  "host_telemetry",
+                                      "source_space":  "canonical",
+                                      "verified":  true
+                                  }
+                              ]
+                 },
+    "negative_cmdline":  {
+                             "command":  "powershell.exe -NoProfile -Command \"# AEGIS_R2003_V2_BENIGNCMD_20261126; Start-Sleep -Seconds 10\"",
+                             "pid":  9860,
+                             "marker_matched":  0,
+                             "r2003_total":  1,
+                             "r2003_delta":  1
+                         },
+    "negative_wire":  {
+                          "command":  "powershell.exe -NoProfile -File \"D:\\aegis-tmp\\r2003-aa3b7b0-20261126-v2\\wire_only.ps1\"",
+                          "pid":  8660,
+                          "marker_matched":  0
+                      },
+    "verdict":  "PASS_E5_NARROW",
+    "errors":  [
+
+               ],
+    "restore_verified":  true,
+    "service_status":  "Running"
+}

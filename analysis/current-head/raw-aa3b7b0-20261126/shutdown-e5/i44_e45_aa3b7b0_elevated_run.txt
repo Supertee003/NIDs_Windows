@@ -1,0 +1,41 @@
+﻿P8-I44 E4/E5 elevated re-proof at build source aa3b7b0 (C6)
+[2026-11-26T22:35:00.2895499+07:00] harness=D:\aegis-tmp\i44_e3_check_aa3b7b0.exe sha256=55306B0AFBFF0B91CC45861D186D20BB6800BF6334B9CBCEEADE7B5AD6D710B3
+[2026-11-26T22:35:00.4877200+07:00] pre-state saved: D:\aegis-tmp\i44_e45_aa3b7b0_prestate.txt
+[2026-11-26T22:35:00.5473014+07:00] captured Nose CommandLine: D:\NIDs_Windows\nose\aegis-nose.exe -capture -iface \Device\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}
+[2026-11-26T22:35:00.5488460+07:00] disabling SCM failure actions (prevents re-arm during the window)
+[2026-11-26T22:35:00.5778497+07:00] [SC] ChangeServiceConfig2 SUCCESS
+[2026-11-26T22:35:00.5798897+07:00] stopping AegisNids service
+[2026-11-26T22:35:00.6042240+07:00] 
+[2026-11-26T22:35:00.6070965+07:00] SERVICE_NAME: AegisNids 
+[2026-11-26T22:35:00.6161802+07:00]         TYPE               : 10  WIN32_OWN_PROCESS  
+[2026-11-26T22:35:00.6270931+07:00]         STATE              : 3  STOP_PENDING 
+[2026-11-26T22:35:00.6363943+07:00]                                 (STOPPABLE, NOT_PAUSABLE, IGNORES_SHUTDOWN)
+[2026-11-26T22:35:00.6474941+07:00]         WIN32_EXIT_CODE    : 0  (0x0)
+[2026-11-26T22:35:00.6600856+07:00]         SERVICE_EXIT_CODE  : 0  (0x0)
+[2026-11-26T22:35:00.6703018+07:00]         CHECKPOINT         : 0x1
+[2026-11-26T22:35:00.6807637+07:00]         WAIT_HINT          : 0x0
+[2026-11-26T22:35:04.8615225+07:00] service after stop:         STATE              : 1  STOPPED 
+[2026-11-26T22:35:04.8769317+07:00] stopping any aegis-nose process holding the pipe
+[2026-11-26T22:35:06.9208338+07:00] pipe owners cleared; running real -inject on the canonical pipe
+[2026-11-26T22:35:10.4850282+07:00] harness exit=0 ; transcript=D:\aegis-tmp\i44_e45_aa3b7b0_inject.txt
+[2026-11-26T22:35:10.4880516+07:00] restoring SCM failure actions
+[2026-11-26T22:35:10.5136684+07:00] [SC] ChangeServiceConfig2 SUCCESS
+[2026-11-26T22:35:10.5197143+07:00] restoring AegisNids service
+[2026-11-26T22:35:10.5543666+07:00] 
+[2026-11-26T22:35:10.5552131+07:00] SERVICE_NAME: AegisNids 
+[2026-11-26T22:35:10.5761828+07:00]         TYPE               : 10  WIN32_OWN_PROCESS  
+[2026-11-26T22:35:10.5815204+07:00]         STATE              : 2  START_PENDING 
+[2026-11-26T22:35:10.5917137+07:00]                                 (STOPPABLE, NOT_PAUSABLE, IGNORES_SHUTDOWN)
+[2026-11-26T22:35:10.6019143+07:00]         WIN32_EXIT_CODE    : 0  (0x0)
+[2026-11-26T22:35:10.6145961+07:00]         SERVICE_EXIT_CODE  : 0  (0x0)
+[2026-11-26T22:35:10.6246790+07:00]         CHECKPOINT         : 0x0
+[2026-11-26T22:35:10.6397347+07:00]         WAIT_HINT          : 0x0
+[2026-11-26T22:35:10.6535202+07:00]         PID                : 24860
+[2026-11-26T22:35:10.6683924+07:00]         FLAGS              : 
+[2026-11-26T22:35:15.6985196+07:00] service after restore:         STATE              : 4  RUNNING 
+[2026-11-26T22:35:15.7005475+07:00] restarting Nose with captured CommandLine (via WMI, non-blocking)
+[2026-11-26T22:35:15.7602258+07:00] Nose restart ReturnValue=0 ProcessId=11776
+[2026-11-26T22:35:18.7881034+07:00] final processes: aegis_nids:24860 aegis-nose:11776
+[2026-11-26T22:35:18.8010497+07:00] final failure config:         RESET_PERIOD (in seconds)    : 86400         FAILURE_ACTIONS              : RESTART -- Delay = 5000 milliseconds.
+[2026-11-26T22:35:18.8311427+07:00] final named pipes: aegis_nose
+[2026-11-26T22:35:18.8331779+07:00] DONE inject_exit=0

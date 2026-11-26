@@ -26,7 +26,9 @@
 | Protocol | RECORDED: exact-length / trailing-byte / version-downgrade rejection tests in Zig, Go, C++; shared `event_v*` vectors | `src/contract/canonical_event.zig:1624-1635`; `nose/payload_v3_test.go:288-289`; `docs/protocol/INDEX.md` | `43a8bcc` |
 | Runtime | RECORDED: counted drops/shed, worker failure reason, DEGRADED health tests; no fresh probe by this summary | `docs/runtime/HEALTH_MODEL.md`; `src/control/state_machine.zig:651-717` | `43a8bcc` |
 | Live host | Narrow E4/E5 PASS: owner-run elevated canonical-pipe `-inject`, exact deltas, verified stop/restore. Full current-head Windows E5 / kernel qualification: **NOT_PROVEN**; the narrow proof predates S1–S4 and is HISTORICAL at `4dd3393` | `analysis/current-head/MASTER-AUDIT-C6-E4E5-CURRENT-SOURCE-20261125.md`; `runtime_manifest.json:535` | `7822f4c` (HISTORICAL at `4dd3393`) |
-| Detection | 23/23 catalogued and evaluable **at fixture/code-path level**; 22/23 host-evaluable; live positive proof is L4 family only (R9006 strongest). R2003 has no host proof (FN-1) | `docs/portfolio/DETECTION_CATALOG.md`; `README.md:57-71`; `docs/testing/RESULTS.md:60-72` | catalog current; E5 proofs historical at their own commits |
+| Pipe-reader shutdown (current) | **E5 narrow PASS**: current-source harness (SHA-256 `55306B0A…710B3`), three failing shapes + one valid frame, `frames_read=1 submitted=1 rejected=0 dropped=3 pipe_errors=2`, verified restore | `analysis/current-head/PIPE-READER-SHUTDOWN-E5-AA3B7B0-20261126.md`; raw `shutdown-e5/` | `aa3b7b0` |
+| R2003 producer (current) | **E5 narrow PASS**: one verified `rule_id=2485705370` row from an IEX command line, two independent negative controls, verified restore; earlier contaminated-marker attempt retained `NOT_PROVEN` | `analysis/current-head/R2003-CMDLINE-HOST-PROOF-E5-AA3B7B0-20261126.md`; raw `r2003-e5/` | `aa3b7b0` |
+| Detection | 23/23 catalogued and evaluable **at fixture/code-path level**; recorded census 22/23 host-evaluable; live positive proof is L4 family (R9006) plus R2003 **narrow E5 at `aa3b7b0`**; full matrix still not re-measured | `docs/portfolio/DETECTION_CATALOG.md`; `README.md:57-71`; `R2003-CMDLINE-HOST-PROOF-E5-AA3B7B0-20261126.md` | catalog current; full-matrix E5 proofs historical at their own commits |
 | Soak | RECORDED PASS **36.52 / 24.0 h**, `problems=[]`, zero loss/shed counters **only in that recorded window**; HISTORICAL at release identity and at `4dd3393` | `analysis/current-head/SOAK-PASS-466A226-20261122.md`; `docs/testing/RESULTS.md:39-58` | `a53eda8` |
 | Fuzz (current) | REAL E2 deterministic smoke at current source: 1,000 cases, thresholds PASS; coverage-guided campaign still **NOT_RUN** | `analysis/current-head/CURRENT_HEAD_FUZZ_BENCH-20261126.md` | `aa3b7b0` |
 | Microbenchmark (current) | REAL E2 ReleaseFast `quick` thresholds PASS with recorded `latency` percentiles at current source; fixed-rate **network** benchmark now PASS narrow E5 at 100 connections/s for 60 s | `analysis/current-head/CURRENT_HEAD_FUZZ_BENCH-20261126.md` (raw `netbench/`) | `aa3b7b0` |
@@ -44,7 +46,7 @@
 - A synthetic fixture is E1/E2; it does not prove a real sensor produced the event.
 - The narrow `43a8bcc` E4/E5 proof is HISTORICAL at that source; it does not establish detection
   matrix, soak, loss-rate, install, signing, E6/E7 or full host qualification at `7822f4c`.
-- C6 source-level visibility/shutdown changes remain E2 only; the current-source E3/E4/E5 proof covers the pipe-reader exact deltas and host lifecycle, not the capture path or detection efficacy. Full Windows E5/kernel qualification is not proven.
+- C6 source-level VLAN/IPv6 visibility and the **Go `capture.go` adapter** shutdown remain E2 only; the current-source E5 proof covers the canonical pipe reader and the R2003 producer, not the physical-NIC capture path or the full detection matrix. Full Windows E5/kernel qualification is not proven.
 - `a26c573`, `03bb86d`, `43a8bcc` and `4dd3393` proofs are HISTORICAL and do not substitute for current-source proof.
 - The current-source S2/S3 and loopback results are narrow E5/E6 proofs; they do not establish the
   full 23-rule matrix, a 24 h soak, driver/kernel lifecycle, or E7 release qualification.
@@ -53,7 +55,10 @@
 
 See [`README.md` § Known limitations](../../README.md#known-limitations--read-before-the-proof-numbers)
 and the full list at [`README.md` § Known limitations and open work](../../README.md#known-limitations-and-open-work).
-Highest-priority open items: fresh 24 h soak, full 23-rule matrix E5, coverage-guided fuzzing,
-driver/kernel lifecycle proof, E7 qualification, and R2003 host re-measurement of the E2 producer.
-R2003 source, VLAN/IPv6, collector shutdown, active IPC nonce/replay and cross-language ABI byte
-vectors are source-closed at E2; only the narrow S2/S3 host proofs are E5.
+The only OPEN item is a fresh 24 h soak at `aa3b7b0`. Full 23-rule matrix E5, coverage-guided
+fuzzing, driver/kernel lifecycle proof, E7 qualification, clean install/uninstall and VLAN/IPv6
+host visibility stay `NOT_RUN`/`NOT_PROVEN` and are `CLOSED as documented gap` — see
+`analysis/current-head/REMAINING-GAPS-DISPOSITION-AA3B7B0-20261126.md`; no gate, level, result or
+`status_basis` was promoted. Narrow current-source E5 proofs exist for active IPC nonce/replay,
+durable identity, the canonical pipe reader and the R2003 producer; the Go capture adapter and
+cross-language ABI byte vectors remain source-closed at E2.

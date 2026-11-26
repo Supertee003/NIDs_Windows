@@ -11952,6 +11952,75 @@
       ],
       "status": "VOIDED",
       "status_basis": "void-gaps-first.json with restore.verified=true, finalizer_task_deleted=true and errors=[]."
+    },
+    {
+      "id": "PIPE-READER-SHUTDOWN-E5-AA3B7B0-20261126",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-26",
+      "title": "Canonical pipe-reader bounded shutdown and exact counter deltas at build source aa3b7b0",
+      "level": "E5",
+      "component": "src/tests/cli/nose_pipe_e2e_cli.zig -> production pipe reader + fabric",
+      "flow_id": "compile current harness -> stop daemon/Nose -> -inject on canonical pipe -> exact deltas -> verified restore",
+      "description": "A harness compiled from the current-source nose_pipe_e2e_cli.zig (SHA256 55306B0A...710B3) ran elevated with -inject -seconds 2 after stopping AegisNids and both Nose processes so it owned \\\\.\\pipe\\aegis_nose. The three failing shapes and one valid frame produced the exact reader deltas frames_read=1 submitted=1 rejected=0 dropped=3 pipe_errors=2, fabric shutdown accepted=0/rejected=0/dropped=0, harness exit=0. SCM failure actions, service state, Nose command line and the pipe were restored; errors=[].",
+      "files_verified": [
+        "analysis/current-head/PIPE-READER-SHUTDOWN-E5-AA3B7B0-20261126.md",
+        "analysis/current-head/raw-aa3b7b0-20261126/shutdown-e5/i44_e45_aa3b7b0_elevated_run.txt",
+        "analysis/current-head/raw-aa3b7b0-20261126/shutdown-e5/i44_e45_aa3b7b0_inject.txt",
+        "analysis/current-head/raw-aa3b7b0-20261126/shutdown-e5/i44_e45_aa3b7b0_prestate.txt",
+        "analysis/current-head/raw-aa3b7b0-20261126/shutdown-e5/harness-provenance.txt"
+      ],
+      "tests": [
+        "close-before-payload -> +1 midframe, +1 pipe error",
+        "absurd frame length 65537 -> +1 framing, +1 pipe error",
+        "drain-then-valid -> +1 framing, +1 submitted, no pipe error",
+        "reader shutdown -> frames_read=1 submitted=1 rejected=0 dropped=3 pipe_errors=2",
+        "restore -> service RUNNING, failure actions restored, Nose ReturnValue=0, pipe aegis_nose"
+      ],
+      "result": "PASS_E5_NARROW",
+      "finding": "The canonical pipe reader's bounded shutdown and exact loss/framing accounting are host-proven at this source. This is not a Go Nose adapter shutdown proof, a detection matrix, a soak, an install campaign or E7.",
+      "evidence_artifact": "analysis/current-head/PIPE-READER-SHUTDOWN-E5-AA3B7B0-20261126.md",
+      "limitations": [
+        "No real-Ethernet capture-adapter shutdown proof; Go capture.go pins remain E2.",
+        "No VLAN/QinQ or IPv6 extension-header stimulus.",
+        "No E6/E7 or full Windows kernel IDS claim."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Elevated owner transcript with current-source harness hash, exact deltas and verified restore."
+    },
+    {
+      "id": "R2003-CMDLINE-HOST-PROOF-E5-AA3B7B0-20261126",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-26",
+      "title": "R2003 ProcessCommandLine producer re-measured on the Windows host at build source aa3b7b0",
+      "level": "E5",
+      "component": "aegis_etw_helper.dll -> kernel_process Aho-Corasick -> forensic ring / R2003",
+      "flow_id": "swap current-source runtime -> launch IEX-marked process -> forensic search positive + 2 negatives -> verified restore",
+      "description": "Elevated owner probe with current-source aegis_nids.exe (6F548AF7...), aegis-nose.exe (8C05FE48...), aegis_pep.dll (6E05AAE1...) and aegis_etw_helper.dll (B594EC77...). Baseline R2003 rows=0. A benign long-lived PowerShell whose command line carried an independent IEX marker produced one verified forensic row (record_seq 8919, rule_id 2485705370, source=10 host_telemetry, verified=true). A benign command-line marker and an IEX marker confined to a script file each matched 0 rows. verdict=PASS_E5_NARROW, errors=[], restore_verified=true, service Running.",
+      "files_verified": [
+        "analysis/current-head/R2003-CMDLINE-HOST-PROOF-E5-AA3B7B0-20261126.md",
+        "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-result.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-transcript.txt",
+        "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-positive_marker.raw.txt",
+        "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-negative_cmd_marker.raw.txt",
+        "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-negative_wire_marker.raw.txt"
+      ],
+      "tests": [
+        "baseline R2003 records_matched=0, ring verified=true",
+        "positive IEX command line -> 1 verified R2003 row",
+        "negative benign command-line marker -> 0 marker rows",
+        "negative script-file-only IEX marker -> 0 marker rows",
+        "restore -> hash-identical baseline binaries, service Running, errors=[]"
+      ],
+      "result": "PASS_E5_NARROW",
+      "finding": "The R2003 CommandLine producer is host-proven at this source for one benign IEX case with two negative controls. This is not the full 23-rule matrix, a soak, driver lifecycle, E6 simulation or E7.",
+      "evidence_artifact": "analysis/current-head/R2003-CMDLINE-HOST-PROOF-E5-AA3B7B0-20261126.md",
+      "limitations": [
+        "One positive rule case only; the remaining 22 rules are not re-measured.",
+        "Loopback Nose capturer; no tagged-frame or physical-NIC stimulus.",
+        "An earlier v1 attempt with contaminated shared markers is retained as NOT_PROVEN and gives no evidence credit."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Elevated owner transcript with current-source hashes, one verified R2003 row, two independent negative controls and verified restore."
     }
   ],
   "known_gaps": [
@@ -18627,11 +18696,11 @@
     "E2_count": 171,
     "E3_count": 19,
     "E4_count": 5,
-    "E5_count": 124,
+    "E5_count": 126,
     "E6_count": 2,
     "E7_count": 5,
-    "E5_with_artifact_count": 74,
-    "E5_with_resolvable_artifact_count": 42,
+    "E5_with_artifact_count": 76,
+    "E5_with_resolvable_artifact_count": 44,
     "E5_with_unresolvable_artifact_count": 32,
     "unresolvable_artifact_pointer_count": 48,
     "known_gaps_count": 287

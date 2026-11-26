@@ -1,0 +1,66 @@
+﻿=== sc qfailure AegisNids ===
+[SC] QueryServiceConfig2 SUCCESS
+
+SERVICE_NAME: AegisNids
+        RESET_PERIOD (in seconds)    : 86400
+        REBOOT_MESSAGE               : 
+        COMMAND_LINE                 : 
+        FAILURE_ACTIONS              : RESTART -- Delay = 5000 milliseconds.
+                                       RESTART -- Delay = 15000 milliseconds.
+                                       RESTART -- Delay = 60000 milliseconds.
+
+
+=== sc qc AegisNids ===
+[SC] QueryServiceConfig SUCCESS
+
+SERVICE_NAME: AegisNids
+        TYPE               : 10  WIN32_OWN_PROCESS 
+        START_TYPE         : 3   DEMAND_START
+        ERROR_CONTROL      : 1   NORMAL
+        BINARY_PATH_NAME   : C:\Program Files\AEGIS NIDS\runtime\aegis_nids.exe
+        LOAD_ORDER_GROUP   : 
+        TAG                : 0
+        DISPLAY_NAME       : AegisNids
+        DEPENDENCIES       : 
+        SERVICE_START_NAME : LocalSystem
+
+=== sc queryex AegisNids ===
+
+SERVICE_NAME: AegisNids 
+        TYPE               : 10  WIN32_OWN_PROCESS  
+        STATE              : 4  RUNNING 
+                                (STOPPABLE, NOT_PAUSABLE, IGNORES_SHUTDOWN)
+        WIN32_EXIT_CODE    : 0  (0x0)
+        SERVICE_EXIT_CODE  : 0  (0x0)
+        CHECKPOINT         : 0x0
+        WAIT_HINT          : 0x0
+        PID                : 19172
+        FLAGS              : 
+
+=== processes ===
+
+
+Name            : aegis_nids.exe
+ProcessId       : 19172
+ParentProcessId : 1544
+CommandLine     : "C:\Program Files\AEGIS NIDS\runtime\aegis_nids.exe"
+ExecutablePath  : C:\Program Files\AEGIS NIDS\runtime\aegis_nids.exe
+
+Name            : aegis-nose.exe
+ProcessId       : 20392
+ParentProcessId : 5240
+CommandLine     : D:\NIDs_Windows\nose\aegis-nose.exe -capture -iface 
+                  \Device\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}
+ExecutablePath  : D:\NIDs_Windows\nose\aegis-nose.exe
+
+
+
+
+=== named pipes ===
+
+
+Name : aegis_nose
+
+
+
+

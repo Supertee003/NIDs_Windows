@@ -25,7 +25,7 @@ zig-out\bin\aegis_fuzz.exe
 
 `src/tests/fuzz_main.zig` builds an Aho-Corasick automaton with `evil` / `malware` / `exploit`, then drives **1,000** PRNG-generated buffers (length 1..1024) through both `AhoCorasick.match` and `packet_decoder.decode`. `GeneralPurposeAllocator.deinit()` is checked and exits 1 on a leak. The PRNG seed is fixed (`0xDEADBEEF`), so this is a deterministic smoke campaign: it proves no crash/leak on those 1,000 inputs, **not** coverage-guided mutation and not a claim about unseen inputs.
 
-**Coverage-guided fuzz campaign: NOT_RUN at this source.** No coverage-guided engine is present in the toolchain, and no result is invented here.
+**Coverage-guided fuzz campaign: NOT_RUN at this source.** No coverage-guided engine is present in the toolchain (no clang/libFuzzer, AFL++, honggfuzz, cargo-fuzz/nightly or Atheris; Zig 0.13 has no `zig fuzz`), and no result is invented here. It is `CLOSED as documented gap` in `analysis/current-head/REMAINING-GAPS-DISPOSITION-AA3B7B0-20261126.md` — a documentation status only; this entry's level and result stay E2 PASS for the deterministic smoke.
 
 ## In-process microbenchmarks — PASS thresholds (E2)
 
