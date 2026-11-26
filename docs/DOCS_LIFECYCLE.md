@@ -50,6 +50,20 @@
 - Pre-`aa3b7b0` release/E6/E7 records use the logical namespace declared in
   `analysis/historical/HISTORICAL-NAMESPACE.md`; they are not physically moved
   because frozen signed trees and current-facing docs reference their paths.
+- The case-only architecture duplicates are **declared, not merged**. The
+  uppercase files are the current-facing authorities:
+  `docs/architecture/LANGUAGE_OWNERSHIP.md` (`AUTHORITATIVE`, derived from
+  `ARCHITECTURE_CANONICAL.md` Section 3) and `docs/architecture/FAILURE_MODEL.md`
+  (`HISTORICAL in part`, Section 8; the fill-percent backpressure table is
+  superseded by `src/pipeline/event_queue.zig`). The lowercase
+  `language-ownership.md` and `failure-model.md` are frozen `Rewrite v3.0`
+  context snapshots. No file is deleted or merged because `inventory.json` and
+  `reference_map.json` classify all four paths and tests pin the uppercase
+  variants; a physical merge needs a separate records patch with regenerated
+  maps, not a silent edit during the soak window.
+- `docs/architecture/ARCHITECTURE_CANONICAL.md` already declares itself
+  `HISTORICAL / CONTEXT-ONLY` with the 2026-09-08 build-truth override; it is
+  not an authority for current truth.
 - 48 primary evidence pointers still do not resolve in a fresh worktree (18
   have exact operator-archive locators, 30 are marked `missing`). This is
   recorded in `EVIDENCE_INDEX.json` and `docs/evidence/PROVENANCE.md`, not
