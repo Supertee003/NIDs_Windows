@@ -167,8 +167,12 @@ production SRE") and `RB-010`.
 
 ## 7. Completion gate
 
-When the 24 h window returns PASS: copy the final artifact to
-`soak-24h-f4cde3c-final.json`, run `tools/final_audit.py --release-check`,
-update `EVIDENCE_INDEX.json` and `check_summary.py --write`, confirm board
-6/6, then report. Tag `v1.1` and publish **only** after owner confirmation —
-never before.
+When the owner finalizer returns the 24 h result: consume the recorded artifact
+at its actual path (do not reuse `soak-24h-f4cde3c-final.json`, which names a
+historical window). Accept it only with `verdict=PASS`, `elapsed_hours>=24`,
+`problems=[]` and `restore.verified=true`; then run `tools/final_audit.py --check`
+and re-read the resulting board. A PASS is a gate input, not an automatic
+6/6, not E7 and not a new release: re-run `check_summary.py --write` only if
+the evidence index is actually updated, and publish **only** after owner
+confirmation — never before. At build source `aa3b7b0` the board is 5/6 with
+`soak_24h` OPEN and NOT SHIPPABLE.

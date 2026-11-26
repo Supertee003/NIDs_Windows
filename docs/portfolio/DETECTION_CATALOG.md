@@ -92,10 +92,17 @@ sensor feeds these rules. Absence of a hit is not absence of the content.
 | **R2004** | certutil Download Abuse | High | Block | `certutil -urlcache -f` | E1/E2 synthetic; earlier live proof in RULE-LAYER-SCOPE-001 |
 | **R2005** | procdump Credential Harvest | Critical | Drop | `procdump`, `lsass.exe` | E1/E2 synthetic |
 
-**FN-1 (accepted limitation):** on the measured host, process telemetry v0–v4 carries **no
-`CommandLine`** field, and a real command-line source is not implemented in this build. R2003 is
-therefore inert on host process rows. The Zig consumer can decode a `CommandLine` TLV if a future
-provider supplies one, but no positive host proof exists here. Do not manufacture one.
+**FN-1 (accepted limitation):** on the original measured host, process telemetry v0–v4 carries
+**no `CommandLine`** field, and no real command-line source existed in that measured build. R2003
+was therefore inert on those host process rows. The Zig consumer can decode a `CommandLine` TLV
+if a provider supplies one, but no positive host proof exists in that census. Do not manufacture
+one.
+
+**Narrow current-source addendum (`aa3b7b0`):** since `493648f` a read-only ProcessStart
+`CommandLine` producer exists, and
+`analysis/current-head/R2003-CMDLINE-HOST-PROOF-E5-AA3B7B0-20261126.md` records one narrow E5
+positive with two negative controls. It re-measures one case only; it does not change the
+22/23 host-evaluable census above and does not make the remaining rules host-proven.
 
 ### L2_PIPE — named-pipe telemetry (5 rules)
 

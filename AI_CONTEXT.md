@@ -6,7 +6,7 @@
 
 **HEAD:** `aa3b7b0161e425e54155d5767737bffcde7939b5` (build source commit — ADR-0008)
 
-**RECORDS TIP:** `8f01825` at the 2026-11-26 re-anchor; check `git rev-parse HEAD` for the live value (a commit cannot contain its own SHA)
+**RECORDS TIP:** `c7603f7` at the 2026-11-27 reconciliation; check `git rev-parse HEAD` for the live value (a commit cannot contain its own SHA)
 
 **BRANCH:** `main`
 
@@ -298,7 +298,7 @@ cd ts_policy && npm run typecheck && npm run test:all   → (advisory only, no o
 
 | CONTRACT-01 | CANONICAL_EVENT | 109-byte event schema | All sensors → Zig |
 
-| CONTRACT-02 | PEP_ABI | PEP request/response (64/16 bytes) | Zig ↔ Rust |
+| CONTRACT-02 | PEP_ABI | PepRequest 64 bytes / PepResponse 24 bytes; separate evidence-only PepAssessmentResponse 16 bytes | Zig ↔ Rust |
 
 | CONTRACT-03 | RUNTIME_ABI | Module lifecycle + worker stages | Zig ↔ all |
 

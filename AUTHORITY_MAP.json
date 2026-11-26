@@ -104,7 +104,7 @@
             "src/xdr/*.zig",
             "src/windows/*.zig"
           ],
-          "note": "Zig is the runtime spine. Transports are contract-specific: Go Nose uses a length-prefixed named pipe; C/C++ use C ABI; Rust uses PEP ABI; Python uses the Analytics Contract; TypeScript uses the Control Protocol. Selected XDR code authority: src/xdr/xdr_incident_fabric.zig; advisory-only and runtime-wired read-only (XDR-WIRE-001) exposed via xdr.list, with no policy/PEP/dispatch consumption; the full source-to-forensic-receipt XDR flow remains open. xdr_engine, xdr_harden, xdr_correlator, and xdr_incident_graph remain non-authoritative test/support candidates."
+          "note": "Zig is the runtime spine. Transports are contract-specific: Go Nose uses a length-prefixed named pipe; C/C++ use C ABI; Rust uses PEP ABI; Python uses the Analytics Contract; TypeScript uses the Control Protocol. Selected XDR code authority: src/xdr/xdr_incident_fabric.zig; advisory-only and runtime-wired read-only (XDR-WIRE-001) exposed via xdr.list, with no policy/PEP/dispatch consumption; XDR-RECEIPT-002 supplies the recording-only source-to-forensic-receipt route (SYSTEM_MAP.json xdr_incident_fabric, FLOW_MAP.json XDR-PROD-001, runtime_manifest.json authority_invariants), with current-head Windows E5 for that route NOT_PROVEN. xdr_engine, xdr_harden, xdr_correlator, and xdr_incident_graph remain non-authoritative test/support candidates."
         }
       ]
     },

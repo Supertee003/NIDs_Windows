@@ -1,8 +1,9 @@
 # 10 - Current Phase
 
-> **UPDATE (2026-11-22):** the published release is now `v1.1` (signed candidate
+> **UPDATE (2026-11-22, HISTORICAL at `a53eda8`):** the published release is `v1.1` (signed candidate
 > `466a226`, build source `a53eda8`, 6/6 gates PASS, genuine 36.52 h soak, 0 open
-> gaps). The v2.0.0 status below is HISTORICAL for release identity; `a53eda8`
+> gaps at that identity). The current board at `aa3b7b0` is **5/6 PASS, `soak_24h` OPEN, NOT
+> SHIPPABLE**; no E7 claim. The v2.0.0 status below is HISTORICAL for release identity; `a53eda8`
 > descends from `7c604d5`. The current build source is `aa3b7b0`
 > (loopback BPF fix; predecessor `4dd3393` with P2-44 `9105ff5`, P2a `d2f129e`, P2b `661fb76`, P8 source-truth `2129dcd`,
 > P8-I44 observability `e406cbb`, P8-I44-E3 isolated `-inject` proof `03bb86d`

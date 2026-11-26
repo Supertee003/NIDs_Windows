@@ -1,8 +1,8 @@
 # AEGIS NIDS - Canonical Architecture
 
-**Status**: AUTHORITATIVE
+**Status**: HISTORICAL / CONTEXT-ONLY — superseded by `AI_CONTEXT.md`, the root machine maps and `src/`; not an authority for current truth
 **Date**: 2026-08-31
-**Supersedes**: All previous architecture documents (see DEPRECATION_MAP.md)
+**Supersedes**: All previous architecture documents (see DEPRECATION_MAP.md) — this supersession is HISTORICAL
 
 > **⚠️ 2026-09-08 BUILD-TRUTH OVERRIDE (Step 2):** This document describes the
 > legacy `core/` module layout and is retained for historical/contract context.
@@ -16,10 +16,12 @@
 
 ## Purpose
 
-This document is the **single source of truth** for AEGIS NIDS architecture.
-All other architecture documents are DEPRECATED and point to this file.
+This document is retained for historical/contract context only; it is **not** the
+**single source of truth** for current AEGIS NIDS architecture. Current truth is
+`AI_CONTEXT.md`, the root machine maps and the `src/` build tree at the recorded
+build source (`aa3b7b0` at the 2026-11-27 reconciliation).
 
-If any conflict arises between this document and another file, **this file wins**.
+If any conflict arises between this document and current truth, **current truth wins**.
 
 ---
 

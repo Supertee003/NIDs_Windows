@@ -61,7 +61,8 @@
         "PepDecision": "enum(u8): allow=0, block=1, rate_limit=2, quarantine=3, escalate=4, drop=5",
         "PepContext": "extern struct (24 bytes): caller_pid, caller_capability_mask, request_id, policy_version",
         "PepRequest": "extern struct (64 bytes): decision_kind, requested_action, flow_id, src/dst ip/port, protocol, policy_id, severity, direction@37 (0=outbound dst_ip/dst_port; 1=inbound peer src_ip + local dst_port), ctx@40",
-        "PepResponse": "extern struct (24 bytes): decision, reason, quota_remaining, signed_by, filter_id",
+        "PepResponse": "extern struct (24 bytes): decision, reason, quota_remaining, signed_by, filter_id; this is the aegis_pep_enforce response (rust-src/lib.rs:268-275, src/policy/pep_bindings.zig:80-86)",
+        "PepAssessmentResponse": "separate evidence-only extern struct (16 bytes): decision, reason, host_effect_confirmed, reserved[7] (rust-src/lib.rs:280-289); not the PEP ABI response and not a host-effect receipt",
         "PepFilterState": "packed struct (20 bytes): filter_id, remote_ipv4, remote_port, protocol, present, provider_status",
         "AEGIS_WFP_FILTER_QUERY": "packed struct (16 bytes): filter_id, direction@8, reserved[7]; direction 0=outbound, 1=inbound; an 8-byte legacy input is outbound-only"
       },
@@ -184,8 +185,8 @@
       "authorization": {
         "roles": "READ < OPERATE < PRIVILEGED",
         "acl": "Explicit caller-to-role mapping (no catch-all)",
-        "freshness": "DECLARED in frozen v1 only; NOT enforced on active v2",
-        "replay": "DECLARED in frozen v1 only; (request_id, nonce) is NOT consumed on active v2 — no active nonce/replay protection"
+        "freshness": "ENFORCED on active v2 (protocol_version=2): |now_ms - issued_at_ms| <= 60000, checked in src/control/handler_registry.zig:190-204 and src/control/replay_guard.zig:8,19,67-71",
+        "replay": "ENFORCED on active v2: single-use 16-byte nonce in a process-local 1024-entry ring (src/control/replay_guard.zig:11-21,65-81), wired at src/control/handler_registry.zig:205-215; restart resets state and deterministic eviction can reuse a nonce, so this is not a durable or keyed guarantee"
       }
     },
     {

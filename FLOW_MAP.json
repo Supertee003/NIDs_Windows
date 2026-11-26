@@ -229,7 +229,7 @@
           "owner": "Zig",
           "input": "PipeMessage",
           "output": "AuthorizedCommand",
-          "file": "src/policy/control_ipc.zig"
+          "file": "src/control/handler_registry.zig:184-215 (dispatch/authorization) + src/platform/win32_pipe.zig:149-156 (caller context); src/policy/control_ipc.zig is test-only"
         },
         {
           "step": 4,
@@ -474,7 +474,7 @@
           "name": "PEP Response",
           "plane": "PLANE-D â†’ PLANE-B",
           "owner": "Rust â†’ Zig",
-          "input": "PepResponse (16 bytes)",
+          "input": "PepResponse (24 bytes; not the 16-byte evidence-only PepAssessmentResponse)",
           "output": "PepDecision to Zig",
           "file": "src/policy/pep_bindings.zig"
         }

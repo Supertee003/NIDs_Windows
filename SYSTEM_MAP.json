@@ -388,7 +388,7 @@
         "gopacket",
         "bubbletea"
       ],
-      "boundary": "Length-prefixed Windows named pipe -> Zig Nose reader; non-Windows development fallback uses loopback TCP",
+      "boundary": "Length-prefixed Windows named pipe -> Zig Nose reader; no TCP fallback is implemented (nose/pipe_writer.go:6,43); loopback capture is a labelled self-test binding, not a TCP transport fallback",
       "boundary_ring": "ring1_contract"
     },
     {

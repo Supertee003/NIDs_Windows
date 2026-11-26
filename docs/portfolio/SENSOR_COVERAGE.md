@@ -3,6 +3,12 @@
 > Scope: build source `4dd3393` (HISTORICAL at current source `aa3b7b0`). AEGIS-PLAN-008.
 > This page maps what the capture path is **designed** to observe and what has
 > actually been measured. Source-level support is not host proof.
+>
+> **Current-source addendum (`aa3b7b0`):** following the pattern in
+> `docs/portfolio/PERFORMANCE_REPORT.md:3-8`, this page is HISTORICAL at its `4dd3393` scope.
+> At `aa3b7b0` the measured set is a narrow loopback E6 (R9006), a narrow R2003 E5 (one
+> positive, two negative controls), narrow S2/S3 E5 and a controlled 100 conn/s loopback E5.
+> VLAN/QinQ, IPv6 extension headers, the full rule matrix and full Windows E5 remain NOT_PROVEN.
 
 ## 1. Coverage matrix
 
@@ -14,7 +20,7 @@
 | VLAN / QinQ | C6 capture visibility slice (`7822f4c`) | E2 at `7822f4c`; narrow E3/E4/E5 at `7822f4c` | Current-source host proof NOT_PROVEN |
 | Truncated / malformed frame | Length-aware envelope; reject/trailing/oversize tests in `tests/contracts/` | E2 (`test_payload_envelope_v3.py`, `test_ipv6_wire_v2.py`) | E2 PASS at `4dd3393` |
 | Embedded NUL / invalid UTF-8 binary payload | Length-aware codecs; no `str(payload)` detector semantics | E2 contract tests | E2 PASS at `4dd3393` |
-| R2003 process command-line producer | S1 source slice `493648f` | E2 producer test | Host R2003 E5 requires owner run; NOT_PROVEN |
+| R2003 process command-line producer | S1 source slice `493648f` | E2 producer test; narrow E5 at `aa3b7b0` (one positive, two negative controls) | Narrow current-source proof only; full host matrix NOT_PROVEN |
 | Kernel minifilter ring | Admission design in ADR-0010/0014 | Historical E5 window with ring drops 0 | Current-source E5 NOT_PROVEN |
 
 ## 2. Why the columns are separate
@@ -34,7 +40,7 @@
 - Process-relative `monotonic_ns` was added in C6; no cross-source host proof.
 - WFP `npcap_primary` acquisition depends on the installed host adapter; the
   repository cannot prove adapter behavior from a fresh clone.
-- Full Windows E5 / kernel IDS qualification is **NOT_PROVEN** at `4dd3393`.
+- Full Windows E5 / kernel IDS qualification is **NOT_PROVEN** at `aa3b7b0` (the `4dd3393` scope label above is HISTORICAL).
 
 ## 4. Owner actions
 

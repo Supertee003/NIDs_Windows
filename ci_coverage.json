@@ -109,7 +109,7 @@
             "job": "drivers-wdk-build",
             "required": false,
             "classification": "SUPPORT",
-            "note": "WFP callout + minifilter sources. Manual-only job (workflow_dispatch) until a hosted WDK run is observed green, so PRs carry no unverified red signal; operator build path stays scripts/build_drivers.bat and install drill DEPLOY-120 (E5) remains the verification gate."
+            "note": "WFP callout + minifilter sources. Runs on every push in .github/workflows/ci.yml on windows-2022 using the canonical WDK scripts, but is deliberately outside ci-matrix.needs and classified SUPPORT/non-required; a red driver build blocks package-release but does not create a canonical ci-matrix FAIL. Operator build path stays scripts/build_drivers.bat and install drill DEPLOY-120 (E5) remains the verification gate."
         },
         {
             "id": "e2e",

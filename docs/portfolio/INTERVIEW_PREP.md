@@ -14,7 +14,7 @@
 | 1 | [`src/main.zig`](../../src/main.zig) | Canonical daemon entrypoint (`build.zig:30` sets it as root source) | Shows the single runtime owner and worker lifecycle |
 | 2 | [`src/core/nids_main.zig`](../../src/core/nids_main.zig) | NIDS core `main()` | Where runtime composition actually happens |
 | 3 | [`src/platform/win32_pipe.zig`](../../src/platform/win32_pipe.zig) | Named-pipe endpoint, DACL, token impersonation | The control-plane security boundary in code |
-| 4 | [`src/control/protocol.zig`](../../src/control/protocol.zig) | v2 command table and envelope | Active protocol version; note declared-but-unenforced nonce |
+| 4 | [`src/control/protocol.zig`](../../src/control/protocol.zig) | v2 command table and envelope | Active protocol version; version, freshness and single-use nonce are enforced at dispatch (`src/control/replay_guard.zig`, `handler_registry.zig:184-215`), process-local only |
 | 5 | [`src/control/handler_registry.zig`](../../src/control/handler_registry.zig) | Per-command dispatch and authorization | Shows role checks and forensic verify/replay semantics |
 | 6 | [`src/contract/canonical_event.zig`](../../src/contract/canonical_event.zig) | Authoritative event struct, serialization, validation | One canonical schema with codecs in Zig, Go, C and Python plus the golden tuple map; Rust codec is TBD |
 | 7 | [`src/pipeline/event_processor.zig`](../../src/pipeline/event_processor.zig) | Detection authority; L7 extraction source gating | Sole verdict owner; sensor boundaries |
@@ -85,12 +85,12 @@ re-execute detection. Never say it matched original verdicts.
 
 | Do not claim | Reality |
 |---|---|
-| Active IPC has nonce/freshness/replay protection | v2 declares `nonce`/`issued_at_ms` but dispatch never reads them; the v1 table is inactive |
-| `CONTRACT_MAP.json` CONTRACT-04 is current control truth | It is stale v1 (claims freshness/replay and `rules.reload` at `OPERATE`) |
+| Active IPC has durable or keyed nonce/replay protection | v2 enforces version, freshness and single-use nonce at dispatch (`src/control/replay_guard.zig`, `handler_registry.zig:184-215`); state is a process-local 1024-entry ring, so restart resets it and eviction can reuse a nonce. Narrow E5 covers exact in-process replay only. |
+| `CONTRACT_MAP.json` CONTRACT-04 is current control truth | Reconciled 2026-11-27: freshness/replay now describe enforced active v2; the v1 command table below is frozen history and `rules.reload` at `OPERATE` is not a live command |
 | EV/HLK-signed production driver, Microsoft attestation | Source/INF require test signing; these are explicitly out of scope |
 | WFP E5 for the newest scope changes | E1 code-level only; no WDK build, E5, or soak for that source |
 | A rule is "verified on WFP" from the scope document | That document explicitly forbids the inference |
-| R2003 detects real host command lines here | ProcessStart v0–v4 have no `CommandLine`; real source not implemented |
+| R2003 detects real host command lines everywhere | The original measured host had no `CommandLine` in ProcessStart v0–v4; since `493648f` a read-only producer exists and `aa3b7b0` has one narrow E5 case with two negative controls, not a full host matrix |
 | Zig detection uses `regex_pattern` | Zig uses `match_pattern`; Python Brain owns `regex_pattern` |
 | `rules.validate` compiles regexes | It checks required fields only |
 | Authoritative MITRE ATT&CK mapping exists | No reviewed mapping in the rule catalog; T1055 IDs appear only as comments in the NOT-WIRED injection detector |

@@ -26,8 +26,8 @@
     "immutable": true,
     "note": "Release identity is immutable. No re-key, new tag, new signature or v2.1.0 is part of this status."
   },
-  "current_build_source": "4dd33936909de1314099652a7523e52c40bb2c44",
-  "current_build_source_note": "Current source is records-descended from the immutable release identity. The 6/6 gate result below belongs to the release identity, not to the current build source. S1 (493648f) added a read-only ProcessStart CommandLine producer and proved TLV -> R2003 at E2; S2 (4bc8244) added active control-v2 nonce/replay/freshness enforcement at E2; S3 (f1f89c1) added durable v3 producer identity issuance at Go ingress and duplicate/regression refusal at Zig ingress at E2; S4 (2673bd2, seam registration 4dd3393) added versioned canonical policy bytes V1 with four-language byte equality at E2. Host E5 re-measurement, S2/S3 live replay E3, full current-source matrix, legacy policy hash migration, soak/install/signing and E6/E7 remain open.",
+  "current_build_source": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+  "current_build_source_note": "Current source is records-descended from the immutable release identity. The 6/6 gate result below belongs to the release identity at a53eda8 and is HISTORICAL relative to this source; it is NOT the current board. Current board at aa3b7b0 is 5/6 PASS, soak_24h OPEN, NOT SHIPPABLE, with no E7 claim (python tools/final_audit.py --check; analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md). Predecessor slices: S1 (493648f) read-only ProcessStart CommandLine producer at E2; S2 (4bc8244) active control-v2 version/freshness/single-use nonce at E2; S3 (f1f89c1) durable v3 producer identity issuance/admission at E2; S4 (2673bd2, seam registration 4dd3393) versioned canonical policy bytes at E2; C6 (7822f4c) capture proof; aa3b7b0 adds the loopback BPF fix. Proven at aa3b7b0: E2 unit proof, narrow loopback E6, narrow S2/S3/R2003 E5 proofs and a controlled 100/s loopback E5. Full current-source Windows E5/kernel IDS qualification, the full rule matrix, soak, install/signing and E6/E7 remain NOT_PROVEN or OPEN.",
   "qualification_gates": {
     "passed": 6,
     "total": 6,
@@ -93,12 +93,22 @@
     "statement": "One Ed25519 signature authenticates SHA256SUMS; 674 is the number of artifacts whose hashes were verified against that signed digest. It is not 674 separate signatures and does not by itself prove security validation of each artifact.",
     "source": "release/T20-final/466a226/signatures.json"
   },
+  "current_head_board": {
+    "build_source": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+    "gates_passed": 5,
+    "gates_total": 6,
+    "soak_24h": "OPEN",
+    "shippable": false,
+    "evidence_boundary": "narrow E2/E5/E6 only; full Windows E5, kernel IDS qualification and E7 NOT_PROVEN",
+    "source": "tools/final_audit.py --check; analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md",
+    "note": "This field is the current source board. The qualification_gates object below is the immutable release-identity board at a53eda8 and is HISTORICAL."
+  },
   "verification_summary": {
     "tests": "1,471 passed / 0 skipped, sum of two phases at build source a53eda8 (not a single pytest invocation)",
     "soak": "36.52 / 24.0 h PASS, HISTORICAL at a53eda8; no current-build-source soak is claimed",
-    "current_source_proof": "E2 unit proof, narrow private-pipe -inject E3 exact-delta proof and narrow owner-run elevated canonical-pipe E4/E5 proof with verified host restore at build source 7822f4c (go test ./..., Zig decoder tests, full zig build test 2142 passed / 10 skipped; harness SHA256 3CAB8A36...C67). E3/E4/E5 PASS at 43a8bcc are HISTORICAL. Full current-head Windows E5 / kernel IDS qualification and detection efficacy remain NOT_PROVEN. S1 at 493648f closed the R2003 FN-1 source gap at E2 (read-only ProcessStart command-line producer -> AEGT TLV kind 2 -> Zig -> R2003); host re-measurement remains open. See EVIDENCE_INDEX.json entries S1-R2003-CMDLINE-E2-493648F-20261125, C6-E3-7822F4C-20261125 (current E3), C6-E4E5-7822F4C-20261125 (current narrow E4/E5), P8-I44-43A8BCC-E4E5-20261125 (historical) and AEGIS-006-C6-CAPTURE-20261125 (current E2).",
+    "current_source_proof": "At build source aa3b7b0: E2 unit proof; narrow loopback E6 with attributable R9006 rows (analysis/current-head/MASTER-AUDIT-LOOPBACK-BPF-E6-AA3B7B0-20261126.md); narrow R2003 CommandLine E5 with one positive and two negative controls (analysis/current-head/R2003-CMDLINE-HOST-PROOF-E5-AA3B7B0-20261126.md); narrow S2 replay denial and S3 durable identity E5 (analysis/current-head/S2S3-HOST-PROOF-E5-AA3B7B0-20261126.md); controlled 100 conn/s loopback E5 (docs/portfolio/CURRENT_HEAD_FUZZ_BENCH-20261126.md). Full current-head Windows E5/kernel IDS qualification, the full rule matrix, soak, install/signing, E6/E7 and coverage-guided fuzz remain NOT_PROVEN or NOT_RUN. Prior E2/E3/E4/E5 records at 7822f4c, 43a8bcc and a53eda8 are HISTORICAL relative to aa3b7b0.",
     "host_qualification": "NOT_PROVEN for full current-head Windows E5/kernel qualification; narrow issue #44 pipe proof does not establish it",
-    "closeout": "analysis/current-head/MASTER-AUDIT-C6-FINAL-CLOSEOUT-20261125.md (records HEAD f13bbbe; narrow E2/E3/E4-E5 PASS at 7822f4c, full qualification OPEN)"
+    "closeout": "analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md (build source aa3b7b0; 5/6 PASS, soak OPEN, NOT SHIPPABLE); MASTER-AUDIT-C6-FINAL-CLOSEOUT-20261125.md is HISTORICAL"
   },
   "authority": {
     "decision_authority": "Zig runtime",

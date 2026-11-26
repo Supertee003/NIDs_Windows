@@ -29,7 +29,7 @@ is claimed.
 | Modes | `quick`: warmup 10, 100 iterations; `latency`: warmup 10, 200 iterations |
 | Result | all 6 declared thresholds PASS in `quick`; exit 0 in both modes |
 
-`quick` (ops/sec, 100 iters) — **current source**, distinct from the older
+`quick` (ops/sec, 100 iters) — **current at `4dd3393` (HISTORICAL at `aa3b7b0`)**, distinct from the older
 `docs/gates/T17_benchmark_results.md` values:
 
 | Suite | ops/sec | us/op | threshold |
@@ -77,14 +77,17 @@ A future report that claims a throughput ceiling must publish all of:
 
 ## 3. Current status
 
-| Claim | Status at `4dd3393` |
+| Claim | Status at `4dd3393` (HISTORICAL at `aa3b7b0`) |
 |---|---|
 | Controlled fixed-rate benchmark at current source | **NOT RUN** |
+| Narrow fixed-rate loopback at `aa3b7b0` | PASS at 100 conn/s for 60 s (6000/6000, zero loss deltas); E5, not a full matrix — `analysis/current-head/CURRENT_HEAD_FUZZ_BENCH-20261126.md` |
 | 7M+ events synthetic ceiling | **NOT CLAIMED** |
 | Historical 36.52 h soak | PASS at `a53eda8`, HISTORICAL |
 | Observed cumulative counters | Recorded at `a53eda8`, not a current-source measurement |
 
-No number in this page is promoted to E6/E7. Production remains observe-only.
+The row labelled "current source" retains the historical `4dd3393` scope of this page;
+the `aa3b7b0` row is the narrow current-source proof. No number in this page is
+promoted to E6/E7. Production remains observe-only.
 
 ## 4. Owner actions
 

@@ -9,7 +9,8 @@
 > re-measured as a whole at `aa3b7b0`. One narrow exception is R9006: both loopback host_live
 > tests pass at `aa3b7b0` with attributable rows (`analysis/current-head/MASTER-AUDIT-LOOPBACK-BPF-E6-AA3B7B0-20261126.md`).
 > E3/E4/E5 proof at `43a8bcc` and narrow E3/E4/E5 at `7822f4c` are HISTORICAL and do not
-> re-measure the matrix.
+> re-measure the matrix. Rows below were re-labelled from the HISTORICAL `4dd3393`
+> source label to `aa3b7b0` on 2026-11-27; re-labelling is not a new host measurement.
 >
 
 **Action** below is policy intent. Production is observe-only: `prevention_gate=closed`,
@@ -26,31 +27,31 @@
 
 ## Per-rule matrix
 
-| ID | Catalog name | Layer | Sev | Action (intent) | `match_pattern` | Fixture | Validation proof | Current-source status @ `4dd3393` | Limitation |
+| ID | Catalog name | Layer | Sev | Action (intent) | `match_pattern` | Fixture | Validation proof | Current-source status @ `aa3b7b0` | Limitation |
 |---|---|---|---|---|---|---|---|---|---|
-| **R0056** | SQL Injection (Auth Bypass) | L7 | Critical | Drop | `' OR 1=1` | FX-01 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | LIM-1: plaintext first 4096 bytes only |
-| **R9064** | OS Command Injection (Semicolon) | L7 | Critical | Drop | `;whoami` | FX-02 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | LIM-1: plaintext first 4096 bytes only |
-| **R9059** | Cross-Site Scripting (Basic) | L7 | High | Alert | `<script>` | FX-03 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | LIM-1: plaintext first 4096 bytes only |
-| **R0088** | Path Traversal (Sensitive) | L7 | Critical | Block | `/etc/passwd` | FX-04 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | LIM-1: plaintext first 4096 bytes only |
-| **R9002** | ICMP Flood (DoS) | L4 | High | Drop | `PROTO:ICMP` | FX-05 | SYN + LAB (rate lab, 15/15 boundaries) / E1 + E5 | HISTORICAL @ `f4cde3c`; **not re-measured** @ `4dd3393` | — |
+| **R0056** | SQL Injection (Auth Bypass) | L7 | Critical | Drop | `' OR 1=1` | FX-01 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | LIM-1: plaintext first 4096 bytes only |
+| **R9064** | OS Command Injection (Semicolon) | L7 | Critical | Drop | `;whoami` | FX-02 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | LIM-1: plaintext first 4096 bytes only |
+| **R9059** | Cross-Site Scripting (Basic) | L7 | High | Alert | `<script>` | FX-03 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | LIM-1: plaintext first 4096 bytes only |
+| **R0088** | Path Traversal (Sensitive) | L7 | Critical | Block | `/etc/passwd` | FX-04 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | LIM-1: plaintext first 4096 bytes only |
+| **R9002** | ICMP Flood (DoS) | L4 | High | Drop | `PROTO:ICMP` | FX-05 | SYN + LAB (rate lab, 15/15 boundaries) / E1 + E5 | HISTORICAL @ `f4cde3c`; **not re-measured** @ `aa3b7b0` | — |
 | **R9006** | TCP SYN Stealth Scan | L4 | Medium | Alert | `FLAGS:S` | FX-06 | SYN + **LAB real ≥20-port burst**, 118,632 ordinary rows → 0 false hits + SIM 150-connect scan / E1 + **E5 + E6** | **Narrow E6 PASS @ `aa3b7b0`**: 2 attributable loopback rows, below-threshold control included | Full 23-rule matrix not re-measured; older rows HISTORICAL |
-| **R9007** | TCP XMAS Scan | L4 | Medium | Alert | `FLAGS:FPU` | FX-07 | SYN + LAB (rate lab) / E1 + E5 | HISTORICAL @ `f4cde3c`; **not re-measured** @ `4dd3393` | — |
-| **R1001** | System32 Write Attempt | KERNEL_FILE | Critical | Block | `C:\Windows\System32` | FX-08 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
-| **R1002** | Ransomware Rename Pattern | KERNEL_FILE | Critical | Drop | `.locked` | FX-09 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
-| **R1003** | Startup Folder Modification | KERNEL_FILE | High | Block | `Startup` | FX-10 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
-| **R1004** | DLL Drop in System32 | KERNEL_FILE | Critical | Drop | `.dll` | FX-11 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
-| **R1005** | hosts File Modification | KERNEL_FILE | High | Block | `hosts` | FX-12 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
-| **R2001** | Mimikatz Execution | KERNEL_PROCESS | Critical | Drop | `mimikatz` | FX-13 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
-| **R2002** | svchost Process Hollowing | KERNEL_PROCESS | Critical | Drop | `svchost.exe` | FX-14 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
+| **R9007** | TCP XMAS Scan | L4 | Medium | Alert | `FLAGS:FPU` | FX-07 | SYN + LAB (rate lab) / E1 + E5 | HISTORICAL @ `f4cde3c`; **not re-measured** @ `aa3b7b0` | — |
+| **R1001** | System32 Write Attempt | KERNEL_FILE | Critical | Block | `C:\Windows\System32` | FX-08 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | — |
+| **R1002** | Ransomware Rename Pattern | KERNEL_FILE | Critical | Drop | `.locked` | FX-09 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | — |
+| **R1003** | Startup Folder Modification | KERNEL_FILE | High | Block | `Startup` | FX-10 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | — |
+| **R1004** | DLL Drop in System32 | KERNEL_FILE | Critical | Drop | `.dll` | FX-11 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | — |
+| **R1005** | hosts File Modification | KERNEL_FILE | High | Block | `hosts` | FX-12 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | — |
+| **R2001** | Mimikatz Execution | KERNEL_PROCESS | Critical | Drop | `mimikatz` | FX-13 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | — |
+| **R2002** | svchost Process Hollowing | KERNEL_PROCESS | Critical | Drop | `svchost.exe` | FX-14 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | — |
 | **R2003** | PowerShell Cradle Download | KERNEL_PROCESS | Critical | Block | `IEX` | FX-15 | SYN; **FP-1 CLOSED at E5, FN-1 recorded at the historical host** (§5) / E1 | **Narrow E5 PASS @ `aa3b7b0`**: one verified row, two negative controls; see `R2003-CMDLINE-HOST-PROOF-E5-AA3B7B0-20261126.md` | FN-1 closed at current source for one case only; full matrix not re-measured |
-| **R2004** | certutil Download Abuse | KERNEL_PROCESS | High | Block | `certutil` | FX-16 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
-| **R2005** | procdump Credential Harvest | KERNEL_PROCESS | Critical | Drop | `procdump` | FX-17 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
-| **R3001** | Cobalt Strike Named Pipe | L2_PIPE | Critical | Drop | `MSSE-` | FX-18 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
-| **R3002** | PsExec Remote Execution | L2_PIPE | High | Block | `psexec` | FX-19 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
-| **R3003** | Anonymous Pipe Suspicious | L2_PIPE | Medium | Alert | `anonymous` | FX-20 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
-| **R3004** | Meterpreter Named Pipe | L2_PIPE | Critical | Drop | `meterpreter` | FX-21 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
-| **R3005** | atexec Scheduled Task Pipe | L2_PIPE | High | Block | `atsvc` | FX-22 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | — |
-| **R0089** | Remote File Inclusion (RFI) | L7 | Critical | Block | `?file=http://` | FX-23 | SYN / E1 | code-path/fixture only @ `4dd3393`; not host-positive | LIM-1: plaintext first 4096 bytes only |
+| **R2004** | certutil Download Abuse | KERNEL_PROCESS | High | Block | `certutil` | FX-16 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | — |
+| **R2005** | procdump Credential Harvest | KERNEL_PROCESS | Critical | Drop | `procdump` | FX-17 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | — |
+| **R3001** | Cobalt Strike Named Pipe | L2_PIPE | Critical | Drop | `MSSE-` | FX-18 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | — |
+| **R3002** | PsExec Remote Execution | L2_PIPE | High | Block | `psexec` | FX-19 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | — |
+| **R3003** | Anonymous Pipe Suspicious | L2_PIPE | Medium | Alert | `anonymous` | FX-20 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | — |
+| **R3004** | Meterpreter Named Pipe | L2_PIPE | Critical | Drop | `meterpreter` | FX-21 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | — |
+| **R3005** | atexec Scheduled Task Pipe | L2_PIPE | High | Block | `atsvc` | FX-22 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | — |
+| **R0089** | Remote File Inclusion (RFI) | L7 | Critical | Block | `?file=http://` | FX-23 | SYN / E1 | code-path/fixture only @ `aa3b7b0`; not host-positive | LIM-1: plaintext first 4096 bytes only |
 
 ## How to read this table
 

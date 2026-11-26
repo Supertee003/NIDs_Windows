@@ -42,6 +42,13 @@
 > No rule/wire/vector/authority change. Host-evaluable coverage remains **22/23** and every
 > E5/E6 row below stays HISTORICAL until a real installed-host `IEX` cradle run re-measures
 > the matrix; see `analysis/current-head/S1-R2003-CMDLINE-PRODUCER-20261125.md`.
+>
+> **NARROW CURRENT-SOURCE ADDENDUM (`aa3b7b0`).**
+> `analysis/current-head/R2003-CMDLINE-HOST-PROOF-E5-AA3B7B0-20261126.md` is a narrow E5
+> re-measurement of R2003 with one positive row and two negative controls, not a full
+> 23/23 host matrix. FN-1 remains the original measured-host census limit; it is neither
+> silently closed for the whole matrix nor re-opened as a source gap. Every other E5/E6 row
+> below stays HISTORICAL at this source. The 22/23 census is unchanged.
 
 > **S3 (`f1f89c1`) / S4 (`2673bd2`, seam `4dd3393`), 2026-11-26.** S3 added durable per-interface
 > v3 producer identity issuance in Go Nose and duplicate/regression refusal at Zig ingress at E2;
@@ -104,7 +111,7 @@ Legend for "Proof": `SYN` = synthetic observe-only fixture (E1/E2),
 | R1005 hosts file mod | KERNEL_FILE | High | Block | FX-12 | BLOCK_CANDIDATE / FILE_RULE_PROOF | SYN | E1 |
 | R2001 Mimikatz execution | KERNEL_PROCESS | Critical | Drop | FX-13 | BLOCK_CANDIDATE / PROCESS_SENSOR_PROOF | SYN | E1 |
 | R2002 svchost hollowing | KERNEL_PROCESS | Critical | Drop | FX-14 | BLOCK_CANDIDATE / PROCESS_SENSOR_PROOF | SYN | E1 |
-| R2003 PowerShell cradle | KERNEL_PROCESS | Critical | Block | FX-15 | BLOCK_CANDIDATE / PROCESS_SENSOR_PROOF | SYN; **FP-1 CLOSED at E5, FN-1 OPEN** (§5) | E1 |
+| R2003 PowerShell cradle | KERNEL_PROCESS | Critical | Block | FX-15 | BLOCK_CANDIDATE / PROCESS_SENSOR_PROOF | SYN; **FP-1 CLOSED at E5, FN-1 OPEN** in the original host census (§5); narrow E5 re-measurement at `aa3b7b0` (§4 addendum) | E1 |
 | R2004 certutil abuse | KERNEL_PROCESS | High | Block | FX-16 | BLOCK_CANDIDATE / PROCESS_SENSOR_PROOF | SYN | E1 |
 | R2005 procdump harvest | KERNEL_PROCESS | Critical | Drop | FX-17 | BLOCK_CANDIDATE / PROCESS_SENSOR_PROOF | SYN | E1 |
 | R3001 Cobalt Strike pipe | L2_PIPE | Critical | Drop | FX-18 | BLOCK_CANDIDATE / PIPE_RULE_PROOF | SYN | E1 |

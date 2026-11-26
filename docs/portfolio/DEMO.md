@@ -1,6 +1,8 @@
 # Demo — Traffic → Event → Detection → Dashboard → Forensic Record
 
 **Length:** 2:27. **Source:** real running AEGIS daemon on a Windows lab host.
+**Recording provenance:** HISTORICAL — the recording build source and date were not recorded
+in this tree; the clip predates `aa3b7b0` and is not current-source proof.
 **Boundary:** detection-only — no host blocking, no WFP mutation, no synthetic host evidence.
 
 This file is both the recording script and the viewer's chapter guide for

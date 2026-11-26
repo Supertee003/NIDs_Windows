@@ -161,15 +161,15 @@ This is enforced in several independent places:
 
 ---
 
-## 7. Verification posture (current, not aspirational)
+## 7. Verification posture — split by build source
 
-- Published release `v1.1` is `SHIPPABLE — 6/6 gates PASS (0 open)`; trust anchor unchanged; no re-key. Status source: `release/release-status.json`.
-- Owner-run soak: `36.52 / 24.0 h PASS` with zero loss **during that specific recorded window**, `problems=[]`, loss/shed/drop counters all `0`.
-- Release artifacts: `674/674` verified; signed `SHA256SUMS` digest
+- **Current source `aa3b7b0`:** **5/6 PASS, `soak_24h` OPEN, NOT SHIPPABLE**; trust anchor unchanged, no re-key, no E7 claim. Status source: `release/release-status.json` (`current_head_board`) and `tools/final_audit.py --check`.
+- **HISTORICAL at release identity `a53eda8`:** published release `v1.1` was `SHIPPABLE — 6/6 gates PASS (0 open)`; owner-run soak `36.52 / 24.0 h PASS` with zero loss **during that specific recorded window**, `problems=[]`, loss/shed/drop counters all `0`. This is not the current board.
+- **HISTORICAL release artifacts:** `674/674` verified; signed `SHA256SUMS` digest
   `A053C048C8B373CF93E766D9C54F54D191B33D273627075A6121516591E4996C`.
-- Windows E5 lab proof: bridged Kali → Windows attribution, R9006 SYN-burst detection with a
+- **HISTORICAL Windows E5 lab proof at that build:** bridged Kali → Windows attribution, R9006 SYN-burst detection with a
   10-port negative control, and a loopback full-path self-test (`127.0.0.2` → `127.0.0.1`,
-  exact 5-tuple, `host_effect_confirmed=false`).
+  exact 5-tuple, `host_effect_confirmed=false`). Current-source proof is narrow (R9006 E6, R2003 E5); full Windows E5/kernel qualification is NOT_PROVEN.
 - Detection coverage is stated honestly: all 23 rules have synthetic observe-only fixtures;
   live positive-path proof is strongest on the L4 family (R9006). Known limitations (for example,
   process rows without command lines, and L7 payload rules needing a proxy sensor) are recorded,
@@ -196,9 +196,11 @@ This is enforced in several independent places:
 > analytics, and TypeScript authors policy. Everything becomes one canonical event, flows through
 > detection and correlation, and lands in a hash-chained forensic log with an evidence receipt.
 > The hard constraint is that no layer can promote 'detected' into 'blocked' — the prevention gate
-> is closed and a BLOCK label is only an intent. I proved the full path with real lab traffic and a
-> negative control, and the release was signed, soak-tested for 36.5 hours, and shipped as
-> detection-only."
+> is closed and a BLOCK label is only an intent. At the historical `a53eda8` release identity I
+> proved the path with real lab traffic and a negative control, and it was signed, soak-tested for
+> 36.5 hours and shipped as detection-only. At the current build source `aa3b7b0` the board is
+> 5/6 with `soak_24h` OPEN and NOT SHIPPABLE; the 36.5 h soak result is HISTORICAL, not current
+> proof and not E7."
 
 ---
 

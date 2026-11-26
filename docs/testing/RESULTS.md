@@ -45,7 +45,8 @@ its evidence entry; do not claim "zero skips" for Zig.
 
 From
 [`analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`](../../analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md)
-and [`SOAK-PASS-466A226-20261122.md`](../../analysis/current-head/SOAK-PASS-466A226-20261122.md):
+and [`SOAK-PASS-466A226-20261122.md`](../../analysis/current-head/SOAK-PASS-466A226-20261122.md).
+**HISTORICAL at release identity `a53eda8`** relative to current build source `aa3b7b0`, whose board is **5/6 PASS, `soak_24h` OPEN, NOT SHIPPABLE**; `release/release-status.json` now separates the immutable release board from `current_head_board`.
 
 | Item | Recorded result |
 |---|---|
@@ -70,7 +71,7 @@ shows nonzero counters in a different window — see [Observed performance](../p
 | Host-positive proof | **L4 family only**; R9006 has E5 + E6 proof with a 118,632-row zero-false-positive control |
 | Demo window | bounded 40-SYN burst → `VERDICT: PASS (exit 0)`, 1 attributed row, 1 × R9006, drop/shed/quota deltas 0 |
 | Negative controls | 10-port negative control → zero hits; R3003 E5 ambient negative observation |
-| R2003 | **no host-positive proof** — this host has no `CommandLine` in ProcessStart v0–v4 (FN-1) |
+| R2003 | **no host-positive proof in the original FN-1 census** (ProcessStart v0–v4 had no `CommandLine`); at `aa3b7b0` a narrow E5 re-measurement has one positive row and two negative controls — see `analysis/current-head/R2003-CMDLINE-HOST-PROOF-E5-AA3B7B0-20261126.md`; full matrix not re-measured |
 | Control-plane fail-closed probe | invalid requests rejected without an enforcement receipt (`scripts/run_control_receipt_probe.py`) |
 | Import hygiene | `tests/brain/test_import_hygiene.py` — no import-time host effects |
 

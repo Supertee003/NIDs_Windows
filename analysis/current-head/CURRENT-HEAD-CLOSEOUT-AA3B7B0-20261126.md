@@ -1,7 +1,7 @@
 # Current-head closeout — build source `aa3b7b0` — 2026-11-26
 
 **RECORD-ID:** `CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126`
-**RECORDS HEAD:** moves with records-only patches (last recorded `8bf2a18d9f0e521db0d4e376e14632e1ca347ed1`); the build source does not move
+**RECORDS HEAD:** moves with records-only patches (last recorded `c7603f7` at the 2026-11-27 reconciliation; this file cannot contain its own later SHA — check `git rev-parse HEAD`); the build source does not move
 **BUILD SOURCE:** `aa3b7b0161e425e54155d5767737bffcde7939b5` (ADR-0008)
 **BOARD:** **5/6 PASS — NOT SHIPPABLE** (`soak_24h` OPEN). No E7 claim.
 
