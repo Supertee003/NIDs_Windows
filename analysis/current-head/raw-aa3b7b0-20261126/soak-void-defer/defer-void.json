@@ -1,0 +1,42 @@
+{
+    "run_id":  "owner-soak-aa3b7b0-20261126-172958",
+    "voided":  true,
+    "reason":  "Owner directed deferral: remaining documentation closeout must be done on this host before the final soak; this window is intentionally voided before 24 h, no PASS claim, and a fresh window will be started after the records work is committed",
+    "at":  "2026-11-26T21:07:35",
+    "health_at_void":  {
+                           "state":  "RUNNING",
+                           "data_integrity":  {
+                                                  "loss_budget":  3500,
+                                                  "minifilter_pipeline_dropped":  0,
+                                                  "minifilter_ring_dropped":  0,
+                                                  "nose_frames_dropped":  0,
+                                                  "nose_frames_dropped_capacity":  0,
+                                                  "nose_frames_dropped_framing":  0,
+                                                  "nose_frames_dropped_midframe":  0,
+                                                  "nose_frames_dropped_shape":  0,
+                                                  "nose_frames_rejected":  0,
+                                                  "nose_pipe_errors":  0,
+                                                  "pipeline_processing_errors":  0,
+                                                  "process_generation_ms":  1795701943596,
+                                                  "queue_dropped_total":  0,
+                                                  "shed_overload":  0
+                                              }
+                       },
+    "finalizer_stopped":  [
+
+                          ],
+    "restore":  {
+                    "verified":  true,
+                    "hashes":  {
+                                   "aegis_nids.exe":  "FBD9BDB3456C9C7DAFCBF1B0C3FBDAD9778F61C3186167856E373CC376185474",
+                                   "aegis-nose.exe":  "AEAB9B6324E3A7EA0498B0A338E406C012139F15D883465AE574CAC773BC79C2",
+                                   "aegis_pep.dll":  "870CB9626EDD75AD2552F1CDFE6475D8A7804163354E3A588FED1E4360996C5E"
+                               },
+                    "service_status":  "Running",
+                    "service_env":  "AEGIS_LOSS_BUDGET=3500",
+                    "machine_nose_iface":  "\\Device\\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}"
+                },
+    "errors":  [
+
+               ]
+}

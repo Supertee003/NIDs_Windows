@@ -19,6 +19,17 @@
 > The immutable v1.1 release identity above is unchanged. Authority:
 > `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`.
 
+> **CURRENT SOURCE CLOSEOUT (2026-11-26):** records tip `ad55d55`, build source
+> `aa3b7b0`. Additive signed record `release/T20-final/6c94b47` with owner key
+> `DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU=`; `release_signature` PASS,
+> but the board is **5/6 with `soak_24h` OPEN — NOT SHIPPABLE**. Current-source
+> evidence: narrow loopback E6, S2/S3 E5 host proof, controlled 100/s
+> loopback E5, deterministic fuzz + in-process bench E2 (coverage-guided fuzz
+> NOT_RUN). Two soak attempts were voided and are recorded honestly; no fresh
+> 24 h verdict exists and no E7 qualification is claimed. Combined one-page
+> status: `analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md`.
+> Everything below this block that names older commits is HISTORICAL.
+
 ## Status: CLOSED — v2.0.0 shipped as a detection-only E5 release (2026-11-17)
 
 - **Project status record:** `analysis/current-head/PROJECT-CLOSEOUT-20261117.md`.

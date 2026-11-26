@@ -11854,6 +11854,60 @@
       ],
       "status": "RESOLVED",
       "status_basis": "Verbatim exit codes and test counts from this worktree."
+    },
+    {
+      "id": "SOAK-ATTEMPT-VOID-DEFER-AA3B7B0-20261126",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-26",
+      "title": "Second 24 h soak attempt voided after harness restart killed the detached finalizer",
+      "level": "E0",
+      "component": "owner soak start/finalizer + host restore",
+      "flow_id": "clean window armed -> finalizer lost -> owner deferral -> verified restore",
+      "description": "Run 20261126-172958 started clean at 17:30:26 with current-source binaries, minifilter gauge 166,653 to 0 and budget unchanged at 3500. Heartbeats stopped at 20:35:28 after an OpenCode server restart; no finalizer process and no result.json or soak-final.json remained. Owner directed documentation work first, so the window was voided and the exact pre-soak baseline restored with restore.verified=true, service Running, all loss counters zero at void. No PASS claim and no gate credit.",
+      "files_verified": [
+        "analysis/current-head/SOAK-ATTEMPT-VOID-DEFER-AA3B7B0-20261126.md",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-void-defer/start.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-void-defer/defer-void.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-void-defer/health-at-defer-void.json"
+      ],
+      "tests": [],
+      "result": "VOIDED_NO_EVIDENCE_CREDIT",
+      "finding": "Honest void from infrastructure loss plus explicit owner deferral; soak_24h remains OPEN.",
+      "evidence_artifact": "analysis/current-head/SOAK-ATTEMPT-VOID-DEFER-AA3B7B0-20261126.md",
+      "limitations": [
+        "No 24 h window completed, no soak verdict."
+      ],
+      "status": "VOIDED",
+      "status_basis": "Defer-void artifact with restore.verified=true and zero counters at void."
+    },
+    {
+      "id": "CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-26",
+      "title": "One-page combined current-source closeout at aa3b7b0",
+      "level": "E2",
+      "component": "release truth / evidence / gate board",
+      "flow_id": "records -> combined status page -> honest gate board",
+      "description": "Consolidates the current source, additive signed record, narrow E5/E6 proofs, E2 fuzz/bench, the 5/6 release board with soak_24h OPEN, the two honestly voided soak attempts, and the exact remaining work. Published v1.1 identity is unchanged; no E7 claim is made.",
+      "files_verified": [
+        "analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md",
+        "docs/gates/PRODUCTION_READINESS.md",
+        "docs/gates/RELEASE_TRUST_ANCHOR.md",
+        "AI_CONTEXT.md",
+        "docs/ai-context/10-current-phase.md"
+      ],
+      "tests": [
+        "final_audit.py --check -> 5/6 PASS, soak_24h OPEN"
+      ],
+      "result": "PASS_E2_DOCUMENTED_WITH_OPEN_GAP",
+      "finding": "A single honest view of current truth; the only open gap is a fresh 24 h soak.",
+      "evidence_artifact": "analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md",
+      "limitations": [
+        "soak_24h OPEN; NOT SHIPPABLE.",
+        "Coverage-guided fuzz NOT_RUN; no E7 qualification."
+      ],
+      "status": "CURRENT_WITH_OPEN_GAP",
+      "status_basis": "Gate board and evidence pointers recomputed at records tip ad55d55."
     }
   ],
   "known_gaps": [
@@ -18524,9 +18578,9 @@
     }
   ],
   "evidence_level_summary": {
-    "E0_count": 1,
+    "E0_count": 2,
     "E1_count": 51,
-    "E2_count": 170,
+    "E2_count": 171,
     "E3_count": 19,
     "E4_count": 5,
     "E5_count": 124,

@@ -78,12 +78,14 @@ baseline. Gate 9 is a recorded decision pending owner sign-off.
 
 | Gate | Test / tool | Evidence (path or ID) | E-level | Current? |
 |---|---|---|---|---|
-| `truth_artifacts` | `python tools/truth.py verify`; `tools/rebuild_truth.py` | `TRUTH_VALID` output; maps at `head_sha=a53eda8` | E1 | yes |
-| `component_audit` | `zig build test --summary all` (3339 pass/10 skip/0 fail); `pytest tests/ -q --ignore=tests/test_e2e.py -m "not host_live"` (1400 pass/4 skip); `tests/runtime` (315/1); `test_aegisctl.py` (46/4 deselected); RULE-LAYER 5/5 | `analysis/current-head/` slice records; `build_manifest.json` | E2 | yes at `f4cde3c` |
-| `release_signature` | `tools/final_audit.py --release-check`; `sign_release.py --verify`; `verify_detached_signature` | `release/T20-final/b597e71/signatures.json` (digest `02562BC9…`); anchor doc `docs/gates/RELEASE_TRUST_ANCHOR.md` | E7 (release verification only) | yes |
-| `clean_host_e5` | `tools/host_preflight.py`; `tools/upgrade_rollback.py`; driver thumbprint check; duplicate-pair probe | `admin-evidence/e5-clean-host-20261119-final/preflight-20261119.json`; `analysis/current-head/RB-024-F4CDE3C-20261119.md`; `RB-024-result.json` (674/674 digests) | E5 | yes |
-| `soak_24h` | `tools/host_soak_check.py --start auto --baseline auto --hours 24 --loss-budget 3500 --shed-budget 20000`; hourly `--start <recorded> --baseline <saved>` rechecks | `soak-24h-f4cde3c-delta-20261119-2240.json` (terminal FAIL) | E5 | **FAIL** — NOT closed; needs a new signed candidate + owner-named baseline |
-| `evidence_debt` | `tools/evidence_debt.py`; `tools/check_summary.py` | 0 unnamed product files; `SUMMARY_VALID` | E1 | yes |
+| `truth_artifacts` | `python tools/truth.py verify`; `python scripts/check_summary.py` | `TRUTH_VALID` / `SUMMARY_VALID` at build source `aa3b7b0` (records tip `ad55d55`) | E1 | yes |
+| `component_audit` | `zig build test`; `pytest -q -m "not host_live"` (1520 pass/1 skip/18 deselected/27 subtests); `go test ./...` (ok); RULE-LAYER 5/5 | `analysis/current-head/TEST-MATRIX-AA3B7B0-20261126.md`; `build_manifest.json` (66/66 modules, 0 production failures) | E2 | yes at `aa3b7b0` |
+| `release_signature` | `tools/final_audit.py --release-check`; `sign_release.py --verify`; `verify_detached_signature` | `release/T20-final/6c94b47/signatures.json` (digest `94F65BCC…`, owner anchor `DCNPphsq…`); `analysis/current-head/RELEASE-SIGNATURE-AA3B7B0-20261126.md` | E2 (release record verification only) | yes; published `v1.1`/`466a226` unchanged |
+| `clean_host_e5` | `tools/host_preflight.py`; `tools/upgrade_rollback.py`; driver thumbprint check; duplicate-pair probe | `admin-evidence/e5-clean-host-20261120-final/preflight-20261120.json` PASS, loader bound to pinned installer/runtime/driver hashes | E5 | yes (owner-attested, historical host window) |
+| `soak_24h` | `tools/host_soak_check.py --start <recorded> --hours 24 --baseline <snapshot>`; detached owner finalizer with verified restore | **OPEN**: the 36.52 h PASS predates `aa3b7b0`; two `aa3b7b0` windows were voided (agent I/O; finalizer lost on server restart). No fresh 24 h verdict exists. See `analysis/current-head/SOAK-ATTEMPT-VOID-AA3B7B0-20261126.md` and `SOAK-ATTEMPT-VOID-DEFER-AA3B7B0-20261126.md` | E0/E5 | **NOT PROVEN** — fresh window still required |
+| `evidence_debt` | `tools/evidence_debt.py`; `scripts/check_summary.py` | 0 unnamed product files; `SUMMARY_VALID` | E1 | yes |
+
+Current board: `python tools/final_audit.py --check` with `AEGIS_RELEASE_TRUSTED_PUBLIC_KEY=DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU=` reports **5/6 PASS, `soak_24h` OPEN — NOT SHIPPABLE**. The `host_live` pytest pair is deliberately excluded from the local gate (`-m "not host_live"`); it passed only in the elevated current-source owner run and fails on the restored baseline. No test was relaxed or xfailed. One-page combined status: `analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md`.
 
 Detection evidence references (supports `component_audit`, does not close a gate
 by itself): `DETECT-L4-001-20261116.md` (E5), `E6-BURST-001-20261114.md` (E6),

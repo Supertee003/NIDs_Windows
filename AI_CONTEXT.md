@@ -52,6 +52,21 @@
 > rollback. v2.0.0 statements below are HISTORICAL for release identity.
 > Authority: `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`.
 
+> **CURRENT SOURCE STATE (2026-11-26):** build source is `aa3b7b0` and the
+> records tip is `ad55d55`. The published v1.1 identity above is unchanged. A
+> new additive owner-approved Ed25519 record exists at
+> `release/T20-final/6c94b47` (public anchor
+> `DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU=`; private key outside the
+> tree). Current-source narrow proof: loopback E6 pair, S2 replay denial E5,
+> S3 durable producer identity E5, controlled 100/s loopback load E5, fuzz +
+> in-process bench E2 (coverage-guided fuzz NOT_RUN). `python
+> tools/final_audit.py --check` with that anchor reports **5/6 PASS,
+> `soak_24h` OPEN — NOT SHIPPABLE**: the 36.52 h PASS predates this source and
+> two `aa3b7b0` windows were voided (agent I/O; detached finalizer lost on a
+> server restart). No E7 release qualification is claimed. One-page combined
+> status: `analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md`;
+> anchor record: `docs/gates/RELEASE_TRUST_ANCHOR.md`.
+
 > HISTORY REWRITE (2026-11-06): published history was rewritten to remove
 > `aegis-audit-*/` (13.8 GB of scan dumps) and the local-only
 > `admin-evidence/`. Pre-rewrite SHAs cited in older evidence remain
