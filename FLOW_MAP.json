@@ -229,7 +229,8 @@
           "owner": "Zig",
           "input": "PipeMessage",
           "output": "AuthorizedCommand",
-          "file": "src/control/handler_registry.zig:184-215 (dispatch/authorization) + src/platform/win32_pipe.zig:149-156 (caller context); src/policy/control_ipc.zig is test-only"
+          "file": "src/control/handler_registry.zig",
+          "note": "Active v2 dispatch/authorization at src/control/handler_registry.zig:184-215; caller context from src/platform/win32_pipe.zig:149-156; src/policy/control_ipc.zig is test-only"
         },
         {
           "step": 4,
