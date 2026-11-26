@@ -191,3 +191,28 @@ Run locally after writing this report and before committing it; no host/soak act
 - No host, service, driver, binary, soak or finalizer action during the window.
 - Records-only artifact: build source remains `aa3b7b0`; published release identity remains `v1.1` / `466a226` / `a53eda8`; signed record digest `94F65BCC…` and owner anchor unchanged; no private key in tree.
 - A future soak PASS is still only a gate input. It does not confer E7, full Windows E5, kernel IDS qualification or signed-driver status.
+
+---
+
+## 11. Post-audit disposition (records-only, added after the audit)
+
+**RECORDS TIP:** moves with records-only commits — read `git rev-parse HEAD` for the live value (this addendum was written at `1df890a`).  
+**BUILD SOURCE:** still `aa3b7b0`.  
+**BOARD:** still 5/6 PASS, `soak_24h` OPEN, NOT SHIPPABLE; the SYSTEM finalizer result was still absent when this was written.
+
+This section records what was done in response to the audit without restating any gap as proof. No section above is rewritten; the findings remain the audit-time E1 truth.
+
+| Audit item | Disposition now |
+|---|---|
+| §3 P0 #4 PEP ABI, #5 stale status source | Reconciled records-only in `5c69b6b`, `f9783fd`, `410aa6f`; `CONTRACT_MAP.json` 24-byte `PepResponse` is the contract, 16-byte statements are HISTORICAL. |
+| §3 P0 #1–#3, #6 | Frozen under #47 STOP-THE-LINE. #6 is a gate change and needs owner authority; no `final_audit.py` logic was edited. |
+| §3 P2 CONTROL-001 file, replay, XDR, TCP, `ci_coverage.json` | Reconciled in `512b3e7`, `5c69b6b`, `a77d1e0`; maps and evidence labels verified by `TRUTH_VALID` / `SUMMARY_VALID`. |
+| §3 P2 stale FN-1 wording | Boundary notes already present in the four named docs; the three exact pinned strings are unchanged. |
+| §3 P2 E6/E7 provenance and 48 pointers | `b08ca80` adds `build_source` / `historical` / `evidence_namespace` to all seven E6/E7 entries, ten transcode sidecars, and a logical historical namespace. All 48 unresolvable pointers were already explicitly marked; none became PASS. |
+| §5 MOVE historical records / transcodes / root handoffs / signed-tree declaration | Done as declarations and sidecars in `b08ca80`, `dfc7822`; no file was physically moved where signed bytes or test pins reference the path. |
+| §5 MERGE case-only duplicates | Declared canonical-vs-frozen in `1df890a`; physical merge deferred because `inventory.json` / `reference_map.json` classify all four paths. |
+| §5 REPAIR console doc / canonical architecture | Byte check found valid UTF-8 with zero `?` in the console doc (console cp1252 artifact, not corruption); `ARCHITECTURE_CANONICAL.md` already declares HISTORICAL/CONTEXT-ONLY. |
+| §5 MOVE decoder into production, event fabric classification, quarantined driver file; §5 REMOVE `tests/test_e2e.py` | Product/test changes frozen under #47; no skip, xfail or removal used. Interim dispositions are recorded on #50, #51 and #53. |
+| §7 Q5 and Q7 partial | Addressed by the reconciled status surfaces and the single onboarding index `docs/START-HERE.md` (`410aa6f`) — an index, not new proof. |
+
+Issue comments now exist on #47–#54. #50, #51 and #53 explicitly state that the source/kernel/network/testing items remain open and that no host claim was created. Nothing in this addendum promotes a level, result, verdict, signature, soak, driver-load or E7 claim.
