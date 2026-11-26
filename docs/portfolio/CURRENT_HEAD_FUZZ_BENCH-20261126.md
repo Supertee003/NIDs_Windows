@@ -60,6 +60,6 @@ These are **in-process** component benchmarks. They do not measure offered netwo
 - every loss counter delta **0** (`queue_dropped_total`, `nose_frames_dropped`, `nose_frames_rejected`, `nose_pipe_errors`, `pipeline_processing_errors`, `minifilter_ring_dropped`, `minifilter_pipeline_dropped`); `shed_overload` delta **0**
 - verdict `PASS`, `reasons=[]`, `bench_exit=0`
 
-Verbatim artifacts: `analysis/current-head/raw-aa3b7b0-20261126/netbench/result.json` and `.../netbench/netbench.json`.
+Verbatim artifacts: `analysis/current-head/raw-aa3b7b0-20261126/netbench/result.json` and `.../netbench/netbench.json`. The committed `aa3_perf_quick.log` / `aa3_perf_latency.log` were transcoded from UTF-16LE captures at `D:\aegis-tmp\aa3_perf_*.log` to UTF-8/LF for the repository encoding guard; the originals remain outside the tree and no benchmark value changed.
 
 An earlier attempt to run the probe against the already-swapped soak daemon was refused by its own precondition (`daemon DEGRADED`, counters moved by unrelated agent file I/O). It wrote no benchmark verdict and is not counted as a measurement. E5 here means a controlled loopback offered-load observation on this host; it is not saturation testing, E6 production simulation, or E7.

@@ -53,6 +53,10 @@ at `43a8bcc` and `7822f4c` remain HISTORICAL and are not substituted here.
 
 ## Artifacts
 
-Verbatim transcripts: `analysis/current-head/raw-aa3b7b0-20261126/shutdown-e5/`
+Transcripts: `analysis/current-head/raw-aa3b7b0-20261126/shutdown-e5/`
 (`i44_e45_aa3b7b0_elevated_run.txt`, `i44_e45_aa3b7b0_inject.txt`,
 `i44_e45_aa3b7b0_prestate.txt`, `harness-provenance.txt`).
+`i44_e45_aa3b7b0_inject.txt` was transcoded from its original UTF-16LE capture at
+`D:\aegis-tmp\i44_e45_aa3b7b0_inject.txt` to UTF-8/LF for the repository encoding
+guard; the original remains outside the tree and no transcript content, verdict
+or evidence level changed.

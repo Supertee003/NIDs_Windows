@@ -60,7 +60,11 @@ v2 result.
 
 ## Artifacts
 
-Verbatim raw artifacts: `analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/`
+Raw artifacts: `analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/`
 (`v2-result.json`, `v2-transcript.txt`, `v2-positive_marker.raw.txt`,
 `v2-negative_cmd_marker.raw.txt`, `v2-negative_wire_marker.raw.txt`,
-`v2-baseline_r2003.raw.txt`, plus the discarded `v1-*` set).
+`v2-baseline_r2003.raw.txt`, plus the discarded `v1-*` set). The `*.raw.txt`
+captures were transcoded from their original UTF-16LE bytes under
+`D:\aegis-tmp\r2003-aa3b7b0-20261126-v2\` (and `...-20261126\` for v1) to UTF-8/LF
+to satisfy the repository encoding guard; the original captures remain outside
+the tree and no value, verdict or evidence level changed.
