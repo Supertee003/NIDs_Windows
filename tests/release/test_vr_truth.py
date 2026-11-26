@@ -84,6 +84,28 @@ def test_soak_gate_requires_ordered_timestamps() -> None:
     assert "or out of order" in reversed_times["detail"]
 
 
+def test_collect_release_facts_carries_soak_start(tmp_path: Path) -> None:
+    final_audit = _load("final_audit_soak_facts_vr", "tools/final_audit.py")
+    directory = tmp_path / "admin-evidence" / "x"
+    directory.mkdir(parents=True)
+    (directory / "soak-24h.json").write_text(json.dumps({
+        "verdict": "PASS",
+        "required_hours": 24.0,
+        "elapsed_hours": 24.4,
+        "problems": [],
+        "soak_start": "2026-11-20T00:00:00",
+        "checked_at": "2026-11-22T00:00:00",
+    }), encoding="utf-8")
+
+    facts = final_audit.collect_release_facts(tmp_path)
+    assert len(facts["soaks"]) == 1
+    assert facts["soaks"][0]["soak_start"] == "2026-11-20T00:00:00"
+    # The fake repo has no git history, so staleness must stay unknown and the
+    # gate must fail closed; only the timestamp carry is under test here.
+    assert facts["soaks"][0]["stale"] is None
+    assert final_audit.evaluate_soak(facts["soaks"])["ok"] is False
+
+
 def test_build_manifest_component_commits_match_source_commit() -> None:
     manifest = json.loads(_read("build_manifest.json"))
     source = manifest["source_commit"]

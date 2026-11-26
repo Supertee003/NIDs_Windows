@@ -1,0 +1,201 @@
+"""AEGIS NIDS client for communicating with the Zig daemon.
+
+SECURITY (P1/T1-NET-019): the named pipe is the ONLY control transport.
+A previous TCP client branch was removed: the daemon never listens on TCP,
+so the branch could only ever talk to a stranger on localhost:5117 with no
+authentication, and privileged commands (block/unblock/reload/shutdown)
+would have crossed that boundary. Pipe uses Windows ACL protection.
+"""
+from __future__ import annotations
+
+import json
+import os
+import sys
+import time
+from typing import Any, Dict, Optional
+
+from .config import DEFAULT_HOST, DEFAULT_PORT, DEFAULT_NAMED_PIPE
+
+# One request yields exactly one JSON document. The daemon writes that document
+# in chunks, so it must be accumulated across message-bounded reads until it
+# parses; a fixed-size single read loses the remainder to ERROR_MORE_DATA and
+# can misreport a valid large response as a transport failure.
+_MAX_RESPONSE_READS = 256
+_MAX_RESPONSE_BYTES = 8 * 1024 * 1024
+ERROR_MORE_DATA = 234
+
+
+class AegisCtlError(Exception):
+    pass
+
+
+class TransportError(AegisCtlError):
+    """Raised when the chosen transport fails."""
+    pass
+
+
+class AegisClient:
+    """Control plane client. Named pipe only.
+
+    Transport policy (P1/T1-NET-019):
+      - pipe: Named pipe only. Fails if pipe unavailable. (default, only)
+      - tcp/auto: REMOVED. The daemon never listens on TCP; a TCP branch
+        could only reach an unauthenticated stranger on localhost, so any
+        such request is refused here instead of sent.
+    """
+
+    def __init__(
+        self,
+        host: str = DEFAULT_HOST,
+        port: int = DEFAULT_PORT,
+        timeout: float = 5.0,
+        transport: str = "pipe",
+    ):
+        self.host = host
+        self.port = port
+        self.timeout = timeout
+        self.transport = transport
+        self._audit_log: list[Dict[str, Any]] = []
+
+    def send(self, command: str, payload: Optional[Dict[str, Any]] = None,
+             envelope: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Send a command to the daemon via the selected transport.
+
+        Raises:
+            TransportError: if the selected transport fails.
+            AegisCtlError: if the command itself fails.
+        """
+        if self.transport in ("auto", "tcp"):
+            raise AegisCtlError(
+                f"transport={self.transport!r} is removed. The daemon exposes "
+                "the Windows-ACL named pipe only; there is no authenticated "
+                "TCP control channel. Use transport='pipe'."
+            )
+
+        start = time.monotonic()
+        try:
+            if self.transport == "pipe":
+                result = self._send_pipe(command, payload, envelope)
+            else:
+                raise AegisCtlError(f"unknown transport: {self.transport!r}")
+        except AegisCtlError:
+            raise
+        except Exception as e:
+            raise TransportError(f"{self.transport} transport failed: {e}")
+
+        elapsed_ms = (time.monotonic() - start) * 1000
+        self._audit_entry(command, self.transport, elapsed_ms, result.get("ok", False))
+        return result
+
+    def _send_pipe(self, command: str, payload: Optional[Dict[str, Any]] = None,
+                   envelope: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        try:
+            import win32file
+            import win32pipe
+        except ImportError:
+            raise TransportError("win32file not available — cannot use named pipe transport")
+
+        handle = None
+        try:
+            # The daemon intentionally exposes one pipe instance to preserve
+            # the single-owner runtime invariant.  A short ERROR_PIPE_BUSY
+            # window is expected while the previous request is disconnected;
+            # wait for that same instance instead of creating more instances.
+            last_error = None
+            for _ in range(20):
+                try:
+                    handle = win32file.CreateFile(
+                        DEFAULT_NAMED_PIPE,
+                        win32file.GENERIC_READ | win32file.GENERIC_WRITE,
+                        0, None, win32file.OPEN_EXISTING, 0, None,
+                    )
+                    break
+                except Exception as exc:
+                    last_error = exc
+                    if getattr(exc, "winerror", None) != 231:
+                        raise
+                    win32pipe.WaitNamedPipe(DEFAULT_NAMED_PIPE, 1000)
+            if handle is None:
+                raise last_error or RuntimeError("named pipe remained busy")
+            from .envelope import build_v2_envelope, build_v2_request, serialize_envelope
+
+            req = serialize_envelope(envelope) if envelope is not None else build_v2_request(command, payload)
+            win32file.WriteFile(handle, req)
+            # Size every read to the bytes left in the current message and
+            # accumulate until the document parses. PeekNamedPipe's third field
+            # is exactly lpBytesLeftThisMessage, so no read is ever short.
+            chunks: list[bytes] = []
+            total = 0
+            raw = b""
+            for _ in range(_MAX_RESPONSE_READS):
+                _, _, message_bytes = win32pipe.PeekNamedPipe(handle, 0)
+                read_size = max(int(message_bytes or 0), 1)
+                try:
+                    _, chunk = win32file.ReadFile(handle, read_size)
+                except Exception as exc:
+                    if getattr(exc, "winerror", None) == ERROR_MORE_DATA:
+                        continue
+                    raise
+                chunk = bytes(chunk)
+                if not chunk:
+                    continue
+                chunks.append(chunk)
+                total += len(chunk)
+                if total > _MAX_RESPONSE_BYTES:
+                    raise TransportError("control response exceeded the client read budget")
+                raw = b"".join(chunks)
+                try:
+                    json.loads(raw.decode("utf-8"))
+                    break
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    pass
+            else:
+                raise TransportError("control response never terminated as one JSON document")
+            return json.loads(raw.decode("utf-8"))
+        except Exception as e:
+            raise TransportError(f"named pipe error: {e}")
+        finally:
+            if handle is not None:
+                try:
+                    win32file.CloseHandle(handle)
+                except Exception:
+                    pass
+
+    def _audit_entry(self, command: str, transport: str, elapsed_ms: float, ok: bool) -> None:
+        self._audit_log.append({
+            "ts": time.time(),
+            "command": command,
+            "transport": transport,
+            "elapsed_ms": round(elapsed_ms, 1),
+            "ok": ok,
+        })
+
+
+class AegisAPI:
+    """Client for the Go aggregator REST API (port 9200)."""
+    def __init__(self, host: str = "127.0.0.1", port: int = 9200, timeout: float = 5.0):
+        self.base_url = f"http://{host}:{port}"
+        self.timeout = timeout
+
+    def _get(self, endpoint: str) -> Any:
+        from urllib.request import urlopen, Request
+        try:
+            req = Request(f"{self.base_url}{endpoint}", method="GET")
+            with urlopen(req, timeout=self.timeout) as resp:
+                if resp.status == 200:
+                    return json.loads(resp.read().decode("utf-8"))
+        except Exception:
+            return None
+
+    def is_available(self) -> bool:
+        result = self._get("/api/health")
+        return result is not None and result.get("status") == "healthy"
+
+    def get_alerts(self) -> list:
+        return self._get("/api/alerts") or []
+
+    def get_critical_alerts(self) -> list:
+        return self._get("/api/alerts/critical") or []
+
+    def get_stats(self) -> dict:
+        return self._get("/api/stats") or {}

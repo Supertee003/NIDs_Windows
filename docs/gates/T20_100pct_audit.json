@@ -1,6 +1,6 @@
 {
   "step": "T20 AC4 (Steps 63-64) + release readiness",
-  "commit": "aa3b7b0",
+  "commit": "6c94b47",
   "declaration": {
     "component_audit": "COMPLETE",
     "release": "NOT SHIPPABLE"
@@ -24,16 +24,13 @@
     "shippable": false,
     "shippable_with_waiver": false,
     "open": [
-      "release_signature",
       "soak_24h"
     ],
     "waived": [],
     "unwaived": [
-      "release_signature",
       "soak_24h"
     ],
     "owners": [
-      "owner",
       "time"
     ],
     "gates": [
@@ -51,9 +48,9 @@
       },
       {
         "id": "release_signature",
-        "ok": false,
+        "ok": true,
         "owner": "owner",
-        "detail": "release\\T20-final\\466a226\\signatures.json was built from 466a226, which does not contain the current runtime commit aa3b7b0161e425e54155d5767737bffcde7939b5; the signed tree predates the shipped runtime"
+        "detail": "release\\T20-final\\6c94b47\\signatures.json cryptographically signs SHA256SUMS (94F65BCC7B6D4E9C...) with a ed25519 key; commit 6c94b47 contains runtime aa3b7b0"
       },
       {
         "id": "clean_host_e5",

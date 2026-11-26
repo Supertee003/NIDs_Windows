@@ -1,0 +1,10 @@
+
+Path                               Hash                                                            
+----                               ----                                                            
+zig-out\bin\aegis_nids.exe         6F548AF7641C1C476FB591D165ED734027ED18D93F980AFEA755C20A716BBB98
+nose\aegis-nose.exe                8C05FE485D2548DF50C83F5BEA792F4228FEAE387306668A439912A39A7D24D4
+target\release\aegis_pep.dll       1A254E5647A2CCB10167D12E3EC40C711652DC2F1243DFCB16803643BD272B35
+D:\aegis-tmp\aegis_pep_aa3b7b0.dll 6E05AAE1BAE000C8D2C1A841EFF9B65035E5131066FFB43800AD414659564926
+
+
+

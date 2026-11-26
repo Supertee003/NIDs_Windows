@@ -1,0 +1,11 @@
+[NOSE CAPTURE] listening on \Device\NPF_Loopback -> \\.\pipe\aegis_nose
+[NOSE PIPE] connected to \\.\pipe\aegis_nose
+[NOSE CAPTURE] first packet captured: len=227
+[NOSE PIPE] first canonical frame sent: 1193 bytes event_id=1
+[NOSE CAPTURE] packets=100 canonical=100 dropped=0
+[NOSE CAPTURE] packets=200 canonical=200 dropped=0
+[NOSE CAPTURE] packets=300 canonical=300 dropped=0
+[NOSE CAPTURE] packets=400 canonical=400 dropped=0
+[NOSE CAPTURE] packets=500 canonical=500 dropped=0
+[NOSE CAPTURE] packets=600 canonical=600 dropped=0
+[NOSE CAPTURE] packets=700 canonical=700 dropped=0

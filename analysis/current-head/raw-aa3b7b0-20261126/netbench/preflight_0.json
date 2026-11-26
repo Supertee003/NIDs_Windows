@@ -1,0 +1,268 @@
+{
+  "stage": "s3-pre",
+  "at": "2026-11-26T17:08:52+0700",
+  "health": {
+    "returncode": 0,
+    "raw": "{\"authority_model\": \"DETECTION_ONLY_NO_HOST_EFFECT\", \"canonical_detection_policy_authority\": \"rust_pep\", \"capabilities\": {\"cpp_bridge\": true, \"udp_brain\": true, \"wfp\": true}, \"compatibility_aliases\": {\"rust_shield\": \"rust_pep\"}, \"component\": \"core\", \"counters\": {\"dropped\": 0, \"errors\": 0, \"in_events\": 63, \"out_events\": 63}, \"data_integrity\": {\"loss_budget\": 3500, \"minifilter_pipeline_dropped\": 0, \"minifilter_ring_dropped\": 0, \"nose_frames_dropped\": 0, \"nose_frames_dropped_capacity\": 0, \"nose_frames_dropped_framing\": 0, \"nose_frames_dropped_midframe\": 0, \"nose_frames_dropped_shape\": 0, \"nose_frames_rejected\": 0, \"nose_pipe_errors\": 0, \"pipeline_processing_errors\": 0, \"process_generation_ms\": 1795687722871, \"queue_dropped_total\": 0, \"shed_overload\": 0}, \"data_plane\": {\"nose_connected\": true, \"nose_duplicate_event_ids\": 0, \"nose_frames_dropped\": 0, \"nose_frames_read\": 63, \"nose_frames_rejected\": 0, \"nose_frames_submitted\": 63, \"nose_last_capture_sequence\": 63, \"nose_last_event_id\": 63, \"nose_last_interface_id\": 4107673295, \"nose_last_producer_epoch\": 1795687729, \"nose_last_producer_generation\": 8, \"nose_non_monotonic_event_ids\": 0, \"nose_pipe_errors\": 0, \"nose_producer_duplicate\": 0, \"nose_producer_evictions\": 0, \"nose_producer_gap\": 0, \"nose_producer_invalid\": 0, \"nose_producer_regression\": 0}, \"defcon_label\": \"HIGH\", \"defcon_level\": 3, \"degraded\": false, \"deps\": [{\"name\": \"zig\", \"state\": \"RUNNING\"}, {\"name\": \"go\", \"state\": \"RUNNING\"}, {\"name\": \"cpp\", \"state\": \"RUNNING\"}, {\"name\": \"rust_pep\", \"state\": \"RUNNING\"}, {\"name\": \"tier3\", \"state\": \"RUNNING\"}, {\"name\": \"control\", \"state\": \"RUNNING\"}, {\"name\": \"forensic\", \"state\": \"RUNNING\"}], \"detector_degradation\": {\"anomaly_detector_errors\": 0, \"correlator_errors\": 0, \"threat_tracker_errors\": 0}, \"endpoint_ownership\": {\"findings\": [{\"command_excerpt\": \"\\\"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python314\\\\pythonw.exe\\\" \\\"D:\\\\NIDs_Windows\\\\brain\\\\windows_brain.py\\\"\", \"detail\": \"pythonw.exe\", \"endpoint\": \"brain channel\", \"pid\": 2204, \"port\": 9999, \"process\": \"pythonw.exe\", \"status\": \"OWNED\"}, {\"detail\": \"responder state RUNNING\", \"endpoint\": \"control pipe\", \"name\": \"aegis_control\", \"pid\": 12484, \"status\": \"REACHABLE\"}], \"foreign_count\": 0, \"status\": \"CLEAR\"}, \"exactly_once\": {\"duplicate_event_ids\": 0, \"last_event_id\": 63, \"non_monotonic_event_ids\": 0}, \"flows_active\": 35, \"health_state_disagrees\": false, \"last_event_ms\": 44, \"packets_captured\": 63, \"pid\": 12484, \"policies_loaded\": 6, \"resources\": {\"available\": true, \"cpu_percent\": null, \"private_bytes\": 872054784, \"sampled_at_ms\": 1795687732968, \"seeded\": false, \"working_set_bytes\": 579948544}, \"rules_loaded\": 23, \"runtime_state\": \"RUNNING\", \"rust_pep\": {\"authority\": \"detection_only_policy_authority\", \"authority_model\": \"DETECTION_ONLY_NO_HOST_EFFECT\", \"canonical\": true, \"error\": null, \"host_effect_capable\": false, \"pep_ready\": true, \"policy_authority\": true, \"provider_capable\": true, \"provider_ready\": true, \"state\": \"READY\", \"wfp\": \"READY\"}, \"rust_shield\": {\"alias_of\": \"rust_pep\", \"canonical\": false, \"error\": null, \"host_effect_capable\": false, \"pep_ready\": true, \"policy_authority\": true, \"provider_capable\": true, \"provider_ready\": true, \"state\": \"READY\", \"wfp\": \"READY\"}, \"state\": \"RUNNING\", \"state_machine_disagrees\": false, \"state_machine_state\": \"RUNNING\", \"subsystems\": {\"control\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 12484, \"state\": \"RUNNING\", \"version\": \"1.0.0\"}, \"cpp\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 12484, \"state\": \"RUNNING\", \"version\": \"1.0.0\"}, \"forensic\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 12484, \"state\": \"RUNNING\", \"version\": \"1.0.0\"}, \"go\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 12484, \"state\": \"RUNNING\", \"version\": \"5.0.0\"}, \"rust_pep\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 12484, \"state\": \"RUNNING\", \"version\": \"1.0.0\"}, \"tier3\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 12484, \"state\": \"RUNNING\", \"version\": \"1.0.0\"}, \"zig\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 12484, \"state\": \"RUNNING\", \"version\": \"5.0.0\"}}, \"tier3\": {\"artifact_path\": \"C:\\\\Users\\\\User\\\\.local\\\\share\\\\opencode\\\\worktree\\\\a6f58a\\\\rule-coverage-20261119\\\\zig-out\\\\bin\\\\aegis_pep.dll\", \"artifact_present\": true, \"dependency_ready\": true, \"host_effect_capable\": false, \"provider_capable\": true, \"provider_ready\": true, \"ready\": true, \"state\": \"READY\"}, \"uptime_ms\": 9879, \"version\": \"5.0.0\", \"workers\": {\"etw_ready\": true, \"failed\": false, \"failure_mask\": 0, \"failure_reason\": \"none\", \"failure_reasons\": [], \"fim_ready\": true, \"nose_ready\": true, \"pipeline_ready\": true, \"registry_ready\": true, \"sensor_ready\": true}}\n",
+    "stderr": "",
+    "doc": {
+      "authority_model": "DETECTION_ONLY_NO_HOST_EFFECT",
+      "canonical_detection_policy_authority": "rust_pep",
+      "capabilities": {
+        "cpp_bridge": true,
+        "udp_brain": true,
+        "wfp": true
+      },
+      "compatibility_aliases": {
+        "rust_shield": "rust_pep"
+      },
+      "component": "core",
+      "counters": {
+        "dropped": 0,
+        "errors": 0,
+        "in_events": 63,
+        "out_events": 63
+      },
+      "data_integrity": {
+        "loss_budget": 3500,
+        "minifilter_pipeline_dropped": 0,
+        "minifilter_ring_dropped": 0,
+        "nose_frames_dropped": 0,
+        "nose_frames_dropped_capacity": 0,
+        "nose_frames_dropped_framing": 0,
+        "nose_frames_dropped_midframe": 0,
+        "nose_frames_dropped_shape": 0,
+        "nose_frames_rejected": 0,
+        "nose_pipe_errors": 0,
+        "pipeline_processing_errors": 0,
+        "process_generation_ms": 1795687722871,
+        "queue_dropped_total": 0,
+        "shed_overload": 0
+      },
+      "data_plane": {
+        "nose_connected": true,
+        "nose_duplicate_event_ids": 0,
+        "nose_frames_dropped": 0,
+        "nose_frames_read": 63,
+        "nose_frames_rejected": 0,
+        "nose_frames_submitted": 63,
+        "nose_last_capture_sequence": 63,
+        "nose_last_event_id": 63,
+        "nose_last_interface_id": 4107673295,
+        "nose_last_producer_epoch": 1795687729,
+        "nose_last_producer_generation": 8,
+        "nose_non_monotonic_event_ids": 0,
+        "nose_pipe_errors": 0,
+        "nose_producer_duplicate": 0,
+        "nose_producer_evictions": 0,
+        "nose_producer_gap": 0,
+        "nose_producer_invalid": 0,
+        "nose_producer_regression": 0
+      },
+      "defcon_label": "HIGH",
+      "defcon_level": 3,
+      "degraded": false,
+      "deps": [
+        {
+          "name": "zig",
+          "state": "RUNNING"
+        },
+        {
+          "name": "go",
+          "state": "RUNNING"
+        },
+        {
+          "name": "cpp",
+          "state": "RUNNING"
+        },
+        {
+          "name": "rust_pep",
+          "state": "RUNNING"
+        },
+        {
+          "name": "tier3",
+          "state": "RUNNING"
+        },
+        {
+          "name": "control",
+          "state": "RUNNING"
+        },
+        {
+          "name": "forensic",
+          "state": "RUNNING"
+        }
+      ],
+      "detector_degradation": {
+        "anomaly_detector_errors": 0,
+        "correlator_errors": 0,
+        "threat_tracker_errors": 0
+      },
+      "endpoint_ownership": {
+        "findings": [
+          {
+            "command_excerpt": "\"C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python314\\pythonw.exe\" \"D:\\NIDs_Windows\\brain\\windows_brain.py\"",
+            "detail": "pythonw.exe",
+            "endpoint": "brain channel",
+            "pid": 2204,
+            "port": 9999,
+            "process": "pythonw.exe",
+            "status": "OWNED"
+          },
+          {
+            "detail": "responder state RUNNING",
+            "endpoint": "control pipe",
+            "name": "aegis_control",
+            "pid": 12484,
+            "status": "REACHABLE"
+          }
+        ],
+        "foreign_count": 0,
+        "status": "CLEAR"
+      },
+      "exactly_once": {
+        "duplicate_event_ids": 0,
+        "last_event_id": 63,
+        "non_monotonic_event_ids": 0
+      },
+      "flows_active": 35,
+      "health_state_disagrees": false,
+      "last_event_ms": 44,
+      "packets_captured": 63,
+      "pid": 12484,
+      "policies_loaded": 6,
+      "resources": {
+        "available": true,
+        "cpu_percent": null,
+        "private_bytes": 872054784,
+        "sampled_at_ms": 1795687732968,
+        "seeded": false,
+        "working_set_bytes": 579948544
+      },
+      "rules_loaded": 23,
+      "runtime_state": "RUNNING",
+      "rust_pep": {
+        "authority": "detection_only_policy_authority",
+        "authority_model": "DETECTION_ONLY_NO_HOST_EFFECT",
+        "canonical": true,
+        "error": null,
+        "host_effect_capable": false,
+        "pep_ready": true,
+        "policy_authority": true,
+        "provider_capable": true,
+        "provider_ready": true,
+        "state": "READY",
+        "wfp": "READY"
+      },
+      "rust_shield": {
+        "alias_of": "rust_pep",
+        "canonical": false,
+        "error": null,
+        "host_effect_capable": false,
+        "pep_ready": true,
+        "policy_authority": true,
+        "provider_capable": true,
+        "provider_ready": true,
+        "state": "READY",
+        "wfp": "READY"
+      },
+      "state": "RUNNING",
+      "state_machine_disagrees": false,
+      "state_machine_state": "RUNNING",
+      "subsystems": {
+        "control": {
+          "error": null,
+          "last_event_ms": 0,
+          "pid": 12484,
+          "state": "RUNNING",
+          "version": "1.0.0"
+        },
+        "cpp": {
+          "error": null,
+          "last_event_ms": 0,
+          "pid": 12484,
+          "state": "RUNNING",
+          "version": "1.0.0"
+        },
+        "forensic": {
+          "error": null,
+          "last_event_ms": 0,
+          "pid": 12484,
+          "state": "RUNNING",
+          "version": "1.0.0"
+        },
+        "go": {
+          "error": null,
+          "last_event_ms": 0,
+          "pid": 12484,
+          "state": "RUNNING",
+          "version": "5.0.0"
+        },
+        "rust_pep": {
+          "error": null,
+          "last_event_ms": 0,
+          "pid": 12484,
+          "state": "RUNNING",
+          "version": "1.0.0"
+        },
+        "tier3": {
+          "error": null,
+          "last_event_ms": 0,
+          "pid": 12484,
+          "state": "RUNNING",
+          "version": "1.0.0"
+        },
+        "zig": {
+          "error": null,
+          "last_event_ms": 0,
+          "pid": 12484,
+          "state": "RUNNING",
+          "version": "5.0.0"
+        }
+      },
+      "tier3": {
+        "artifact_path": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119\\zig-out\\bin\\aegis_pep.dll",
+        "artifact_present": true,
+        "dependency_ready": true,
+        "host_effect_capable": false,
+        "provider_capable": true,
+        "provider_ready": true,
+        "ready": true,
+        "state": "READY"
+      },
+      "uptime_ms": 9879,
+      "version": "5.0.0",
+      "workers": {
+        "etw_ready": true,
+        "failed": false,
+        "failure_mask": 0,
+        "failure_reason": "none",
+        "failure_reasons": [],
+        "fim_ready": true,
+        "nose_ready": true,
+        "pipeline_ready": true,
+        "registry_ready": true,
+        "sensor_ready": true
+      }
+    }
+  },
+  "data_plane": {
+    "nose_connected": true,
+    "nose_duplicate_event_ids": 0,
+    "nose_frames_dropped": 0,
+    "nose_frames_read": 63,
+    "nose_frames_rejected": 0,
+    "nose_frames_submitted": 63,
+    "nose_last_capture_sequence": 63,
+    "nose_last_event_id": 63,
+    "nose_last_interface_id": 4107673295,
+    "nose_last_producer_epoch": 1795687729,
+    "nose_last_producer_generation": 8,
+    "nose_non_monotonic_event_ids": 0,
+    "nose_pipe_errors": 0,
+    "nose_producer_duplicate": 0,
+    "nose_producer_evictions": 0,
+    "nose_producer_gap": 0,
+    "nose_producer_invalid": 0,
+    "nose_producer_regression": 0
+  }
+}

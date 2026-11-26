@@ -875,6 +875,11 @@ def collect_release_facts(repo: Path = REPO) -> dict:
             "elapsed_hours": data.get("elapsed_hours"),
             "required_hours": data.get("required_hours"),
             "problems": data.get("problems") or [],
+            # SOAK-FACT-CARRY-001: evaluate_soak checks that soak_start and
+            # checked_at are ordered. Dropping soak_start here made every
+            # freshly recorded window fail at that check even when the JSON
+            # artifact carried both timestamps.
+            "soak_start": data.get("soak_start"),
             "checked_at": data.get("checked_at"),
             "stale": stale,
         })

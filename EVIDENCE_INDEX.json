@@ -11675,6 +11675,185 @@
       ],
       "status": "RESOLVED",
       "status_basis": "Real elevated host run at aa3b7b0 with two passing host_live tests and verified restore."
+    },
+    {
+      "id": "S2S3-HOST-PROOF-E5-AA3B7B0-20261126",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-26",
+      "title": "S2 control replay denial and S3 durable producer identity at build source aa3b7b0",
+      "level": "E5",
+      "component": "control pipe v2 nonce guard -> audit + Go Nose v3 provenance -> Zig admission/health",
+      "flow_id": "S2 active-control replay / S3 durable producer identity",
+      "description": "Elevated owner-run at current build source swapped daemon/Nose/PEP, exercised a byte-identical replay of a v2 system.health request and a deliberate Nose restart, then restored the exact baseline. Fresh nonce accepted; replay denied with REPLAY_DENIED / Nonce already used / audit_id 3489. Generation advanced 5 to 6 and capture_sequence 736 to 1324 with duplicate, regression and invalid counters all zero. An earlier attempt failed only because the one-shot probe hit ERROR_PIPE_BUSY before the replay reached the daemon; it is retained verbatim as a probe defect, not a bypass.",
+      "files_verified": [
+        "analysis/current-head/S2S3-HOST-PROOF-E5-AA3B7B0-20261126.md",
+        "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/result.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/s2.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/s3_pre.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/s3_post.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/s2s3-probe-defect/result.json"
+      ],
+      "tests": [
+        "elevated=true; restore.verified=true; errors=[]",
+        "S2 fresh_accepted=true, exact_replay_denied=true, pass=true",
+        "S3 generation_advanced=true, sequence_advanced=true, duplicate_regression_invalid_zero=true, pass=true"
+      ],
+      "result": "PASS_E5_NARROW",
+      "finding": "Two current-source flows are host-verified. This is not full Windows kernel IDS qualification, E6, or E7.",
+      "evidence_artifact": "analysis/current-head/S2S3-HOST-PROOF-E5-AA3B7B0-20261126.md",
+      "limitations": [
+        "health state was DEGRADED because the minifilter ring drop gauge is a driver-lifetime value; no budget was raised.",
+        "No host enforcement, WFP rule match, E6 simulation or E7 release verification is claimed."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Real elevated host run with verified restore and verbatim raw artifacts."
+    },
+    {
+      "id": "FUZZ-BENCH-AA3B7B0-20261126",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-26",
+      "title": "Deterministic fuzz smoke and in-process microbenchmarks at build source aa3b7b0",
+      "level": "E2",
+      "component": "src/tests/fuzz_main.zig + src perf bench (Aho-Corasick, packet decoder, Tracker/Store/Queue/codec/aggregator)",
+      "flow_id": "build -> binary -> deterministic inputs -> leak/crash check + threshold report",
+      "description": "aegis_fuzz.exe (SHA256 B16EFBAB...8B3) completed 1,000 fixed-seed PRNG buffers (length 1..1024) through AhoCorasick.match and packet_decoder.decode with exit 0, no output and no GPA leak. aegis_perf_bench.exe (SHA256 7311128D...480) passed all six declared thresholds in quick mode and reported latency percentiles in latency mode.",
+      "files_verified": [
+        "docs/portfolio/CURRENT_HEAD_FUZZ_BENCH-20261126.md",
+        "analysis/current-head/raw-aa3b7b0-20261126/fuzzbench/aa3_fuzz.log",
+        "analysis/current-head/raw-aa3b7b0-20261126/fuzzbench/aa3_perf_quick.log",
+        "analysis/current-head/raw-aa3b7b0-20261126/fuzzbench/aa3_perf_latency.log",
+        "analysis/current-head/raw-aa3b7b0-20261126/fuzzbench/bin_hashes.txt"
+      ],
+      "tests": [
+        "aegis_fuzz.exe -> exit 0, 1000 cases, no leak report",
+        "aegis_perf_bench.exe quick -> 6/6 thresholds PASS; full pipeline 43,634 ops/sec",
+        "aegis_perf_bench.exe latency -> full pipeline p99 25,000 ns"
+      ],
+      "result": "PASS_E2",
+      "finding": "E2 smoke only. Coverage-guided fuzz campaign is NOT_RUN at this source; in-process benchmarks are not network or host measurements.",
+      "evidence_artifact": "docs/portfolio/CURRENT_HEAD_FUZZ_BENCH-20261126.md",
+      "limitations": [
+        "Fixed PRNG seed 0xDEADBEEF; no coverage-guided mutation.",
+        "No E5/E6/E7 claim."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Built binaries with recorded hashes and verbatim logs."
+    },
+    {
+      "id": "NET-RATE-E5-AA3B7B0-20261126",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-26",
+      "title": "Controlled 100/s loopback offered-load measurement at build source aa3b7b0",
+      "level": "E5",
+      "component": "owner_net_bench.ps1 -> net_rate_bench.py -> live daemon + Nose loopback -> health counters",
+      "flow_id": "swap current binaries -> recycle lifetime gauge -> 60 s offered load -> counter deltas -> restore",
+      "description": "Elevated owner-run installed the current-source daemon/Nose/PEP, recycled the driver-lifetime minifilter gauge before the window (37,361 to 0, loss_budget unchanged at 3500), then offered 100 TCP connections/s for 60 s on loopback. 6,000 of 6,000 connections were made and accepted in 60.036 s (99.94/s achieved). nose_frames_read and packets_captured each advanced 70,919; every loss counter and shed_overload had delta zero. The exact baseline was restored with restore.verified=true. An earlier probe against an already-contaminated soak daemon was refused by its own precondition and produced no verdict.",
+      "files_verified": [
+        "analysis/current-head/raw-aa3b7b0-20261126/netbench/result.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/netbench/netbench.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/netbench/minifilter_before.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/netbench/preflight_0.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/netbench/baseline.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/netbench/restore.json",
+        "docs/portfolio/CURRENT_HEAD_FUZZ_BENCH-20261126.md"
+      ],
+      "tests": [
+        "verdict=PASS, reasons=[], bench_exit=0",
+        "6000/6000 connections, 99.94/s achieved vs 100/s target",
+        "all seven loss counters delta 0; shed_overload delta 0; restore.verified=true"
+      ],
+      "result": "PASS_E5_NARROW",
+      "finding": "A controlled, non-saturating offered-load observation on the owner host. It is not saturation testing, production simulation, or E7.",
+      "evidence_artifact": "analysis/current-head/raw-aa3b7b0-20261126/netbench/result.json",
+      "limitations": [
+        "100 connections/s for 60 s is the exact offered load; no higher rate is claimed.",
+        "Loopback only; no external adapter or production deployment claim."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Elevated host run with verbatim counters and verified binary/env restore."
+    },
+    {
+      "id": "SOAK-ATTEMPT-VOID-AA3B7B0-20261126-162907",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-26",
+      "title": "Voided 24 h soak attempt at aa3b7b0 after agent file I/O contaminated the window",
+      "level": "E0",
+      "component": "owner soak start/finalizer + host loss counters",
+      "flow_id": "armed clean window -> concurrent agent work -> degraded counters -> abort -> restore",
+      "description": "A real 24 h window started clean at 16:29:31 with the current-source runtime and a reset minifilter gauge (68,740,045 to 0, budget 3500). Agent work during the window (release assembly, WDK build, pytest, doc checks) moved minifilter_ring_dropped to 37,361, minifilter_pipeline_dropped to 468 and queue_dropped_total to 1,562. The attempt was voided before its end, the sleeping finalizer stopped and the exact baseline restored. No PASS was claimed and no budget was raised.",
+      "files_verified": [
+        "analysis/current-head/SOAK-ATTEMPT-VOID-AA3B7B0-20261126.md",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-void/start.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-void/abort.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-void/health-at-abort.json"
+      ],
+      "tests": [],
+      "result": "VOIDED_NO_EVIDENCE_CREDIT",
+      "finding": "Honest failure record. It must not be used to close soak_24h.",
+      "evidence_artifact": "analysis/current-head/SOAK-ATTEMPT-VOID-AA3B7B0-20261126.md",
+      "limitations": [
+        "No elapsed 24 h window, no soak verdict, no gate credit."
+      ],
+      "status": "VOIDED",
+      "status_basis": "Abort artifact with restore.verified=true and explicit void reason."
+    },
+    {
+      "id": "RELEASE-SIGNATURE-AA3B7B0-20261126",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-26",
+      "title": "New Ed25519 signed release record for the current source at records commit 6c94b47",
+      "level": "E2",
+      "component": "release_candidate.py -> sign_release.py -> final_audit.py::evaluate_signature",
+      "flow_id": "source build -> candidate tree -> SHA256SUMS -> Ed25519 signature -> trust anchor check",
+      "description": "An additional signed tree was assembled at release/T20-final/6c94b47 without altering the published v1.1 / 466a226 / a53eda8 identity. Both kernel drivers were WDK-rebuilt from current source; the release uses the host-proven PEP digest 6E05AAE1... The owner-approved private key is held outside the tree at D:\\aegis-tmp\\keys\\aegis-release-aa3b7b0.ed25519; only the public key DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU= is recorded. Candidate verify and signature verify both exited 0; final_audit reported release_signature PASS with commit_contains_runtime=true.",
+      "files_verified": [
+        "analysis/current-head/RELEASE-SIGNATURE-AA3B7B0-20261126.md",
+        "release/T20-final/6c94b47/signatures.json",
+        "release/T20-final/6c94b47/SHA256SUMS",
+        "release/T20-final/6c94b47/SBOM.json"
+      ],
+      "tests": [
+        "release_candidate.py -> RC PASS (270 files); --verify -> RC VERIFY PASS",
+        "sign_release.py --verify -> PASS signs SHA256SUMS digest 94F65BCC...",
+        "final_audit.py --check -> release_signature PASS [owner]"
+      ],
+      "result": "PASS_E2",
+      "finding": "Release record is cryptographically valid for this source; the overall release board remained NOT SHIPPABLE while soak_24h was still open.",
+      "evidence_artifact": "analysis/current-head/RELEASE-SIGNATURE-AA3B7B0-20261126.md",
+      "limitations": [
+        "No private key bytes in any tracked file.",
+        "Signature validity is not E5/E6/E7 qualification and does not close soak_24h."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Reproducible verify commands with public trust anchor; final_audit gate observed PASS."
+    },
+    {
+      "id": "TEST-MATRIX-AA3B7B0-20261126",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-26",
+      "title": "Consolidated test and gate matrix at build source aa3b7b0",
+      "level": "E2",
+      "component": "truth/summary/doc/release gates + pytest + go test",
+      "flow_id": "worktree gates -> recorded exit codes -> honest matrix",
+      "description": "Records exact commands and results: truth TRUTH_VALID, SUMMARY_VALID, doc checker 0 FAIL/0 WARN, release candidate and signature verify PASS, go test ok, local pytest 1520 passed/1 skipped/18 deselected/27 subtests, final audit 5/6 with soak_24h open. A bare pytest run (no marker filter) had two host_live failures because the installed baseline had been restored; those two tests passed only during the current-source owner run. No test was relaxed, skipped or xfailed to hide a failure.",
+      "files_verified": [
+        "analysis/current-head/TEST-MATRIX-AA3B7B0-20261126.md",
+        "pytest.ini"
+      ],
+      "tests": [
+        "python -m pytest -q -m \"not host_live\" -> 1520 passed, 1 skipped, 18 deselected, 27 subtests",
+        "go test ./... -> ok",
+        "final_audit.py --check -> 5/6 PASS, soak_24h OPEN"
+      ],
+      "result": "PASS_E2_LOCAL_WITH_HONEST_HOST_LIVE_NOTE",
+      "finding": "Local suite and all non-time gates pass; host_live proof is owner-run only; no release claim from this page.",
+      "evidence_artifact": "analysis/current-head/TEST-MATRIX-AA3B7B0-20261126.md",
+      "limitations": [
+        "Bare pytest includes two host_live tests that need a prepared current-source host and fail on the restored baseline.",
+        "soak_24h was still OPEN at the time of this record."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Verbatim exit codes and test counts from this worktree."
     }
   ],
   "known_gaps": [
@@ -18345,16 +18524,16 @@
     }
   ],
   "evidence_level_summary": {
-    "E0_count": 0,
+    "E0_count": 1,
     "E1_count": 51,
-    "E2_count": 167,
+    "E2_count": 170,
     "E3_count": 19,
     "E4_count": 5,
-    "E5_count": 122,
+    "E5_count": 124,
     "E6_count": 2,
     "E7_count": 5,
-    "E5_with_artifact_count": 72,
-    "E5_with_resolvable_artifact_count": 40,
+    "E5_with_artifact_count": 74,
+    "E5_with_resolvable_artifact_count": 42,
     "E5_with_unresolvable_artifact_count": 32,
     "unresolvable_artifact_pointer_count": 48,
     "known_gaps_count": 287

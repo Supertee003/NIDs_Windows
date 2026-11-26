@@ -1,0 +1,630 @@
+{
+    "run_id":  "20261126-162352",
+    "build_source":  "aa3b7b0161e425e54155d5767737bffcde7939b5",
+    "status":  "COMPLETED",
+    "elevated":  true,
+    "selector":  "\\Device\\NPF_Loopback",
+    "baseline":  {
+                     "service_status":  "Running",
+                     "service_startmode":  "Manual",
+                     "service_env":  "AEGIS_LOSS_BUDGET=3500",
+                     "machine_nose_iface":  "\\Device\\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}",
+                     "hashes":  {
+                                    "aegis_pep.dll":  "870CB9626EDD75AD2552F1CDFE6475D8A7804163354E3A588FED1E4360996C5E",
+                                    "aegis-nose.exe":  "AEAB9B6324E3A7EA0498B0A338E406C012139F15D883465AE574CAC773BC79C2",
+                                    "aegis_nids.exe":  "FBD9BDB3456C9C7DAFCBF1B0C3FBDAD9778F61C3186167856E373CC376185474"
+                                }
+                 },
+    "swapped":  {
+                    "aegis_pep.dll":  "6E05AAE1BAE000C8D2C1A841EFF9B65035E5131066FFB43800AD414659564926",
+                    "aegis-nose.exe":  "8C05FE485D2548DF50C83F5BEA792F4228FEAE387306668A439912A39A7D24D4",
+                    "aegis_nids.exe":  "6F548AF7641C1C476FB591D165ED734027ED18D93F980AFEA755C20A716BBB98"
+                },
+    "s2":  {
+               "stage":  "s2",
+               "at":  "2026-11-26T16:24:22+0700",
+               "probe":  {
+                             "request_bytes":  181,
+                             "request_sha256":  "FD07D4E855E1684D19F61B4217F700B23CD9D31FC911853219D337F822B92C45",
+                             "fresh":  {
+                                           "stage":  "ok",
+                                           "bytes":  3338,
+                                           "response":  "{\"ok\":true,\"code\":\"OK\",\"state\":\"OK\",\"data\":{\"component\":\"core\",\"version\":\"5.0.0\",\"state\":\"DEGRADED\",\"runtime_state\":\"RUNNING\",\"pid\":17308 ,\"uptime_ms\":17059,\"last_event_ms\":80,\"degraded\":true,\"rules_loaded\":23,\"policies_loaded\":6,\"defcon_level\":3,\"defcon_label\":\"HIGH\",\"capabilities\":{\"wfp\":true,\"cpp_bridge\":true,\"udp_brain\":true },\"data_plane\":{\"nose_connected\":true,\"nose_frames_read\":653,\"nose_frames_rejected\":0,\"nose_frames_submitted\":653,\"nose_frames_dropped\":0,\"nose_pipe_errors\":0,\"nose_last_event_id\":653,\"nose_duplicate_event_ids\":0,\"nose_non_monotonic_event_ids\":0,\"nose_producer_invalid\":0,\"nose_producer_duplicate\":0,\"nose_producer_regression\":0,\"nose_producer_gap\":0,\"nose_producer_evictions\":0,\"nose_last_capture_sequence\":653,\"nose_last_producer_epoch\":1795685052,\"nose_last_producer_generation\":3,\"nose_last_interface_id\":4107673295},\"packets_captured\":653,\"flows_active\":70,\"counters\":{\"in_events\":653,\"out_events\":653,\"errors\":0,\"dropped\":0},\"data_integrity\":{\"queue_dropped_total\":0,\"nose_frames_rejected\":0,\"nose_frames_dropped\":0,\"nose_frames_dropped_framing\":0,\"nose_frames_dropped_midframe\":0,\"nose_frames_dropped_shape\":0,\"nose_frames_dropped_identity\":0,\"nose_frames_dropped_capacity\":0,\"nose_pipe_errors\":0,\"pipeline_processing_errors\":0,\"minifilter_ring_dropped\":68740045,\"minifilter_pipeline_dropped\":0,\"loss_budget\":3500,\"shed_overload\":0,\"process_generation_ms\":1795685045650},\"detector_degradation\":{\"correlator_errors\":0,\"anomaly_detector_errors\":0,\"threat_tracker_errors\":0},\"resources\":{\"available\":true,\"seeded\":true,\"cpu_percent\":5.292079026691575,\"working_set_bytes\":569745408,\"private_bytes\":868581376,\"sampled_at_ms\":1795685062802},\"deps\":[{\"name\":\"bridge\",\"state\":\"RUNNING\"},{\"name\":\"pipeline\",\"state\":\"RUNNING\"}],\"subsystems\":[{\"name\":\"zig\",\"state\":\"RUNNING\",\"pid\":17308,\"version\":\"5.0.0\",\"started_at_ms\":1795685045650,\"last_heartbeat_ms\":1795685045650,\"last_event_ms\":0,\"error\":null,\"capabilities\":\"core,detection,correlation\"},{\"name\":\"go\",\"state\":\"RUNNING\",\"pid\":17308,\"version\":\"5.0.0\",\"started_at_ms\":1795685045773,\"last_heartbeat_ms\":1795685045773,\"last_event_ms\":0,\"error\":null,\"capabilities\":\"capture,nose\"},{\"name\":\"cpp\",\"state\":\"RUNNING\",\"pid\":17308,\"version\":\"1.0.0\",\"started_at_ms\":1795685045773,\"last_heartbeat_ms\":1795685045773,\"last_event_ms\":0,\"error\":null,\"capabilities\":\"etw,fim,registry,wfp\"},{\"name\":\"rust_pep\",\"state\":\"RUNNING\",\"pid\":17308,\"version\":\"1.0.0\",\"started_at_ms\":1795685045773,\"last_heartbeat_ms\":1795685045773,\"last_event_ms\":0,\"error\":null,\"capabilities\":\"enforcement,crypto\"},{\"name\":\"tier3\",\"state\":\"RUNNING\",\"pid\":17308,\"version\":\"1.0.0\",\"started_at_ms\":1795685045773,\"last_heartbeat_ms\":1795685045773,\"last_event_ms\":0,\"error\":null,\"capabilities\":\"authorization,pep\"},{\"name\":\"control\",\"state\":\"RUNNING\",\"pid\":17308,\"version\":\"1.0.0\",\"started_at_ms\":1795685045773,\"last_heartbeat_ms\":1795685045773,\"last_event_ms\":0,\"error\":null,\"capabilities\":\"pipe,audit\"},{\"name\":\"forensic\",\"state\":\"RUNNING\",\"pid\":17308,\"version\":\"1.0.0\",\"started_at_ms\":1795685045773,\"last_heartbeat_ms\":1795685045773,\"last_event_ms\":0,\"error\":null,\"capabilities\":\"ring,hash,replay\"}],\"workers\":{\"pipeline_ready\":true,\"sensor_ready\":true,\"nose_ready\":true,\"etw_ready\":true,\"fim_ready\":true,\"registry_ready\":true,\"failed\":false,\"failure_reason\":\"none\",\"failure_mask\":0}},\"audit_id\":3595}"
+                                       },
+                             "replay":  {
+                                            "stage":  "CreateFileW",
+                                            "error":  231,
+                                            "note":  "exact replay of the same bytes"
+                                        }
+                         }
+           },
+    "s3_pre":  {
+                   "stage":  "s3-pre",
+                   "at":  "2026-11-26T16:24:22+0700",
+                   "health":  {
+                                  "returncode":  0,
+                                  "raw":  "{\"authority_model\": \"DETECTION_ONLY_NO_HOST_EFFECT\", \"canonical_detection_policy_authority\": \"rust_pep\", \"capabilities\": {\"cpp_bridge\": true, \"udp_brain\": true, \"wfp\": true}, \"compatibility_aliases\": {\"rust_shield\": \"rust_pep\"}, \"component\": \"core\", \"counters\": {\"dropped\": 0, \"errors\": 0, \"in_events\": 701, \"out_events\": 701}, \"data_integrity\": {\"loss_budget\": 3500, \"minifilter_pipeline_dropped\": 0, \"minifilter_ring_dropped\": 68740045, \"nose_frames_dropped\": 0, \"nose_frames_dropped_capacity\": 0, \"nose_frames_dropped_framing\": 0, \"nose_frames_dropped_midframe\": 0, \"nose_frames_dropped_shape\": 0, \"nose_frames_rejected\": 0, \"nose_pipe_errors\": 0, \"pipeline_processing_errors\": 0, \"process_generation_ms\": 1795685045650, \"queue_dropped_total\": 0, \"shed_overload\": 0}, \"data_plane\": {\"nose_connected\": true, \"nose_duplicate_event_ids\": 0, \"nose_frames_dropped\": 0, \"nose_frames_read\": 701, \"nose_frames_rejected\": 0, \"nose_frames_submitted\": 701, \"nose_last_capture_sequence\": 701, \"nose_last_event_id\": 701, \"nose_last_interface_id\": 4107673295, \"nose_last_producer_epoch\": 1795685052, \"nose_last_producer_generation\": 3, \"nose_non_monotonic_event_ids\": 0, \"nose_pipe_errors\": 0, \"nose_producer_duplicate\": 0, \"nose_producer_evictions\": 0, \"nose_producer_gap\": 0, \"nose_producer_invalid\": 0, \"nose_producer_regression\": 0}, \"defcon_label\": \"HIGH\", \"defcon_level\": 3, \"degraded\": true, \"deps\": [{\"name\": \"zig\", \"state\": \"RUNNING\"}, {\"name\": \"go\", \"state\": \"RUNNING\"}, {\"name\": \"cpp\", \"state\": \"RUNNING\"}, {\"name\": \"rust_pep\", \"state\": \"RUNNING\"}, {\"name\": \"tier3\", \"state\": \"RUNNING\"}, {\"name\": \"control\", \"state\": \"RUNNING\"}, {\"name\": \"forensic\", \"state\": \"RUNNING\"}], \"detector_degradation\": {\"anomaly_detector_errors\": 0, \"correlator_errors\": 0, \"threat_tracker_errors\": 0}, \"endpoint_ownership\": {\"findings\": [{\"command_excerpt\": \"\\\"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python314\\\\pythonw.exe\\\" \\\"D:\\\\NIDs_Windows\\\\brain\\\\windows_brain.py\\\"\", \"detail\": \"pythonw.exe\", \"endpoint\": \"brain channel\", \"pid\": 2204, \"port\": 9999, \"process\": \"pythonw.exe\", \"status\": \"OWNED\"}, {\"detail\": \"responder state DEGRADED\", \"endpoint\": \"control pipe\", \"name\": \"aegis_control\", \"pid\": 17308, \"status\": \"REACHABLE\"}], \"foreign_count\": 0, \"status\": \"CLEAR\"}, \"exactly_once\": {\"duplicate_event_ids\": 0, \"last_event_id\": 701, \"non_monotonic_event_ids\": 0}, \"flows_active\": 70, \"health_state_disagrees\": false, \"last_event_ms\": 24, \"packets_captured\": 701, \"pid\": 17308, \"policies_loaded\": 6, \"resources\": {\"available\": true, \"cpu_percent\": 5.292079026691575, \"private_bytes\": 868581376, \"sampled_at_ms\": 1795685062802, \"seeded\": true, \"working_set_bytes\": 569745408}, \"rules_loaded\": 23, \"runtime_state\": \"RUNNING\", \"rust_pep\": {\"authority\": \"detection_only_policy_authority\", \"authority_model\": \"DETECTION_ONLY_NO_HOST_EFFECT\", \"canonical\": true, \"error\": null, \"host_effect_capable\": false, \"pep_ready\": true, \"policy_authority\": true, \"provider_capable\": true, \"provider_ready\": true, \"state\": \"READY\", \"wfp\": \"READY\"}, \"rust_shield\": {\"alias_of\": \"rust_pep\", \"canonical\": false, \"error\": null, \"host_effect_capable\": false, \"pep_ready\": true, \"policy_authority\": true, \"provider_capable\": true, \"provider_ready\": true, \"state\": \"READY\", \"wfp\": \"READY\"}, \"state\": \"DEGRADED\", \"state_machine_disagrees\": false, \"state_machine_state\": \"RUNNING\", \"subsystems\": {\"control\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 17308, \"state\": \"RUNNING\", \"version\": \"1.0.0\"}, \"cpp\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 17308, \"state\": \"RUNNING\", \"version\": \"1.0.0\"}, \"forensic\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 17308, \"state\": \"RUNNING\", \"version\": \"1.0.0\"}, \"go\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 17308, \"state\": \"RUNNING\", \"version\": \"5.0.0\"}, \"rust_pep\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 17308, \"state\": \"RUNNING\", \"version\": \"1.0.0\"}, \"tier3\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 17308, \"state\": \"RUNNING\", \"version\": \"1.0.0\"}, \"zig\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 17308, \"state\": \"RUNNING\", \"version\": \"5.0.0\"}}, \"tier3\": {\"artifact_path\": \"C:\\\\Users\\\\User\\\\.local\\\\share\\\\opencode\\\\worktree\\\\a6f58a\\\\rule-coverage-20261119\\\\zig-out\\\\bin\\\\aegis_pep.dll\", \"artifact_present\": true, \"dependency_ready\": true, \"host_effect_capable\": false, \"provider_capable\": true, \"provider_ready\": true, \"ready\": true, \"state\": \"READY\"}, \"uptime_ms\": 17338, \"version\": \"5.0.0\", \"workers\": {\"etw_ready\": true, \"failed\": false, \"failure_mask\": 0, \"failure_reason\": \"none\", \"failure_reasons\": [], \"fim_ready\": true, \"nose_ready\": true, \"pipeline_ready\": true, \"registry_ready\": true, \"sensor_ready\": true}}\n",
+                                  "stderr":  "",
+                                  "doc":  {
+                                              "authority_model":  "DETECTION_ONLY_NO_HOST_EFFECT",
+                                              "canonical_detection_policy_authority":  "rust_pep",
+                                              "capabilities":  {
+                                                                   "cpp_bridge":  true,
+                                                                   "udp_brain":  true,
+                                                                   "wfp":  true
+                                                               },
+                                              "compatibility_aliases":  {
+                                                                            "rust_shield":  "rust_pep"
+                                                                        },
+                                              "component":  "core",
+                                              "counters":  {
+                                                               "dropped":  0,
+                                                               "errors":  0,
+                                                               "in_events":  701,
+                                                               "out_events":  701
+                                                           },
+                                              "data_integrity":  {
+                                                                     "loss_budget":  3500,
+                                                                     "minifilter_pipeline_dropped":  0,
+                                                                     "minifilter_ring_dropped":  68740045,
+                                                                     "nose_frames_dropped":  0,
+                                                                     "nose_frames_dropped_capacity":  0,
+                                                                     "nose_frames_dropped_framing":  0,
+                                                                     "nose_frames_dropped_midframe":  0,
+                                                                     "nose_frames_dropped_shape":  0,
+                                                                     "nose_frames_rejected":  0,
+                                                                     "nose_pipe_errors":  0,
+                                                                     "pipeline_processing_errors":  0,
+                                                                     "process_generation_ms":  1795685045650,
+                                                                     "queue_dropped_total":  0,
+                                                                     "shed_overload":  0
+                                                                 },
+                                              "data_plane":  {
+                                                                 "nose_connected":  true,
+                                                                 "nose_duplicate_event_ids":  0,
+                                                                 "nose_frames_dropped":  0,
+                                                                 "nose_frames_read":  701,
+                                                                 "nose_frames_rejected":  0,
+                                                                 "nose_frames_submitted":  701,
+                                                                 "nose_last_capture_sequence":  701,
+                                                                 "nose_last_event_id":  701,
+                                                                 "nose_last_interface_id":  4107673295,
+                                                                 "nose_last_producer_epoch":  1795685052,
+                                                                 "nose_last_producer_generation":  3,
+                                                                 "nose_non_monotonic_event_ids":  0,
+                                                                 "nose_pipe_errors":  0,
+                                                                 "nose_producer_duplicate":  0,
+                                                                 "nose_producer_evictions":  0,
+                                                                 "nose_producer_gap":  0,
+                                                                 "nose_producer_invalid":  0,
+                                                                 "nose_producer_regression":  0
+                                                             },
+                                              "defcon_label":  "HIGH",
+                                              "defcon_level":  3,
+                                              "degraded":  true,
+                                              "deps":  [
+                                                           {
+                                                               "name":  "zig",
+                                                               "state":  "RUNNING"
+                                                           },
+                                                           {
+                                                               "name":  "go",
+                                                               "state":  "RUNNING"
+                                                           },
+                                                           {
+                                                               "name":  "cpp",
+                                                               "state":  "RUNNING"
+                                                           },
+                                                           {
+                                                               "name":  "rust_pep",
+                                                               "state":  "RUNNING"
+                                                           },
+                                                           {
+                                                               "name":  "tier3",
+                                                               "state":  "RUNNING"
+                                                           },
+                                                           {
+                                                               "name":  "control",
+                                                               "state":  "RUNNING"
+                                                           },
+                                                           {
+                                                               "name":  "forensic",
+                                                               "state":  "RUNNING"
+                                                           }
+                                                       ],
+                                              "detector_degradation":  {
+                                                                           "anomaly_detector_errors":  0,
+                                                                           "correlator_errors":  0,
+                                                                           "threat_tracker_errors":  0
+                                                                       },
+                                              "endpoint_ownership":  {
+                                                                         "findings":  [
+                                                                                          {
+                                                                                              "command_excerpt":  "\"C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python314\\pythonw.exe\" \"D:\\NIDs_Windows\\brain\\windows_brain.py\"",
+                                                                                              "detail":  "pythonw.exe",
+                                                                                              "endpoint":  "brain channel",
+                                                                                              "pid":  2204,
+                                                                                              "port":  9999,
+                                                                                              "process":  "pythonw.exe",
+                                                                                              "status":  "OWNED"
+                                                                                          },
+                                                                                          {
+                                                                                              "detail":  "responder state DEGRADED",
+                                                                                              "endpoint":  "control pipe",
+                                                                                              "name":  "aegis_control",
+                                                                                              "pid":  17308,
+                                                                                              "status":  "REACHABLE"
+                                                                                          }
+                                                                                      ],
+                                                                         "foreign_count":  0,
+                                                                         "status":  "CLEAR"
+                                                                     },
+                                              "exactly_once":  {
+                                                                   "duplicate_event_ids":  0,
+                                                                   "last_event_id":  701,
+                                                                   "non_monotonic_event_ids":  0
+                                                               },
+                                              "flows_active":  70,
+                                              "health_state_disagrees":  false,
+                                              "last_event_ms":  24,
+                                              "packets_captured":  701,
+                                              "pid":  17308,
+                                              "policies_loaded":  6,
+                                              "resources":  {
+                                                                "available":  true,
+                                                                "cpu_percent":  5.292079026691575,
+                                                                "private_bytes":  868581376,
+                                                                "sampled_at_ms":  1795685062802,
+                                                                "seeded":  true,
+                                                                "working_set_bytes":  569745408
+                                                            },
+                                              "rules_loaded":  23,
+                                              "runtime_state":  "RUNNING",
+                                              "rust_pep":  {
+                                                               "authority":  "detection_only_policy_authority",
+                                                               "authority_model":  "DETECTION_ONLY_NO_HOST_EFFECT",
+                                                               "canonical":  true,
+                                                               "error":  null,
+                                                               "host_effect_capable":  false,
+                                                               "pep_ready":  true,
+                                                               "policy_authority":  true,
+                                                               "provider_capable":  true,
+                                                               "provider_ready":  true,
+                                                               "state":  "READY",
+                                                               "wfp":  "READY"
+                                                           },
+                                              "rust_shield":  {
+                                                                  "alias_of":  "rust_pep",
+                                                                  "canonical":  false,
+                                                                  "error":  null,
+                                                                  "host_effect_capable":  false,
+                                                                  "pep_ready":  true,
+                                                                  "policy_authority":  true,
+                                                                  "provider_capable":  true,
+                                                                  "provider_ready":  true,
+                                                                  "state":  "READY",
+                                                                  "wfp":  "READY"
+                                                              },
+                                              "state":  "DEGRADED",
+                                              "state_machine_disagrees":  false,
+                                              "state_machine_state":  "RUNNING",
+                                              "subsystems":  {
+                                                                 "control":  {
+                                                                                 "error":  null,
+                                                                                 "last_event_ms":  0,
+                                                                                 "pid":  17308,
+                                                                                 "state":  "RUNNING",
+                                                                                 "version":  "1.0.0"
+                                                                             },
+                                                                 "cpp":  {
+                                                                             "error":  null,
+                                                                             "last_event_ms":  0,
+                                                                             "pid":  17308,
+                                                                             "state":  "RUNNING",
+                                                                             "version":  "1.0.0"
+                                                                         },
+                                                                 "forensic":  {
+                                                                                  "error":  null,
+                                                                                  "last_event_ms":  0,
+                                                                                  "pid":  17308,
+                                                                                  "state":  "RUNNING",
+                                                                                  "version":  "1.0.0"
+                                                                              },
+                                                                 "go":  {
+                                                                            "error":  null,
+                                                                            "last_event_ms":  0,
+                                                                            "pid":  17308,
+                                                                            "state":  "RUNNING",
+                                                                            "version":  "5.0.0"
+                                                                        },
+                                                                 "rust_pep":  {
+                                                                                  "error":  null,
+                                                                                  "last_event_ms":  0,
+                                                                                  "pid":  17308,
+                                                                                  "state":  "RUNNING",
+                                                                                  "version":  "1.0.0"
+                                                                              },
+                                                                 "tier3":  {
+                                                                               "error":  null,
+                                                                               "last_event_ms":  0,
+                                                                               "pid":  17308,
+                                                                               "state":  "RUNNING",
+                                                                               "version":  "1.0.0"
+                                                                           },
+                                                                 "zig":  {
+                                                                             "error":  null,
+                                                                             "last_event_ms":  0,
+                                                                             "pid":  17308,
+                                                                             "state":  "RUNNING",
+                                                                             "version":  "5.0.0"
+                                                                         }
+                                                             },
+                                              "tier3":  {
+                                                            "artifact_path":  "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119\\zig-out\\bin\\aegis_pep.dll",
+                                                            "artifact_present":  true,
+                                                            "dependency_ready":  true,
+                                                            "host_effect_capable":  false,
+                                                            "provider_capable":  true,
+                                                            "provider_ready":  true,
+                                                            "ready":  true,
+                                                            "state":  "READY"
+                                                        },
+                                              "uptime_ms":  17338,
+                                              "version":  "5.0.0",
+                                              "workers":  {
+                                                              "etw_ready":  true,
+                                                              "failed":  false,
+                                                              "failure_mask":  0,
+                                                              "failure_reason":  "none",
+                                                              "failure_reasons":  [
+
+                                                                                  ],
+                                                              "fim_ready":  true,
+                                                              "nose_ready":  true,
+                                                              "pipeline_ready":  true,
+                                                              "registry_ready":  true,
+                                                              "sensor_ready":  true
+                                                          }
+                                          }
+                              },
+                   "data_plane":  {
+                                      "nose_connected":  true,
+                                      "nose_duplicate_event_ids":  0,
+                                      "nose_frames_dropped":  0,
+                                      "nose_frames_read":  701,
+                                      "nose_frames_rejected":  0,
+                                      "nose_frames_submitted":  701,
+                                      "nose_last_capture_sequence":  701,
+                                      "nose_last_event_id":  701,
+                                      "nose_last_interface_id":  4107673295,
+                                      "nose_last_producer_epoch":  1795685052,
+                                      "nose_last_producer_generation":  3,
+                                      "nose_non_monotonic_event_ids":  0,
+                                      "nose_pipe_errors":  0,
+                                      "nose_producer_duplicate":  0,
+                                      "nose_producer_evictions":  0,
+                                      "nose_producer_gap":  0,
+                                      "nose_producer_invalid":  0,
+                                      "nose_producer_regression":  0
+                                  }
+               },
+    "s3_post":  {
+                    "stage":  "s3-post",
+                    "at":  "2026-11-26T16:24:36+0700",
+                    "health":  {
+                                   "returncode":  0,
+                                   "raw":  "{\"authority_model\": \"DETECTION_ONLY_NO_HOST_EFFECT\", \"canonical_detection_policy_authority\": \"rust_pep\", \"capabilities\": {\"cpp_bridge\": true, \"udp_brain\": true, \"wfp\": true}, \"compatibility_aliases\": {\"rust_shield\": \"rust_pep\"}, \"component\": \"core\", \"counters\": {\"dropped\": 0, \"errors\": 0, \"in_events\": 2096, \"out_events\": 2096}, \"data_integrity\": {\"loss_budget\": 3500, \"minifilter_pipeline_dropped\": 0, \"minifilter_ring_dropped\": 68740045, \"nose_frames_dropped\": 0, \"nose_frames_dropped_capacity\": 0, \"nose_frames_dropped_framing\": 0, \"nose_frames_dropped_midframe\": 0, \"nose_frames_dropped_shape\": 0, \"nose_frames_rejected\": 0, \"nose_pipe_errors\": 0, \"pipeline_processing_errors\": 0, \"process_generation_ms\": 1795685045650, \"queue_dropped_total\": 0, \"shed_overload\": 0}, \"data_plane\": {\"nose_connected\": true, \"nose_duplicate_event_ids\": 0, \"nose_frames_dropped\": 0, \"nose_frames_read\": 2096, \"nose_frames_rejected\": 0, \"nose_frames_submitted\": 2096, \"nose_last_capture_sequence\": 1330, \"nose_last_event_id\": 1330, \"nose_last_interface_id\": 4107673295, \"nose_last_producer_epoch\": 1795685065, \"nose_last_producer_generation\": 4, \"nose_non_monotonic_event_ids\": 0, \"nose_pipe_errors\": 0, \"nose_producer_duplicate\": 0, \"nose_producer_evictions\": 0, \"nose_producer_gap\": 0, \"nose_producer_invalid\": 0, \"nose_producer_regression\": 0}, \"defcon_label\": \"HIGH\", \"defcon_level\": 3, \"degraded\": true, \"deps\": [{\"name\": \"zig\", \"state\": \"RUNNING\"}, {\"name\": \"go\", \"state\": \"RUNNING\"}, {\"name\": \"cpp\", \"state\": \"RUNNING\"}, {\"name\": \"rust_pep\", \"state\": \"RUNNING\"}, {\"name\": \"tier3\", \"state\": \"RUNNING\"}, {\"name\": \"control\", \"state\": \"RUNNING\"}, {\"name\": \"forensic\", \"state\": \"RUNNING\"}], \"detector_degradation\": {\"anomaly_detector_errors\": 0, \"correlator_errors\": 0, \"threat_tracker_errors\": 0}, \"endpoint_ownership\": {\"findings\": [{\"command_excerpt\": \"\\\"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python314\\\\pythonw.exe\\\" \\\"D:\\\\NIDs_Windows\\\\brain\\\\windows_brain.py\\\"\", \"detail\": \"pythonw.exe\", \"endpoint\": \"brain channel\", \"pid\": 2204, \"port\": 9999, \"process\": \"pythonw.exe\", \"status\": \"OWNED\"}, {\"detail\": \"responder state DEGRADED\", \"endpoint\": \"control pipe\", \"name\": \"aegis_control\", \"pid\": 17308, \"status\": \"REACHABLE\"}], \"foreign_count\": 0, \"status\": \"CLEAR\"}, \"exactly_once\": {\"duplicate_event_ids\": 0, \"last_event_id\": 1330, \"non_monotonic_event_ids\": 0}, \"flows_active\": 114, \"health_state_disagrees\": false, \"last_event_ms\": 32, \"packets_captured\": 2096, \"pid\": 17308, \"policies_loaded\": 6, \"resources\": {\"available\": true, \"cpu_percent\": 9.716238826777266, \"private_bytes\": 874209280, \"sampled_at_ms\": 1795685076398, \"seeded\": true, \"working_set_bytes\": 609624064}, \"rules_loaded\": 23, \"runtime_state\": \"RUNNING\", \"rust_pep\": {\"authority\": \"detection_only_policy_authority\", \"authority_model\": \"DETECTION_ONLY_NO_HOST_EFFECT\", \"canonical\": true, \"error\": null, \"host_effect_capable\": false, \"pep_ready\": true, \"policy_authority\": true, \"provider_capable\": true, \"provider_ready\": true, \"state\": \"READY\", \"wfp\": \"READY\"}, \"rust_shield\": {\"alias_of\": \"rust_pep\", \"canonical\": false, \"error\": null, \"host_effect_capable\": false, \"pep_ready\": true, \"policy_authority\": true, \"provider_capable\": true, \"provider_ready\": true, \"state\": \"READY\", \"wfp\": \"READY\"}, \"state\": \"DEGRADED\", \"state_machine_disagrees\": false, \"state_machine_state\": \"RUNNING\", \"subsystems\": {\"control\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 17308, \"state\": \"RUNNING\", \"version\": \"1.0.0\"}, \"cpp\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 17308, \"state\": \"RUNNING\", \"version\": \"1.0.0\"}, \"forensic\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 17308, \"state\": \"RUNNING\", \"version\": \"1.0.0\"}, \"go\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 17308, \"state\": \"RUNNING\", \"version\": \"5.0.0\"}, \"rust_pep\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 17308, \"state\": \"RUNNING\", \"version\": \"1.0.0\"}, \"tier3\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 17308, \"state\": \"RUNNING\", \"version\": \"1.0.0\"}, \"zig\": {\"error\": null, \"last_event_ms\": 0, \"pid\": 17308, \"state\": \"RUNNING\", \"version\": \"5.0.0\"}}, \"tier3\": {\"artifact_path\": \"C:\\\\Users\\\\User\\\\.local\\\\share\\\\opencode\\\\worktree\\\\a6f58a\\\\rule-coverage-20261119\\\\zig-out\\\\bin\\\\aegis_pep.dll\", \"artifact_present\": true, \"dependency_ready\": true, \"host_effect_capable\": false, \"provider_capable\": true, \"provider_ready\": true, \"ready\": true, \"state\": \"READY\"}, \"uptime_ms\": 30655, \"version\": \"5.0.0\", \"workers\": {\"etw_ready\": true, \"failed\": false, \"failure_mask\": 0, \"failure_reason\": \"none\", \"failure_reasons\": [], \"fim_ready\": true, \"nose_ready\": true, \"pipeline_ready\": true, \"registry_ready\": true, \"sensor_ready\": true}}\n",
+                                   "stderr":  "",
+                                   "doc":  {
+                                               "authority_model":  "DETECTION_ONLY_NO_HOST_EFFECT",
+                                               "canonical_detection_policy_authority":  "rust_pep",
+                                               "capabilities":  {
+                                                                    "cpp_bridge":  true,
+                                                                    "udp_brain":  true,
+                                                                    "wfp":  true
+                                                                },
+                                               "compatibility_aliases":  {
+                                                                             "rust_shield":  "rust_pep"
+                                                                         },
+                                               "component":  "core",
+                                               "counters":  {
+                                                                "dropped":  0,
+                                                                "errors":  0,
+                                                                "in_events":  2096,
+                                                                "out_events":  2096
+                                                            },
+                                               "data_integrity":  {
+                                                                      "loss_budget":  3500,
+                                                                      "minifilter_pipeline_dropped":  0,
+                                                                      "minifilter_ring_dropped":  68740045,
+                                                                      "nose_frames_dropped":  0,
+                                                                      "nose_frames_dropped_capacity":  0,
+                                                                      "nose_frames_dropped_framing":  0,
+                                                                      "nose_frames_dropped_midframe":  0,
+                                                                      "nose_frames_dropped_shape":  0,
+                                                                      "nose_frames_rejected":  0,
+                                                                      "nose_pipe_errors":  0,
+                                                                      "pipeline_processing_errors":  0,
+                                                                      "process_generation_ms":  1795685045650,
+                                                                      "queue_dropped_total":  0,
+                                                                      "shed_overload":  0
+                                                                  },
+                                               "data_plane":  {
+                                                                  "nose_connected":  true,
+                                                                  "nose_duplicate_event_ids":  0,
+                                                                  "nose_frames_dropped":  0,
+                                                                  "nose_frames_read":  2096,
+                                                                  "nose_frames_rejected":  0,
+                                                                  "nose_frames_submitted":  2096,
+                                                                  "nose_last_capture_sequence":  1330,
+                                                                  "nose_last_event_id":  1330,
+                                                                  "nose_last_interface_id":  4107673295,
+                                                                  "nose_last_producer_epoch":  1795685065,
+                                                                  "nose_last_producer_generation":  4,
+                                                                  "nose_non_monotonic_event_ids":  0,
+                                                                  "nose_pipe_errors":  0,
+                                                                  "nose_producer_duplicate":  0,
+                                                                  "nose_producer_evictions":  0,
+                                                                  "nose_producer_gap":  0,
+                                                                  "nose_producer_invalid":  0,
+                                                                  "nose_producer_regression":  0
+                                                              },
+                                               "defcon_label":  "HIGH",
+                                               "defcon_level":  3,
+                                               "degraded":  true,
+                                               "deps":  [
+                                                            {
+                                                                "name":  "zig",
+                                                                "state":  "RUNNING"
+                                                            },
+                                                            {
+                                                                "name":  "go",
+                                                                "state":  "RUNNING"
+                                                            },
+                                                            {
+                                                                "name":  "cpp",
+                                                                "state":  "RUNNING"
+                                                            },
+                                                            {
+                                                                "name":  "rust_pep",
+                                                                "state":  "RUNNING"
+                                                            },
+                                                            {
+                                                                "name":  "tier3",
+                                                                "state":  "RUNNING"
+                                                            },
+                                                            {
+                                                                "name":  "control",
+                                                                "state":  "RUNNING"
+                                                            },
+                                                            {
+                                                                "name":  "forensic",
+                                                                "state":  "RUNNING"
+                                                            }
+                                                        ],
+                                               "detector_degradation":  {
+                                                                            "anomaly_detector_errors":  0,
+                                                                            "correlator_errors":  0,
+                                                                            "threat_tracker_errors":  0
+                                                                        },
+                                               "endpoint_ownership":  {
+                                                                          "findings":  [
+                                                                                           {
+                                                                                               "command_excerpt":  "\"C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python314\\pythonw.exe\" \"D:\\NIDs_Windows\\brain\\windows_brain.py\"",
+                                                                                               "detail":  "pythonw.exe",
+                                                                                               "endpoint":  "brain channel",
+                                                                                               "pid":  2204,
+                                                                                               "port":  9999,
+                                                                                               "process":  "pythonw.exe",
+                                                                                               "status":  "OWNED"
+                                                                                           },
+                                                                                           {
+                                                                                               "detail":  "responder state DEGRADED",
+                                                                                               "endpoint":  "control pipe",
+                                                                                               "name":  "aegis_control",
+                                                                                               "pid":  17308,
+                                                                                               "status":  "REACHABLE"
+                                                                                           }
+                                                                                       ],
+                                                                          "foreign_count":  0,
+                                                                          "status":  "CLEAR"
+                                                                      },
+                                               "exactly_once":  {
+                                                                    "duplicate_event_ids":  0,
+                                                                    "last_event_id":  1330,
+                                                                    "non_monotonic_event_ids":  0
+                                                                },
+                                               "flows_active":  114,
+                                               "health_state_disagrees":  false,
+                                               "last_event_ms":  32,
+                                               "packets_captured":  2096,
+                                               "pid":  17308,
+                                               "policies_loaded":  6,
+                                               "resources":  {
+                                                                 "available":  true,
+                                                                 "cpu_percent":  9.716238826777266,
+                                                                 "private_bytes":  874209280,
+                                                                 "sampled_at_ms":  1795685076398,
+                                                                 "seeded":  true,
+                                                                 "working_set_bytes":  609624064
+                                                             },
+                                               "rules_loaded":  23,
+                                               "runtime_state":  "RUNNING",
+                                               "rust_pep":  {
+                                                                "authority":  "detection_only_policy_authority",
+                                                                "authority_model":  "DETECTION_ONLY_NO_HOST_EFFECT",
+                                                                "canonical":  true,
+                                                                "error":  null,
+                                                                "host_effect_capable":  false,
+                                                                "pep_ready":  true,
+                                                                "policy_authority":  true,
+                                                                "provider_capable":  true,
+                                                                "provider_ready":  true,
+                                                                "state":  "READY",
+                                                                "wfp":  "READY"
+                                                            },
+                                               "rust_shield":  {
+                                                                   "alias_of":  "rust_pep",
+                                                                   "canonical":  false,
+                                                                   "error":  null,
+                                                                   "host_effect_capable":  false,
+                                                                   "pep_ready":  true,
+                                                                   "policy_authority":  true,
+                                                                   "provider_capable":  true,
+                                                                   "provider_ready":  true,
+                                                                   "state":  "READY",
+                                                                   "wfp":  "READY"
+                                                               },
+                                               "state":  "DEGRADED",
+                                               "state_machine_disagrees":  false,
+                                               "state_machine_state":  "RUNNING",
+                                               "subsystems":  {
+                                                                  "control":  {
+                                                                                  "error":  null,
+                                                                                  "last_event_ms":  0,
+                                                                                  "pid":  17308,
+                                                                                  "state":  "RUNNING",
+                                                                                  "version":  "1.0.0"
+                                                                              },
+                                                                  "cpp":  {
+                                                                              "error":  null,
+                                                                              "last_event_ms":  0,
+                                                                              "pid":  17308,
+                                                                              "state":  "RUNNING",
+                                                                              "version":  "1.0.0"
+                                                                          },
+                                                                  "forensic":  {
+                                                                                   "error":  null,
+                                                                                   "last_event_ms":  0,
+                                                                                   "pid":  17308,
+                                                                                   "state":  "RUNNING",
+                                                                                   "version":  "1.0.0"
+                                                                               },
+                                                                  "go":  {
+                                                                             "error":  null,
+                                                                             "last_event_ms":  0,
+                                                                             "pid":  17308,
+                                                                             "state":  "RUNNING",
+                                                                             "version":  "5.0.0"
+                                                                         },
+                                                                  "rust_pep":  {
+                                                                                   "error":  null,
+                                                                                   "last_event_ms":  0,
+                                                                                   "pid":  17308,
+                                                                                   "state":  "RUNNING",
+                                                                                   "version":  "1.0.0"
+                                                                               },
+                                                                  "tier3":  {
+                                                                                "error":  null,
+                                                                                "last_event_ms":  0,
+                                                                                "pid":  17308,
+                                                                                "state":  "RUNNING",
+                                                                                "version":  "1.0.0"
+                                                                            },
+                                                                  "zig":  {
+                                                                              "error":  null,
+                                                                              "last_event_ms":  0,
+                                                                              "pid":  17308,
+                                                                              "state":  "RUNNING",
+                                                                              "version":  "5.0.0"
+                                                                          }
+                                                              },
+                                               "tier3":  {
+                                                             "artifact_path":  "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119\\zig-out\\bin\\aegis_pep.dll",
+                                                             "artifact_present":  true,
+                                                             "dependency_ready":  true,
+                                                             "host_effect_capable":  false,
+                                                             "provider_capable":  true,
+                                                             "provider_ready":  true,
+                                                             "ready":  true,
+                                                             "state":  "READY"
+                                                         },
+                                               "uptime_ms":  30655,
+                                               "version":  "5.0.0",
+                                               "workers":  {
+                                                               "etw_ready":  true,
+                                                               "failed":  false,
+                                                               "failure_mask":  0,
+                                                               "failure_reason":  "none",
+                                                               "failure_reasons":  [
+
+                                                                                   ],
+                                                               "fim_ready":  true,
+                                                               "nose_ready":  true,
+                                                               "pipeline_ready":  true,
+                                                               "registry_ready":  true,
+                                                               "sensor_ready":  true
+                                                           }
+                                           }
+                               },
+                    "data_plane":  {
+                                       "nose_connected":  true,
+                                       "nose_duplicate_event_ids":  0,
+                                       "nose_frames_dropped":  0,
+                                       "nose_frames_read":  2096,
+                                       "nose_frames_rejected":  0,
+                                       "nose_frames_submitted":  2096,
+                                       "nose_last_capture_sequence":  1330,
+                                       "nose_last_event_id":  1330,
+                                       "nose_last_interface_id":  4107673295,
+                                       "nose_last_producer_epoch":  1795685065,
+                                       "nose_last_producer_generation":  4,
+                                       "nose_non_monotonic_event_ids":  0,
+                                       "nose_pipe_errors":  0,
+                                       "nose_producer_duplicate":  0,
+                                       "nose_producer_evictions":  0,
+                                       "nose_producer_gap":  0,
+                                       "nose_producer_invalid":  0,
+                                       "nose_producer_regression":  0
+                                   }
+                },
+    "traffic":  [
+                    {
+                        "stage":  "traffic",
+                        "at":  "2026-11-26T16:24:16+0700",
+                        "probe":  {
+                                      "listener_port":  58869,
+                                      "connections_made":  40,
+                                      "connections_accepted":  40
+                                  }
+                    },
+                    {
+                        "stage":  "traffic",
+                        "at":  "2026-11-26T16:24:29+0700",
+                        "probe":  {
+                                      "listener_port":  58911,
+                                      "connections_made":  40,
+                                      "connections_accepted":  40
+                                  }
+                    }
+                ],
+    "verdict":  {
+                    "s3":  {
+                               "generation_before":  3,
+                               "generation_after":  4,
+                               "sequence_before":  701,
+                               "sequence_after":  1330,
+                               "generation_advanced":  true,
+                               "sequence_advanced":  true,
+                               "duplicate_regression_invalid_zero":  true,
+                               "pass":  true
+                           },
+                    "s2":  {
+                               "fresh_accepted":  true,
+                               "exact_replay_denied":  false,
+                               "pass":  false
+                           }
+                },
+    "restore":  {
+                    "verified":  true,
+                    "hashes":  {
+                                   "aegis_pep.dll":  "870CB9626EDD75AD2552F1CDFE6475D8A7804163354E3A588FED1E4360996C5E",
+                                   "aegis-nose.exe":  "AEAB9B6324E3A7EA0498B0A338E406C012139F15D883465AE574CAC773BC79C2",
+                                   "aegis_nids.exe":  "FBD9BDB3456C9C7DAFCBF1B0C3FBDAD9778F61C3186167856E373CC376185474"
+                               },
+                    "service_status":  "Running"
+                },
+    "errors":  [
+
+               ]
+}

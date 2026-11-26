@@ -1,0 +1,9 @@
+{
+  "stage": "traffic",
+  "at": "2026-11-26T16:25:49+0700",
+  "probe": {
+    "listener_port": 57304,
+    "connections_made": 40,
+    "connections_accepted": 40
+  }
+}
