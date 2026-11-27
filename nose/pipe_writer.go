@@ -12,9 +12,9 @@
 //	v1/v2 are metadata-only compatibility frames; v3 carries bounded payload
 //	and capture provenance (PAYLOAD-ENVELOPE-V3-001).
 //
-// Reconnection is automatic: if core is not up yet, the writer retries
-// with backoff and drops frames until the reader connects (NIDS must
-// never block capture on a missing consumer).
+// Reconnection is lazy: if core is not up yet, the writer drops the current
+// frame and dials again on the next frame (NIDS must never block capture on a
+// missing consumer). There is no sleep/backoff in the live path.
 // =====================================================================
 package main
 
@@ -33,23 +33,44 @@ const nosePipeRetryDelay = 500 * time.Millisecond
 
 // FrameWriter pushes wire frames to the Zig core consumer.
 type FrameWriter struct {
-	mu        sync.Mutex
-	pipePath  string
-	conn      *pipeConn
-	dropped   uint64
-	sent      uint64
+	mu       sync.Mutex
+	pipePath string
+	conn     *pipeConn
+	dropped  uint64
+	sent     uint64
+}
+
+// pipeSink is the minimal sink contract used by writeAll. Production uses an
+// *os.File named-pipe handle; tests inject an in-memory sink so short writes
+// and mid-frame errors are exercised without a pipe or host handle.
+type pipeSink interface {
+	Write([]byte) (int, error)
+	Close() error
 }
 
 // pipeConn wraps a Windows named-pipe file handle; there is no TCP socket path.
 type pipeConn struct {
 	file *os.File
+	sink pipeSink // nil in production; hermetic test seam only
 }
 
 func (c *pipeConn) write(b []byte) (int, error) {
-	if c == nil || c.file == nil {
+	if c == nil {
+		return 0, os.ErrClosed
+	}
+	if c.sink != nil {
+		return c.sink.Write(b)
+	}
+	if c.file == nil {
 		return 0, os.ErrClosed
 	}
 	return c.file.Write(b)
+}
+
+// connected reports whether the next write has a usable sink or file. Test
+// sinks are treated exactly like an opened pipe handle for framing purposes.
+func (c *pipeConn) connected() bool {
+	return c != nil && (c.file != nil || c.sink != nil)
 }
 
 // writeAll preserves frame boundaries even when the OS performs a short write.
@@ -68,8 +89,15 @@ func (c *pipeConn) writeAll(b []byte) error {
 }
 
 func (c *pipeConn) close() {
-	if c != nil && c.file != nil {
-		c.file.Close()
+	if c == nil {
+		return
+	}
+	if c.sink != nil {
+		_ = c.sink.Close()
+		c.sink = nil
+	}
+	if c.file != nil {
+		_ = c.file.Close()
 		c.file = nil
 	}
 }
@@ -92,7 +120,7 @@ func NewFrameWriter(pipePath string) *FrameWriter {
 
 // ensureConnected opens/reopens the pipe. Non-blocking on failure.
 func (w *FrameWriter) ensureConnected() {
-	if w.conn != nil && w.conn.file != nil {
+	if w.conn.connected() {
 		return
 	}
 	w.conn = dialPipe(w.pipePath)
@@ -163,7 +191,7 @@ func (w *FrameWriter) sendWire(wire []byte, eventID uint64) bool {
 		return false
 	}
 
-	if w.conn == nil || w.conn.file == nil {
+	if !w.conn.connected() {
 		w.dropped++
 		if w.dropped == 1 {
 			fmt.Fprintf(os.Stderr, "[NOSE PIPE] first frame dropped: consumer unavailable (%s)\n", w.pipePath)
