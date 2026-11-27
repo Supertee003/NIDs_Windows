@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-27T19:17:42.872799+00:00",
+  "generated_at": "2026-11-27T19:27:41.502167+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3581,
+  "total_files": 3583,
   "by_class": {
-    "canonical-docs": 669,
+    "canonical-docs": 670,
     "canonical-build": 384,
     "unclassified": 29,
     "canonical-source": 1963,
-    "canonical-test": 436,
+    "canonical-test": 437,
     "canonical-config": 66,
     "legacy": 34
   },
@@ -258,13 +258,13 @@
       "path": "AGENTS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10327
+      "size": 10709
     },
     {
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 66042
+      "size": 66446
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -408,7 +408,13 @@
       "path": "analysis/current-head/AEGIS-001-020-DISPOSITION-20261128.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 11570
+      "size": 11656
+    },
+    {
+      "path": "analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4803
     },
     {
       "path": "analysis/current-head/AI-HANDOFF-AUDIT-20261119.md",
@@ -3714,7 +3720,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 78248
+      "size": 78686
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -4008,7 +4014,7 @@
       "path": "docs/DEPLOYMENT_COMPATIBILITY.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2717
+      "size": 2798
     },
     {
       "path": "docs/detection/DETECTION_COVERAGE.md",
@@ -4410,7 +4416,7 @@
       "path": "docs/PATH-TO-COMPLETE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 11666
+      "size": 11714
     },
     {
       "path": "docs/PEP_QUARANTINE_STATUS.md",
@@ -4836,7 +4842,7 @@
       "path": "docs/START-HERE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5228
+      "size": 5453
     },
     {
       "path": "docs/STEP06_completion_report.md",
@@ -5286,7 +5292,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1745993
+      "size": 1748478
     },
     {
       "path": "FLOW_MAP.json",
@@ -5394,7 +5400,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 517298
+      "size": 571272
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5592,13 +5598,13 @@
       "path": "nose/pipe_writer.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 5989
+      "size": 6747
     },
     {
       "path": "nose/pipe_writer_test.go",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 1472
+      "size": 5358
     },
     {
       "path": "nose/producer_identity.go",
@@ -5623,6 +5629,12 @@
       "class": "canonical-build",
       "role": "build-config",
       "size": 1274
+    },
+    {
+      "path": "nose/sensor_coverage_test.go",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 8224
     },
     {
       "path": "nose/styles.go",
@@ -5670,7 +5682,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9877
+      "size": 10225
     },
     {
       "path": "pytest.ini",
@@ -5688,7 +5700,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 418382
+      "size": 461598
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -5754,7 +5766,7 @@
       "path": "release/release-status.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 11228
+      "size": 11679
     },
     {
       "path": "release/T20-final/466a226/brain/__init__.py",
@@ -21501,5 +21513,5 @@
       "size": 624
     }
   ],
-  "source_commit": "3e7e591"
+  "source_commit": "3c78c96"
 }

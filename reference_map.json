@@ -1,17 +1,17 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-27T19:17:42.878816+00:00",
+  "generated_at": "2026-11-27T19:27:41.507891+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 3581,
+  "total_files": 3583,
   "by_role": {
-    "documentation": 654,
+    "documentation": 655,
     "build-config": 373,
     "other": 29,
     "lockfile": 6,
     "rust-build": 4,
     "source": 1661,
     "architecture-decision": 13,
-    "test-artifact": 436,
+    "test-artifact": 437,
     "config-data": 66,
     "step-document": 2,
     "go-source": 8,
@@ -591,6 +591,10 @@
       "role": "architecture-decision"
     },
     "analysis/current-head/AEGIS-001-020-DISPOSITION-20261128.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -4069,6 +4073,10 @@
     "nose/run_nose.bat": {
       "class": "canonical-build",
       "role": "build-config"
+    },
+    "nose/sensor_coverage_test.go": {
+      "class": "canonical-test",
+      "role": "test-artifact"
     },
     "nose/styles.go": {
       "class": "canonical-source",
@@ -14655,5 +14663,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "3e7e591"
+  "source_commit": "3c78c96"
 }
