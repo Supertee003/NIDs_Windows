@@ -1,0 +1,108 @@
+{
+    "run_id":  "20261126-214622",
+    "build_source":  "aa3b7b0161e425e54155d5767737bffcde7939b5",
+    "soak_start":  "2026-11-26T21:46:50",
+    "target_end":  "2026-11-27T21:46:50",
+    "check_exit":  3,
+    "check":  {
+                  "verdict":  "FAIL",
+                  "soak_start":  "2026-11-26T21:46:50",
+                  "checked_at":  "2026-11-27T21:46:50",
+                  "elapsed_hours":  24.0,
+                  "required_hours":  24.0,
+                  "services":  {
+                                   "AegisNids":  "RUNNING",
+                                   "AegisAggregator":  "RUNNING",
+                                   "AegisWfp":  "RUNNING",
+                                   "AegisMinifilter":  "RUNNING"
+                               },
+                  "daemon_uptime_hours":  22.8,
+                  "daemon_state":  "RUNNING",
+                  "daemon_health_state":  "DEGRADED",
+                  "data_integrity":  {
+                                         "queue_dropped_total":  238597,
+                                         "nose_frames_rejected":  0,
+                                         "nose_frames_dropped":  0,
+                                         "nose_frames_dropped_framing":  0,
+                                         "nose_frames_dropped_midframe":  0,
+                                         "nose_frames_dropped_shape":  0,
+                                         "nose_frames_dropped_identity":  0,
+                                         "nose_frames_dropped_capacity":  0,
+                                         "nose_pipe_errors":  0,
+                                         "pipeline_processing_errors":  0,
+                                         "minifilter_ring_dropped":  3336713,
+                                         "minifilter_pipeline_dropped":  58970,
+                                         "loss_budget":  3500,
+                                         "shed_overload":  0,
+                                         "process_generation_ms":  1795708740368
+                                     },
+                  "shed_overload":  0,
+                  "loss_budget":  0,
+                  "shed_budget":  0,
+                  "scm_restarts":  [
+
+                                   ],
+                  "problems":  [
+                                   "daemon uptime 22.80h is shorter than the soak 24.00h (process restarted mid-soak)",
+                                   "daemon reports DEGRADED (state=DEGRADED, runtime_state=RUNNING)",
+                                   "daemon process generation changed inside the window (1795704400212 -\u003e 1795708740368): counter deltas are meaningless",
+                                   "queue_dropped_total grew by 238597 inside the window (baseline 0, now 238597) exceeding the loss budget 0",
+                                   "minifilter_ring_dropped grew by 3336713 inside the window (baseline 0, now 3336713) exceeding the loss budget 0",
+                                   "minifilter_pipeline_dropped grew by 58970 inside the window (baseline 0, now 58970) exceeding the loss budget 0"
+                               ],
+                  "baseline":  {
+                                   "recorded_at":  "2026-11-26T21:46:50",
+                                   "data_integrity":  {
+                                                          "queue_dropped_total":  0,
+                                                          "nose_frames_rejected":  0,
+                                                          "nose_frames_dropped":  0,
+                                                          "nose_frames_dropped_framing":  0,
+                                                          "nose_frames_dropped_midframe":  0,
+                                                          "nose_frames_dropped_shape":  0,
+                                                          "nose_frames_dropped_identity":  0,
+                                                          "nose_frames_dropped_capacity":  0,
+                                                          "nose_pipe_errors":  0,
+                                                          "pipeline_processing_errors":  0,
+                                                          "minifilter_ring_dropped":  0,
+                                                          "minifilter_pipeline_dropped":  0,
+                                                          "loss_budget":  3500,
+                                                          "shed_overload":  0,
+                                                          "process_generation_ms":  1795704400212
+                                                      },
+                                   "shed_overload":  0
+                               },
+                  "counters_absolute":  {
+                                            "queue_dropped_total":  238597,
+                                            "nose_frames_rejected":  0,
+                                            "nose_frames_dropped":  0,
+                                            "nose_pipe_errors":  0,
+                                            "minifilter_ring_dropped":  3336713,
+                                            "minifilter_pipeline_dropped":  58970,
+                                            "shed_overload":  0
+                                        },
+                  "counters_delta":  {
+                                         "queue_dropped_total":  238597,
+                                         "nose_frames_rejected":  0,
+                                         "nose_frames_dropped":  0,
+                                         "nose_pipe_errors":  0,
+                                         "minifilter_ring_dropped":  3336713,
+                                         "minifilter_pipeline_dropped":  58970,
+                                         "shed_overload":  0
+                                     }
+              },
+    "nose_alive_at_end":  true,
+    "restore":  {
+                    "verified":  true,
+                    "hashes":  {
+                                   "aegis_nids.exe":  "FBD9BDB3456C9C7DAFCBF1B0C3FBDAD9778F61C3186167856E373CC376185474",
+                                   "aegis-nose.exe":  "AEAB9B6324E3A7EA0498B0A338E406C012139F15D883465AE574CAC773BC79C2",
+                                   "aegis_pep.dll":  "870CB9626EDD75AD2552F1CDFE6475D8A7804163354E3A588FED1E4360996C5E"
+                               },
+                    "service_status":  "Running",
+                    "service_env":  "AEGIS_LOSS_BUDGET=3500",
+                    "machine_nose_iface":  "\\Device\\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}"
+                },
+    "errors":  [
+
+               ]
+}

@@ -11980,6 +11980,34 @@
       "status_basis": "void-gaps-first.json with restore.verified=true, finalizer_task_deleted=true and errors=[]."
     },
     {
+      "id": "SOAK-VOID-LATE-FINALIZER-GAPS-FIRST-AA3B7B0-20261127",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-27",
+      "title": "Late finalizer of the voided 214622 soak records FAIL and its restore swaps the live 225843 runtime",
+      "level": "E0",
+      "component": "SYSTEM scheduled finalizer + host runtime",
+      "flow_id": "voided window -> stale finalizer alive -> 24 h check FAIL -> restore -> live window runtime mismatch",
+      "description": "Addendum to SOAK-ATTEMPT-VOID-GAPS-FIRST-AA3B7B0-20261126. The finalizer believed deleted at the 22:28:41 void on 11/26 was still alive and wrote a verbatim result.json at 21:47:03 on 11/27: check_exit=3, verdict=FAIL, elapsed_hours=24.0, six problems (daemon restart mid-window, DEGRADED, process generation change, queue_dropped_total +238597, minifilter_ring_dropped +3336713, minifilter_pipeline_dropped +58970), restore.verified=true, errors=[]. That restore put the pre-soak binaries (FBD9BDB3..., AEAB9B63..., 870CB962...) into the install path while window 225843 was still running with pinned aa3b7b0 hashes (6F548AF7..., 8C05FE48..., 6E05AAE1...), verified by read-only hash inspection at 21:48:01. STOP-THE-LINE issue #55: 225843 is VOID even if it later writes PASS; soak_24h stays OPEN and no gate, E-level, signature or driver-load claim is created.",
+      "files_verified": [
+        "analysis/current-head/SOAK-VOID-LATE-FINALIZER-GAPS-FIRST-AA3B7B0-20261127.md",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first-late-finalizer/result.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first-late-finalizer/soak-final.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first-late-finalizer/finalize.log",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first-late-finalizer/verbatim-manifest.json"
+      ],
+      "tests": [],
+      "result": "FAIL_RECORDED_NO_EVIDENCE_CREDIT",
+      "finding": "Real FAIL verdict for an already-voided window, plus a runtime swap inside a different live window. Both are recorded honestly; neither closes a gate.",
+      "evidence_artifact": "analysis/current-head/SOAK-VOID-LATE-FINALIZER-GAPS-FIRST-AA3B7B0-20261127.md",
+      "limitations": [
+        "FAIL belongs to voided run 20261126-214622, not to run 225843.",
+        "Run 225843 is VOID for current-source soak evidence because its runtime changed at 21:47:03.",
+        "No PASS, E5/E6/E7, signature or driver-load proof is created."
+      ],
+      "status": "VOIDED_STOP_THE_LINE",
+      "status_basis": "verbatim result.json SHA-256 0E3D136EB5FFE817192E239B3625379336F8BB5FDDDB3F8570E5504DAF6E4C70 and verbatim-manifest.json byte-exact source/copy hash equality"
+    },
+    {
       "id": "PIPE-READER-SHUTDOWN-E5-AA3B7B0-20261126",
       "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
       "timestamp": "2026-11-26",
@@ -18717,7 +18745,7 @@
     }
   ],
   "evidence_level_summary": {
-    "E0_count": 3,
+    "E0_count": 4,
     "E1_count": 51,
     "E2_count": 171,
     "E3_count": 19,

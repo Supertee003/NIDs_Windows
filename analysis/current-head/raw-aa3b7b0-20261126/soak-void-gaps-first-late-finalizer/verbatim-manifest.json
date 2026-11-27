@@ -1,0 +1,42 @@
+{
+  "record_id": "SOAK-VOID-GAPS-FIRST-LATE-FINALIZER-AA3B7B0-20261127",
+  "captured_at": "2026-11-27T22:32:15+07:00",
+  "source_run_dir": "D:\\aegis-tmp\\owner-soak-aa3b7b0-20261126-214622",
+  "destination_dir": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first-late-finalizer",
+  "copy_method": "byte-for-byte Copy-Item; SHA-256 verified equal for source and copy; no transcode and no value edits",
+  "files": [
+    {
+      "name": "result.json",
+      "source_sha256": "0E3D136EB5FFE817192E239B3625379336F8BB5FDDDB3F8570E5504DAF6E4C70",
+      "copy_sha256": "0E3D136EB5FFE817192E239B3625379336F8BB5FDDDB3F8570E5504DAF6E4C70",
+      "bytes": 6905,
+      "source_last_write_time": "2026-11-27T21:47:03.6578487+07:00",
+      "hash_match": true
+    },
+    {
+      "name": "soak-final.json",
+      "source_sha256": "9438E1B4716908B2BEA46C02C0B1AE9153CF9F6EFDCCC96EDD4F06F9B876A855",
+      "copy_sha256": "9438E1B4716908B2BEA46C02C0B1AE9153CF9F6EFDCCC96EDD4F06F9B876A855",
+      "bytes": 2854,
+      "source_last_write_time": "2026-11-27T21:46:51.0972482+07:00",
+      "hash_match": true
+    },
+    {
+      "name": "finalize.log",
+      "source_sha256": "3E3FC801ECD52DFBEA211A0ECE03F95EA04707B53A188F37018497053DEFA732",
+      "copy_sha256": "3E3FC801ECD52DFBEA211A0ECE03F95EA04707B53A188F37018497053DEFA732",
+      "bytes": 20577,
+      "source_last_write_time": "2026-11-27T21:47:03.6641362+07:00",
+      "hash_match": true
+    }
+  ],
+  "clock_note": "The scripts label log lines with Z, but filesystem LastWriteTime matches the operator's +07:00 clock. Treat those stamps as local clock labels, not verified UTC.",
+  "verdict_in_verbatim_copy": {
+    "check_exit": 3,
+    "verdict": "FAIL",
+    "elapsed_hours": 24.0,
+    "restore_verified": true,
+    "problems_count": 6
+  },
+  "no_claim": "This copy records a FAIL for an already-voided window. It is not a PASS, does not close soak_24h, and creates no E5/E6/E7, signature or driver-load claim."
+}
