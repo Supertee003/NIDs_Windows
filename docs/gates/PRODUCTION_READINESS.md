@@ -10,7 +10,7 @@
 > The v1.1 **release-identity** board is `docs/gates/T20_100pct_audit.md` → SHIPPABLE, 6/6 PASS
 > (0 open), recorded at signed candidate `466a226` / build source `a53eda8`; release record
 > `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`. That board is immutable and is
-> **not** a re-run at the current build source `aa3b7b0`. The current-source board is **5/6 PASS
+> **not** a re-run at the current build source `c01e809`. The current-source board is **5/6 PASS
 > with `soak_24h` OPEN — NOT SHIPPABLE**; see §6 and
 > `analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md`. No current-source soak or
 > E7 claim is made here.
@@ -82,11 +82,11 @@ baseline. Gate 9 is a recorded decision pending owner sign-off.
 
 | Gate | Test / tool | Evidence (path or ID) | E-level | Current? |
 |---|---|---|---|---|
-| `truth_artifacts` | `python tools/truth.py verify`; `python scripts/check_summary.py` | `TRUTH_VALID` / `SUMMARY_VALID` at build source `aa3b7b0` (records tip `8f01825` at the gate run; check `git rev-parse HEAD` for later records-only commits) | E1 | yes |
-| `component_audit` | `zig build test`; `pytest -q -m "not host_live"` (1520 pass/1 skip/18 deselected/27 subtests); `go test ./...` (ok); RULE-LAYER 5/5 | `analysis/current-head/TEST-MATRIX-AA3B7B0-20261126.md`; `build_manifest.json` (66/66 modules, 0 production failures) | E2 | yes at `aa3b7b0` |
-| `release_signature` | `tools/final_audit.py --release-check`; `sign_release.py --verify`; `verify_detached_signature` | `release/T20-final/6c94b47/signatures.json` (digest `94F65BCC…`, owner anchor `DCNPphsq…`); `analysis/current-head/RELEASE-SIGNATURE-AA3B7B0-20261126.md` | E2 (release record verification only) | yes; published `v1.1`/`466a226` unchanged |
+| `truth_artifacts` | `python tools/truth.py verify`; `python scripts/check_summary.py` | `TRUTH_VALID` / `SUMMARY_VALID` at build source `c01e809` (check `git rev-parse HEAD` for the live records tip) | E1 | yes |
+| `component_audit` | `zig build test` (exit 0); `pytest -q -m "not host_live"` (1519 passed/1 skipped/18 deselected/27 subtests at `c01e809`); `go test ./...` (ok); RULE-LAYER 5/5 | `analysis/current-head/AEGIS-003-HEALTH-ADDITIVE-E2-20261128.md`; `build_manifest.json` (66/66 modules, 0 production failures) | E2 | yes at `c01e809` |
+| `release_signature` | `tools/final_audit.py --release-check`; `sign_release.py --verify`; `verify_detached_signature` | `release/T20-final/128c7f5/signatures.json` (digest `EBE91BB4…`, owner anchor `DCNPphsq…`, contains `c01e809`); `analysis/current-head/RELEASE-SIGNATURE-C01E809-20261128.md`. The `6c94b47` record is HISTORICAL. | E2 (release record verification only) | yes; published `v1.1`/`466a226` unchanged |
 | `clean_host_e5` | `tools/host_preflight.py`; `tools/upgrade_rollback.py`; driver thumbprint check; duplicate-pair probe | `admin-evidence/e5-clean-host-20261120-final/preflight-20261120.json` PASS, loader bound to pinned installer/runtime/driver hashes | E5 | yes (owner-attested, historical host window) |
-| `soak_24h` | `tools/host_soak_check.py --start <recorded> --hours 24 --baseline <snapshot>`; SYSTEM-scheduled owner finalizer with verified restore | **OPEN**: the 36.52 h PASS predates `aa3b7b0`. Four `aa3b7b0` windows carry no credit: three early voids (agent I/O; finalizer lost on server restart; owner-directed gaps-first void) plus `225843`, whose real finalizer verdict was `FAIL` (7 problems, generation change) and whose runtime was swapped at `21:47:03` by the stale `214622` finalizer. See `SOAK-ATTEMPT-VOID-AA3B7B0-20261126.md`, `SOAK-ATTEMPT-VOID-DEFER-AA3B7B0-20261126.md`, `SOAK-ATTEMPT-VOID-GAPS-FIRST-AA3B7B0-20261126.md`, `SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127.md`, `SOAK-VOID-LATE-FINALIZER-GAPS-FIRST-AA3B7B0-20261127.md` (all under `analysis/current-head/`); STOP-THE-LINE #55. | E0/E5 | **NOT PROVEN** — fresh, serialized window still required |
+| `soak_24h` | `tools/host_soak_check.py --start <recorded> --hours 24 --baseline <snapshot>`; SYSTEM-scheduled owner finalizer with verified restore | **OPEN**: the 36.52 h PASS is HISTORICAL at `a53eda8` and predates `c01e809`. Four `aa3b7b0` windows carry no credit and are HISTORICAL at `c01e809`: three early voids (agent I/O; finalizer lost on server restart; owner-directed gaps-first void) plus `225843`, whose real finalizer verdict was `FAIL` (7 problems, generation change) and whose runtime was swapped at `21:47:03` by the stale `214622` finalizer. See `SOAK-ATTEMPT-VOID-AA3B7B0-20261126.md`, `SOAK-ATTEMPT-VOID-DEFER-AA3B7B0-20261126.md`, `SOAK-ATTEMPT-VOID-GAPS-FIRST-AA3B7B0-20261126.md`, `SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127.md`, `SOAK-VOID-LATE-FINALIZER-GAPS-FIRST-AA3B7B0-20261127.md` (all under `analysis/current-head/`); STOP-THE-LINE #55. | E0/E5 | **NOT PROVEN** — fresh, serialized window still required |
 | `evidence_debt` | `tools/evidence_debt.py`; `scripts/check_summary.py` | 0 unnamed product files; `SUMMARY_VALID` | E1 | yes |
 
 Current board: `python tools/final_audit.py --check` with `AEGIS_RELEASE_TRUSTED_PUBLIC_KEY=DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU=` reports **5/6 PASS, `soak_24h` OPEN — NOT SHIPPABLE**. The `host_live` pytest pair is deliberately excluded from the local gate (`-m "not host_live"`); it passed only in the elevated current-source owner run and fails on the restored baseline. No test was relaxed or xfailed. One-page combined status: `analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md`.
@@ -175,7 +175,7 @@ historical window). Accept it only with `verdict=PASS`, `elapsed_hours>=24`,
 and re-read the resulting board. A PASS is a gate input, not an automatic
 6/6, not E7 and not a new release: re-run `check_summary.py --write` only if
 the evidence index is actually updated, and publish **only** after owner
-confirmation — never before. At build source `aa3b7b0` the board is 5/6 with
+confirmation — never before. At build source `c01e809` the board is 5/6 with
 `soak_24h` OPEN and NOT SHIPPABLE. The `225843` result has been consumed and is
 `FAIL` with a mid-window runtime swap (#55); it is not a gate input that closes
 anything. A new window must be authorized and serialized before another verdict

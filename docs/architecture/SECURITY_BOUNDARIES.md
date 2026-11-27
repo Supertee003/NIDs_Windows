@@ -1,6 +1,6 @@
 # Security Boundaries and Privilege Separation
 
-> Verified against current source at build source `aa3b7b0`. This is a design/boundary document,
+> Verified against current source at build source `c01e809`. This is a design/boundary document,
 > not a penetration test. Source code below is the authority; `CONTRACT_MAP.json` CONTRACT-04 was
 > reconciled on 2026-11-27 to describe enforced active v2 freshness/replay, while the v1 command
 > table remains frozen history. Earlier source labels including `a26c573` are HISTORICAL.

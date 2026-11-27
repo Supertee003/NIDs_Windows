@@ -198,7 +198,7 @@ This is enforced in several independent places:
 > The hard constraint is that no layer can promote 'detected' into 'blocked' — the prevention gate
 > is closed and a BLOCK label is only an intent. At the historical `a53eda8` release identity I
 > proved the path with real lab traffic and a negative control, and it was signed, soak-tested for
-> 36.5 hours and shipped as detection-only. At the current build source `aa3b7b0` the board is
+> 36.5 hours and shipped as detection-only. At the current build source `c01e809` the board is
 > 5/6 with `soak_24h` OPEN and NOT SHIPPABLE; the 36.5 h soak result is HISTORICAL, not current
 > proof and not E7."
 

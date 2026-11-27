@@ -1,6 +1,6 @@
 # Kernel lifecycle — load, unload, cleanup, and proof boundary
 
-> Scope: build source `4dd3393` (HISTORICAL at current source `aa3b7b0`). AEGIS-PLAN-009.
+> Scope: build source `4dd3393` (HISTORICAL at current source `c01e809`). AEGIS-PLAN-009.
 > This is a **contract and runbook index**, not a claim that a driver was loaded
 > in this session. The agent session is non-elevated; no kernel object was
 > touched while writing this page.

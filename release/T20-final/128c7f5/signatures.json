@@ -1,0 +1,12 @@
+{
+  "policy": "configs/Rules.json (ed25519 via src/policy/policy_signing.zig)",
+  "immutable": "build_manifest digests match committed records",
+  "commit": "128c7f5",
+  "shipped_files": 241,
+  "signature": "fvb01QDmRaYeMJGfpqyD0S3QBZ3U1wG09g0Nf0pZ0AIFAwOK5FSH8yMKHGOIijc6Rx2lVgjd5cHDqsb+BjG/DQ==",
+  "public_key": "DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU=",
+  "algorithm": "ed25519",
+  "signed_digest": "EBE91BB403BFF2488E87A9F7A2E9D78AC566B612197DBE0DFF921196FCB32501",
+  "signed_file": "SHA256SUMS",
+  "signed_at": "2026-11-28T03:30:06+07:00"
+}

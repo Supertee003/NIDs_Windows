@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Document status | **CURRENT** — rebased on the source tree at build source `aa3b7b0` (ADR-0008) |
+| Document status | **CURRENT** — rebased on the source tree at build source `c01e809` (ADR-0008) |
 | Records HEAD | see `git rev-parse HEAD`; this document is records-only under ADR-0008 |
 | Canonical entrypoint | `src/main.zig` (`runtime_manifest.json:4`) |
 | Source of truth for roles | `SYSTEM_MAP.json`, `FLOW_MAP.json`, `AUTHORITY_MAP.json`, `runtime_manifest.json`, `AGENTS.md` |

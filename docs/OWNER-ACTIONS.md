@@ -1,8 +1,8 @@
 # Owner action card — what blocks us and what the agent can do now
 
-**BUILD SOURCE:** `aa3b7b0161e425e54155d5767737bffcde7939b5` (unchanged by records commits)  
-**BOARD:** **5/6 PASS — `soak_24h` OPEN — NOT SHIPPABLE**  
-**STATUS:** the real `225843` finalizer verdict is `FAIL`; the window is also VOID for a runtime swap (#55).
+**BUILD SOURCE:** `c01e8091995e3afb9e93e48ea3bd1d7cb6ae5cce` (unchanged by records commits)  
+**BOARD:** **5/6 PASS — `soak_24h` OPEN — NOT SHIPPABLE** (`release_signature` PASS via the owner-delegated signature at `128c7f5`)  
+**STATUS:** the real `225843` finalizer verdict is `FAIL`; the window is also VOID for a runtime swap (#55). `aa3b7b0` and earlier source proofs are HISTORICAL at `c01e809`.
 
 This page is a **decision card, not evidence**. It changes no gate, verdict, level, signature, authority or source file. `docs/PATH-TO-COMPLETE.md` holds the full sequence; this page is the short version of what exactly is waiting and what can proceed immediately.
 
@@ -13,10 +13,10 @@ This page is a **decision card, not evidence**. It changes no gate, verdict, lev
 | Bucket | Items | Who acts |
 |---|---|---|
 | **DONE — no waiting** | Real finalizer consumed and recorded as FAIL/VOID; verbatim artifacts + SHA-256 manifests; EVIDENCE_INDEX entries; status surfaces rebased; all local gates green; CI green; issue comments #47–#55 | Agent — complete |
-| **WAITING — hard blockers** | (A) clean soak window; (B) source rebaseline decision + host window; (C) owner key / real E7 or signed-driver evidence | Owner |
-| **CAN DO NOW — without touching those blockers** | Prepare patch-transaction skeletons and checklists; re-run any read-only verification; keep status surfaces honest; consume a verdict the moment a real artifact appears | Agent — on request |
+| **WAITING — hard blockers** | (A) clean soak window; (B) separate owner decision on frozen #47/#50 source and a later authorized host window; (C) real E7 / signed-driver evidence only — the Ed25519 release-record signature was completed under delegation | Owner |
+| **CAN DO NOW — without touching those blockers** | Re-run read-only verification; keep status surfaces honest; consume a verdict the moment a real artifact appears | Agent — on request |
 
-No combination of local tests, documentation or static review substitutes for A/B/C.
+No combination of local tests, documentation or static review substitutes for A/B/C. The delegated signature at `release/T20-final/128c7f5` is recorded at `analysis/current-head/RELEASE-SIGNATURE-C01E809-20261128.md`.
 
 ## 2. Card A — clean soak window (closes / fails `soak_24h`)
 
@@ -38,30 +38,39 @@ No combination of local tests, documentation or static review substitutes for A/
 
 ## 4. Card C — signature / E7 / signed driver
 
-**Agent action completed 2026-11-28:** under owner delegation, the approved
-current-source Ed25519 key signed a records-tip identity attestation
-(`analysis/current-head/OWNER-KEY-ATTESTATION-AA3B7B0-20261128.md`, verify PASS,
-digest `A810F023E1871427...`). No private key was tracked or printed. This is
-integrity of the honest record only — **not** a new release, E7, signed driver
-or soak credit. The remaining part of Card C (real HLK/catalog/Authenticode
-evidence) still needs artifacts produced by external tooling; none exists here.
+**Agent actions completed 2026-11-28 under explicit owner delegation:**
 
-**Owner must supply:** confirmation whether a **new** Ed25519 release signature is wanted (key stays owner-held at `D:\aegis-tmp\keys\aegis-release-aa3b7b0.ed25519`; never paste it into chat or commit it), and real HLK/catalog/Authenticode evidence for E7 or signed drivers — or say "none".
+- the approved key signed a records-tip identity attestation
+  (`analysis/current-head/OWNER-KEY-ATTESTATION-AA3B7B0-20261128.md`, verify PASS,
+  digest `A810F023E1871427...`) — integrity of that record only, not a new
+  release, E7, signed driver or soak credit;
+- the same key signed an additional release-record tree at
+  `release/T20-final/128c7f5` (SHA-256 of `SHA256SUMS`:
+  `EBE91BB403BFF2488E87A9F7A2E9D78AC566B612197DBE0DFF921196FCB32501`,
+  public anchor `DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU=`). It contains
+  build source `c01e809`; `final_audit.py --check` reports `release_signature`
+  PASS with the owner anchor and 5/6 overall with `soak_24h` alone OPEN. Full
+  record: `analysis/current-head/RELEASE-SIGNATURE-C01E809-20261128.md`.
 
-**Agent can prepare now:** record the exact paths and the no-fabrication boundary; keep the published identity `v1.1` / `466a226` / `a53eda8` and existing digest `94F65BCC…` unchanged.
+No private key was tracked or printed; the owner-held seed remains at
+`D:\aegis-tmp\keys\aegis-release-aa3b7b0.ed25519` and must never be pasted into
+chat or committed. The immutable `v1.1` / `466a226` / `a53eda8` identity and its
+`94F65BCC…` digest were not changed.
 
-**Until C exists:** no new signature, no E7, no driver-load or signed-driver claim. `tools/final_audit.py` has no HLK/E7 gate; a soak PASS does not create one.
+**Owner must still supply:** real HLK/catalog/Authenticode evidence for E7 or
+signed drivers — or say "none". `tools/final_audit.py` has no HLK/E7 gate; a soak
+PASS and the Ed25519 release-record signature do not create either.
 
 ## 5. What the agent will not do unilaterally
 
 - Create or edit `result.json`, `soak-final.json` or any finalizer artifact.
 - Touch the host, service, driver, installed binaries, scheduled tasks or a live soak window.
 - Reuse the historical 36.52 h PASS for `aa3b7b0`, add `loss_budget=3500`, or relabel a FAIL/VOID as PASS.
-- Sign with the owner-held key, invent E7/HLK evidence, or expand policy/enforcement authority.
+- Sign with the owner-held key without explicit owner delegation, invent E7/HLK evidence, or expand policy/enforcement authority. Both delegated signatures above were owner-authorized; no new unauthorised signing occurred.
 - Move the build source before a separate owner-authorized patch transaction.
 
 ## 6. Immediate answer
 
-- **Still waiting:** A (clean window), B (source/host decision), C (key/E7 evidence).
-- **Can do right away, without A/B/C:** prepare the patch-transaction skeletons and verification checklists, keep records honest, and consume a real artifact the moment owner produces one.
-- **Everything else is already done** at records tip `git rev-parse HEAD` with build source `aa3b7b0`.
+- **Still waiting:** A (one clean serialized soak window), B (separate decision on frozen #47/#50 source and any later authorized host window), C (E7/HLK/catalog/Authenticode evidence only — the delegated Ed25519 signature is complete).
+- **Can do right away, without A/B/C:** re-run read-only verification and keep records honest; consume a real soak artifact the moment the owner produces one.
+- **Everything else is already done** at records tip `git rev-parse HEAD` with build source `c01e809`; board 5/6, `soak_24h` OPEN, NOT SHIPPABLE.

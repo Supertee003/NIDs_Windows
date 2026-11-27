@@ -12,7 +12,10 @@ moved it to `473b3fe4820568f9384b6768c25af59578e84f08`; AEGIS-003 then moved it
 to `c01e8091995e3afb9e93e48ea3bd1d7cb6ae5cce`. AEGIS-004a, AEGIS-008 and
 AEGIS-003 are E2-only transactions; AEGIS-004b is E2 plus a narrow private-pipe
 E3 counter proof. All four have machine maps rebaselined and digests refreshed.
-The board is 4/6 with `release_signature` and `soak_24h` OPEN; NOT SHIPPABLE.
+The owner then delegated the owner-only signature on 2026-11-28: the additional
+signed tree at `release/T20-final/128c7f5` contains `c01e809` and
+`release_signature` is PASS (`analysis/current-head/RELEASE-SIGNATURE-C01E809-20261128.md`).
+The board is 5/6 with `soak_24h` alone OPEN; NOT SHIPPABLE.
 No gate threshold, waiver, verdict or soak rule changed. This page remains a
 decision record, not evidence; the applied patch records are
 [`AEGIS-004A`](../analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md),
@@ -29,9 +32,16 @@ consequences:
 
 1. All machine maps must be rebuilt with the new source commit and re-verified.
 2. The signed tree `6c94b47` no longer contains the runtime, so
-   `tools/final_audit.py --check` turns `release_signature` **OPEN** — the board
-   would go from 5/6 to 4/6 until a new owner-authorized signature record exists.
+   `tools/final_audit.py --check` turned `release_signature` **OPEN** — the board
+   dropped from 5/6 to 4/6 until a new owner-authorized signature record existed.
 3. Any E5/E6 result tied to `aa3b7b0` becomes historical for the new source.
+
+**Post-decision update:** the owner chose option B and later delegated the
+owner-only signature. The additional tree at `release/T20-final/128c7f5`
+contains build source `c01e809` and verifies with the approved key, so
+`release_signature` is PASS again and the board is 5/6 with `soak_24h` alone
+OPEN (`analysis/current-head/RELEASE-SIGNATURE-C01E809-20261128.md`). The
+intermediate 4/6 state above is historical, not the current board.
 
 None of those is a documentation cleanup. They are why Card B of
 [`docs/OWNER-ACTIONS.md`](OWNER-ACTIONS.md) requires an explicit decision. This
@@ -64,10 +74,10 @@ evidence entry. No skip, xfail, waiver or gate threshold is part of any slice.
 
 - **A — Keep frozen (current state).** Board stays 5/6 with only `soak_24h`
   OPEN; source-level gaps stay honestly marked PARTIAL / NOT_PROVEN.
-- **B — Execute on main with full rebaseline.** Requires accepting the temporary
-  `release_signature` OPEN and an owner-authorized new signature record over the
-  new source tree, plus rebuilt machine maps and fresh E2/E3 proof. This does
-  **not** create a new release identity and does not close soak.
+- **B — Execute on main with full rebaseline.** Chosen by the owner. The temporary
+  `release_signature` OPEN was closed by the owner-delegated signature at
+  `release/T20-final/128c7f5`; machine maps were rebuilt and fresh E2/E3 proof was
+  recorded. This did **not** create a new release identity and does not close soak.
 - **C — Execute in a separate worktree for evidence only.** Main keeps
   `aa3b7b0` and 5/6; the branch carries the source fix and its tests but is not
   merged until B is chosen.

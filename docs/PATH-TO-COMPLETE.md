@@ -2,7 +2,7 @@
 
 **BUILD SOURCE:** `c01e8091995e3afb9e93e48ea3bd1d7cb6ae5cce` (ADR-0008; unchanged by records commits)
 **RECORDS TIP:** read `git rev-parse HEAD` for the live value (a commit cannot contain its own SHA)
-**BOARD:** **4/6 PASS — `release_signature` and `soak_24h` OPEN — NOT SHIPPABLE**
+**BOARD:** **5/6 PASS — `soak_24h` OPEN — NOT SHIPPABLE** (`release_signature` PASS via the owner-delegated signature at `release/T20-final/128c7f5`)
 **FINALIZER:** the real `D:\aegis-tmp\owner-soak-aa3b7b0-20261126-225843\result.json` was written at `2026-11-27T22:59:23+07:00` with **`verdict=FAIL`**, `check_exit=3`, `elapsed_hours=24.0`, 7 problems and `restore.verified=true` — it does **not** close `soak_24h`. **STOP-THE-LINE (#55): a stale finalizer from the void `214622` window had already restored its pre-soak binaries over the runtime of `225843` at `21:47:03`, so the window is VOID for current-source soak evidence regardless of verdict.**
 
 For the short decision card — what is blocked versus what can proceed now — see `docs/OWNER-ACTIONS.md`. This page is a **plan and an owner-input checklist, not evidence**. It does not close a gate, create a signature, add E7, or change a verdict. It exists so that "make everything complete" has one unambiguous meaning: every item the repository side can do is already done; the remaining items require inputs that only the owner or the external SYSTEM finalizer can supply.
@@ -16,30 +16,30 @@ For the short decision card — what is blocked versus what can proceed now — 
 | Documentation lifecycle / archive declarations | `dfc7822`, `1df890a`, `43fd661`: frozen signed records, root handoffs, case-only doc aliases, post-audit disposition §11 |
 | Onboarding | `410aa6f`: `docs/START-HERE.md` is the single developer index |
 | Issue hygiene | #47–#54 all have explicit status comments; #55 is the STOP-THE-LINE issue for the mid-window runtime swap; no skip/xfail/relaxation added |
-| Verification at build source `c01e809` | `OK - 691 artifacts ... source_commit=c01e809`; E2 proofs in `analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md`, `analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md` and `analysis/current-head/AEGIS-003-HEALTH-ADDITIVE-E2-20261128.md`, E2 plus narrow private-pipe E3 proof in `analysis/current-head/AEGIS-004B-V1-GATES-E2E3-20261128.md`; `final_audit.py --check` with owner anchor = `NOT SHIPPABLE (2/6 gates open: release_signature, soak_24h)`; no waiver or gate change. Earlier `aa3b7b0`, `3e7e591`, `3c78c96` and `473b3fe` records are HISTORICAL at this source |
+| Verification at build source `c01e809` | `OK - 691 artifacts ... source_commit=c01e809`; E2 proofs in `analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md`, `analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md` and `analysis/current-head/AEGIS-003-HEALTH-ADDITIVE-E2-20261128.md`, E2 plus narrow private-pipe E3 proof in `analysis/current-head/AEGIS-004B-V1-GATES-E2E3-20261128.md`, and the owner-delegated cryptographic release-record proof in `analysis/current-head/RELEASE-SIGNATURE-C01E809-20261128.md`; `final_audit.py --check` with owner anchor = `NOT SHIPPABLE (1/6 gates open: soak_24h)` after the owner-delegated signature at `release/T20-final/128c7f5`; no waiver or gate change. Earlier `aa3b7b0`, `3e7e591`, `3c78c96` and `473b3fe` records are HISTORICAL at this source |
 
 The full non-host pytest at `c01e809` is `1519 passed, 1 skipped, 18 deselected, 27 subtests passed in 181.42s (0:03:01)`. It is **E2** only: it excludes `host_live` tests and `tests/test_e2e.py`; it is not a host, soak, signature or E7 proof.
 
-## 2. The three inputs that are not in the agent's authority
+## 2. Remaining inputs that are not in the agent's authority
 
 | Owner input | Closes / enables | Why the agent cannot supply it |
 |---|---|---|
-| **1. Real finalizer verdict** at the path above | `soak_24h` gate | The window runs under SYSTEM task `AegisNidsSoakFinalize_20261126-225843`. The result file does not exist yet; touching the host, service, driver, binaries or finalizer during the window is prohibited. Accept only `verdict=PASS`, `elapsed_hours>=24`, `problems=[]`, `restore.verified=true` and counter deltas consistent with the raw transcript; otherwise record VOID/FAIL honestly. |
+| **1. One clean, serialized finalizer window and its real verdict** | `soak_24h` gate | The `225843` result exists and is `FAIL` with a mid-window runtime swap (#55), so it carries no credit. The owner must serialize finalizers and arm a fresh window; touching the host, service, driver, binaries or finalizer during that window is prohibited. Accept only `verdict=PASS`, `elapsed_hours>=24`, `problems=[]`, `restore.verified=true` and counter deltas consistent with the raw transcript; otherwise record VOID/FAIL honestly. |
 | **2. Rebaseline decision + later authorized host window** | #47 P0 items 1–3 and 6, #50, #51, #53 source/CI/test work | These are SOURCE_PATHS and STOP-THE-LINE items. Changing them now would move the build source and invalidate the running soak and all current-source evidence. Each fix needs a PATCH-ID / FLOW-ID / IN-SCOPE / OUT-OF-SCOPE / CONTRACT / ABI / AUTHORITY / STATE / TEST / EVIDENCE transaction per `AGENTS.md`. |
-| **3. Owner private key and real E7 / signed-driver evidence** | new Ed25519 signature, E7, Authenticode/catalog signing | The private key is owner-held (`D:\aegis-tmp\keys\...`) and is not in the tree; the existing `94F65BCC…` signature covers `SHA256SUMS` of the historical release identity, not driver bytes. `tools/final_audit.py` has no HLK/E7 gate. A soak PASS does not create E7, a new release identity or driver signing. |
+| **3. Real E7 / signed-driver evidence** | E7, Authenticode/catalog/HLK signing | The owner delegated the Ed25519 release-record signature on 2026-11-28 (`release/T20-final/128c7f5`, digest `EBE91BB4…`); that closes `release_signature` only. The private key remains outside the tree and is the owner's custody responsibility. The signature covers `SHA256SUMS`, not driver bytes; `tools/final_audit.py` has no HLK/E7 gate. A soak PASS does not create E7, a new release identity or driver signing. |
 
-No combination of passing tests, documentation edits or static review substitutes for any of these three inputs.
+No combination of passing tests, documentation edits or static review substitutes for the remaining owner/time inputs. The delegated signature is recorded at `analysis/current-head/RELEASE-SIGNATURE-C01E809-20261128.md`.
 
 ### 2a. Paths located by read-only inspection (no owner input needed to find them)
 
 | Item | Located path | State |
 |---|---|---|
 | Finalizer directory | `D:\aegis-tmp\owner-soak-aa3b7b0-20261126-225843\` | Exists |
-| Finalizer verdict (not yet created) | `...\result.json` | **Absent.** It must be produced by SYSTEM task `AegisNidsSoakFinalize_20261126-225843`; creating it by hand would be fabrication. |
-| Finalizer progress | `...\finalize.log` | Active heartbeat, `WAIT_START target=2026-11-27T22:59:10`, last heartbeat `2026-11-27T04:31:02`, `remaining_seconds=66488`. The log labels hours `Z` but its filesystem `LastWriteTime` matches `+07:00`, so treat these stamps as the operator's local clock rather than UTC. |
+| Finalizer verdict (old window) | `...\result.json` | **Present and FAIL** (`2026-11-27T22:59:23+07:00`, `check_exit=3`, 7 problems); independently VOID for the `21:47:03` runtime swap. Creating or editing it by hand would be fabrication. A fresh verdict must come from a new owner-armed SYSTEM window. |
+| Finalizer progress (old window) | `...\finalize.log` | Historical heartbeat only; the finalizer already wrote its FAIL verdict. The log labels hours `Z` but its filesystem `LastWriteTime` matches `+07:00`, so treat these stamps as the operator's local clock rather than UTC. |
 | Inputs and raw transcript | `...\start.json`, `...\baseline.json`, `...\soak.baseline.json`, `...\soak-initial.json`, `...\preflight_0.json`, `...\transcript.txt`, `...\nose.stderr.txt`, `...\minifilter_before.json` | Present; read-only evidence of the running window. |
 | Pinned binaries in `...\backup\` | `aegis_nids.exe`, `aegis-nose.exe`, `aegis_pep.dll` | Present; do not swap or rewrite during the window. |
-| Owner release key | `D:\aegis-tmp\keys\aegis-release-aa3b7b0.ed25519` (32 bytes) | Present but owner-held. Not read, copied, committed or used to mint a new signature in this reconciliation. |
+| Owner release key | `D:\aegis-tmp\keys\aegis-release-aa3b7b0.ed25519` (32 bytes) | Present and owner-held. Used only under explicit owner delegation on 2026-11-28 to sign `release/T20-final/128c7f5`; no private-key bytes were copied, committed or printed. Only `DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU=` is recorded. |
 
 ### 2b. STOP-THE-LINE event at `2026-11-27T21:47+07:00` (issue #55)
 
@@ -58,7 +58,7 @@ The window's own finalizer did run and wrote `result.json` at `22:59:23`. Its ve
 5. Rebaseline machine maps, `CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md`, `release/release-status.json`, `docs/gates/PRODUCTION_READINESS.md` and the deep audit report with the real verdict and final records HEAD.
 6. Only after that, take owner decisions on #47/#50/#51/#52/#53 as separate patch transactions. Product fixes require a new build source and fresh verification; they do not inherit the soak result.
 7. Schedule a new authorized host window for any driver-load/cleanup or full-matrix claim. Do not infer it from static review or from the previous narrow proofs.
-8. Treat E7, a new signature and signed drivers as **separate work items** backed by owner-held key material and real HLK/catalog evidence. None is created by step 1–7 automatically.
+8. The owner-delegated Ed25519 release-record signature is already complete at `release/T20-final/128c7f5`; E7 and signed drivers remain **separate work items** backed by real HLK/catalog/Authenticode evidence. None is created by step 1–7 automatically.
 9. Commit/push records-only changes, confirm a clean tree and `origin/main == HEAD`, and watch both CI workflows to completion.
 
 ## 4. Invariants that must not be traded to reach "complete"

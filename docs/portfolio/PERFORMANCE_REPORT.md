@@ -1,10 +1,12 @@
 # Performance report — method, observed values, and what is not measured
 
-> Scope: build source `4dd3393` (HISTORICAL at current source `aa3b7b0`). AEGIS-PLAN-012.
+> Scope: build source `4dd3393` (HISTORICAL at current source `c01e809`). AEGIS-PLAN-012.
 > This page is a methodology/status record plus an E2 microbenchmark run at `4dd3393`.
-> The current source `aa3b7b0` has a **fresh E2 microbenchmark/fuzz smoke** and a **narrow E5
-> fixed-rate loopback benchmark** (100 connections/s for 60 s, 6000/6000, zero loss deltas);
-> see `analysis/current-head/CURRENT_HEAD_FUZZ_BENCH-20261126.md`. Neither promotes this page
+> At the historical source `aa3b7b0` there was an E2 microbenchmark/fuzz smoke and a
+> **narrow E5 fixed-rate loopback benchmark** (100 connections/s for 60 s, 6000/6000,
+> zero loss deltas); see `analysis/current-head/CURRENT_HEAD_FUZZ_BENCH-20261126.md`.
+> The current source `c01e809` has only the AEGIS-004a/008/004b/003 E2 (plus narrow
+> private-pipe E3) proofs in `analysis/current-head/`. Neither promotes this page
 > to a full E5/E6/E7 claim.
 
 ## 1. What exists

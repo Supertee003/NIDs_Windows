@@ -38,7 +38,8 @@ This page is an onboarding index, not a new proof. It points to the current trut
 - `python scripts/doc_checker.py` → `0 FAIL, 0 WARN, 23 total`.
 - `python tools/release_engineering.py --verify` → `OK - 691 artifacts ... source_commit=c01e809`.
 - `python -m pytest -q tests/ --ignore=tests/test_e2e.py -m "not host_live"` → at `c01e809`: `1519 passed, 1 skipped, 18 deselected, 27 subtests passed in 181.42s (0:03:01)`; E2 only, not a host/soak/signature proof.
-- `python tools/final_audit.py --check` with the owner anchor → `NOT SHIPPABLE (2/6 gates open: release_signature, soak_24h)` after the owner-authorized AEGIS-004a/AEGIS-008/AEGIS-004b/AEGIS-003 source moves; T20 drift is reverted after every check.
+- `python tools/sign_release.py --verify --dir release/T20-final/128c7f5` → `PASS` for the owner-delegated current-source signature (`EBE91BB403BFF248...`).
+- `python tools/final_audit.py --check` with the owner anchor → `NOT SHIPPABLE (1/6 gates open: soak_24h)` after the owner-delegated signature at `128c7f5`; T20 drift is reverted after every check.
 
 ## 4. Hard rules until a valid current-source soak PASS exists
 

@@ -48,7 +48,7 @@ No service, daemon, driver, finalizer or soak process was touched. No live host 
 
 ## 4. Honest gate consequence (owner option B)
 
-Moving the build source from `473b3fe` to `c01e809` keeps the board at **4/6 PASS, NOT SHIPPABLE**. The immutable release identity remains `v1.1` / `466a226` / `a53eda8`; the signed tree `6c94b47` still verifies with public key `DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU=` but predates this runtime, so `release_signature` stays OPEN. `soak_24h` stays OPEN: no clean serialized current-source 24 h SYSTEM window exists. The 36.52 h PASS is HISTORICAL at `a53eda8`; `aa3b7b0`, `3e7e591`, `3c78c96` and `473b3fe` host/proof records are HISTORICAL at `c01e809`.
+Moving the build source from `473b3fe` to `c01e809` keeps the board at **4/6 PASS, NOT SHIPPABLE**. The immutable release identity remains `v1.1` / `466a226` / `a53eda8`; the signed tree `6c94b47` still verifies with public key `DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU=` but predates this runtime, so `release_signature` stayed OPEN at the time of this transaction (closed later by the delegated signature at `128c7f5`; see §6). `soak_24h` stays OPEN: no clean serialized current-source 24 h SYSTEM window exists. The 36.52 h PASS is HISTORICAL at `a53eda8`; `aa3b7b0`, `3e7e591`, `3c78c96` and `473b3fe` host/proof records are HISTORICAL at `c01e809`.
 
 AEGIS-003 is still **PARTIAL**, not DONE: this transaction proves serialization and contract shape at E2 only. Fresh E3/E4/E5 evidence would still be required before a DONE claim. No waiver, gate threshold, verdict rule, new release identity or owner key was created.
 
@@ -58,3 +58,12 @@ AEGIS-003 is still **PARTIAL**, not DONE: this transaction proves serialization 
 - **Remaining risk:** `reason`/`impact` are diagnostic projections, not root-cause analysis; a worker-reported token remains whatever the daemon supplied, bounded by the controlled token vocabulary in the Python validator. Historical health screenshots do not show the new keys and must remain labelled with their own source commits.
 - **Open blockers:** owner re-signature; fresh serialized current-source soak; frozen #47/#50 kernel work; E3/E4/E5 proof for a DONE health claim. Full current-source Windows E5/kernel IDS qualification, signed-driver/HLK/catalog/Authenticode evidence and E7 remain NOT_PROVEN.
 - **Completion gate:** E2 additive health serialization and contract proof for this transaction only. Not a release, not E5/E6/E7, not shippable.
+
+## 6. Post-record addendum (2026-11-28)
+
+The owner subsequently delegated completion of the owner-only
+`release_signature` work. An additional signed tree at records commit `128c7f5`
+contains build source `c01e809` and verifies with the approved key; see
+`RELEASE-SIGNATURE-C01E809-20261128.md`. The board is now **5/6 PASS, NOT
+SHIPPABLE**, with `soak_24h` alone OPEN. This addendum does not promote AEGIS-003
+above E2 and does not change any gate, verdict or release identity.

@@ -34,7 +34,8 @@
 > `c01e8091995e3afb9e93e48ea3bd1d7cb6ae5cce` with additive health diagnostics
 > (`analysis/current-head/AEGIS-003-HEALTH-ADDITIVE-E2-20261128.md`): E2 only,
 > no `UNKNOWN` state and no host action. The board remains
-> 4/6 with `release_signature` and `soak_24h` OPEN; NOT SHIPPABLE. No gate
+> 5/6 with `release_signature` PASS via the owner-delegated signature at
+> `release/T20-final/128c7f5` and `soak_24h` alone OPEN; NOT SHIPPABLE. No gate
 > threshold, waiver, verdict or release identity changed.
 
 > **CURRENT SOURCE CLOSEOUT (2026-11-26):** records tip `8f01825` at that

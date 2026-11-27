@@ -1,6 +1,6 @@
 # Documentation lifecycle — remove, merge, archive, and keep
 
-> Scope: build source `aa3b7b0`; records HEAD moves with records-only commits (check `git rev-parse HEAD`). The `4dd3393` labels retained below are HISTORICAL. AEGIS-PLAN-015.
+> Scope: build source `c01e809`; records HEAD moves with records-only commits (check `git rev-parse HEAD`). The `aa3b7b0`, `4dd3393` and earlier labels retained below are HISTORICAL. AEGIS-PLAN-015.
 > This page records the policy used for documentation cleanup and the actual
 > state of the tree. It is not a source change.
 

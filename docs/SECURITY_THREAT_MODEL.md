@@ -1,7 +1,7 @@
 # Security Threat Model — AEGIS NIDS Windows
 
 > Scope: the detection-only production runtime described in `README.md`, `SYSTEM_MAP.json`,
-> `FLOW_MAP.json`, and `AUTHORITY_MAP.json` at current build source `aa3b7b0`.
+> `FLOW_MAP.json`, and `AUTHORITY_MAP.json` at current build source `c01e809`.
 > This is a design-level threat model, not a penetration test result. Controls are listed with the
 > layer that owns them; where a control is only partially implemented, it is marked as such.
 >
@@ -87,7 +87,12 @@
 
 ---
 
-## 6. Open gaps at current build source `aa3b7b0`
+## 6. Open gaps at current build source `c01e809`
+
+Rows that record narrow E5/E6 results at `aa3b7b0` are HISTORICAL at `c01e809`;
+they are listed to document the gap, not as current-source host proof. The
+current source has E2 (plus narrow private-pipe E3) evidence only
+(`analysis/current-head/AEGIS-001-020-DISPOSITION-20261128.md`).
 
 These are source-observed gaps, not host-effect claims. C6 changed capture source at `7822f4c`
 (now HISTORICAL) and S1/S2/S3/S4 added source-level producers, replay, identity and canonical

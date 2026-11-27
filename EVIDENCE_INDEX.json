@@ -12287,6 +12287,38 @@
       "status_basis": "Tracked patch record with exact commands and results at build source 3c78c96."
     },
     {
+      "id": "RELEASE-SIGNATURE-C01E809-20261128",
+      "head_sha": "c01e8091995e3afb9e93e48ea3bd1d7cb6ae5cce",
+      "timestamp": "2026-11-28",
+      "title": "Owner-delegated Ed25519 signature for current source at records commit 128c7f5",
+      "level": "E2",
+      "component": "release_candidate.py -> sign_release.py -> final_audit.py::evaluate_signature",
+      "flow_id": "source build -> candidate tree -> SHA256SUMS -> Ed25519 signature -> trust anchor check",
+      "description": "Owner explicitly authorized the agent to complete the owner-only release_signature work while keeping soak last. The existing approved key (public anchor DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU=, private key outside the tree) signed an additional candidate tree at release/T20-final/128c7f5, whose records commit contains build source c01e809. Published v1.1 / 466a226 / a53eda8 identity untouched; no key bytes, E5/E6/E7, driver signing or soak claim added.",
+      "files_verified": [
+        "analysis/current-head/RELEASE-SIGNATURE-C01E809-20261128.md",
+        "release/T20-final/128c7f5/signatures.json",
+        "release/T20-final/128c7f5/SHA256SUMS",
+        "release/T20-final/128c7f5/SBOM.json",
+        "docs/gates/RELEASE_TRUST_ANCHOR.md"
+      ],
+      "tests": [
+        "release_candidate.py -> RC PASS (270 files); --verify --dir release/T20-final/128c7f5 -> RC VERIFY PASS",
+        "sign_release.py --verify --dir release/T20-final/128c7f5 -> PASS signs SHA256SUMS digest EBE91BB403BFF248...",
+        "final_audit.py --check with owner anchor -> release_signature PASS; overall NOT SHIPPABLE (1/6 gates open: soak_24h)"
+      ],
+      "result": "PASS_E2",
+      "finding": "release_signature is PASS for build source c01e809; board is 5/6 with soak_24h alone OPEN. This is release-record verification only, not a new release identity, E5/E6/E7, driver signing or soak PASS.",
+      "evidence_artifact": "analysis/current-head/RELEASE-SIGNATURE-C01E809-20261128.md",
+      "limitations": [
+        "No private key bytes in any tracked file or generated candidate.",
+        "Signature validity is not E5/E6/E7 and does not close soak_24h or driver signing.",
+        "The signed candidate is an additional forward record; the published release identity is immutable."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Owner-delegated use of the approved key; reproducible verify commands and final_audit gate observed PASS."
+    },
+    {
       "id": "AEGIS-003-HEALTH-ADDITIVE-E2-20261128",
       "head_sha": "c01e8091995e3afb9e93e48ea3bd1d7cb6ae5cce",
       "timestamp": "2026-11-28",
@@ -19105,7 +19137,7 @@
   "evidence_level_summary": {
     "E0_count": 5,
     "E1_count": 55,
-    "E2_count": 176,
+    "E2_count": 177,
     "E3_count": 19,
     "E4_count": 5,
     "E5_count": 126,

@@ -6,8 +6,10 @@
 
 > **UPDATE (2026-11-28, owner option B):** the `aa3b7b0` build-source label above
 > is HISTORICAL. Source slices moved the build source through `3e7e591`,
-> `3c78c96`, `473b3fe` and `c01e809`. The current board remains 4/6 PASS with
-> `release_signature` and `soak_24h` OPEN, NOT SHIPPABLE. Row text below records
+> `3c78c96`, `473b3fe` and `c01e809`. The owner then delegated the owner-only
+> signature; `release/T20-final/128c7f5` contains `c01e809` and
+> `release_signature` is PASS (`analysis/current-head/RELEASE-SIGNATURE-C01E809-20261128.md`).
+> The board is 5/6 with `soak_24h` alone OPEN, NOT SHIPPABLE. Row text below records
 > the original disposition; applied source slices are linked from the relevant
 > rows and from `docs/SOURCE-SLICE-DECISIONS.md`.
 
@@ -21,7 +23,7 @@
 |---|---|---|---|
 | AEGIS-001 | Release Status | **DONE + hardened this patch** | `release/release-status.json` is already the single source. This patch adds `scope_lock`, `current_build_source_status=qualification_in_progress`, and six named current-board gates with criteria, evidence, status, reason, checked date and commit. Published `v1.1` board remains HISTORICAL; current board stays 5/6 with `soak_24h` OPEN. |
 | AEGIS-002 | Scope Consistency | **DONE + locked this patch** | New canonical `docs/SCOPE.md`: AEGIS Kernel NIDS, detection-only/observe-only, explicit exclusions. Linked from `README.md`, status JSON, verification summary, demo, operations and release gates. Pre-existing `AUTHORITY_MAP.json` already carries `host_effect_capable=false`. |
-| AEGIS-003 | Runtime Health | **PARTIAL — additive E2 source slice applied (owner option B)** | `analysis/current-head/HEALTH-KERNEL-E1-AUDIT-AA3B7B0-20261128.md` was the E1 finding map. `analysis/current-head/AEGIS-003-HEALTH-ADDITIVE-E2-20261128.md` records the applied no-ABI transaction at build source `c01e809`: root `last_transition_ms`, `reason`, `impact` and `recovery_state` are emitted from existing facts and pinned by Zig/Python contract tests. `UNKNOWN` remains unimplemented by owner-level boundary; no state vocabulary, gate, ABI or host effect changed. E2 only; fresh E3/E4/E5 is still required for DONE, and `release_signature` stays OPEN. |
+| AEGIS-003 | Runtime Health | **PARTIAL — additive E2 source slice applied (owner option B)** | `analysis/current-head/HEALTH-KERNEL-E1-AUDIT-AA3B7B0-20261128.md` was the E1 finding map. `analysis/current-head/AEGIS-003-HEALTH-ADDITIVE-E2-20261128.md` records the applied no-ABI transaction at build source `c01e809`: root `last_transition_ms`, `reason`, `impact` and `recovery_state` are emitted from existing facts and pinned by Zig/Python contract tests. `UNKNOWN` remains unimplemented by owner-level boundary; no state vocabulary, gate, ABI or host effect changed. E2 only; fresh E3/E4/E5 is still required for DONE. `release_signature` was OPEN at transaction time and was closed later by the owner-delegated signature at `128c7f5`. |
 | AEGIS-004 | Codec Validation | **PARTIAL — AEGIS-004a and AEGIS-004b source fixes applied (owner option B)** | `analysis/current-head/CODEC-VALIDATION-E1-AUDIT-AA3B7B0-20261128.md` is the E1 finding map. `analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md` records the applied no-ABI transaction at `3e7e591`: legacy WEV1 exact length and complete provenance tuple in Zig/Go/C++/Python/brain. `analysis/current-head/AEGIS-004B-V1-GATES-E2E3-20261128.md` records the applied no-ABI transaction at `473b3fe`: v1 `struct_size`/enum/confidence gates in C++/reference Python/brain and the private-pipe `frames_rejected` delta pin; E2 plus narrow E3 only. The Go short-write seam was closed by AEGIS-008 at `3c78c96`. `release_signature` remains OPEN by explicit owner decision; no waiver. |
 | AEGIS-005 | Wire Protocol | **DONE at documentation level** | `docs/protocol/INDEX.md` answers header size, length prefix, version location, required/optional fields, endianness, max size, unknown version and invalid-frame rejection from current codecs. Authoritative text is `shared/protocol/wire_v*.md` + shared golden vectors. Pointer pages now exist at the requested paths. |
 | AEGIS-006 | Evidence Provenance | **DONE** | `EVIDENCE_INDEX.json`, `analysis/current-head/raw-*/*/verbatim-manifest.json`, `build_truth.json`, release digests. No provenance claim was added without a tracked artifact. |

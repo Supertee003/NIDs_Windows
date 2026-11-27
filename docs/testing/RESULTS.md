@@ -20,9 +20,9 @@ From
 This is the source of the "1,471 passed / 0 skipped" claim in the resume and README. It was a
 **real full-suite run on the then-current source**, with one test deselected in phase 2 because it
 requires the daemon lifecycle state that phase intentionally excludes. It is HISTORICAL at the
-current build source `aa3b7b0`; the current-source local gate run is
-`pytest -q -m "not host_live"` → **1520 passed, 1 skipped, 18 deselected, 27 subtests passed**,
-recorded in `analysis/current-head/TEST-MATRIX-AA3B7B0-20261126.md`. No test was skipped or
+current build source `c01e809`; the current-source local gate run is
+`pytest -q -m "not host_live"` → **1519 passed, 1 skipped, 18 deselected, 27 subtests passed in 181.42s**,
+recorded in `analysis/current-head/AEGIS-003-HEALTH-ADDITIVE-E2-20261128.md`. No test was skipped or
 xfailed to hide a failure: the two `host_live` tests require the installed current-source host and
 passed only in the elevated owner run.
 
@@ -46,7 +46,7 @@ its evidence entry; do not claim "zero skips" for Zig.
 From
 [`analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`](../../analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md)
 and [`SOAK-PASS-466A226-20261122.md`](../../analysis/current-head/SOAK-PASS-466A226-20261122.md).
-**HISTORICAL at release identity `a53eda8`** relative to current build source `aa3b7b0`, whose board is **5/6 PASS, `soak_24h` OPEN, NOT SHIPPABLE**; `release/release-status.json` now separates the immutable release board from `current_head_board`.
+**HISTORICAL at release identity `a53eda8`** relative to current build source `c01e809`, whose board is **5/6 PASS, `soak_24h` OPEN, NOT SHIPPABLE**; `release/release-status.json` now separates the immutable release board from `current_head_board`.
 
 | Item | Recorded result |
 |---|---|

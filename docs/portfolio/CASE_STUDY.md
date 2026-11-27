@@ -1,6 +1,6 @@
 # Case study — engineering decisions and results (honest portfolio view)
 
-> Scope: build source `4dd3393` (HISTORICAL at current source `aa3b7b0`). AEGIS-PLAN-020.
+> Scope: build source `4dd3393` (HISTORICAL at current source `c01e809`). AEGIS-PLAN-020.
 > Every result below names its evidence source. Historical numbers are not
 > presented as a current run.
 

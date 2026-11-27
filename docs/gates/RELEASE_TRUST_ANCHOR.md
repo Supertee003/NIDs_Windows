@@ -52,6 +52,24 @@ DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU=
 
 Full record: `analysis/current-head/RELEASE-SIGNATURE-AA3B7B0-20261126.md`.
 
+### Owner-delegated current-source signature (2026-11-28)
+
+The owner explicitly authorized the agent to complete the owner-only
+`release_signature` work while keeping soak last. The same approved key signed a
+new additional candidate tree; no new key was generated and the published
+`v1.1` identity was not changed.
+
+| Field | Value |
+|---|---|
+| Signed tree | `release/T20-final/128c7f5` (270 assembled files, 206 tracked, 241 SHA-256 artifact lines) |
+| Signed records commit | `128c7f5` (contains build source `c01e809`) |
+| `signed_digest` | `EBE91BB403BFF2488E87A9F7A2E9D78AC566B612197DBE0DFF921196FCB32501` |
+| Private key custody | `D:\aegis-tmp\keys\aegis-release-aa3b7b0.ed25519` (outside the tree, never committed) |
+| Gate result | `release_signature` PASS with owner anchor; board 5/6, `soak_24h` still OPEN |
+| Scope | release-record verification only; not E5/E6/E7, not driver signing, not a soak PASS |
+
+Full record: `analysis/current-head/RELEASE-SIGNATURE-C01E809-20261128.md`.
+
 ### Owner-delegated records-tip attestation (2026-11-28)
 
 The owner explicitly authorized signing on their behalf. The same approved key
@@ -71,18 +89,22 @@ signature scan is unchanged. Record:
 $env:AEGIS_RELEASE_TRUSTED_PUBLIC_KEY = 'txigrGWzVRf/zJ3OGdrctW2eBqqy18LOJv6dY5keJ6o='
 python tools\sign_release.py --verify --dir release\T20-final\466a226
 
-# Current-source record
+# Current-source record (historical at c01e809)
 $env:AEGIS_RELEASE_TRUSTED_PUBLIC_KEY = 'DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU='
 python tools\sign_release.py --verify --dir release\T20-final\6c94b47
 python tools\final_audit.py --release-check
+
+# Owner-delegated current-source record for build source c01e809
+python tools\sign_release.py --verify --dir release\T20-final\128c7f5
 ```
 
-Both must pass for the selected record. `sign_release.py --verify` checks the
-signature only; `final_audit.py --release-check` is the gate that also demands
-the owner anchor, the signed commit to be in HEAD's history, and that commit to
-contain the shipped runtime commit. Note that `release_signature` PASS does not
-close `soak_24h`; the board remains NOT SHIPPABLE until a fresh 24 h window is
-evaluated.
+Use the record matching the build source you are auditing. `sign_release.py
+--verify` checks the signature only; `final_audit.py --release-check` is the
+gate that also demands the owner anchor, the signed commit to be in HEAD's
+history, and that commit to contain the shipped runtime commit. The newest
+complete signature (`128c7f5` for build source `c01e809`) is the one judged by
+the gate. `release_signature` PASS does not close `soak_24h`; the board remains
+NOT SHIPPABLE until a fresh 24 h window is evaluated.
 
 ## Rotation
 
