@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `3c78c96ebf397b4e1fa052963acc4bdd6a6945d8` (build source commit — ADR-0008)
+**HEAD:** `473b3fe4820568f9384b6768c25af59578e84f08` (build source commit — ADR-0008)
 
 **RECORDS TIP:** moves with records-only commits — read `git rev-parse HEAD` for the live value (the 2026-11-27 reconciliation began at `c7603f7`); a commit cannot contain its own SHA. **START HERE:** `docs/START-HERE.md` (onboarding index, no new proof)
 

@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-27T19:27:41.507891+00:00",
+  "generated_at": "2026-11-27T19:54:34.147849+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 3583,
+  "total_files": 3584,
   "by_role": {
-    "documentation": 655,
+    "documentation": 656,
     "build-config": 373,
     "other": 29,
     "lockfile": 6,
@@ -595,6 +595,10 @@
       "role": "documentation"
     },
     "analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -14663,5 +14667,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "3c78c96"
+  "source_commit": "473b3fe"
 }

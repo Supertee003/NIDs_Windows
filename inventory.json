@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-27T19:27:41.502167+00:00",
+  "generated_at": "2026-11-27T19:54:34.141479+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3583,
+  "total_files": 3584,
   "by_class": {
-    "canonical-docs": 670,
+    "canonical-docs": 671,
     "canonical-build": 384,
     "unclassified": 29,
     "canonical-source": 1963,
@@ -258,13 +258,13 @@
       "path": "AGENTS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10709
+      "size": 10810
     },
     {
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 66446
+      "size": 66584
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -408,13 +408,19 @@
       "path": "analysis/current-head/AEGIS-001-020-DISPOSITION-20261128.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 11656
+      "size": 11799
     },
     {
       "path": "analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4803
+    },
+    {
+      "path": "analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4927
     },
     {
       "path": "analysis/current-head/AI-HANDOFF-AUDIT-20261119.md",
@@ -2004,7 +2010,7 @@
       "path": "analysis/current-head/SENSOR-COVERAGE-E1-AUDIT-AA3B7B0-20261128.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5567
+      "size": 6393
     },
     {
       "path": "analysis/current-head/SERVICE-EXISTS-001-20261114.md",
@@ -2874,7 +2880,7 @@
       "path": "brain/canonical_event.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 13079
+      "size": 13281
     },
     {
       "path": "brain/core_routing.py",
@@ -3720,7 +3726,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 78686
+      "size": 78850
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -4014,7 +4020,7 @@
       "path": "docs/DEPLOYMENT_COMPATIBILITY.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2798
+      "size": 2816
     },
     {
       "path": "docs/detection/DETECTION_COVERAGE.md",
@@ -4416,7 +4422,7 @@
       "path": "docs/PATH-TO-COMPLETE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 11714
+      "size": 11843
     },
     {
       "path": "docs/PEP_QUARANTINE_STATUS.md",
@@ -4542,7 +4548,7 @@
       "path": "docs/portfolio/SENSOR_COVERAGE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4128
+      "size": 4758
     },
     {
       "path": "docs/portfolio/VERIFICATION_SUMMARY.md",
@@ -4830,7 +4836,7 @@
       "path": "docs/SOURCE-SLICE-DECISIONS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3615
+      "size": 4558
     },
     {
       "path": "docs/SPRINT_2_PLAN.md",
@@ -4842,7 +4848,7 @@
       "path": "docs/START-HERE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5453
+      "size": 5405
     },
     {
       "path": "docs/STEP06_completion_report.md",
@@ -5292,7 +5298,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1748478
+      "size": 1750881
     },
     {
       "path": "FLOW_MAP.json",
@@ -5400,7 +5406,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 571272
+      "size": 571589
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5700,7 +5706,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 461598
+      "size": 461846
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -5766,7 +5772,7 @@
       "path": "release/release-status.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 11679
+      "size": 12037
     },
     {
       "path": "release/T20-final/466a226/brain/__init__.py",
@@ -17520,13 +17526,13 @@
       "path": "shared/wire/wire_codec.h",
       "class": "canonical-source",
       "role": "source",
-      "size": 25611
+      "size": 26403
     },
     {
       "path": "shared/wire/wire_codec.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 28162
+      "size": 28723
     },
     {
       "path": "shield/Cargo.toml",
@@ -18576,7 +18582,7 @@
       "path": "src/tests/cli/nose_pipe_e2e_cli.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 11907
+      "size": 13476
     },
     {
       "path": "src/tests/cli/perf_benchmark_cli.zig",
@@ -19434,7 +19440,7 @@
       "path": "tests/brain/test_canonical_event_v3.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 4173
+      "size": 5256
     },
     {
       "path": "tests/brain/test_cython_prefilter.py",
@@ -19668,7 +19674,7 @@
       "path": "tests/contracts/test_payload_envelope_v3.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 14173
+      "size": 15638
     },
     {
       "path": "tests/contracts/test_pep_abi_layout.py",
@@ -19686,7 +19692,7 @@
       "path": "tests/contracts/wire_codec_v3_cpp_check.cpp",
       "class": "canonical-source",
       "role": "source",
-      "size": 13684
+      "size": 16154
     },
     {
       "path": "tests/cython/profile_brain_hotspot.py",
@@ -21513,5 +21519,5 @@
       "size": 624
     }
   ],
-  "source_commit": "3c78c96"
+  "source_commit": "473b3fe"
 }
