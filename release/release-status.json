@@ -3,6 +3,17 @@
   "project": "AEGIS Kernel NIDS for Windows",
   "version": "1.1",
   "status": "shipped",
+  "scope_lock": {
+    "reference": "docs/SCOPE.md",
+    "canonical_name": "AEGIS Kernel NIDS",
+    "operational_mode": "detection_only_observe_only",
+    "detection_only": true,
+    "host_enforcement": false,
+    "ips_claim": false,
+    "in_scope": ["development", "qualification", "observe-only evaluation"],
+    "out_of_scope": ["production fleet deployment before qualification", "automatic network blocking", "process termination", "host isolation", "IPS capability claims"],
+    "note": "Scope is canonical across README, runtime, capability manifest, operations guide, demo and release notes. Status always comes from this file; gate counts are never copied as current without checking the build source."
+  },
   "operational_mode": "observe_only",
   "intended_use": [
     "development",
@@ -27,6 +38,7 @@
     "note": "Release identity is immutable. No re-key, new tag, new signature or v2.1.0 is part of this status."
   },
   "current_build_source": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+  "current_build_source_status": "qualification_in_progress",
   "current_build_source_note": "Current source is records-descended from the immutable release identity. The 6/6 gate result below belongs to the release identity at a53eda8 and is HISTORICAL relative to this source; it is NOT the current board. Current board at aa3b7b0 is 5/6 PASS, soak_24h OPEN, NOT SHIPPABLE, with no E7 claim (python tools/final_audit.py --check; analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md). Predecessor slices: S1 (493648f) read-only ProcessStart CommandLine producer at E2; S2 (4bc8244) active control-v2 version/freshness/single-use nonce at E2; S3 (f1f89c1) durable v3 producer identity issuance/admission at E2; S4 (2673bd2, seam registration 4dd3393) versioned canonical policy bytes at E2; C6 (7822f4c) capture proof; aa3b7b0 adds the loopback BPF fix. Proven at aa3b7b0: E2 unit proof, narrow loopback E6, narrow S2/S3/R2003 E5 proofs and a controlled 100/s loopback E5. Full current-source Windows E5/kernel IDS qualification, the full rule matrix, soak, install/signing and E6/E7 remain NOT_PROVEN or OPEN. The real 225843 finalizer verdict was FAIL (7 problems, generation change) and the window is independently VOID for a runtime swap at 2026-11-27T21:47:03 (#55); see analysis/current-head/SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127.md. No gate, verdict, signature or E7 claim changed.",
   "qualification_gates": {
     "passed": 6,
@@ -101,7 +113,65 @@
     "shippable": false,
     "evidence_boundary": "narrow E2/E5/E6 only; full Windows E5, kernel IDS qualification and E7 NOT_PROVEN",
     "source": "tools/final_audit.py --check; analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md",
-    "note": "This field is the current source board. The qualification_gates object below is the immutable release-identity board at a53eda8 and is HISTORICAL."
+    "note": "This field is the current source board. The qualification_gates object below is the immutable release-identity board at a53eda8 and is HISTORICAL.",
+    "checked_at": "2026-11-28",
+    "checked_commit": "adf05fb4817bbf8aed3c9e8d2dbf62d3c16a39de",
+    "gates": [
+      {
+        "name": "truth_artifacts",
+        "status": "PASS",
+        "pass_criteria": "TRUTH_VALID and SUMMARY_VALID; machine maps carry build source aa3b7b0, an ancestor of HEAD, with clean source paths",
+        "evidence": "python tools/truth.py verify; python scripts/check_summary.py",
+        "reason": null,
+        "checked_at": "2026-11-28",
+        "checked_commit": "adf05fb4817bbf8aed3c9e8d2dbf62d3c16a39de"
+      },
+      {
+        "name": "component_audit",
+        "status": "PASS",
+        "pass_criteria": "66/66 modules, zero production failures, part_ii 5/5, golden path declared",
+        "evidence": "python tools/final_audit.py --check",
+        "reason": null,
+        "checked_at": "2026-11-28",
+        "checked_commit": "adf05fb4817bbf8aed3c9e8d2dbf62d3c16a39de"
+      },
+      {
+        "name": "release_signature",
+        "status": "PASS",
+        "pass_criteria": "Owner-anchor Ed25519 signature verifies over SHA256SUMS (94F65BCC...) at signed commit 6c94b47, which contains runtime aa3b7b0",
+        "evidence": "release/T20-final/6c94b47/signatures.json; docs/gates/RELEASE_TRUST_ANCHOR.md",
+        "reason": null,
+        "checked_at": "2026-11-28",
+        "checked_commit": "adf05fb4817bbf8aed3c9e8d2dbf62d3c16a39de"
+      },
+      {
+        "name": "clean_host_e5",
+        "status": "PASS",
+        "pass_criteria": "Owner-attested historical clean-host preflight bound to pinned installer/runtime/driver hashes; narrower than full current-source Windows E5",
+        "evidence": "admin-evidence/e5-clean-host-20261120-final/preflight-20261120.json (owner, historical window)",
+        "reason": null,
+        "checked_at": "2026-11-28",
+        "checked_commit": "adf05fb4817bbf8aed3c9e8d2dbf62d3c16a39de"
+      },
+      {
+        "name": "soak_24h",
+        "status": "OPEN",
+        "pass_criteria": "Fresh current-source 24 h window with verdict=PASS, elapsed_hours>=24, problems=[], restore.verified=true and counter deltas consistent with the raw transcript and a stable runtime",
+        "evidence": "analysis/current-head/SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127.md; analysis/current-head/SOAK-VOID-LATE-FINALIZER-GAPS-FIRST-AA3B7B0-20261127.md",
+        "reason": "36.52 h PASS predates aa3b7b0; four aa3b7b0 windows carry no credit. The real 225843 finalizer was FAIL with 7 problems and a runtime swap at 2026-11-27T21:47:03 (issue #55).",
+        "checked_at": "2026-11-28",
+        "checked_commit": "adf05fb4817bbf8aed3c9e8d2dbf62d3c16a39de"
+      },
+      {
+        "name": "evidence_debt",
+        "status": "PASS",
+        "pass_criteria": "Unnamed product files 0 at or below baseline 0",
+        "evidence": "python tools/final_audit.py --check",
+        "reason": null,
+        "checked_at": "2026-11-28",
+        "checked_commit": "adf05fb4817bbf8aed3c9e8d2dbf62d3c16a39de"
+      }
+    ]
   },
   "verification_summary": {
     "tests": "1,471 passed / 0 skipped, sum of two phases at build source a53eda8 (not a single pytest invocation)",

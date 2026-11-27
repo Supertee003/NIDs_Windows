@@ -3,7 +3,7 @@
 **Length:** 2:27. **Source:** real running AEGIS daemon on a Windows lab host.
 **Recording provenance:** HISTORICAL — the recording build source and date were not recorded
 in this tree; the clip predates `aa3b7b0` and is not current-source proof.
-**Boundary:** detection-only — no host blocking, no WFP mutation, no synthetic host evidence.
+**Boundary:** detection-only — no host blocking, no WFP mutation, no synthetic host evidence. Current canonical scope: [`docs/SCOPE.md`](../SCOPE.md); current status: [`release/release-status.json`](../../release/release-status.json).
 
 This file is both the recording script and the viewer's chapter guide for
 [`demo.mp4`](images/demo.mp4). The clip is a silent screen recording with on-screen chapter

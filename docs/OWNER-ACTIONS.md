@@ -6,6 +6,8 @@
 
 This page is a **decision card, not evidence**. It changes no gate, verdict, level, signature, authority or source file. `docs/PATH-TO-COMPLETE.md` holds the full sequence; this page is the short version of what exactly is waiting and what can proceed immediately.
 
+**Records completed 2026-11-28 (owner-supplied 20-item plan):** canonical scope lock at [`docs/SCOPE.md`](SCOPE.md), per-gate detail on the current board in `release/release-status.json`, and the honest 20-item disposition with verification commands at [`analysis/current-head/AEGIS-001-020-DISPOSITION-20261128.md`](../analysis/current-head/AEGIS-001-020-DISPOSITION-20261128.md). Source-level items marked PARTIAL in that disposition remain blocked by Card B; none was promoted by this documentation work.
+
 ## 1. Split at a glance
 
 | Bucket | Items | Who acts |

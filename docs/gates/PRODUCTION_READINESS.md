@@ -5,7 +5,8 @@
 > `T20_100pct_audit.md`. The FAIL / NOT SHIPPABLE language below records the earlier candidate
 > only and is not the current release state.
 
-> **Reading rule.** The conditions below are the historical definition, not the gate board.
+> **Reading rule.** The conditions below are the historical definition, not the gate board.  
+> Current product scope: [`docs/SCOPE.md`](../SCOPE.md); current board and per-gate status: [`release/release-status.json`](../../release/release-status.json).
 > The v1.1 **release-identity** board is `docs/gates/T20_100pct_audit.md` → SHIPPABLE, 6/6 PASS
 > (0 open), recorded at signed candidate `466a226` / build source `a53eda8`; release record
 > `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`. That board is immutable and is

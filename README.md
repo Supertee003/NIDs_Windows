@@ -7,6 +7,8 @@
 AEGIS is a Windows-native, kernel-assisted network intrusion detection system. It combines kernel network telemetry, host telemetry, rule matching, policy evaluation, operator control, and forensic evidence in one supervised runtime. Production behavior is detection-only: findings are recorded and explained, not applied as host blocking or quarantine.
 
 > **Release status:** The repository is maintained with production-oriented contracts, authority boundaries, runbooks, and acceptance gates. The current release is approved for development, qualification, and observe-only operation. Enforcement activation is permanently outside the production product scope; historical IPS/WFP proof material is retained only as historical or lab evidence.
+>
+> **Canonical scope lock:** [`docs/SCOPE.md`](docs/SCOPE.md) — **AEGIS Kernel NIDS, detection-only / observe-only**, no production fleet deployment before qualification, no automatic blocking, no process termination, no host isolation, no IPS claim. It applies to this README, runtime, capability manifest, operations guide, demo and release notes. Status always comes from [`release/release-status.json`](release/release-status.json), never from a copied gate count.
 
 ## AEGIS in 60 seconds
 
@@ -28,7 +30,7 @@ subsystems report `RUNNING` and the console shows authoritative daemon data.*
 | Why is it interesting? | One runtime spanning six language families with a strict boundary: no layer may promote "detected" into "blocked" |
 | Stack | Zig runtime spine · Go packet acquisition · C/C++ Windows adapters (C and C++ are two toolchains in one family) · Rust detection-only PEP + crypto · Python analytics · TypeScript advisory policy authoring (no runtime artifact) |
 | Scale | 23 detection rules across L4, L7, kernel file/process, and pipe layers; 12M+ events observed on the current lab host ([measured values](docs/portfolio/OBSERVED_PERFORMANCE.md)) |
-| Proof | [`v1.1` release](https://github.com/Supertee003/NIDs_Windows/releases/tag/v1.1) — SHIPPABLE, **6/6 gates PASS (0 open)**, 36.52 h owner-run soak PASS, 674/674 artifact hashes verified against **one** Ed25519 signature over `SHA256SUMS`; 1,471 Python tests (two-phase run at build source `a53eda8`, 0 skipped). Single source of status: [`release/release-status.json`](release/release-status.json) |
+| Proof | [`v1.1` release](https://github.com/Supertee003/NIDs_Windows/releases/tag/v1.1) — **published immutable identity only (HISTORICAL relative to current source):** SHIPPABLE, **6/6 gates PASS (0 open)**, 36.52 h owner-run soak PASS, 674/674 artifact hashes verified against **one** Ed25519 signature over `SHA256SUMS`; 1,471 Python tests (two-phase run at build source `a53eda8`, 0 skipped). `open=0` means zero gates open, not zero gates passed. Single source of status: [`release/release-status.json`](release/release-status.json); scope: [`docs/SCOPE.md`](docs/SCOPE.md) |
 | Boundary | observe-only; prevention gate closed; `host_effect_capable=false`; no WFP enforcement in production |
 
 > **Current source vs published release.** The `v1.1` proof row above is the immutable published
@@ -70,7 +72,7 @@ deliberately out of scope?" No implementation claim here implies a production ho
 - Detection rule live-validation coverage is partial: the recorded census is 22/23 host-evaluable; R2003 was re-measured on the host at `aa3b7b0` (narrow E5), but the full matrix was not.
 - Control IPC now enforces nonce/replay at the source; exact replay denial has narrow E5 proof at `aa3b7b0`, not a full matrix proof.
 - Windows compatibility is limited to the tested configurations; no current-source full WFP E5 result is claimed.
-- No fresh 24 h soak exists at `aa3b7b0`; three attempts were voided and the board remains NOT SHIPPABLE.
+- No fresh 24 h soak exists at `aa3b7b0`; four attempts carry no credit (three voids plus the real `225843` FAIL with a mid-window runtime swap) and the board remains NOT SHIPPABLE.
 
 Full list with evidence boundaries: [Known limitations and open work](#known-limitations-and-open-work).
 Disposition of the remaining gaps — physical proof versus `CLOSED as documented gap`:

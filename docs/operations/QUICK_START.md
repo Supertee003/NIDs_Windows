@@ -3,7 +3,8 @@
 > This page holds the detailed local build/verify commands moved out of `README.md`
 > so the top-level document can stay an overview. It does not claim Windows E5,
 > production qualification or a new release. Supported target: 64-bit Windows 10/11.
-> Kernel-driver and WFP tests require an isolated test machine or disposable VM.
+> Kernel-driver and WFP tests require an isolated test machine or disposable VM.  
+> Product scope is fixed by [`docs/SCOPE.md`](../SCOPE.md) (detection-only / observe-only); current status comes from [`release/release-status.json`](../../release/release-status.json).
 
 ## Required build tools
 

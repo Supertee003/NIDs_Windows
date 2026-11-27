@@ -4,7 +4,8 @@
 > Each row carries its evidence location and the commit it belongs to. Do not merge
 > numbers from different commits into one "current run". No PASS is entered without
 > a recorded artifact. Human-readable detail: [`docs/testing/RESULTS.md`](../testing/RESULTS.md).
-> Status source: [`release/release-status.json`](../../release/release-status.json).
+> Status source: [`release/release-status.json`](../../release/release-status.json).  
+> Scope source: [`docs/SCOPE.md`](../SCOPE.md) — detection-only / observe-only; no IPS or production host enforcement claim.
 
 ## Tested commit / environment
 

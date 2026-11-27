@@ -12065,6 +12065,47 @@
       "status_basis": "Reproducible sign_release.py --verify PASS with the approved public anchor; owner delegation recorded in the analysis record."
     },
     {
+      "id": "AEGIS-001-020-SCOPE-LOCK-DISPOSITION-20261128",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-28",
+      "title": "Canonical scope lock and honest disposition of the owner's 20-item portfolio plan",
+      "level": "E1",
+      "component": "docs / release-status records",
+      "flow_id": "owner plan -> scope lock -> single status source -> per-item disposition -> docs pointers",
+      "description": "Records the owner-supplied AEGIS-001..020 plan against the actual repository: what was already done, what is partial, and what remains a source/host slice. Adds canonical docs/SCOPE.md (AEGIS Kernel NIDS, detection-only/observe-only, explicit exclusions), current-board gate detail in release/release-status.json with criteria/evidence/status/reason/date/commit, threat model, detection vocabulary, protocol pointer pages, historical handoff index, and links from README/operations/demo/verification/release gate. No gate, verdict, level, authority or source file changed.",
+      "files_verified": [
+        "analysis/current-head/AEGIS-001-020-DISPOSITION-20261128.md",
+        "docs/SCOPE.md",
+        "docs/security/THREAT_MODEL.md",
+        "docs/detection/DETECTION_COVERAGE.md",
+        "docs/protocol/CANONICAL_EVENT.md",
+        "docs/protocol/WIRE_FORMAT.md",
+        "docs/protocol/GOLDEN_VECTORS.md",
+        "docs/history/INDEX.md",
+        "release/release-status.json",
+        "README.md"
+      ],
+      "tests": [
+        "python scripts/doc_checker.py -> 0 FAIL / 0 WARN / 23",
+        "python scripts/check_summary.py -> SUMMARY_VALID (E1 counter 51 -> 52)",
+        "python tools/truth.py verify -> TRUTH_VALID @ aa3b7b0",
+        "python -m pytest tests/docs -q -> 53 passed",
+        "python tools/release_engineering.py --verify -> OK - 691 artifacts",
+        "python tools/sign_release.py --verify --dir analysis/current-head/owner-key-attestation-aa3b7b0-20261128 -> PASS (A810F023E1871427...)",
+        "python tools/final_audit.py --check with AEGIS_RELEASE_TRUSTED_PUBLIC_KEY set to the approved owner anchor -> NOT SHIPPABLE (1/6 open: soak_24h)"
+      ],
+      "result": "PASS_E1",
+      "finding": "Scope and status are single-sourced; source-level and host gaps remain honestly marked PARTIAL or NOT_PROVEN.",
+      "evidence_artifact": "analysis/current-head/AEGIS-001-020-DISPOSITION-20261128.md",
+      "limitations": [
+        "This is a records-only disposition, not a source audit or new host proof.",
+        "No gate, verdict, signature, E7 or soak credit was created.",
+        "Root handoff files were not physically moved because machine maps and historical pointers reference their paths."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Tracked documents and additive release-status fields; checks reproducible with the listed commands."
+    },
+    {
       "id": "PIPE-READER-SHUTDOWN-E5-AA3B7B0-20261126",
       "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
       "timestamp": "2026-11-26",
@@ -18803,7 +18844,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 5,
-    "E1_count": 51,
+    "E1_count": 52,
     "E2_count": 172,
     "E3_count": 19,
     "E4_count": 5,
