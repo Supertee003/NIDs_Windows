@@ -3,7 +3,7 @@
 **BUILD SOURCE:** `aa3b7b0161e425e54155d5767737bffcde7939b5` (ADR-0008; unchanged by records commits)  
 **RECORDS TIP:** read `git rev-parse HEAD` for the live value (a commit cannot contain its own SHA)  
 **BOARD:** **5/6 PASS — `soak_24h` OPEN — NOT SHIPPABLE**  
-**FINALIZER:** `D:\aegis-tmp\owner-soak-aa3b7b0-20261126-225843\result.json` was still absent at `2026-11-27T04:33:21+07:00`; `finalize.log` shows an active heartbeat (last entry `2026-11-27T04:31:02`, `remaining_seconds=66488`)
+**FINALIZER:** `D:\aegis-tmp\owner-soak-aa3b7b0-20261126-225843\result.json` was still absent at `2026-11-27T21:48+07:00`. **STOP-THE-LINE (#55): a stale finalizer from the void `214622` window wrote a real `FAIL` verdict at `21:47:03` and restored its pre-soak binaries over the runtime of the still-running `225843` window. `225843` must be treated as VOID even if it later writes PASS.**
 
 This page is a **plan and an owner-input checklist, not evidence**. It does not close a gate, create a signature, add E7, or change a verdict. It exists so that "make everything complete" has one unambiguous meaning: every item the repository side can do is already done; the remaining items require inputs that only the owner or the external SYSTEM finalizer can supply.
 
@@ -15,7 +15,7 @@ This page is a **plan and an owner-input checklist, not evidence**. It does not 
 | Evidence provenance (#52) | `b08ca80`: `build_source`/`historical`/`evidence_namespace` on all seven E6/E7 entries; ten transcode sidecars; logical historical namespace. 48 unresolvable pointers already carry explicit markers; none promoted to PASS |
 | Documentation lifecycle / archive declarations | `dfc7822`, `1df890a`, `43fd661`: frozen signed records, root handoffs, case-only doc aliases, post-audit disposition §11 |
 | Onboarding | `410aa6f`: `docs/START-HERE.md` is the single developer index |
-| Issue hygiene | #47–#54 all have explicit status comments; no skip/xfail/relaxation added |
+| Issue hygiene | #47–#54 all have explicit status comments; #55 is the STOP-THE-LINE issue for the mid-window runtime swap; no skip/xfail/relaxation added |
 | Verification at the current tip | `OK - 691 artifacts ... source_commit=aa3b7b0`; full non-host pytest `1513 passed, 1 skipped, 18 deselected, 27 subtests`; `final_audit.py --check` with owner anchor = `NOT SHIPPABLE (1/6 gates open)`, only `soak_24h` OPEN; both CI workflows `success`; pre-commit hygiene checks pass; tree clean |
 
 The full non-host pytest is **E2** only. It excludes `host_live` tests (18 deselected) and `tests/test_e2e.py`; it is not a host, soak, signature or E7 proof.
@@ -40,6 +40,10 @@ No combination of passing tests, documentation edits or static review substitute
 | Inputs and raw transcript | `...\start.json`, `...\baseline.json`, `...\soak.baseline.json`, `...\soak-initial.json`, `...\preflight_0.json`, `...\transcript.txt`, `...\nose.stderr.txt`, `...\minifilter_before.json` | Present; read-only evidence of the running window. |
 | Pinned binaries in `...\backup\` | `aegis_nids.exe`, `aegis-nose.exe`, `aegis_pep.dll` | Present; do not swap or rewrite during the window. |
 | Owner release key | `D:\aegis-tmp\keys\aegis-release-aa3b7b0.ed25519` (32 bytes) | Present but owner-held. Not read, copied, committed or used to mint a new signature in this reconciliation. |
+
+### 2b. STOP-THE-LINE event at `2026-11-27T21:47+07:00` (issue #55)
+
+Read-only host inspection found that the previously void window `20261126-214622` still had a live finalizer. It wrote `D:\aegis-tmp\owner-soak-aa3b7b0-20261126-214622\result.json` at `21:47:03` with `check_exit=3`, `verdict=FAIL`, `elapsed_hours=24.0`, six problems (daemon restarted mid-soak, `DEGRADED`, process-generation change, `queue_dropped_total` +238597, `minifilter_ring_dropped` +3336713, `minifilter_pipeline_dropped` +58970) and `restore.verified=true`. That restore put the pre-soak binaries back into `C:\Program Files\AEGIS NIDS\runtime`: `FBD9BDB3…`, `AEAB9B63…`, `870CB962…`. Window `225843` had swapped in the pinned `aa3b7b0` hashes `6F548AF7…`, `8C05FE48…`, `6E05AAE1…` at `22:59` on `11/26` and was still heartbeating to `22:59:10`; installed hashes read at `21:48:01` are the old baseline. This is a build/runtime mismatch and a silent runtime swap during a live window. The scheduled task `AegisNidsSoakFinalize_20261126-225843` is no longer listed; only a watcher process remains. An owner-side elevated run of `owner_soak_start.ps1` at about `21:46` created no new run directory and no task, so no clean replacement window exists. Consequences: `225843` is VOID for current-source soak evidence; `soak_24h` remains OPEN; the board remains 5/6 NOT SHIPPABLE; no PASS/E5/E7/signature/driver-load claim follows. Owner must serialize finalizers and re-arm a single clean window before any further host action.
 
 ## 3. Exact sequence once those inputs exist
 
