@@ -27,6 +27,17 @@ CONTROL_PROTOCOL_VERSION = 2
 VALID_LIFECYCLE_STATES = ("STOPPED", "STARTING", "READY", "RUNNING", "DEGRADED", "FAILED")
 CANONICAL_RULE_SEVERITY = {"Low": 0, "Medium": 1, "High": 2, "Critical": 3}
 RECEIPT_STATUS_NAMES = ("pending", "enforced", "failed", "unavailable", "rolled_back", "simulated")
+# AEGIS-003: optional additive health diagnostics in the two health fixtures.
+HEALTH_REASON_TOKENS = frozenset({
+    "none", "worker_failed", "core_pipeline_failed", "pipeline_not_ready",
+    "bridge_unavailable", "data_loss_observed", "subsystem_degraded",
+    "pipeline_init_failed", "sensor_init_failed", "nose_init_failed",
+    "etw_init_failed", "fim_init_failed", "registry_init_failed",
+})
+HEALTH_IMPACT_TOKENS = frozenset({
+    "none", "event_pipeline", "bridge_telemetry", "data_integrity", "subsystem_health",
+})
+RECOVERY_STATE_TOKENS = frozenset({"RECOVERING", "NOT_RECOVERING"})
 WIRE_STATUS = {
     "pending": 0,
     "enforced": 1,
@@ -59,6 +70,17 @@ def load_fixture(relative: str) -> dict:
     document = json.loads(path.read_text(encoding="utf-8"))
     assert isinstance(document, dict), f"{relative} must be a JSON object"
     return document
+
+
+def assert_additive_health_fields(document: dict, reason: str, impact: str, recovery: str) -> None:
+    assert isinstance(document.get("last_transition_ms"), int)
+    assert document["last_transition_ms"] >= 0
+    assert document["reason"] in HEALTH_REASON_TOKENS
+    assert document["reason"] == reason
+    assert document["impact"] in HEALTH_IMPACT_TOKENS
+    assert document["impact"] == impact
+    assert document["recovery_state"] in RECOVERY_STATE_TOKENS
+    assert document["recovery_state"] == recovery
 
 
 def fnv1a32(value: str) -> int:
@@ -132,6 +154,7 @@ def test_control_health_response_carries_an_honest_state():
     assert isinstance(document["data"], dict)
     assert document["data"]["runtime_state"] in VALID_LIFECYCLE_STATES
     assert document["data"]["component"]
+    assert_additive_health_fields(document["data"], "none", "none", "NOT_RECOVERING")
 
 
 def test_etw_adapter_fixture_names_its_unavailability():
@@ -185,6 +208,7 @@ def test_degraded_core_fixture_never_degrades_silently():
     assert document["degraded"] is True
     assert document["availability_error"], "a degraded core must name why"
     assert document["runtime_available"] is True
+    assert_additive_health_fields(document, "bridge_unavailable", "bridge_telemetry", "NOT_RECOVERING")
     assert isinstance(document["workers"], dict) and isinstance(document["data_plane"], dict)
 
 

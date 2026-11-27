@@ -163,6 +163,9 @@ pub const RuntimeState = struct {
     subsystems: [MAX_SUBSYSTEMS]SubsystemInfo = undefined,
     subsystem_count: usize = 0,
     started_at_ms: i64 = 0,
+    /// AEGIS-003: epoch-ms timestamp of the last SystemState change. Additive
+    /// health fact only; it does not create a new lifecycle state or authority.
+    last_transition_ms: i64 = 0,
     uptime_ms: i64 = 0,
     version: []const u8 = "5.0.0",
     build: []const u8 = "zig-0.13.0",
@@ -258,6 +261,7 @@ pub const RuntimeState = struct {
         defer self.mutex.unlock();
         const old = self.system_state;
         self.system_state = new_state;
+        self.last_transition_ms = std.time.milliTimestamp();
         // Audit log
         std.log.info("[STATE] System: {s} -> {s}", .{ old.toString(), new_state.toString() });
     }
@@ -274,8 +278,10 @@ pub const RuntimeState = struct {
         }
         if (any_failed and self.system_state == .running) {
             self.system_state = .degraded;
+            self.last_transition_ms = std.time.milliTimestamp();
         } else if (all_healthy and self.system_state == .degraded) {
             self.system_state = .recovering;
+            self.last_transition_ms = std.time.milliTimestamp();
         }
     }
 
@@ -323,6 +329,7 @@ pub const RuntimeState = struct {
             if (self.system_state == .running or self.system_state == .recovering) {
                 const old = self.system_state;
                 self.system_state = .degraded;
+                self.last_transition_ms = now_ms;
                 std.log.info("[STATE] System: {s} -> {s} (live facts disagree)", .{ old.toString(), self.system_state.toString() });
                 return self.system_state;
             }
@@ -346,6 +353,7 @@ pub const RuntimeState = struct {
             if (!self.system_state.canTransition(n)) return null;
             const old = self.system_state;
             self.system_state = n;
+            self.last_transition_ms = now_ms;
             std.log.info("[STATE] System: {s} -> {s} ({} clear samples)", .{ old.toString(), n.toString(), self.promote_streak });
             // Each step is paid for on its own: RECOVERING -> RUNNING must also
             // wait PROMOTION_SAMPLES, so the streak restarts after every step.
@@ -397,6 +405,7 @@ pub const RuntimeState = struct {
         const ver = self.version;
         const sub_count = self.subsystem_count;
         const subs = self.subsystems[0..sub_count];
+        const last_transition = self.last_transition_ms;
         self.mutex.unlock();
 
         var all_healthy = true;
@@ -436,6 +445,17 @@ pub const RuntimeState = struct {
         const operationally_ready = workers.pipeline and !core_pipeline_failed and bridge_ready and !data_loss_observed;
         const operational_state = if (operationally_ready) "RUNNING" else "DEGRADED";
         const health_degraded = !all_healthy or !workers.pipeline or core_pipeline_failed or !bridge_ready or data_loss_observed;
+        // AEGIS-003: additive diagnostics from facts already used above. They
+        // are controlled tokens, not new states and not gate inputs. `reason`
+        // names the first observable cause in a fixed priority order; `impact`
+        // names the diagnostic scope. Neither changes `state`/`degraded`.
+        const health_reason: []const u8 = if (workers.failed)
+            (if (workers.failure_reason.len > 0) workers.failure_reason else "worker_failed")
+        else if (core_pipeline_failed) "core_pipeline_failed" else if (!workers.pipeline) "pipeline_not_ready" else if (!bridge_ready) "bridge_unavailable" else if (data_loss_observed) "data_loss_observed" else if (!all_healthy) "subsystem_degraded" else "none";
+        const health_impact: []const u8 = if (!health_degraded) "none" else if (core_pipeline_failed or !workers.pipeline) "event_pipeline" else if (!bridge_ready) "bridge_telemetry" else if (data_loss_observed) "data_integrity" else "subsystem_health";
+        // Health-only projection of the existing RECOVERING state; no new
+        // lifecycle value and no UNKNOWN are introduced.
+        const recovery_state: []const u8 = if (ss == .recovering) "RECOVERING" else "NOT_RECOVERING";
         // FE-DEF-095a: daemon-owned DEFCON rides the health payload so every
         // UI reads one authority instead of computing its own ladder from
         // files. Additive fields; older readers ignore unknown keys.
@@ -454,8 +474,8 @@ pub const RuntimeState = struct {
         // counters mirrors the control_api mapping so the daemon itself
         // satisfies RUNTIME_CONTRACT §4.1.
         try writer.print(
-            \\{{"component":"core","version":"{s}","state":"{s}","runtime_state":"{s}","pid":{} ,"uptime_ms":{},"last_event_ms":{},"degraded":{},"rules_loaded":{},"policies_loaded":{},"defcon_level":{},"defcon_label":"{s}","capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},
-        , .{ ver, operational_state, ss.toString(), pid, uptime, runtime_state.lastEventAgeMs(runtime_state.g_last_event_ms.load(.acquire), std.time.milliTimestamp()), health_degraded, runtime_state.g_rules_loaded.load(.acquire), runtime_state.g_policies_loaded.load(.acquire), defcon_level, defcon.labelFor(defcon_level), wfp_ready, cpp_ready, udp_ready });
+            \\{{"component":"core","version":"{s}","state":"{s}","runtime_state":"{s}","last_transition_ms":{},"reason":"{s}","impact":"{s}","recovery_state":"{s}","pid":{} ,"uptime_ms":{},"last_event_ms":{},"degraded":{},"rules_loaded":{},"policies_loaded":{},"defcon_level":{},"defcon_label":"{s}","capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},
+        , .{ ver, operational_state, ss.toString(), last_transition, health_reason, health_impact, recovery_state, pid, uptime, runtime_state.lastEventAgeMs(runtime_state.g_last_event_ms.load(.acquire), std.time.milliTimestamp()), health_degraded, runtime_state.g_rules_loaded.load(.acquire), runtime_state.g_policies_loaded.load(.acquire), defcon_level, defcon.labelFor(defcon_level), wfp_ready, cpp_ready, udp_ready });
         try writer.print(
             \\"data_plane":{{"nose_connected":{},"nose_frames_read":{},"nose_frames_rejected":{},"nose_frames_submitted":{},"nose_frames_dropped":{},"nose_pipe_errors":{},"nose_last_event_id":{},"nose_duplicate_event_ids":{},"nose_non_monotonic_event_ids":{},"nose_producer_invalid":{},"nose_producer_duplicate":{},"nose_producer_regression":{},"nose_producer_gap":{},"nose_producer_evictions":{},"nose_last_capture_sequence":{},"nose_last_producer_epoch":{},"nose_last_producer_generation":{},"nose_last_interface_id":{}}},"packets_captured":{},"flows_active":{},"counters":{{"in_events":{},"out_events":{},"errors":{},"dropped":{}}},
         , .{
@@ -889,6 +909,89 @@ test "healthJson accepts loss at or below the owner-approved budget" {
     try std.testing.expect(std.mem.indexOf(u8, out, "\"state\":\"RUNNING\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"degraded\":false") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"loss_budget\":2") != null);
+}
+
+test "healthJson exposes additive AEGIS-003 diagnostic keys without changing state" {
+    const saved = .{
+        runtime_state.g_queue_drops.load(.acquire),
+        runtime_state.g_nose_frames_rejected.load(.acquire),
+        runtime_state.g_nose_frames_dropped.load(.acquire),
+        runtime_state.g_nose_pipe_errors.load(.acquire),
+        runtime_state.g_pipeline_processing_errors.load(.acquire),
+        runtime_state.g_minifilter_dropped.load(.acquire),
+        runtime_state.g_minifilter_pipeline_dropped.load(.acquire),
+        runtime_state.g_loss_budget.load(.acquire),
+    };
+    defer {
+        runtime_state.g_queue_drops.store(saved[0], .monotonic);
+        runtime_state.g_nose_frames_rejected.store(saved[1], .monotonic);
+        runtime_state.g_nose_frames_dropped.store(saved[2], .monotonic);
+        runtime_state.g_nose_pipe_errors.store(saved[3], .monotonic);
+        runtime_state.g_pipeline_processing_errors.store(saved[4], .monotonic);
+        runtime_state.g_minifilter_dropped.store(saved[5], .monotonic);
+        runtime_state.g_minifilter_pipeline_dropped.store(saved[6], .monotonic);
+        runtime_state.g_loss_budget.store(saved[7], .monotonic);
+    }
+    runtime_state.g_queue_drops.store(0, .monotonic);
+    runtime_state.g_nose_frames_rejected.store(0, .monotonic);
+    runtime_state.g_nose_frames_dropped.store(0, .monotonic);
+    runtime_state.g_nose_pipe_errors.store(0, .monotonic);
+    runtime_state.g_pipeline_processing_errors.store(0, .monotonic);
+    runtime_state.g_minifilter_dropped.store(0, .monotonic);
+    runtime_state.g_minifilter_pipeline_dropped.store(0, .monotonic);
+    runtime_state.g_loss_budget.store(10, .monotonic);
+
+    var rs = RuntimeState{};
+    rs.last_transition_ms = 123456;
+    const healthy = WorkerReadiness{ .pipeline = true, .sensor = true, .nose = true, .etw = true, .fim = true, .registry = true, .failed = false, .failure_reason = "", .failure_mask = 0 };
+
+    const out = try rs.healthJson(std.testing.allocator, 1234, true, true, true, true, healthy);
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"state\":\"RUNNING\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"last_transition_ms\":123456") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"reason\":\"none\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"impact\":\"none\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"recovery_state\":\"NOT_RECOVERING\"") != null);
+
+    const no_bridge = try rs.healthJson(std.testing.allocator, 1234, false, true, true, true, healthy);
+    defer std.testing.allocator.free(no_bridge);
+    try std.testing.expect(std.mem.indexOf(u8, no_bridge, "\"reason\":\"bridge_unavailable\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, no_bridge, "\"impact\":\"bridge_telemetry\"") != null);
+
+    const failed = WorkerReadiness{ .pipeline = false, .sensor = true, .nose = true, .etw = true, .fim = true, .registry = true, .failed = true, .failure_reason = "sensor_init_failed", .failure_mask = 16 };
+    const failed_out = try rs.healthJson(std.testing.allocator, 1234, true, true, true, true, failed);
+    defer std.testing.allocator.free(failed_out);
+    try std.testing.expect(std.mem.indexOf(u8, failed_out, "\"reason\":\"sensor_init_failed\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, failed_out, "\"impact\":\"event_pipeline\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, failed_out, "\"state\":\"DEGRADED\"") != null);
+
+    rs.system_state = .recovering;
+    const recovering_out = try rs.healthJson(std.testing.allocator, 1234, true, true, true, true, healthy);
+    defer std.testing.allocator.free(recovering_out);
+    try std.testing.expect(std.mem.indexOf(u8, recovering_out, "\"recovery_state\":\"RECOVERING\"") != null);
+}
+
+test "AEGIS-003: lifecycle transitions stamp last_transition_ms deterministically" {
+    var rs = RuntimeState{};
+    rs.registerSubsystem(.zig, "zig", "5.0.0", "");
+    rs.subsystemStarted(.zig, 1);
+    rs.system_state = .degraded;
+    const clear = RuntimeState.LifecycleFacts{ .pipeline_ready = true, .bridge_ready = true };
+    var t: i64 = 1_000;
+    const step = RuntimeState.PROMOTION_MIN_INTERVAL_MS;
+    try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, clear));
+    t += step;
+    try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, clear));
+    t += step;
+    try std.testing.expectEqual(@as(?SystemState, SystemState.recovering), rs.reconcileLifecycle(t, clear));
+    try std.testing.expectEqual(t, rs.last_transition_ms);
+    t += step;
+    try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, clear));
+    t += step;
+    try std.testing.expectEqual(@as(?SystemState, null), rs.reconcileLifecycle(t, clear));
+    t += step;
+    try std.testing.expectEqual(@as(?SystemState, SystemState.running), rs.reconcileLifecycle(t, clear));
+    try std.testing.expectEqual(t, rs.last_transition_ms);
 }
 
 test "READY-PROMOTION: three clear samples promote DEGRADED -> RECOVERING -> RUNNING" {

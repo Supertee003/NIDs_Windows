@@ -78,7 +78,19 @@ REQUIRED_COUNTERS = ("in_events", "out_events", "errors", "dropped")
 # STEP-43 (CTRL-HEALTH-115): daemon also emits packets_captured (canonical
 # nose submissions) and flows_active (live flow-table gauge). Optional here
 # so older payloads still validate; when present they must be sane.
-OPTIONAL_INT_FIELDS = ("packets_captured", "flows_active")
+# AEGIS-003: additive diagnostic keys are also optional for older readers.
+OPTIONAL_INT_FIELDS = ("packets_captured", "flows_active", "last_transition_ms")
+OPTIONAL_DIAGNOSTIC_FIELDS = ("reason", "impact", "recovery_state")
+HEALTH_REASON_TOKENS = frozenset({
+    "none", "worker_failed", "core_pipeline_failed", "pipeline_not_ready",
+    "bridge_unavailable", "data_loss_observed", "subsystem_degraded",
+    "pipeline_init_failed", "sensor_init_failed", "nose_init_failed",
+    "etw_init_failed", "fim_init_failed", "registry_init_failed",
+})
+HEALTH_IMPACT_TOKENS = frozenset({
+    "none", "event_pipeline", "bridge_telemetry", "data_integrity", "subsystem_health",
+})
+RECOVERY_STATE_TOKENS = frozenset({"RECOVERING", "NOT_RECOVERING"})
 
 
 def validate_health_response(resp: dict[str, Any]) -> None:
@@ -114,6 +126,12 @@ def validate_health_response(resp: dict[str, Any]) -> None:
             if not isinstance(resp[field], int) or resp[field] < 0:
                 raise AssertionError(f"{field} must be non-negative int, "
                                      f"got {resp[field]!r}")
+    if "reason" in resp and resp["reason"] not in HEALTH_REASON_TOKENS:
+        raise AssertionError(f"reason {resp['reason']!r} not in controlled token set")
+    if "impact" in resp and resp["impact"] not in HEALTH_IMPACT_TOKENS:
+        raise AssertionError(f"impact {resp['impact']!r} not in controlled token set")
+    if "recovery_state" in resp and resp["recovery_state"] not in RECOVERY_STATE_TOKENS:
+        raise AssertionError(f"recovery_state {resp['recovery_state']!r} not in controlled token set")
 
 
 class TestHealthSchemaValidator(unittest.TestCase):
@@ -200,6 +218,25 @@ class TestHealthSchemaValidator(unittest.TestCase):
         with self.assertRaises(AssertionError):
             validate_health_response(r)
 
+    def test_additive_health_diagnostics_accepted_when_present(self):
+        r = self._good()
+        r["last_transition_ms"] = 1_763_000_000_000
+        r["reason"] = "bridge_unavailable"
+        r["impact"] = "bridge_telemetry"
+        r["recovery_state"] = "NOT_RECOVERING"
+        validate_health_response(r)
+
+    def test_invalid_health_diagnostic_token_rejected(self):
+        r = self._good(); r["reason"] = "UNKNOWN"
+        with self.assertRaises(AssertionError):
+            validate_health_response(r)
+        r = self._good(); r["impact"] = "host_effect"
+        with self.assertRaises(AssertionError):
+            validate_health_response(r)
+        r = self._good(); r["recovery_state"] = "UNKNOWN"
+        with self.assertRaises(AssertionError):
+            validate_health_response(r)
+
 
 class TestHealthSampleJsonFromContract(unittest.TestCase):
     """The exact JSON example in RUNTIME_CONTRACT.md §4.1 must pass the
@@ -214,6 +251,10 @@ class TestHealthSampleJsonFromContract(unittest.TestCase):
               "pid":         12345,
               "uptime_ms":   98217,
               "last_event_ms": 412,
+              "last_transition_ms": 1763000000000,
+              "reason": "none",
+              "impact": "none",
+              "recovery_state": "NOT_RECOVERING",
               "counters": {
                 "in_events":     1024,
                 "out_events":    1023,

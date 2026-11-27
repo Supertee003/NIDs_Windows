@@ -5,6 +5,10 @@
   "runtime_available": true,
   "degraded": true,
   "availability_error": "WFP_DRIVER_MISSING",
+  "last_transition_ms": 1763000000123,
+  "reason": "bridge_unavailable",
+  "impact": "bridge_telemetry",
+  "recovery_state": "NOT_RECOVERING",
   "workers": {
     "pipeline_ready": true,
     "failed": false

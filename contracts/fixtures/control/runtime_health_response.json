@@ -4,7 +4,11 @@
   "state": "OK",
   "data": {
     "component": "core",
-    "runtime_state": "RUNNING"
+    "runtime_state": "RUNNING",
+    "last_transition_ms": 1763000000000,
+    "reason": "none",
+    "impact": "none",
+    "recovery_state": "NOT_RECOVERING"
   },
   "audit_id": 1
 }
