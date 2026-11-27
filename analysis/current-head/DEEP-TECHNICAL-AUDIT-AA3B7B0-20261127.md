@@ -216,3 +216,17 @@ This section records what was done in response to the audit without restating an
 | §7 Q5 and Q7 partial | Addressed by the reconciled status surfaces and the single onboarding index `docs/START-HERE.md` (`410aa6f`) — an index, not new proof. |
 
 Issue comments now exist on #47–#54. #50, #51 and #53 explicitly state that the source/kernel/network/testing items remain open and that no host claim was created. Nothing in this addendum promotes a level, result, verdict, signature, soak, driver-load or E7 claim.
+
+---
+
+## 12. Real finalizer outcome (records-only, added after the audit)
+
+**BUILD SOURCE:** still `aa3b7b0`; records commits do not move it.  
+**BOARD:** still 5/6 PASS, `soak_24h` OPEN, NOT SHIPPABLE.
+
+Section 11 was written while the finalizer result was absent. It is not rewritten. The result now exists and was consumed:
+
+- Run `225843` finalizer wrote `result.json` at `2026-11-27T22:59:23+07:00` with `verdict=FAIL`, `check_exit=3`, `elapsed_hours=24.0`, seven problems and `restore.verified=true`. The #54 acceptance rule is not met. Record: `SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127.md` with byte-exact `result.json` / `soak-final.json` / `finalize.log` and SHA-256 manifest.
+- The previously voided `214622` finalizer was still alive and wrote its own real `FAIL` at `21:47:03`, restoring the pre-soak binaries over the live `225843` runtime. This is STOP-THE-LINE #55 and makes `225843` independently VOID for current-source soak evidence. Record: `SOAK-VOID-LATE-FINALIZER-GAPS-FIRST-AA3B7B0-20261127.md`.
+- No PASS, E5 host proof, E6/E7 qualification, new signature, signed driver or driver-load claim follows. No gate, guard, test, verdict or threshold was changed. Product-source findings remain frozen pending owner authority.
+- Owner prerequisites before a new window: remove stale finalizers/watchers, allow exactly one finalizer per window, then arm one clean 24 h window with no concurrent host work.

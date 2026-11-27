@@ -62,9 +62,13 @@
 > S3 durable producer identity E5, controlled 100/s loopback load E5, fuzz +
 > in-process bench E2 (coverage-guided fuzz NOT_RUN). `python
 > tools/final_audit.py --check` with that anchor reports **5/6 PASS,
-> `soak_24h` OPEN — NOT SHIPPABLE**: the 36.52 h PASS predates this source and
-> two `aa3b7b0` windows were voided (agent I/O; detached finalizer lost on a
-> server restart). No E7 release qualification is claimed. One-page combined
+> `soak_24h` OPEN — NOT SHIPPABLE**: the 36.52 h PASS predates this source.
+> Four `aa3b7b0` attempts carry no credit (agent I/O; finalizer lost on a server
+> restart; owner-directed void; the `225843` window whose runtime was swapped
+> mid-window and whose real finalizer verdict was `FAIL`). No E7 release
+> qualification is claimed. Records:
+> `analysis/current-head/SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127.md` and
+> `SOAK-VOID-LATE-FINALIZER-GAPS-FIRST-AA3B7B0-20261127.md`. One-page combined
 > status: `analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md`;
 > anchor record: `docs/gates/RELEASE_TRUST_ANCHOR.md`.
 

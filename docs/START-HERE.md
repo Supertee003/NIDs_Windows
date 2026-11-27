@@ -16,6 +16,7 @@ This page is an onboarding index, not a new proof. It points to the current trut
 5. `analysis/current-head/REMAINING-GAPS-DISPOSITION-AA3B7B0-20261126.md` — separates physical proof from `CLOSED as documented gap`.
 6. `docs/DOCS_LIFECYCLE.md` and `analysis/historical/HISTORICAL-NAMESPACE.md` — what is frozen, archived or historical.
 7. `docs/PATH-TO-COMPLETE.md` — what remains, the three owner inputs required, and the exact closeout sequence. It is a plan, not new proof.
+8. `analysis/current-head/SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127.md` and `SOAK-VOID-LATE-FINALIZER-GAPS-FIRST-AA3B7B0-20261127.md` — the real finalizer verdicts (`FAIL`) and the STOP-THE-LINE runtime swap. Neither closes a gate.
 
 ## 2. Where development actually starts
 
@@ -23,10 +24,11 @@ This page is an onboarding index, not a new proof. It points to the current trut
 |---|---|
 | #47 P0 | Items 4 (PEP ABI) and 5 (status source-of-truth) reconciled records-only. Items 1–3 (minifilter UAF/close API/persistent block filters) and 6 (release-gate per-file checks) remain frozen pending owner disposition. |
 | #48, #49 | Records reconciliation complete and pushed; no source moved. |
-| #50, #51 | Kernel/WFP and network source work frozen; no product patch until the finalizer verdict and a separate rebaseline decision. |
+| #50, #51 | Kernel/WFP and network source work frozen. The real finalizer verdict was `FAIL` and the window was VOID for a runtime swap; no product patch without a separate owner rebaseline decision. |
 | #52 | Evidence provenance sidecars, E6/E7 historical labels and logical namespace done. Gate-depth and policy-boundary items are owner decisions, not silent changes. |
 | #53 | Testing-maturity items are source/CI/test changes; remain frozen. `NOT_RUN` stays `NOT_RUN`. |
-| #54 | The only path forward: consume the real SYSTEM finalizer result, then rebaseline. |
+| #54 | Real SYSTEM finalizer result consumed: `verdict=FAIL`, window VOID (#55). Gate stays OPEN; rebaseline only after an owner-authorized clean window. |
+| #55 | STOP-THE-LINE: a stale finalizer swapped the runtime of the live `225843` window; verbatim FAIL artifacts are tracked. Owner must serialize finalizers and re-arm one clean window. |
 
 ## 3. Truth commands (records-only, no host effect)
 
@@ -37,13 +39,13 @@ This page is an onboarding index, not a new proof. It points to the current trut
 - `python -m pytest -q tests/ --ignore=tests/test_e2e.py -m "not host_live"` → last full run `1513 passed, 1 skipped, 18 deselected, 27 subtests`.
 - `python tools/final_audit.py --check` with the owner anchor → `NOT SHIPPABLE (1/6 gates open)`; T20 drift is reverted after every check.
 
-## 4. Hard rules until the soak finalizer is consumed
+## 4. Hard rules until a valid current-source soak PASS exists
 
 - Do not touch the host, binaries, service, drivers, soak window or finalizer.
 - Do not start product source fixes without an explicit owner disposition; STOP-THE-LINE is still in force for #47.
 - Do not relax, skip, xfail or edit a guard, gate, verdict or test to hide a failure.
 - Accept a soak only with `verdict=PASS`, `elapsed_hours>=24`, `problems=[]`, `restore.verified=true` and counter deltas consistent with the raw transcript. A VOID/FAIL is recorded honestly.
-- `docs/gates/T20_100pct_audit.{json,md}` stay at their historical `8f01825` stamp until the real artifact is in place.
+- `docs/gates/T20_100pct_audit.{json,md}` stay at their historical `8f01825` stamp. The real artifact is in place but is `FAIL`; `final_audit.py --check` rewrites those files on every run, so that drift is reverted before each commit.
 - A soak PASS alone does not create E7, a new release identity or production qualification.
 
 ## 5. Do not infer

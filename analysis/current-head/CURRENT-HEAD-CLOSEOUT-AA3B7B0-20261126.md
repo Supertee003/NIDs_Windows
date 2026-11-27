@@ -68,3 +68,7 @@ coverage-guided fuzz, the full 23-rule matrix, VLAN/IPv6 host visibility, Go cap
 shutdown, signed driver/lifecycle/full Windows E5, E7 and clean install/uninstall are
 `CLOSED as documented gap`. That is a documentation status only — no evidence `status`, `level`,
 `result`, `status_basis` or gate verdict was promoted.
+
+## 6. Post-closeout soak outcome (added after the finalizer, no gate change)
+
+The sections above remain the audit-time record. The fourth `aa3b7b0` window (`20261126-225843`) later produced a real SYSTEM finalizer artifact at `2026-11-27T22:59:23+07:00`: **`verdict=FAIL`**, `check_exit=3`, `elapsed_hours=24.0`, seven problems (daemon uptime `1.2h`, `DEGRADED`, generation change, four counter deltas), `restore.verified=true`, `errors=[]`. It does not satisfy the #54 acceptance rule and is independently VOID because the stale `214622` finalizer restored its pre-soak binaries over this window at `21:47:03` (STOP-THE-LINE #55). Verbatim artifacts and hashes: `SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127.md`, `SOAK-VOID-LATE-FINALIZER-GAPS-FIRST-AA3B7B0-20261127.md` and the two `raw-aa3b7b0-20261126/soak-*-finalizer` directories. The board is unchanged: **5/6 PASS, `soak_24h` OPEN, NOT SHIPPABLE**; no PASS, E5/E6/E7, signature or driver-load claim was created. Owner action in #55 remains a prerequisite for a clean window.
