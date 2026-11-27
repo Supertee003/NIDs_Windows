@@ -2,7 +2,7 @@
 
 **RECORD-ID:** `CI-RECORDS-CLOSEOUT-20261128`
 **BUILD SOURCE:** `c01e8091995e3afb9e93e48ea3bd1d7cb6ae5cce`
-**RECORDS HEAD AT READ TIME:** `f5c9b1a4ac498cc1767c90311ea15681d05ca7c0` (records-only after this patch; check `git rev-parse HEAD`)
+**RECORDS HEAD AT READ TIME:** `f5c9b1a4ac498cc1767c90311ea15681d05ca7c0` (when first written) / `f467f5443063eb4dfaf14b3c004bdab9fc3cd3e6` (post-commit CI read; check `git rev-parse HEAD`)
 **EVIDENCE LEVEL:** E1/E2 read-only CI-result reconciliation. Not E5/E6/E7 and not a soak result.
 
 ## 1. Why this record
@@ -29,6 +29,16 @@ were not pushed as standalone CI triggers. Their content is covered by the later
 pushed records commits above, which contain the same source/build tree at the
 time of each run. No CI PASS is claimed for a commit that was not actually run.
 
+## 2a. Post-commit CI read at `f467f54`
+
+After this reconciliation was committed as `f467f5443063eb4dfaf14b3c004bdab9fc3cd3e6`, both workflows were read to completion:
+
+| Commit | AEGIS CI | Host Regression (Phase T+K) | Meaning |
+|---|---|---|---|
+| `f467f54` (CI reconciliation records commit) | run `46066944920` — success | run `46066945019` — success | Both green; `gh run watch --exit-status` returned 0 for each |
+
+The records-only amendment that adds these run IDs triggers its own CI runs; those runs are bookkeeping only, are not a separate validation gate and are not credited here. No source, workflow or threshold changed.
+
 ## 3. The one historical failure, diagnosed
 
 `AEGIS CI` at `6de0184` failed in `Python Control Plane Tests`
@@ -51,8 +61,9 @@ and `f5c9b1a`. No test was skipped, xfailed, guarded or relaxed to achieve this.
 ## 4. Completion gate and boundaries
 
 - Repository-side CI reconciliation is **PASS**: all pushed records commits at
-  and after `e20f46f` have both required workflows green; the single earlier
-  failure is HISTORICAL and explained by the records-level fix above.
+  and after `e20f46f` through `f467f54` have both required workflows green; the
+  single earlier failure is HISTORICAL and explained by the records-level fix
+  above.
 - This does **not** close `soak_24h`; the board remains **5/6 PASS, NOT
   SHIPPABLE** with `soak_24h` alone OPEN.
 - CI green does not create E5/E6/E7, driver signing, a new release identity or
@@ -76,3 +87,16 @@ and `f5c9b1a`. No test was skipped, xfailed, guarded or relaxed to achieve this.
 | WINDOWS RESULT | Not applicable |
 | EVIDENCE LEVEL / ARTIFACTS | E1/E2: this record plus `EVIDENCE_INDEX.json` and `release/release-status.json` |
 | ROLLBACK | Revert this records-only patch; all CI facts remain externally verifiable by run ID |
+
+## 6. Amendment declaration (post-commit CI read)
+
+| Field | Value |
+|---|---|
+| PATCH-ID / FLOW-ID | `CI-RECORDS-CLOSEOUT-20261128-AMEND` / `completed GitHub Actions run -> verbatim run IDs -> records truth surfaces` |
+| TARGET HEAD | `f467f5443063eb4dfaf14b3c004bdab9fc3cd3e6` |
+| FINAL HEAD | the records commit created by this amendment (`git rev-parse HEAD` after commit); build source remains `c01e809` |
+| FILES CHANGED | this record, `EVIDENCE_INDEX.json`, `release/release-status.json`, `docs/START-HERE.md`, `docs/PATH-TO-COMPLETE.md` |
+| OLD FLOW → NEW FLOW | `f467f54` CI outcome observed but not yet recorded → run IDs `46066944920` / `46066945019` added verbatim to current truth surfaces |
+| INVARIANT | No source, workflow, threshold, verdict, gate, signature, soak or host change; no CI PASS claimed for unobserved runs |
+| TEST RESULT | `gh run watch --exit-status` returned 0 for both runs; `scripts/check_summary.py` SUMMARY_VALID; `scripts/doc_checker.py` 0 FAIL/0 WARN |
+| EVIDENCE LEVEL / ARTIFACTS | E1/E2 only; existing `CI-RECORDS-CLOSEOUT-20261128` entry and this amended record |

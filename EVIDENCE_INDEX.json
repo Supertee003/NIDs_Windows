@@ -12294,7 +12294,7 @@
       "level": "E2",
       "component": "GitHub Actions -> read-only run consumption -> records truth surfaces",
       "flow_id": "pushed records commit -> AEGIS CI + Host Regression -> verbatim run IDs -> records closeout",
-      "description": "Read-only reconciliation of CI outcomes: 6de0184 AEGIS CI run 46060680923 failed only because EVIDENCE_INDEX still held the invalid composite level E2 + narrow E3 for AEGIS-004B; Host Regression run 46060680916 was success. The records-level defect was fixed to E2 before e20f46f. Both workflows are success at e20f46f (46056163773/46056163713), 9aef957 (46057895696/46057895645), 128c7f5 (46063152181/46063152110) and f5c9b1a (46065310283/46065310315). No CI PASS is claimed for unpushed source/rebaseline commits; no workflow, threshold, verdict or test was changed.",
+      "description": "Read-only reconciliation of CI outcomes: 6de0184 AEGIS CI run 46060680923 failed only because EVIDENCE_INDEX still held the invalid composite level E2 + narrow E3 for AEGIS-004B; Host Regression run 46060680916 was success. The records-level defect was fixed to E2 before e20f46f. Both workflows are success at e20f46f (46056163773/46056163713), 9aef957 (46057895696/46057895645), 128c7f5 (46063152181/46063152110), f5c9b1a (46065310283/46065310315) and f467f54 (46066944920/46066945019, gh run watch --exit-status 0 for both). No CI PASS is claimed for unpushed source/rebaseline commits or for the records-only amendment's own triggered runs; no workflow, threshold, verdict or test was changed.",
       "files_verified": [
         "analysis/current-head/CI-RECORDS-CLOSEOUT-20261128.md",
         "EVIDENCE_INDEX.json",
@@ -12305,10 +12305,11 @@
       "tests": [
         "gh run list --commit <full sha> --json workflowName,status,conclusion,databaseId -> run IDs and conclusions above",
         "gh run view 46060680923 --log-failed -> one records-level evidence-level assertion failure, not a source/test regression",
+        "gh run watch 46066944920/46066945019 --exit-status -> 0 for both at f467f54",
         "python scripts/check_summary.py -> SUMMARY_VALID after the E2_count rebaseline"
       ],
       "result": "PASS_E2",
-      "finding": "Repository-side CI bookkeeping is complete: all pushed records commits from e20f46f onward have both workflows green and the earlier 6de0184 failure is diagnosed as records-only and resolved. This does not close soak_24h and creates no E5/E6/E7 claim.",
+      "finding": "Repository-side CI bookkeeping is complete: all pushed records commits from e20f46f through f467f54 have both workflows green and the earlier 6de0184 failure is diagnosed as records-only and resolved. This does not close soak_24h and creates no E5/E6/E7 claim.",
       "evidence_artifact": "analysis/current-head/CI-RECORDS-CLOSEOUT-20261128.md",
       "limitations": [
         "CI green is E1/E2 verification only, not host E5/E6/E7 or soak evidence.",
