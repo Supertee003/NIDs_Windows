@@ -16,9 +16,9 @@ For the short decision card — what is blocked versus what can proceed now — 
 | Documentation lifecycle / archive declarations | `dfc7822`, `1df890a`, `43fd661`: frozen signed records, root handoffs, case-only doc aliases, post-audit disposition §11 |
 | Onboarding | `410aa6f`: `docs/START-HERE.md` is the single developer index |
 | Issue hygiene | #47–#54 all have explicit status comments; #55 is the STOP-THE-LINE issue for the mid-window runtime swap; no skip/xfail/relaxation added |
-| Verification at build source `3e7e591` | `OK - 691 artifacts ... source_commit=3e7e591`; AEGIS-004a E2 proof in `analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md`; `final_audit.py --check` with owner anchor = `NOT SHIPPABLE (2/6 gates open: release_signature, soak_24h)`; no waiver or gate change. The earlier `aa3b7b0` run (`1/6 open`) is HISTORICAL at this source |
+| Verification at build source `3c78c96` | `OK - 691 artifacts ... source_commit=3c78c96`; E2 proofs in `analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md` and `analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md`; `final_audit.py --check` with owner anchor = `NOT SHIPPABLE (2/6 gates open: release_signature, soak_24h)`; no waiver or gate change. Earlier `aa3b7b0` (`1/6 open`) and `3e7e591` records are HISTORICAL at this source |
 
-The full non-host pytest is **E2** only. It excludes `host_live` tests (18 deselected) and `tests/test_e2e.py`; it is not a host, soak, signature or E7 proof.
+The full non-host pytest at `3c78c96` is `1515 passed, 1 skipped, 18 deselected, 27 subtests passed`. It is **E2** only: it excludes `host_live` tests and `tests/test_e2e.py`; it is not a host, soak, signature or E7 proof.
 
 ## 2. The three inputs that are not in the agent's authority
 

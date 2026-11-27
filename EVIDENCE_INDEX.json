@@ -12251,6 +12251,42 @@
       "status_basis": "Tracked patch record with exact commands and results at build source 3e7e591."
     },
     {
+      "id": "AEGIS-008-SENSOR-E2-20261128",
+      "head_sha": "3c78c96ebf397b4e1fa052963acc4bdd6a6945d8",
+      "timestamp": "2026-11-28",
+      "title": "AEGIS-008 — hermetic sensor coverage and pipe sink seam at build source 3c78c96",
+      "level": "E2",
+      "component": "Go Nose acquisition",
+      "flow_id": "network frame -> Go Nose decode -> v3 envelope -> pipe frame",
+      "description": "Owner option B source transaction on main. Added in-memory gopacket coverage for single and stacked 0x8100 tags, IPv6 hop-by-hop terminating in TCP, tagged snaplen truncation framing, plus an internal pipeSink seam for short-write, mid-frame-error and lazy-reconnect frame boundaries. Production still uses os.OpenFile named-pipe handles; no wire, ABI, policy or authority change.",
+      "files_verified": [
+        "analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md",
+        "nose/sensor_coverage_test.go",
+        "nose/pipe_writer.go",
+        "nose/pipe_writer_test.go",
+        "docs/portfolio/SENSOR_COVERAGE.md"
+      ],
+      "tests": [
+        "gofmt -e -w on target files -> clean",
+        "go vet ./... -> exit 0",
+        "go test ./... -> ok aegis-nose",
+        "7 targeted hermetic tests -> PASS",
+        "python -m pytest -q tests/ --ignore=tests/test_e2e.py -m 'not host_live' -> 1515 passed, 1 skipped, 18 deselected, 27 subtests passed (E2 only)",
+        "python tools/rebuild_truth.py -> valid: true at 3c78c96",
+        "python tools/release_engineering.py --refresh-digests -> 691 artifacts verify OK at 3c78c96"
+      ],
+      "result": "PASS_E2",
+      "finding": "E2 framing achieved. 0x88a8 has no registered gopacket decoder, so only stacked 0x8100 is exercised; all live adapter, named-pipe/Zig, E5/E6, soak and E7 claims remain NOT_PROVEN. Board stays 4/6 with release_signature and soak_24h OPEN.",
+      "evidence_artifact": "analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md",
+      "limitations": [
+        "E2 hermetic only; no current-source E3/E4/E5/E6/E7 claim.",
+        "No host pipe, Npcap adapter, service, driver, finalizer or soak action was performed.",
+        "0x88a8 service-tag visibility is NOT_PROVEN; 3e7e591 and aa3b7b0 records are HISTORICAL."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Tracked patch record with exact commands and results at build source 3c78c96."
+    },
+    {
       "id": "PIPE-READER-SHUTDOWN-E5-AA3B7B0-20261126",
       "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
       "timestamp": "2026-11-26",
@@ -18990,7 +19026,7 @@
   "evidence_level_summary": {
     "E0_count": 5,
     "E1_count": 55,
-    "E2_count": 173,
+    "E2_count": 174,
     "E3_count": 19,
     "E4_count": 5,
     "E5_count": 126,

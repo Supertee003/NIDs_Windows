@@ -79,3 +79,18 @@ documentation cleanup, and is deliberately left as an explicit owner decision
 - `docs/portfolio/SENSOR_COVERAGE.md` remains the honest host-visibility surface:
   VLAN/QinQ, IPv6 extensions and snaplen truncation stay `NOT_PROVEN`.
 - No counter, verdict, threshold, skip, xfail or health label was changed.
+
+## 5. Applied transaction (2026-11-28, owner option B)
+
+The "NOT APPLIED" status above is HISTORICAL. Under owner option B in
+`docs/SOURCE-SLICE-DECISIONS.md`, `AEGIS-008-SENSOR-E2-01` was applied at source
+commit `3c78c96ebf397b4e1fa052963acc4bdd6a6945d8`. Full patch declaration,
+verification and limits are in
+[`AEGIS-008-SENSOR-E2-20261128`](AEGIS-008-SENSOR-E2-20261128.md).
+
+Closed at E2: hermetic single/stacked `0x8100` decode, IPv6 hop-by-hop→TCP
+round-trip, tagged snaplen truncation framing, and pipe short-write/error/
+reconnect frame boundaries through an in-memory sink seam. Still open and
+**NOT_PROVEN**: `0x88a8` service-tag decode on the host, live Npcap visibility,
+named-pipe/Zig integration at this source, full Windows E5, soak and E7. No
+host row in `docs/portfolio/SENSOR_COVERAGE.md` was promoted.

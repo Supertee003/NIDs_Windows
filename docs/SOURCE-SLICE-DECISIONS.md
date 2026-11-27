@@ -1,9 +1,19 @@
 # Source-slice decision card — remaining non-soak work
 
-**BUILD SOURCE:** `aa3b7b0161e425e54155d5767737bffcde7939b5` (unchanged)  
-**RECORDS TIP WHEN WRITTEN:** `61be9bc51ba95ce8499a67a6eb7bf373e887062d`  
-**STATUS:** decision record, not evidence. No gate, verdict, signature or
-source file changed. Soak is deliberately last and is not touched here.
+**ORIGINAL DECISION RECORD (HISTORICAL):** written at build source
+`aa3b7b0161e425e54155d5767737bffcde7939b5`, records tip
+`61be9bc51ba95ce8499a67a6eb7bf373e887062d`. Soak is deliberately last and is
+not touched here.
+
+**UPDATE (2026-11-28):** the owner selected **option B — execute on main with
+full rebaseline**. AEGIS-004a moved the build source to `3e7e591`; AEGIS-008
+then moved it to `3c78c96ebf397b4e1fa052963acc4bdd6a6945d8`. Both are E2-only
+transactions with machine maps rebaselined and digests refreshed. The board is
+4/6 with `release_signature` and `soak_24h` OPEN; NOT SHIPPABLE. No gate
+threshold, waiver, verdict or soak rule changed. This page remains a decision
+record, not evidence; the applied patch records are
+[`AEGIS-004A`](../analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md)
+and [`AEGIS-008`](../analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md).
 
 ## 1. Why these slices were prepared but not applied
 
@@ -23,7 +33,13 @@ None of those is a documentation cleanup. They are why Card B of
 page makes the pending transactions reviewable without silently regressing the
 board.
 
-## 2. Ready transactions (E1 audits complete, code not applied)
+## 2. Ready transactions (original state; code not applied at write time)
+
+After the option-B update above: `AEGIS-004-CODEC-STRICT-01` was applied as
+AEGIS-004a (the remaining v1 field gates/short-write seam are deferred as
+AEGIS-004b); `AEGIS-008-SENSOR-E2-01` was applied at `3c78c96`; the
+`AEGIS-003`/`AEGIS-009` row remains pending. Rows below retain their original
+pre-decision wording for auditability.
 
 | Patch ID | Audit | Change class | ABI / wire | Evidence after execution |
 |---|---|---|---|---|

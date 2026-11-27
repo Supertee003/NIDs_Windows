@@ -21,11 +21,14 @@
 > `analysis/current-head/V1.1-RELEASE-CLOSEOUT-20261122.md`.
 >
 > **UPDATE (2026-11-28, owner option B):** the `aa3b7b0` paragraphs above are
-> now HISTORICAL. AEGIS-004a moved the build source to
-> `3e7e5918b74afc26a350270811aea74499003637` with validation-only codec
-> strictness at E2 (`analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md`).
-> The board is 4/6 with `release_signature` and `soak_24h` OPEN; NOT SHIPPABLE.
-> No gate threshold, waiver, verdict or release identity changed.
+> now HISTORICAL. AEGIS-004a moved the build source to `3e7e591` with
+> validation-only codec strictness at E2
+> (`analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md`); AEGIS-008
+> then moved it to `3c78c96ebf397b4e1fa052963acc4bdd6a6945d8` with hermetic
+> sensor coverage and a pipe sink seam at E2
+> (`analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md`). The board remains
+> 4/6 with `release_signature` and `soak_24h` OPEN; NOT SHIPPABLE. No gate
+> threshold, waiver, verdict or release identity changed.
 
 > **CURRENT SOURCE CLOSEOUT (2026-11-26):** records tip `8f01825` at that
 > re-anchor (check `git rev-parse HEAD` for later records-only commits), build source
