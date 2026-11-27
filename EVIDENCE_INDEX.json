@@ -1,7 +1,7 @@
 {
   "head_sha": "473b3fe4820568f9384b6768c25af59578e84f08",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-27",
+  "last_updated_at": "2026-11-28",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; tracked files were retained in the operator archive and restored to the ignored admin-evidence/ directory. At the 2026-11-24 audit, 48 primary evidence_artifact pointers do not resolve in a fresh worktree (18 have exact operator-archive locators recorded as artifact_locator, 30 are marked artifact_status=missing and are not independently auditable from this tree). 61 entries cite admin-evidence paths in files_verified, 133 mention them anywhere, and only primary evidence_artifact pointers are validator-checked. The 3,229 clean / 4,009 lossy rate bracketing and all other historical host claims remain records, not current-source verification.",
@@ -12285,6 +12285,47 @@
       ],
       "status": "RESOLVED",
       "status_basis": "Tracked patch record with exact commands and results at build source 3c78c96."
+    },
+    {
+      "id": "AEGIS-004B-V1-GATES-E2E3-20261128",
+      "head_sha": "473b3fe4820568f9384b6768c25af59578e84f08",
+      "timestamp": "2026-11-28",
+      "title": "AEGIS-004b — v1 field gates and private-pipe reject-counter pin at build source 473b3fe",
+      "level": "E2 + narrow E3",
+      "component": "canonical codecs / production pipe reader",
+      "flow_id": "canonical frame -> decode/validate -> reject counter -> evidence",
+      "description": "Owner option B source transaction on main. C++, shared reference Python and brain now enforce v1 struct_size=128, source 0..16/255, event_type 0..9/0xFFFFFFFF, policy_action 0..5 and confidence 0..100, matching Zig/Go; event_v1_005 is pinned as a negative confidence-255 vector. The CLI harness observes authoritative g_nose_frames_rejected and local PipeReaderStats.frames_rejected for a valid-length bad-magic frame. No wire, ABI, policy or authority change.",
+      "files_verified": [
+        "analysis/current-head/AEGIS-004B-V1-GATES-E2E3-20261128.md",
+        "shared/wire/wire_codec.h",
+        "shared/wire/wire_codec.py",
+        "brain/canonical_event.py",
+        "src/tests/cli/nose_pipe_e2e_cli.zig",
+        "tests/contracts/test_payload_envelope_v3.py",
+        "tests/contracts/wire_codec_v3_cpp_check.cpp",
+        "tests/brain/test_canonical_event_v3.py"
+      ],
+      "tests": [
+        "zig test src/contract/wire_event.zig -> 65/65 passed",
+        "zig build test -> exit 0",
+        "cd nose && go test ./... -> ok aegis-nose",
+        "C++ wire_codec_v3_cpp_check -> PASS",
+        "pytest contracts/brain/metadata subset -> 40 passed",
+        "python -m pytest -q tests/ --ignore=tests/test_e2e.py -m 'not host_live' -> 1517 passed, 1 skipped, 18 deselected, 27 subtests passed",
+        "private-pipe -inject -pipe aegis_nose_004b_final -seconds 2 -> exit 0; +1 authoritative +1 local frames_rejected, no drop/framing/pipe-error movement",
+        "python tools/rebuild_truth.py -> valid: true at 473b3fe",
+        "python tools/release_engineering.py --refresh-digests -> 691 artifacts verify OK at 473b3fe"
+      ],
+      "result": "PASS_E2_NARROW_E3",
+      "finding": "E2 codec parity plus a narrow E3 private-pipe counter proof. The harness used a private pipe in a non-elevated agent session and touched no service, daemon, driver, finalizer or soak. Board stays 4/6 with release_signature and soak_24h OPEN, NOT SHIPPABLE.",
+      "evidence_artifact": "analysis/current-head/AEGIS-004B-V1-GATES-E2E3-20261128.md",
+      "limitations": [
+        "Narrow E3 only; no current-source E4/E5/E6/E7 claim.",
+        "No live Npcap adapter, service, driver or host soak action was performed.",
+        "vectors_metadata.json does not yet declare expected_accept=false for event_v1_005; current-source tests pin the rejection."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Tracked patch record with exact commands and results at build source 473b3fe."
     },
     {
       "id": "PIPE-READER-SHUTDOWN-E5-AA3B7B0-20261126",

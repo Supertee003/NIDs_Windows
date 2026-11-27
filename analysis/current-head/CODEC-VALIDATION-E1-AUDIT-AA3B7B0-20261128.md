@@ -6,6 +6,15 @@
 soak action. This is a **finding map, not new proof**. No gate, verdict or
 evidence level changed.
 
+> **APPLICATION UPDATE (2026-11-28):** items 1 and 2 were closed by
+> [`AEGIS-004A`](AEGIS-004A-CODEC-STRICT-E2-20261128.md) at `3e7e591`; the Go
+> short-write half of item 4 was closed by
+> [`AEGIS-008`](AEGIS-008-SENSOR-E2-20261128.md) at `3c78c96`; item 3 and the
+> CLI reject-counter half of item 4 were closed by
+> [`AEGIS-004B`](AEGIS-004B-V1-GATES-E2E3-20261128.md) at `473b3fe`. All three
+> are historical source commits for current-source claims. `event_v1_005.bin`
+> is now pinned as a negative confidence-255 vector, not a positive vector.
+
 ## 1. What the live paths already enforce
 
 | Path | Current behavior | Evidence in source |

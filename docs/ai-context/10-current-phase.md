@@ -26,7 +26,11 @@
 > (`analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md`); AEGIS-008
 > then moved it to `3c78c96ebf397b4e1fa052963acc4bdd6a6945d8` with hermetic
 > sensor coverage and a pipe sink seam at E2
-> (`analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md`). The board remains
+> (`analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md`). AEGIS-004b then
+> moved it to `473b3fe4820568f9384b6768c25af59578e84f08` with v1 field gates
+> across C++/reference Python/brain and a private-pipe reject-counter pin
+> (`analysis/current-head/AEGIS-004B-V1-GATES-E2E3-20261128.md`): E2 plus narrow
+> E3 only, not host E5. The board remains
 > 4/6 with `release_signature` and `soak_24h` OPEN; NOT SHIPPABLE. No gate
 > threshold, waiver, verdict or release identity changed.
 

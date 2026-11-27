@@ -7,13 +7,16 @@ not touched here.
 
 **UPDATE (2026-11-28):** the owner selected **option B — execute on main with
 full rebaseline**. AEGIS-004a moved the build source to `3e7e591`; AEGIS-008
-then moved it to `3c78c96ebf397b4e1fa052963acc4bdd6a6945d8`. Both are E2-only
-transactions with machine maps rebaselined and digests refreshed. The board is
-4/6 with `release_signature` and `soak_24h` OPEN; NOT SHIPPABLE. No gate
-threshold, waiver, verdict or soak rule changed. This page remains a decision
-record, not evidence; the applied patch records are
-[`AEGIS-004A`](../analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md)
-and [`AEGIS-008`](../analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md).
+then moved it to `3c78c96ebf397b4e1fa052963acc4bdd6a6945d8`; AEGIS-004b then
+moved it to `473b3fe4820568f9384b6768c25af59578e84f08`. AEGIS-004a and
+AEGIS-008 are E2-only transactions; AEGIS-004b is E2 plus a narrow private-pipe
+E3 counter proof. All three have machine maps rebaselined and digests refreshed.
+The board is 4/6 with `release_signature` and `soak_24h` OPEN; NOT SHIPPABLE.
+No gate threshold, waiver, verdict or soak rule changed. This page remains a
+decision record, not evidence; the applied patch records are
+[`AEGIS-004A`](../analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md),
+[`AEGIS-008`](../analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md) and
+[`AEGIS-004B`](../analysis/current-head/AEGIS-004B-V1-GATES-E2E3-20261128.md).
 
 ## 1. Why these slices were prepared but not applied
 
@@ -36,10 +39,11 @@ board.
 ## 2. Ready transactions (original state; code not applied at write time)
 
 After the option-B update above: `AEGIS-004-CODEC-STRICT-01` was applied as
-AEGIS-004a (the remaining v1 field gates/short-write seam are deferred as
-AEGIS-004b); `AEGIS-008-SENSOR-E2-01` was applied at `3c78c96`; the
-`AEGIS-003`/`AEGIS-009` row remains pending. Rows below retain their original
-pre-decision wording for auditability.
+AEGIS-004a; its remaining v1 field gates and CLI reject-counter pin were then
+applied as AEGIS-004b at `473b3fe` (the Go short-write seam had already been
+closed by AEGIS-008 at `3c78c96`); `AEGIS-008-SENSOR-E2-01` was applied at
+`3c78c96`; the `AEGIS-003`/`AEGIS-009` row remains pending. Rows below retain
+their original pre-decision wording for auditability.
 
 | Patch ID | Audit | Change class | ABI / wire | Evidence after execution |
 |---|---|---|---|---|

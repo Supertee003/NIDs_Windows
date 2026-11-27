@@ -1,18 +1,20 @@
 # Sensor coverage — capture variants and proof limits
 
-> Scope: build source `4dd3393` (HISTORICAL at current source `3c78c96`). AEGIS-PLAN-008.
+> Scope: build source `4dd3393` (HISTORICAL at current source `473b3fe`). AEGIS-PLAN-008.
 > This page maps what the capture path is **designed** to observe and what has
 > actually been measured. Source-level support is not host proof.
 >
-> **Current-source addendum (`3c78c96`):** the `aa3b7b0` addendum below is
-> HISTORICAL. Owner option B applied `AEGIS-008-SENSOR-E2-01` at build source
-> `3c78c96` (`analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md`). E2 now
+> **Current-source addendum (`473b3fe`):** the `aa3b7b0` and `3c78c96` addenda
+> below are HISTORICAL. Owner option B applied `AEGIS-008-SENSOR-E2-01` at build
+> source `3c78c96` (`analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md`). E2
 > covers in-memory single/stacked `0x8100` decode, IPv6 hop-by-hop→TCP framing,
 > tagged snaplen truncation, and pipe short-write/error/reconnect frame
 > boundaries. `gopacket v1.1.19` has no `0x88a8` decoder, so stacked `0x8100`
 > is the only hermetic QinQ variant exercised; `0x88a8` host visibility stays
-> NOT_PROVEN. Live Npcap visibility, named-pipe/Zig integration, the full rule
-> matrix, soak and full Windows E5 also stay NOT_PROVEN. No host row is promoted.
+> NOT_PROVEN. AEGIS-004b at `473b3fe` changed canonical v1 decode gates and a
+> private-pipe reject counter pin only; it adds no capture-variant or host row.
+> Live Npcap visibility, named-pipe/Zig integration, the full rule matrix, soak
+> and full Windows E5 also stay NOT_PROVEN. No host row is promoted.
 >
 > **Prior addendum (`aa3b7b0`, HISTORICAL):** at `aa3b7b0` the measured set was
 > a narrow loopback E6 (R9006), a narrow R2003 E5 (one positive, two negative
@@ -47,14 +49,15 @@
 
 ## 3. Known acquisition gaps still open
 
-- Single/stacked `0x8100` and IPv6 hop-by-hop→TCP decode now have hermetic E2
-  pins at `3c78c96`, but visibility on a live adapter remains unmeasured.
+- Single/stacked `0x8100` and IPv6 hop-by-hop→TCP decode have hermetic E2
+  pins from `3c78c96` (HISTORICAL at `473b3fe`), but visibility on a live
+  adapter remains unmeasured.
   `0x88a8` service-tag decode has no registered gopacket decoder and stays
   NOT_PROVEN.
 - Process-relative `monotonic_ns` was added in C6; no cross-source host proof.
 - WFP `npcap_primary` acquisition depends on the installed host adapter; the
   repository cannot prove adapter behavior from a fresh clone.
-- Full Windows E5 / kernel IDS qualification is **NOT_PROVEN** at `3c78c96` (the `4dd3393` and `aa3b7b0` scope labels above are HISTORICAL).
+- Full Windows E5 / kernel IDS qualification is **NOT_PROVEN** at `473b3fe` (the `4dd3393`, `aa3b7b0` and `3c78c96` scope labels above are HISTORICAL).
 
 ## 4. Owner actions
 

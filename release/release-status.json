@@ -37,9 +37,9 @@
     "immutable": true,
     "note": "Release identity is immutable. No re-key, new tag, new signature or v2.1.0 is part of this status."
   },
-  "current_build_source": "3c78c96ebf397b4e1fa052963acc4bdd6a6945d8",
+  "current_build_source": "473b3fe4820568f9384b6768c25af59578e84f08",
   "current_build_source_status": "qualification_in_progress",
-  "current_build_source_note": "Owner selected option B on 2026-11-28 (docs/SOURCE-SLICE-DECISIONS.md), authorizing source work on main with full rebaseline. AEGIS-004a moved the build source from aa3b7b0 to 3e7e591 with validation-only codec fixes (strict v3 provenance tuple in Zig/Go/C++/Python/brain, exact legacy WEV1 length); AEGIS-008 then moved it to 3c78c96 with hermetic sensor coverage and an in-memory pipe sink seam. Both are E2 proof only. The 6/6 gate result below belongs to the immutable release identity at a53eda8 and is HISTORICAL relative to this source. Current board at 3c78c96 is 4/6 PASS with release_signature OPEN (the signed tree 6c94b47 predates the new runtime) and soak_24h OPEN: NOT SHIPPABLE, no E7 claim (python tools/final_audit.py --check after the owner trust anchor is supplied). All aa3b7b0-labelled host proofs are HISTORICAL relative to 3e7e591 and 3c78c96. Predecessor slices: S1 (493648f) read-only ProcessStart CommandLine producer; S2 (4bc8244) nonce/replay/freshness; S3 (f1f89c1) durable v3 producer identity; S4 (2673bd2/4dd3393) versioned policy bytes; C6 (7822f4c) capture proof; aa3b7b0 loopback BPF fix. The real 225843 finalizer verdict was FAIL (7 problems, generation change) and the window is independently VOID for a runtime swap at 2026-11-27T21:47:03 (#55); see analysis/current-head/SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127.md. No gate threshold, verdict, soak acceptance rule or E7 claim was changed; the new signature must be owner-authorized over the new tree.",
+  "current_build_source_note": "Owner selected option B on 2026-11-28 (docs/SOURCE-SLICE-DECISIONS.md), authorizing source work on main with full rebaseline. AEGIS-004a moved the build source from aa3b7b0 to 3e7e591 with validation-only codec fixes (strict v3 provenance tuple in Zig/Go/C++/Python/brain, exact legacy WEV1 length); AEGIS-008 then moved it to 3c78c96 with hermetic sensor coverage and an in-memory pipe sink seam; AEGIS-004b then moved it to 473b3fe with v1 struct_size/enum/confidence gates in C++/reference Python/brain and a private-pipe frames_rejected delta pin. AEGIS-004a and AEGIS-008 are E2 only; AEGIS-004b is E2 plus a narrow private-pipe E3 proof. The 6/6 gate result below belongs to the immutable release identity at a53eda8 and is HISTORICAL relative to this source. Current board at 473b3fe is 4/6 PASS with release_signature OPEN (the signed tree 6c94b47 predates the new runtime) and soak_24h OPEN: NOT SHIPPABLE, no E7 claim (python tools/final_audit.py --check after the owner trust anchor is supplied). All aa3b7b0-labelled host proofs and the 3e7e591/3c78c96 proofs are HISTORICAL relative to 473b3fe. Predecessor slices: S1 (493648f) read-only ProcessStart CommandLine producer; S2 (4bc8244) nonce/replay/freshness; S3 (f1f89c1) durable v3 producer identity; S4 (2673bd2/4dd3393) versioned policy bytes; C6 (7822f4c) capture proof; aa3b7b0 loopback BPF fix. The real 225843 finalizer verdict was FAIL (7 problems, generation change) and the window is independently VOID for a runtime swap at 2026-11-27T21:47:03 (#55); see analysis/current-head/SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127.md. No gate threshold, verdict, soak acceptance rule or E7 claim was changed; the new signature must be owner-authorized over the new tree.",
   "qualification_gates": {
     "passed": 6,
     "total": 6,
@@ -106,25 +106,25 @@
     "source": "release/T20-final/466a226/signatures.json"
   },
   "current_head_board": {
-    "build_source": "3c78c96ebf397b4e1fa052963acc4bdd6a6945d8",
+    "build_source": "473b3fe4820568f9384b6768c25af59578e84f08",
     "gates_passed": 4,
     "gates_total": 6,
     "soak_24h": "OPEN",
     "shippable": false,
     "evidence_boundary": "E2 only at this source; all aa3b7b0 and 3e7e591 E5/E6 records are HISTORICAL. Full Windows E5, kernel IDS qualification and E7 NOT_PROVEN",
-    "source": "tools/final_audit.py --check after AEGIS-008; analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md; analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md",
-    "note": "This field is the current source board. The qualification_gates object below is the immutable release-identity board at a53eda8 and is HISTORICAL. release_signature is OPEN until the owner authorizes a signature over a tree containing 3c78c96; no gate was relaxed.",
+    "source": "tools/final_audit.py --check after AEGIS-004b; analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md; analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md; analysis/current-head/AEGIS-004B-V1-GATES-E2E3-20261128.md",
+    "note": "This field is the current source board. The qualification_gates object below is the immutable release-identity board at a53eda8 and is HISTORICAL. release_signature is OPEN until the owner authorizes a signature over a tree containing 473b3fe; no gate was relaxed.",
     "checked_at": "2026-11-28",
-    "checked_commit": "d282bbd8f4d7f3b918cb2d787a82a54c877fd3a8",
+    "checked_commit": "3850beb81cf486c6fd04852b03ed3cb506231e82",
     "gates": [
       {
         "name": "truth_artifacts",
         "status": "PASS",
-        "pass_criteria": "TRUTH_VALID and SUMMARY_VALID; machine maps carry build source 3c78c96, an ancestor of HEAD, with clean source paths",
+        "pass_criteria": "TRUTH_VALID and SUMMARY_VALID; machine maps carry build source 473b3fe, an ancestor of HEAD, with clean source paths",
         "evidence": "python tools/truth.py verify; python scripts/check_summary.py",
         "reason": null,
         "checked_at": "2026-11-28",
-        "checked_commit": "d282bbd8f4d7f3b918cb2d787a82a54c877fd3a8"
+        "checked_commit": "3850beb81cf486c6fd04852b03ed3cb506231e82"
       },
       {
         "name": "component_audit",
@@ -133,16 +133,16 @@
         "evidence": "python tools/final_audit.py --check",
         "reason": null,
         "checked_at": "2026-11-28",
-        "checked_commit": "d282bbd8f4d7f3b918cb2d787a82a54c877fd3a8"
+        "checked_commit": "3850beb81cf486c6fd04852b03ed3cb506231e82"
       },
       {
         "name": "release_signature",
         "status": "OPEN",
-        "pass_criteria": "Owner-anchor Ed25519 signature verifies over SHA256SUMS at a signed commit that contains the current runtime 3c78c96",
+        "pass_criteria": "Owner-anchor Ed25519 signature verifies over SHA256SUMS at a signed commit that contains the current runtime 473b3fe",
         "evidence": "release/T20-final/6c94b47/signatures.json; docs/gates/RELEASE_TRUST_ANCHOR.md",
-        "reason": "The owner-approved signature at 6c94b47 cryptographically verifies but predates the new runtime; after the owner-authorized AEGIS-004a and AEGIS-008 source moves it no longer covers a tree containing 3c78c96. A new signature must be owner-authorized over the new tree; no waiver or gate change was applied.",
+        "reason": "The owner-approved signature at 6c94b47 cryptographically verifies but predates the new runtime; after the owner-authorized AEGIS-004a, AEGIS-008 and AEGIS-004b source moves it no longer covers a tree containing 473b3fe. A new signature must be owner-authorized over the new tree; no waiver or gate change was applied.",
         "checked_at": "2026-11-28",
-        "checked_commit": "d282bbd8f4d7f3b918cb2d787a82a54c877fd3a8"
+        "checked_commit": "3850beb81cf486c6fd04852b03ed3cb506231e82"
       },
       {
         "name": "clean_host_e5",
@@ -151,16 +151,16 @@
         "evidence": "admin-evidence/e5-clean-host-20261120-final/preflight-20261120.json (owner, historical window)",
         "reason": null,
         "checked_at": "2026-11-28",
-        "checked_commit": "d282bbd8f4d7f3b918cb2d787a82a54c877fd3a8"
+        "checked_commit": "3850beb81cf486c6fd04852b03ed3cb506231e82"
       },
       {
         "name": "soak_24h",
         "status": "OPEN",
         "pass_criteria": "Fresh current-source 24 h window with verdict=PASS, elapsed_hours>=24, problems=[], restore.verified=true and counter deltas consistent with the raw transcript and a stable runtime",
         "evidence": "analysis/current-head/SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127.md; analysis/current-head/SOAK-VOID-LATE-FINALIZER-GAPS-FIRST-AA3B7B0-20261127.md",
-        "reason": "36.52 h PASS is HISTORICAL at a53eda8; four aa3b7b0 windows carry no credit, and aa3b7b0 is itself HISTORICAL at 3c78c96. The real 225843 finalizer was FAIL with 7 problems and a runtime swap at 2026-11-27T21:47:03 (issue #55). No clean serialized 24 h SYSTEM window exists at the current source.",
+        "reason": "36.52 h PASS is HISTORICAL at a53eda8; four aa3b7b0 windows carry no credit, and aa3b7b0, 3e7e591 and 3c78c96 are themselves HISTORICAL at 473b3fe. The real 225843 finalizer was FAIL with 7 problems and a runtime swap at 2026-11-27T21:47:03 (issue #55). No clean serialized 24 h SYSTEM window exists at the current source.",
         "checked_at": "2026-11-28",
-        "checked_commit": "d282bbd8f4d7f3b918cb2d787a82a54c877fd3a8"
+        "checked_commit": "3850beb81cf486c6fd04852b03ed3cb506231e82"
       },
       {
         "name": "evidence_debt",
@@ -169,16 +169,16 @@
         "evidence": "python tools/final_audit.py --check",
         "reason": null,
         "checked_at": "2026-11-28",
-        "checked_commit": "d282bbd8f4d7f3b918cb2d787a82a54c877fd3a8"
+        "checked_commit": "3850beb81cf486c6fd04852b03ed3cb506231e82"
       }
     ]
   },
   "verification_summary": {
     "tests": "1,471 passed / 0 skipped, sum of two phases at build source a53eda8 (not a single pytest invocation)",
     "soak": "36.52 / 24.0 h PASS, HISTORICAL at a53eda8; no current-build-source soak is claimed",
-    "current_source_proof": "At build source 3c78c96: E2 proof only — AEGIS-004a Zig 65/65, Go ok, pytest strict-guard subset 37 passed, C++ wire_codec_v3_cpp_check PASS; AEGIS-008 gofmt/go vet/go test ./... ok with 7 hermetic sensor/pipe tests PASS and full non-host pytest 1515 passed / 1 skipped / 18 deselected / 27 subtests. All host records tied to aa3b7b0 (narrow loopback E6 with R9006 rows, narrow R2003 CommandLine E5, narrow S2/S3 E5, controlled 100 conn/s loopback E5) and the E2-only 3e7e591 source are HISTORICAL relative to 3c78c96. Full current-source Windows E5/kernel IDS qualification, the full rule matrix, soak, install/signing, E6/E7 and coverage-guided fuzz remain NOT_PROVEN or NOT_RUN.",
-    "host_qualification": "NOT_PROVEN for full current-head Windows E5/kernel qualification; narrow historical pipe/loopback proofs do not establish it at 3c78c96",
-    "closeout": "AEGIS-008 at build source 3c78c96: 4/6 PASS, release_signature and soak_24h OPEN, NOT SHIPPABLE; analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md and the AEGIS-004a 3e7e591 record are HISTORICAL"
+    "current_source_proof": "At build source 473b3fe: AEGIS-004a E2 proof (Zig 65/65, Go ok, pytest strict-guard subset 37 passed, C++ wire_codec_v3_cpp_check PASS), AEGIS-008 E2 proof (gofmt/go vet/go test ./... ok, 7 hermetic sensor/pipe tests PASS, full non-host pytest 1515 passed / 1 skipped / 18 deselected / 27 subtests) and AEGIS-004b proof (E2 v1 field gates with 40 targeted Python tests PASS and C++ harness PASS; narrow private-pipe E3 frames_rejected delta PASS; full non-host pytest 1517 passed / 1 skipped / 18 deselected / 27 subtests). All aa3b7b0, 3e7e591 and 3c78c96 host/proof records are HISTORICAL relative to 473b3fe. Full current-source Windows E5/kernel IDS qualification, the full rule matrix, soak, install/signing, E6/E7 and coverage-guided fuzz remain NOT_PROVEN or NOT_RUN.",
+    "host_qualification": "NOT_PROVEN for full current-head Windows E5/kernel qualification; narrow historical pipe/loopback proofs and the private-pipe E3 counter proof do not establish it at 473b3fe",
+    "closeout": "AEGIS-004b at build source 473b3fe: 4/6 PASS, release_signature and soak_24h OPEN, NOT SHIPPABLE; analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md and the AEGIS-004a 3e7e591 / AEGIS-008 3c78c96 records are HISTORICAL"
   },
   "authority": {
     "decision_authority": "Zig runtime",

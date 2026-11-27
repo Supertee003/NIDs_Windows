@@ -1,8 +1,8 @@
 # Path to complete — remaining work and who can close it
 
-**BUILD SOURCE:** `aa3b7b0161e425e54155d5767737bffcde7939b5` (ADR-0008; unchanged by records commits)  
-**RECORDS TIP:** read `git rev-parse HEAD` for the live value (a commit cannot contain its own SHA)  
-**BOARD:** **5/6 PASS — `soak_24h` OPEN — NOT SHIPPABLE**  
+**BUILD SOURCE:** `473b3fe4820568f9384b6768c25af59578e84f08` (ADR-0008; unchanged by records commits)
+**RECORDS TIP:** read `git rev-parse HEAD` for the live value (a commit cannot contain its own SHA)
+**BOARD:** **4/6 PASS — `release_signature` and `soak_24h` OPEN — NOT SHIPPABLE**
 **FINALIZER:** the real `D:\aegis-tmp\owner-soak-aa3b7b0-20261126-225843\result.json` was written at `2026-11-27T22:59:23+07:00` with **`verdict=FAIL`**, `check_exit=3`, `elapsed_hours=24.0`, 7 problems and `restore.verified=true` — it does **not** close `soak_24h`. **STOP-THE-LINE (#55): a stale finalizer from the void `214622` window had already restored its pre-soak binaries over the runtime of `225843` at `21:47:03`, so the window is VOID for current-source soak evidence regardless of verdict.**
 
 For the short decision card — what is blocked versus what can proceed now — see `docs/OWNER-ACTIONS.md`. This page is a **plan and an owner-input checklist, not evidence**. It does not close a gate, create a signature, add E7, or change a verdict. It exists so that "make everything complete" has one unambiguous meaning: every item the repository side can do is already done; the remaining items require inputs that only the owner or the external SYSTEM finalizer can supply.
@@ -16,9 +16,9 @@ For the short decision card — what is blocked versus what can proceed now — 
 | Documentation lifecycle / archive declarations | `dfc7822`, `1df890a`, `43fd661`: frozen signed records, root handoffs, case-only doc aliases, post-audit disposition §11 |
 | Onboarding | `410aa6f`: `docs/START-HERE.md` is the single developer index |
 | Issue hygiene | #47–#54 all have explicit status comments; #55 is the STOP-THE-LINE issue for the mid-window runtime swap; no skip/xfail/relaxation added |
-| Verification at build source `3c78c96` | `OK - 691 artifacts ... source_commit=3c78c96`; E2 proofs in `analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md` and `analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md`; `final_audit.py --check` with owner anchor = `NOT SHIPPABLE (2/6 gates open: release_signature, soak_24h)`; no waiver or gate change. Earlier `aa3b7b0` (`1/6 open`) and `3e7e591` records are HISTORICAL at this source |
+| Verification at build source `473b3fe` | `OK - 691 artifacts ... source_commit=473b3fe`; E2 proofs in `analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md` and `analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md`, E2 plus narrow private-pipe E3 proof in `analysis/current-head/AEGIS-004B-V1-GATES-E2E3-20261128.md`; `final_audit.py --check` with owner anchor = `NOT SHIPPABLE (2/6 gates open: release_signature, soak_24h)`; no waiver or gate change. Earlier `aa3b7b0`, `3e7e591` and `3c78c96` records are HISTORICAL at this source |
 
-The full non-host pytest at `3c78c96` is `1515 passed, 1 skipped, 18 deselected, 27 subtests passed`. It is **E2** only: it excludes `host_live` tests and `tests/test_e2e.py`; it is not a host, soak, signature or E7 proof.
+The full non-host pytest at `473b3fe` is `1517 passed, 1 skipped, 18 deselected, 27 subtests passed`. It is **E2** only: it excludes `host_live` tests and `tests/test_e2e.py`; it is not a host, soak, signature or E7 proof.
 
 ## 2. The three inputs that are not in the agent's authority
 
