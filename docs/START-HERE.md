@@ -33,12 +33,12 @@ This page is an onboarding index, not a new proof. It points to the current trut
 
 ## 3. Truth commands (records-only, no host effect)
 
-- `python tools/truth.py verify` → `TRUTH_VALID @ aa3b7b0`.
+- `python tools/truth.py verify` → `TRUTH_VALID @ 3e7e591` (check `AGENTS.md` for the current build source).
 - `python scripts/check_summary.py` → `SUMMARY_VALID` (the 48 unresolvable pointers are explicitly marked, not PASS evidence).
 - `python scripts/doc_checker.py` → `0 FAIL, 0 WARN, 23 total`.
-- `python tools/release_engineering.py --verify` → `OK - 691 artifacts ... source_commit=aa3b7b0`.
-- `python -m pytest -q tests/ --ignore=tests/test_e2e.py -m "not host_live"` → last full run `1513 passed, 1 skipped, 18 deselected, 27 subtests`.
-- `python tools/final_audit.py --check` with the owner anchor → `NOT SHIPPABLE (1/6 gates open)`; T20 drift is reverted after every check.
+- `python tools/release_engineering.py --verify` → `OK - 691 artifacts ... source_commit=3e7e591`.
+- `python -m pytest -q tests/ --ignore=tests/test_e2e.py -m "not host_live"` → last full run at `aa3b7b0` was `1513 passed, 1 skipped, 18 deselected, 27 subtests`; at `3e7e591` the non-host suite must be re-run before any current-source claim.
+- `python tools/final_audit.py --check` with the owner anchor → `NOT SHIPPABLE (2/6 gates open: release_signature, soak_24h)` after the owner-authorized AEGIS-004a source move; T20 drift is reverted after every check.
 
 ## 4. Hard rules until a valid current-source soak PASS exists
 

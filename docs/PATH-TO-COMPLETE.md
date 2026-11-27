@@ -16,7 +16,7 @@ For the short decision card — what is blocked versus what can proceed now — 
 | Documentation lifecycle / archive declarations | `dfc7822`, `1df890a`, `43fd661`: frozen signed records, root handoffs, case-only doc aliases, post-audit disposition §11 |
 | Onboarding | `410aa6f`: `docs/START-HERE.md` is the single developer index |
 | Issue hygiene | #47–#54 all have explicit status comments; #55 is the STOP-THE-LINE issue for the mid-window runtime swap; no skip/xfail/relaxation added |
-| Verification at the current tip | `OK - 691 artifacts ... source_commit=aa3b7b0`; full non-host pytest `1513 passed, 1 skipped, 18 deselected, 27 subtests`; `final_audit.py --check` with owner anchor = `NOT SHIPPABLE (1/6 gates open)`, only `soak_24h` OPEN; both CI workflows `success`; pre-commit hygiene checks pass; tree clean |
+| Verification at build source `3e7e591` | `OK - 691 artifacts ... source_commit=3e7e591`; AEGIS-004a E2 proof in `analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md`; `final_audit.py --check` with owner anchor = `NOT SHIPPABLE (2/6 gates open: release_signature, soak_24h)`; no waiver or gate change. The earlier `aa3b7b0` run (`1/6 open`) is HISTORICAL at this source |
 
 The full non-host pytest is **E2** only. It excludes `host_live` tests (18 deselected) and `tests/test_e2e.py`; it is not a host, soak, signature or E7 proof.
 

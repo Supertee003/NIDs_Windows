@@ -1,9 +1,10 @@
 # Windows deployment compatibility — declared vs tested
 
-> Scope: **current build source `aa3b7b0`** (AEGIS-PLAN-019). The matrix below
-> was rebased from its original `4dd3393` scope; the original page is
-> HISTORICAL. This page separates a declared target from a tested OS matrix.
-> No new OS test was performed while writing this page — a declare-only row is
+> Scope: **current build source `3e7e591`** (AEGIS-PLAN-019; owner option B
+> moved the source from `aa3b7b0` on 2026-11-28). The matrix below was rebased
+> from its original `4dd3393` scope; both that page and every `aa3b7b0` host
+> row are HISTORICAL at `3e7e591`. This page separates a declared target from
+> a tested OS matrix. No new OS test was performed — a declare-only row is
 > never a PASS row.
 
 ## 1. Declared target

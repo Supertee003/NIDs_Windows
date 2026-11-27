@@ -12212,6 +12212,45 @@
       "status_basis": "Tracked analysis record with exact file:line locations at the current build source."
     },
     {
+      "id": "AEGIS-004A-CODEC-STRICT-E2-20261128",
+      "head_sha": "3e7e5918b74afc26a350270811aea74499003637",
+      "timestamp": "2026-11-28",
+      "title": "AEGIS-004a — strict v3 provenance tuple and exact legacy WEV1 length at build source 3e7e591",
+      "level": "E2",
+      "component": "contracts / codecs",
+      "flow_id": "canonical frame -> decode/validate -> reject counter -> evidence",
+      "description": "Owner option B source transaction on main. src/contract/wire_event.zig now rejects trailing bytes on the legacy WEV1 helper; Go, C++, shared Python and brain validators now require a complete four-field provenance tuple when the provenance-valid flag is set, matching Zig and wire_v3.md. No wire layout, ABI, policy or authority change.",
+      "files_verified": [
+        "analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md",
+        "src/contract/wire_event.zig",
+        "nose/canonical.go",
+        "shared/wire/wire_codec.h",
+        "shared/wire/wire_codec.py",
+        "brain/canonical_event.py",
+        "tests/contracts/wire_codec_v3_cpp_check.cpp"
+      ],
+      "tests": [
+        "zig test src/contract/wire_event.zig -> 65/65 passed",
+        "zig build test -> exit 0",
+        "cd nose && go test ./... -> ok aegis-nose",
+        "cd nose && go vet ./... -> exit 0",
+        "pytest tests/contracts/test_payload_envelope_v3.py tests/brain/test_canonical_event_v3.py -q -> 37 passed",
+        "C++ wire_codec_v3_cpp_check -> PASS",
+        "python tools/rebuild_truth.py -> valid: true at 3e7e591",
+        "python tools/release_engineering.py --refresh-digests -> 691 artifacts verify OK at 3e7e591"
+      ],
+      "result": "PASS_E2",
+      "finding": "E2 parity achieved. Moving build source off aa3b7b0 makes all prior host proofs HISTORICAL and leaves release_signature OPEN until an owner-authorized signature covers a tree containing 3e7e591; board is 4/6 PASS, NOT SHIPPABLE, soak_24h still OPEN.",
+      "evidence_artifact": "analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md",
+      "limitations": [
+        "E2 only; no current-source E3/E4/E5/E6/E7 claim.",
+        "No host, driver, service or soak action was performed.",
+        "release_signature is OPEN by explicit owner option B; no waiver or threshold change."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Tracked patch record with exact commands and results at build source 3e7e591."
+    },
+    {
       "id": "PIPE-READER-SHUTDOWN-E5-AA3B7B0-20261126",
       "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
       "timestamp": "2026-11-26",
@@ -18951,7 +18990,7 @@
   "evidence_level_summary": {
     "E0_count": 5,
     "E1_count": 55,
-    "E2_count": 172,
+    "E2_count": 173,
     "E3_count": 19,
     "E4_count": 5,
     "E5_count": 126,
