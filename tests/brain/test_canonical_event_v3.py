@@ -84,6 +84,36 @@ def test_brain_v1_and_v2_vectors_stay_metadata_only():
     assert v1.payload_bytes == b""
 
 
+def test_brain_v1_field_gates_reject_untrusted_ordinals():
+    # AEGIS-004b: brain must agree with Zig/Go/reference Python on v1
+    # struct_size, enum ordinals and confidence (no wire layout change).
+    from shared.wire.wire_codec import RES_OFF_CONFIDENCE
+
+    raw = _vector("event_v1_001.bin")
+    assert ce.decode(raw) is not None
+
+    mutations = (
+        ("struct_size", 6, (109).to_bytes(2, "little")),
+        ("source", 32, bytes([17])),
+        ("event_type", 57, (10).to_bytes(4, "little")),
+        ("policy_action", 86, bytes([6])),
+        ("confidence", 93 + RES_OFF_CONFIDENCE, bytes([101])),
+    )
+    for label, offset, blob in mutations:
+        bad = bytearray(raw)
+        bad[offset:offset + len(blob)] = blob
+        with pytest.raises(ValueError):
+            ce.decode(bytes(bad))
+
+    edges = bytearray(raw)
+    edges[6:8] = ce.IN_MEMORY_STRUCT_SIZE.to_bytes(2, "little")
+    edges[32] = 255
+    edges[57:61] = (0xFFFFFFFF).to_bytes(4, "little")
+    edges[86] = 5
+    edges[93 + RES_OFF_CONFIDENCE] = 100
+    assert ce.decode(bytes(edges)) is not None
+
+
 def test_brain_v3_vectors_match_the_reference_python_codec():
     """Two Python codecs, one schema: the brain must agree byte-for-byte."""
     from shared.wire.wire_codec import WireCodec

@@ -32,6 +32,8 @@ WIRE_MAX_PAYLOAD: int = 65536
 
 EVENT_MAGIC: int = 0x41454731     # "AEG1"
 EVENT_VERSION: int = 1
+EVENT_STRUCT_SIZE: int = 128       # in-memory layout tag, not wire length
+RES_OFF_CONFIDENCE: int = 15       # reserved[15] = detector confidence
 WIRE_PAYLOAD_SIZE: int = 109       # canonical event payload (v1, frozen)
 WIRE_FRAME_SIZE: int = WIRE_HEADER_SIZE + WIRE_PAYLOAD_SIZE  # 125
 
@@ -229,7 +231,7 @@ class PolicyAction(IntEnum):
 class CanonicalEvent:
     magic: int = EVENT_MAGIC
     version: int = EVENT_VERSION
-    struct_size: int = WIRE_PAYLOAD_SIZE
+    struct_size: int = EVENT_STRUCT_SIZE
     event_id: int = 0
 
     timestamp_ms: int = 0
@@ -403,6 +405,18 @@ class WireCodec:
          e.payload_length, e.payload_hash,
          paction, e.enforcement_status, e.defcon_impact, e.context_flags,
          e.reserved) = fields
+
+        # AEGIS-004b: v1 field gates (mirrors Zig/Go/brain; no wire change).
+        if e.struct_size != EVENT_STRUCT_SIZE:
+            return None
+        if not ((src <= 16) or src == 255):
+            return None
+        if not (etype <= 9 or etype == 0xFFFFFFFF):
+            return None
+        if paction > 5:
+            return None
+        if e.reserved[RES_OFF_CONFIDENCE] > 100:
+            return None
 
         try:
             e.source = EventSource(src)

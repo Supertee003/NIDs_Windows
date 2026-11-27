@@ -21,6 +21,7 @@ from dataclasses import dataclass, replace
 
 EVENT_MAGIC = 0x41454731
 EVENT_VERSION = 1
+IN_MEMORY_STRUCT_SIZE = 128  # producer in-memory layout tag, not wire length
 WIRE_SIZE = 109
 # Wire v2 (T2-V6-022a): v1 109 bytes ++ 24-byte IPv6 tail (src[4..16],
 # dst[4..16] network order). Bit2 keeps its meaning in both versions.
@@ -110,7 +111,7 @@ class CanonicalEvent:
     defcon_impact: int
     context_flags: int
     reserved: bytes
-    struct_size: int = WIRE_SIZE  # producer in-memory layout tag, preserved
+    struct_size: int = IN_MEMORY_STRUCT_SIZE  # producer in-memory layout tag
     # Full IPv6 identity (wire v2 only): complete addresses in network
     # order; zeros when decoded from v1 (truncated identity + bit2).
     src_ipv6: bytes = b"\x00" * 16
@@ -160,6 +161,8 @@ def _decode_v1(buf: bytes) -> CanonicalEvent:
         raise ValueError(f"bad magic 0x{f[0]:08X}")
     if f[1] not in (EVENT_VERSION, EVENT_VERSION_V2, EVENT_VERSION_V3):
         raise ValueError(f"unsupported version {f[1]}")
+    if f[2] != IN_MEMORY_STRUCT_SIZE:
+        raise ValueError(f"struct_size must be {IN_MEMORY_STRUCT_SIZE}, got {f[2]}")
     if f[6] not in _VALID_SOURCES:
         raise ValueError(f"unknown source {f[6]}")
     if f[16] not in _VALID_EVENT_TYPES:

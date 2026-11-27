@@ -264,6 +264,61 @@ void check_strict_rejections(const std::string& dir) {
           "oversized payload rejected by the envelope guard");
 }
 
+// AEGIS-004b: the reference C++ v1 decoder must mirror the Zig/Go/brain
+// field gates. Magic/version alone are not enough: struct_size, enum
+// ordinals and confidence are untrusted wire fields and fail closed.
+void check_v1_field_gates(const std::string& dir) {
+    const std::vector<uint8_t> good = read_file(join(dir, "event_v1_001.bin"));
+    if (good.size() != aegis::WIRE_PAYLOAD_SIZE) {
+        ++g_failures;
+        return;
+    }
+    aegis::CanonicalEvent ev;
+    check(aegis::aegis_wire_decode_event(good.data(), good.size(), ev),
+          "v1 baseline with exact field gates decodes");
+
+    // event_v1_005 is the frozen all-0xFF edge vector: confidence 255 is
+    // outside 0-100, so it is a negative case, not a valid legacy frame.
+    const std::vector<uint8_t> invalid = read_file(join(dir, "event_v1_005.bin"));
+    if (invalid.size() != aegis::WIRE_PAYLOAD_SIZE) {
+        ++g_failures;
+    } else {
+        check(!aegis::aegis_wire_decode_event(invalid.data(), invalid.size(), ev),
+              "v1_005 confidence 255 rejected");
+        check(!aegis::aegis_wire_decode_event_dispatch(invalid.data(), invalid.size(), ev),
+              "v1_005 rejected by version dispatch");
+    }
+
+    struct Mutation {
+        const char* what;
+        size_t offset;
+        uint8_t value;
+    };
+    const Mutation mutations[] = {
+        {"v1 struct_size != 128 rejected", 6, 109},
+        {"v1 source ordinal 17 rejected", 32, 17},
+        {"v1 event_type ordinal 10 rejected", 57, 10},
+        {"v1 policy_action ordinal 6 rejected", 86, 6},
+        {"v1 confidence 101 rejected", 93 + aegis::RES_OFF_CONFIDENCE, 101},
+    };
+    for (const Mutation& m : mutations) {
+        std::vector<uint8_t> bad = good;
+        bad[m.offset] = m.value;
+        check(!aegis::aegis_wire_decode_event(bad.data(), bad.size(), ev), m.what);
+        check(!aegis::aegis_wire_decode_event_dispatch(bad.data(), bad.size(), ev),
+              m.what);
+    }
+
+    // Boundary values that are valid in the frozen schema stay accepted.
+    std::vector<uint8_t> edges = good;
+    edges[32] = 255;                                     // external
+    aegis::write_u32_le(edges.data() + 57, 0xFFFFFFFFu); // custom
+    edges[86] = 5;                                       // log_only
+    edges[93 + aegis::RES_OFF_CONFIDENCE] = 100;
+    check(aegis::aegis_wire_decode_event(edges.data(), edges.size(), ev),
+          "v1 boundary enum/confidence values remain valid");
+}
+
 }  // namespace
 
 // B5: the legacy WEV1 full-frame helper has no production caller, but its
@@ -309,11 +364,12 @@ int main(int argc, char** argv) {
 
     for (const char* name : {"event_v1_001.bin", "event_v1_002.bin",
                              "event_v1_003.bin", "event_v1_004.bin",
-                             "event_v1_005.bin", "event_v2_006.bin"}) {
+                             "event_v2_006.bin"}) {
         check_frozen_vector(dir, name);
     }
 
     check_strict_rejections(dir);
+    check_v1_field_gates(dir);
     check_legacy_frame_helper(dir);
 
     if (g_failures != 0) {

@@ -23,9 +23,11 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from shared.wire.wire_codec import (  # noqa: E402
     CONTEXT_V6_TRUNCATED,
+    EVENT_STRUCT_SIZE,
     PAYLOAD_COMPLETE,
     PAYLOAD_METADATA_ONLY,
     PAYLOAD_TRUNCATED,
+    RES_OFF_CONFIDENCE,
     V3_BASE_SIZE,
     V3_ENVELOPE_SIZE,
     V3_FLAG_PAYLOAD_PRESENT,
@@ -378,6 +380,34 @@ def test_decoder_rejects_bad_struct_size_tag():
     assert WireCodec.decode_event(bytes(raw)) is None
 
 
+def test_v1_field_gates_reject_untrusted_ordinals():
+    # AEGIS-004b: v1 struct_size, enum ordinals and confidence are gates in
+    # Zig/Go/brain; the reference Python codec must agree (no wire change).
+    raw = (VECTOR_DIR / "event_v1_001.bin").read_bytes()
+    assert WireCodec.decode_event(raw) is not None
+
+    mutations = (
+        ("struct_size", 6, (WIRE_PAYLOAD_SIZE).to_bytes(2, "little")),
+        ("source", 32, bytes([17])),
+        ("event_type", 57, (10).to_bytes(4, "little")),
+        ("policy_action", 86, bytes([6])),
+        ("confidence", 93 + RES_OFF_CONFIDENCE, bytes([101])),
+    )
+    for label, offset, blob in mutations:
+        bad = bytearray(raw)
+        bad[offset:offset + len(blob)] = blob
+        assert WireCodec.decode_event(bytes(bad)) is None, label
+
+    # Boundary values that remain valid in the frozen schema.
+    edges = bytearray(raw)
+    edges[6:8] = EVENT_STRUCT_SIZE.to_bytes(2, "little")
+    edges[32] = 255
+    edges[57:61] = (0xFFFFFFFF).to_bytes(4, "little")
+    edges[86] = 5
+    edges[93 + RES_OFF_CONFIDENCE] = 100
+    assert WireCodec.decode_event(bytes(edges)) is not None
+
+
 def test_decoder_rejects_non_zero_reserved_byte():
     # wire_v3.md pins the reserved envelope byte to 0. The encoder always
     # writes 0, so a set byte is a corrupt/foreign frame, not an extension.
@@ -393,8 +423,10 @@ def test_decoder_rejects_non_zero_reserved_byte():
 # ---------------------------------------------------------------------------
 
 def test_v1_vectors_stay_metadata_only():
+    # event_v1_005 is an intentionally out-of-range edge vector (confidence
+    # 255); Zig/Go reject it, so it is pinned as a negative case below.
     for name in ("event_v1_001.bin", "event_v1_002.bin", "event_v1_003.bin",
-                 "event_v1_004.bin", "event_v1_005.bin"):
+                 "event_v1_004.bin"):
         raw = (VECTOR_DIR / name).read_bytes()
         assert len(raw) == WIRE_PAYLOAD_SIZE
         e = WireCodec.decode_event(raw)
@@ -402,6 +434,10 @@ def test_v1_vectors_stay_metadata_only():
         assert e.version == 1
         assert e.payload_envelope is None
         assert e.payload_bytes == b""
+
+    invalid = (VECTOR_DIR / "event_v1_005.bin").read_bytes()
+    assert len(invalid) == WIRE_PAYLOAD_SIZE
+    assert WireCodec.decode_event(invalid) is None
 
 
 def test_v2_vector_stays_metadata_only():

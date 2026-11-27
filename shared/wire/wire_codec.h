@@ -33,6 +33,8 @@ static constexpr size_t   WIRE_MAX_PAYLOAD    = 65536;
 
 static constexpr uint32_t EVENT_MAGIC         = 0x41454731u; // "AEG1"
 static constexpr uint16_t EVENT_VERSION       = 1;
+static constexpr uint16_t EVENT_STRUCT_SIZE   = 128; // in-memory layout tag, not wire length
+static constexpr size_t   RES_OFF_CONFIDENCE  = 15;  // reserved[15] = detector confidence
 static constexpr size_t   WIRE_PAYLOAD_SIZE   = 109; // canonical event payload (v1, frozen)
 static constexpr size_t   WIRE_FRAME_SIZE     = WIRE_HEADER_SIZE + WIRE_PAYLOAD_SIZE; // 125
 
@@ -314,6 +316,16 @@ inline size_t aegis_wire_encode_event(uint8_t* buf, size_t buf_len, const Canoni
 // success, false on validation failure (AUDIT-002: no trailing-byte tolerance).
 inline bool aegis_wire_decode_event(const uint8_t* bytes, size_t bytes_len, CanonicalEvent& out) {
     if (bytes_len != WIRE_PAYLOAD_SIZE) return false;
+    // AEGIS-004b: v1 field gates (mirrors Zig/Go/brain; no wire change).
+    if (bytes[6] != (EVENT_STRUCT_SIZE & 0xFFu) ||
+        bytes[7] != static_cast<uint8_t>(EVENT_STRUCT_SIZE >> 8)) return false;
+    const uint8_t source_raw = bytes[32];
+    if (!((source_raw <= 16) || source_raw == 255)) return false;
+    const uint32_t event_type_raw = read_u32_le(bytes + 57);
+    if (!(event_type_raw <= 9 || event_type_raw == 0xFFFFFFFFu)) return false;
+    const uint8_t policy_action_raw = bytes[86];
+    if (policy_action_raw > 5) return false;
+    if (bytes[93 + RES_OFF_CONFIDENCE] > 100) return false;
     size_t off = 0;
 
     out.magic          = read_u32_le(bytes + off); off += 4;

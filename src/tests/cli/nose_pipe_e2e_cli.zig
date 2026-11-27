@@ -11,9 +11,11 @@
 // if no event made it into the fabric (so E2E scripts can gate on success).
 //
 // `-inject` is the issue #44 exact-delta proof. It opens a real named-pipe
-// client and feeds three failing frames (close-before-payload, absurd length,
-// invalid-but-drainable length followed by a valid frame), asserting the exact
-// authoritative + local counter delta for each. It needs no Go producer.
+// client and feeds three framing failures (close-before-payload, absurd length,
+// invalid-but-drainable length) plus a valid-length bad-magic frame, asserting
+// the exact authoritative + local counter delta for each. It needs no Go
+// producer. The AEGIS-004b case also pins frames_rejected (no drop/framing/
+// pipe-error movement).
 //
 // SAFETY: the canonical name is single-instance. Never inject failing frames
 // into a live daemon. On a host where AegisNids is running, pass a private
@@ -104,8 +106,10 @@ const CounterSnap = struct {
     shape: u64,
     capacity: u64,
     pipe_errors: u64,
+    rejected: u64,
     local_dropped: u64,
     local_pipe_errors: u64,
+    local_rejected: u64,
     submitted: u64,
 };
 
@@ -116,8 +120,10 @@ const Expected = struct {
     shape: u64 = 0,
     capacity: u64 = 0,
     pipe_errors: u64 = 0,
+    rejected: u64 = 0,
     local_dropped: u64 = 0,
     local_pipe_errors: u64 = 0,
+    local_rejected: u64 = 0,
     submitted: u64 = 0,
 };
 
@@ -130,8 +136,10 @@ fn snapshot() CounterSnap {
         .shape = runtime_state.g_nose_frames_dropped_shape.load(.acquire),
         .capacity = runtime_state.g_nose_frames_dropped_capacity.load(.acquire),
         .pipe_errors = runtime_state.g_nose_pipe_errors.load(.acquire),
+        .rejected = runtime_state.g_nose_frames_rejected.load(.acquire),
         .local_dropped = local.frames_dropped,
         .local_pipe_errors = local.pipe_errors,
+        .local_rejected = local.frames_rejected,
         .submitted = runtime_state.g_nose_frames_submitted.load(.acquire),
     };
 }
@@ -143,8 +151,10 @@ fn deltasMatch(before: CounterSnap, now: CounterSnap, exp: Expected) bool {
         now.shape == before.shape + exp.shape and
         now.capacity == before.capacity + exp.capacity and
         now.pipe_errors == before.pipe_errors + exp.pipe_errors and
+        now.rejected == before.rejected + exp.rejected and
         now.local_dropped == before.local_dropped + exp.local_dropped and
         now.local_pipe_errors == before.local_pipe_errors + exp.local_pipe_errors and
+        now.local_rejected == before.local_rejected + exp.local_rejected and
         now.submitted == before.submitted + exp.submitted;
 }
 
@@ -157,13 +167,14 @@ fn waitForDelta(label: []const u8, before: CounterSnap, exp: Expected) !CounterS
         std.time.sleep(20 * std.time.ns_per_ms);
     }
     std.debug.print(
-        "[INJECT] {s} FAILED: expected total+{d} framing+{d} midframe+{d} shape+{d} capacity+{d} pipe_errors+{d} submitted+{d}; got {d}/{d}/{d}/{d}/{d}/{d}/{d}\n",
+        "[INJECT] {s} FAILED: expected total+{d} framing+{d} midframe+{d} shape+{d} capacity+{d} pipe_errors+{d} rejected+{d} submitted+{d}; got {d}/{d}/{d}/{d}/{d}/{d}/{d}/{d}\n",
         .{
             label,
-            exp.total, exp.framing, exp.midframe, exp.shape, exp.capacity, exp.pipe_errors, exp.submitted,
+            exp.total, exp.framing, exp.midframe, exp.shape, exp.capacity, exp.pipe_errors,
+            exp.rejected, exp.submitted,
             now.total - before.total, now.framing - before.framing, now.midframe - before.midframe,
             now.shape - before.shape, now.capacity - before.capacity, now.pipe_errors - before.pipe_errors,
-            now.submitted - before.submitted,
+            now.rejected - before.rejected, now.submitted - before.submitted,
         },
     );
     return error.CounterDeltaTimeout;
@@ -229,6 +240,27 @@ fn injectExactDeltaCases(pipe_name: [*:0]const u16) !void {
     });
     win.CloseHandle(h);
     std.debug.print("[INJECT] drain-then-valid OK: +1 framing, +1 submitted, no pipe error\n", .{});
+
+    // 4. Valid frame length but corrupt magic: deserializer rejects a
+    // well-framed payload through the authoritative + local rejected
+    // counters, with no drop, framing or pipe-error movement (AEGIS-004b).
+    std.time.sleep(250 * std.time.ns_per_ms);
+    before = snapshot();
+    h = try connectedClient(pipe_name);
+    var bad_frame_buf: [canonical.WIRE_V3_MAX_SIZE]u8 = undefined;
+    var bad_ce = canonical.create(.npcap_sensor);
+    bad_ce.event_id = 0xF44E;
+    const bad_n = try canonical.serializeToBytes(&bad_ce, &bad_frame_buf);
+    if (bad_n != canonical.WIRE_PAYLOAD_SIZE) return error.BadFrameSize;
+    bad_frame_buf[0] ^= 0xFF; // destroy magic, keep exact v1 length
+    try writeU32Le(h, @intCast(bad_n));
+    try writeAllPipe(h, bad_frame_buf[0..bad_n]);
+    _ = try waitForDelta("valid-length-bad-frame", before, .{
+        .rejected = 1,
+        .local_rejected = 1,
+    });
+    win.CloseHandle(h);
+    std.debug.print("[INJECT] valid-length-bad-frame OK: +1 rejected, no drop/framing/pipe error\n", .{});
 }
 
 pub fn main() !void {
