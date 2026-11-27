@@ -30,7 +30,10 @@
 > moved it to `473b3fe4820568f9384b6768c25af59578e84f08` with v1 field gates
 > across C++/reference Python/brain and a private-pipe reject-counter pin
 > (`analysis/current-head/AEGIS-004B-V1-GATES-E2E3-20261128.md`): E2 plus narrow
-> E3 only, not host E5. The board remains
+> E3 only, not host E5. AEGIS-003 then moved it to
+> `c01e8091995e3afb9e93e48ea3bd1d7cb6ae5cce` with additive health diagnostics
+> (`analysis/current-head/AEGIS-003-HEALTH-ADDITIVE-E2-20261128.md`): E2 only,
+> no `UNKNOWN` state and no host action. The board remains
 > 4/6 with `release_signature` and `soak_24h` OPEN; NOT SHIPPABLE. No gate
 > threshold, waiver, verdict or release identity changed.
 

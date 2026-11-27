@@ -136,6 +136,10 @@ a child process. Acceptable transports (any one is sufficient):
   "pid":         12345,
   "uptime_ms":   98217,
   "last_event_ms": 412,
+  "last_transition_ms": 1763000000000,
+  "reason":      "none",
+  "impact":      "none",
+  "recovery_state": "NOT_RECOVERING",
   "defcon_level": 4,
   "defcon_label": "ELEVATED",
   "counters": {
@@ -163,6 +167,16 @@ Field semantics:
   their local evidence ladder, labeled as derived.
 - `last_event_ms` is the time since the component processed (or emitted) its
   last event. A stale value (> `5 × health_interval`) is a soft failure.
+- AEGIS-003 additive diagnostics: `last_transition_ms` is the epoch-ms time of
+  the last daemon `SystemState` change (`0` before any transition). `reason`
+  is the first observable cause in a fixed priority order, one of `none`,
+  `worker_failed` (or the worker's controlled token), `core_pipeline_failed`,
+  `pipeline_not_ready`, `bridge_unavailable`, `data_loss_observed`,
+  `subsystem_degraded`. `impact` is the diagnostic scope, one of `none`,
+  `event_pipeline`, `bridge_telemetry`, `data_integrity`, `subsystem_health`.
+  `recovery_state` projects the existing lifecycle vocabulary as `RECOVERING`
+  or `NOT_RECOVERING`; it does **not** add `UNKNOWN` or a new lifecycle state.
+  All four are optional for older readers and are not gate inputs.
 - `counters.dropped > 0` is a soft failure if it increased since the last
   probe; hard failure if it increased by more than `0.1%` of `in_events`.
 - `deps[].state` MUST reflect the component's own view of its dependencies.

@@ -1,7 +1,7 @@
 # Runtime health model — actual fields, vocabulary mapping, and gaps
 
-> Scope: production observe-only runtime at build source `7822f4c`
-> (prior `43a8bcc` scope is HISTORICAL).
+> Scope: production observe-only runtime at build source `c01e809`
+> (prior `7822f4c` and `43a8bcc` scopes are HISTORICAL).
 > This is a **mapping document**, not a source change. It does not rename states,
 > add fields, or claim that an unimplemented field exists. Source of truth for the
 > response schema is [`RUNTIME_CONTRACT.md`](RUNTIME_CONTRACT.md) §2 and §4;
@@ -52,24 +52,28 @@ Additional keys emitted by `src/control/state_machine.zig`:
 | `subsystems[].state` | `:501-504` | Bridge and pipeline view (`RUNNING`/`DEGRADED`) |
 | `workers.{pipeline,sensor,nose,etw,fim,registry}_ready` | `:510-516` | Per-worker readiness |
 | `workers.failed`, `failure_reason`, `failure_mask` | `:517-519` | Worker failure and reason |
+| `last_transition_ms` | additive AEGIS-003 key | Epoch-ms of the last daemon `SystemState` change; not an OS reboot id |
+| `reason` | additive AEGIS-003 key | First observable cause from the existing readiness/bridge/loss facts |
+| `impact` | additive AEGIS-003 key | Diagnostic scope of the degraded state; not a host effect |
+| `recovery_state` | additive AEGIS-003 key | `RECOVERING` or `NOT_RECOVERING` from the existing state machine |
 
 ## 3. Requested fields — implemented or not
 
 | Requested field | Status | Nearest actual field | Gap |
 |---|---|---|---|
-| `reason` | **Partial** | `workers.failure_reason` (`:518`) | Worker-scoped only; no component-level `reason` |
-| `last_transition` | **Not implemented** | `uptime_ms`, `process_generation_ms` | Neither records the time of the last state change |
-| `impact` | **Not implemented** | `docs/runtime/COMPONENT_MATRIX.md:143` prose table | Not machine-readable in health JSON |
-| `recovery_state` | **Not implemented** | `RECOVERING` in the code state machine (`:6`) | Not exposed as a health field |
-| `UNKNOWN` value | **Not implemented** | Probe timeout = soft failure (`RUNTIME_CONTRACT.md:175`) | No explicit `UNKNOWN` state |
+| `reason` | **Additive E2 implemented** | root `reason` token | Component-level first-cause token derived from existing readiness/bridge/loss facts; worker token retained when `workers.failed` |
+| `last_transition` | **Additive E2 implemented** | root `last_transition_ms` | Last daemon `SystemState` change, stamped by `transition`, `recomputeHealth` and `reconcileLifecycle` |
+| `impact` | **Additive E2 implemented** | root `impact` token | Diagnostic scope (`none`, `event_pipeline`, `bridge_telemetry`, `data_integrity`, `subsystem_health`), not a host effect |
+| `recovery_state` | **Additive E2 implemented** | root `recovery_state` token | Projects existing `RECOVERING` as `RECOVERING`, otherwise `NOT_RECOVERING`; no field previously existed |
+| `UNKNOWN` value | **Not implemented** | Probe timeout = soft failure (`RUNTIME_CONTRACT.md:175`) | No explicit `UNKNOWN` state; adding one would be an owner-level contract revision and is explicitly out of scope |
 
-Adding these fields is a **source slice**, not a documentation edit. It would advance
-the build source and require fresh E3/E4/E5 proof; it is therefore out of this
-records-only patch. Exact current-source line locations, a no-ABI additive JSON
-patch skeleton and the state-vocabulary boundary are recorded in
-[`HEALTH-KERNEL-E1-AUDIT`](../../analysis/current-head/HEALTH-KERNEL-E1-AUDIT-AA3B7B0-20261128.md);
-source execution is pending the owner decision in
-[`SOURCE-SLICE-DECISIONS`](../SOURCE-SLICE-DECISIONS.md).
+The four additive keys are a source slice, not a documentation-only change.
+They advance the build source and are proven at E2 only; fresh E3/E4/E5 proof
+is still required before a DONE claim. Exact pre-slice line locations,
+the no-ABI additive JSON skeleton and the state-vocabulary boundary are recorded
+in [`HEALTH-KERNEL-E1-AUDIT`](../../analysis/current-head/HEALTH-KERNEL-E1-AUDIT-AA3B7B0-20261128.md);
+the applied transaction is recorded in
+[`AEGIS-003-HEALTH-ADDITIVE-E2`](../../analysis/current-head/AEGIS-003-HEALTH-ADDITIVE-E2-20261128.md).
 
 ## 4. Component families
 

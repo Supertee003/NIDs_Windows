@@ -12287,11 +12287,49 @@
       "status_basis": "Tracked patch record with exact commands and results at build source 3c78c96."
     },
     {
+      "id": "AEGIS-003-HEALTH-ADDITIVE-E2-20261128",
+      "head_sha": "c01e8091995e3afb9e93e48ea3bd1d7cb6ae5cce",
+      "timestamp": "2026-11-28",
+      "title": "AEGIS-003 — additive runtime health diagnostics at build source c01e809",
+      "level": "E2",
+      "component": "control / health contract",
+      "flow_id": "health fact -> state machine -> JSON -> operator display",
+      "description": "Owner option B source transaction on main. RuntimeState now stamps last_transition_ms on transition/recomputeHealth/reconcileLifecycle, and healthJson emits reason, impact and recovery_state from existing readiness/bridge/loss/lifecycle facts. No UNKNOWN state, state-vocabulary change, ABI, authority, gate or host effect was added; Python schema and both health fixtures pin the controlled tokens.",
+      "files_verified": [
+        "analysis/current-head/AEGIS-003-HEALTH-ADDITIVE-E2-20261128.md",
+        "src/control/state_machine.zig",
+        "docs/runtime/RUNTIME_CONTRACT.md",
+        "docs/runtime/HEALTH_MODEL.md",
+        "tests/runtime/test_health.py",
+        "tests/contracts/test_contract_fixtures.py",
+        "contracts/fixtures/control/runtime_health_response.json",
+        "contracts/fixtures/health/degraded_core.json"
+      ],
+      "tests": [
+        "zig fmt src/control/state_machine.zig; zig build test -> exit 0; 2159 passed / 10 skipped main, 1235 passed out-of-unit",
+        "python -m pytest -q tests/runtime/test_health.py tests/contracts/test_contract_fixtures.py -> 58 passed",
+        "python -m pytest -q tests/ --ignore=tests/test_e2e.py -m 'not host_live' -> 1519 passed, 1 skipped, 18 deselected, 27 subtests passed in 181.42s (0:03:01)",
+        "python tools/rebuild_truth.py -> valid: true at c01e809",
+        "python tools/release_engineering.py --refresh-digests -> 691 artifacts verify OK at c01e809",
+        "python tools/final_audit.py --check with owner anchor -> NOT SHIPPABLE (2/6 gates open: release_signature, soak_24h)"
+      ],
+      "result": "PASS_E2",
+      "finding": "Additive health serialization and contract proof only. AEGIS-003 remains PARTIAL; E3/E4/E5 evidence is still required before a DONE claim. No service, daemon, driver, finalizer or soak action was performed.",
+      "evidence_artifact": "analysis/current-head/AEGIS-003-HEALTH-ADDITIVE-E2-20261128.md",
+      "limitations": [
+        "E2 only; no current-source E3/E4/E5/E6/E7 claim.",
+        "UNKNOWN remains unimplemented; adding it is an owner-level contract revision.",
+        "Historical health screenshots do not show the new keys."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Tracked patch record with exact commands and results at build source c01e809."
+    },
+    {
       "id": "AEGIS-004B-V1-GATES-E2E3-20261128",
       "head_sha": "473b3fe4820568f9384b6768c25af59578e84f08",
       "timestamp": "2026-11-28",
       "title": "AEGIS-004b — v1 field gates and private-pipe reject-counter pin at build source 473b3fe",
-      "level": "E2 + narrow E3",
+      "level": "E2",
       "component": "canonical codecs / production pipe reader",
       "flow_id": "canonical frame -> decode/validate -> reject counter -> evidence",
       "description": "Owner option B source transaction on main. C++, shared reference Python and brain now enforce v1 struct_size=128, source 0..16/255, event_type 0..9/0xFFFFFFFF, policy_action 0..5 and confidence 0..100, matching Zig/Go; event_v1_005 is pinned as a negative confidence-255 vector. The CLI harness observes authoritative g_nose_frames_rejected and local PipeReaderStats.frames_rejected for a valid-length bad-magic frame. No wire, ABI, policy or authority change.",
@@ -19067,7 +19105,7 @@
   "evidence_level_summary": {
     "E0_count": 5,
     "E1_count": 55,
-    "E2_count": 174,
+    "E2_count": 176,
     "E3_count": 19,
     "E4_count": 5,
     "E5_count": 126,
