@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "3c78c96",
+      "commit": "473b3fe",
       "source": "src/main.zig",
       "classification": "CANONICAL"
     },
@@ -38,7 +38,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "3c78c96",
+      "commit": "473b3fe",
       "source": "rust-src/lib.rs",
       "classification": "CANONICAL"
     },
@@ -49,7 +49,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "3c78c96",
+      "commit": "473b3fe",
       "source": "src/windows/aegis_wfp.c",
       "classification": "CANONICAL"
     },
@@ -60,7 +60,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "3c78c96",
+      "commit": "473b3fe",
       "source": "src/windows/etw_native.c",
       "classification": "CANONICAL"
     },
@@ -71,7 +71,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "3c78c96",
+      "commit": "473b3fe",
       "source": "src/windows/fim_native.c",
       "classification": "CANONICAL"
     },
@@ -82,7 +82,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "go-nose-build-test",
-      "commit": "3c78c96",
+      "commit": "473b3fe",
       "source": "nose/main.go",
       "classification": "CANONICAL"
     },
@@ -93,7 +93,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-aggregator-build-test",
-      "commit": "3c78c96",
+      "commit": "473b3fe",
       "source": "go/aggregator/main.go",
       "classification": "SUPPORT"
     },
@@ -104,7 +104,7 @@
       "type": "library",
       "required": false,
       "ci_job": "shield-build",
-      "commit": "3c78c96",
+      "commit": "473b3fe",
       "source": "shield/src/lib.rs",
       "classification": "SUPPORT"
     },
@@ -115,7 +115,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "3c78c96",
+      "commit": "473b3fe",
       "source": "tools/aegisctl.py",
       "classification": "CANONICAL"
     },
@@ -126,7 +126,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "3c78c96",
+      "commit": "473b3fe",
       "source": "tools/installer.py"
     },
     {
@@ -136,7 +136,7 @@
       "type": "toolchain",
       "required": false,
       "ci_job": "ts-policy-build",
-      "commit": "3c78c96",
+      "commit": "473b3fe",
       "source": "ts_policy/",
       "classification": "SUPPORT",
       "note": "Advisory policy authoring only; no runtime artifact or enforcement authority."
@@ -148,7 +148,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "3c78c96",
+      "commit": "473b3fe",
       "source": "brain/"
     }
   ],
@@ -290,8 +290,8 @@
     },
     {
       "path": "brain/canonical_event.py",
-      "size": 13079,
-      "sha256": "59024c5db673f42c871002bc7716d864dfce3ca1276e23efcff717f841193ad9",
+      "size": 13281,
+      "sha256": "a055cb1c22eb83b72e8150c353d3aae2966ea516e8b53ff063bd6c3bce626a0a",
       "language": "python/cython"
     },
     {
@@ -1059,7 +1059,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23280,
-      "sha256": "7d78d668fabcc069878eee76c25fe13c2e3e95f68f85236d87907aebba2e8af1",
+      "sha256": "6792726063588d700d55bae8e1a12fe2542434534e93bcb1822fd641b06eed55",
       "language": "json"
     },
     {
@@ -2912,8 +2912,8 @@
     },
     {
       "path": "src/tests/cli/nose_pipe_e2e_cli.zig",
-      "size": 11907,
-      "sha256": "191095ebac1f5c361398376e73df20c6bc7e67fe3e22916722df6d38a2f11f6a",
+      "size": 13476,
+      "sha256": "04fa99f6260911bd13c08b2459ec95ff7e052e86f2211760a4ad7d538a70ce82",
       "language": "zig"
     },
     {
