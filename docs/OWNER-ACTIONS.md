@@ -28,6 +28,19 @@ No combination of local tests, documentation or static review substitutes for A/
 
 **Agent's immediate next actions once A exists:** read the artifact and raw traces; byte-exact copy into tracked raw artifacts with SHA-256 manifest; apply the acceptance rule; re-run truth/summary/doc/release/final_audit; rebaseline with the real verdict; commit/push and comment #54/#55. A PASS is still only a gate input — never E7, a new signature or a new release by itself.
 
+### 2a. Corrected handoff at `c01e809` — planning only, not evidence
+
+The external soak pair located earlier is **HISTORICAL and must not be reused** for this build: `D:\aegis-tmp\owner_soak_start.ps1` pins `build_source=aa3b7b0…` and `loss_budget=3500` in `start.json`, and `owner_soak_finalize.ps1` inherits those values from that start artifact. `analysis/current-head/soak-466a226.ps1` targets the older published candidate (`466a226`) and its old trust anchor, and also passes `--loss-budget 3500`. Reusing any of them would recreate the build/runtime mismatch and the forbidden budget change behind STOP-THE-LINE #55.
+
+No current-source start/finalize script has been supplied in the tree. The agent will not author, run or edit a host script. The owner must arm, by an approved mechanism they control, exactly **one** 24 h SYSTEM finalizer window whose installed binary set is verifiably the current build source `c01e8091995e3afb9e93e48ea3bd1d7cb6ae5cce`, with:
+
+- stale `214622` finalizer and `225843` watcher removed; exactly one finalizer per window;
+- no driver swap, service/binary restore, agent I/O or other host work during the window;
+- unchanged gate thresholds; no `loss_budget=3500`, waiver or pre-declared PASS;
+- real artifacts left at their own paths: `start.json`, `baseline.json`, `soak.baseline.json`, `soak-initial.json`, `soak-final.json`, `finalize.log`, `result.json` and the raw transcript.
+
+The owner needs to send only the run directory / `result.json` path and confirmation that cleanup and arming are complete. The agent then applies the unchanged acceptance rule in §2 and the read-only consume/rebaseline sequence in `docs/PATH-TO-COMPLETE.md` §3. This subsection changes no gate and is not soak evidence.
+
 ## 3. Card B — source rebaseline decision (#47/#50/#51/#53)
 
 **Owner must decide:** whether to authorize patch transactions for #47 items 1–3 (minifilter unload UAF/race, `FltCloseClientPort`, persistent WFP block filters) and 6 (per-file release-gate verification), plus #50 kernel/WFP, #51 network parity and #53 testing maturity; and whether a new **authorized host window** is granted for driver-load / full matrix checks.
