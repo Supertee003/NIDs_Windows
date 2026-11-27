@@ -12036,6 +12036,35 @@
       "status_basis": "verbatim result.json SHA-256 19D12276FA1C143BF3383BE6486E49F0C7872D91B257878ABE0AF478C2075323 and verbatim-manifest.json byte-exact source/copy hash equality"
     },
     {
+      "id": "OWNER-KEY-ATTESTATION-AA3B7B0-20261128",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-28",
+      "title": "Owner-delegated Ed25519 attestation over the current-head records-tip identity (not a release or E7)",
+      "level": "E2",
+      "component": "tools/sign_release.py with owner-approved current-source key",
+      "flow_id": "owner authority -> records-tip identity bytes -> SHA256SUMS -> Ed25519 signature -> verify",
+      "description": "The owner explicitly delegated signing on 2026-11-28. The existing approved current-source key (public DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU=, private key outside the tracked tree) signed SHA256SUMS over CURRENT-SOURCE-IDENTITY.txt, which states only already-recorded facts: build source aa3b7b0, records tip f042f8a, board 5/6 with soak_24h OPEN, the two real FAIL finalizers and pinned runtime hashes. sign_release.py --verify exited 0 over signed_digest A810F023E1871427... This attests integrity of the honest record only; it creates no new release identity, no E5/E6/E7, no signed-driver claim and does not close soak_24h.",
+      "files_verified": [
+        "analysis/current-head/OWNER-KEY-ATTESTATION-AA3B7B0-20261128.md",
+        "analysis/current-head/owner-key-attestation-aa3b7b0-20261128/CURRENT-SOURCE-IDENTITY.txt",
+        "analysis/current-head/owner-key-attestation-aa3b7b0-20261128/SHA256SUMS",
+        "analysis/current-head/owner-key-attestation-aa3b7b0-20261128/signatures.json"
+      ],
+      "tests": [
+        "sign_release.py --verify --dir analysis/current-head/owner-key-attestation-aa3b7b0-20261128 -> PASS (exit 0)"
+      ],
+      "result": "PASS_E2",
+      "finding": "Cryptographic integrity attestation of the records tip with the owner-approved key; scope excludes release, signature identity change, E7, signed driver and soak credit.",
+      "evidence_artifact": "analysis/current-head/OWNER-KEY-ATTESTATION-AA3B7B0-20261128.md",
+      "limitations": [
+        "No private key bytes are tracked or present in chat; only the approved public key is recorded.",
+        "The signature covers CURRENT-SOURCE-IDENTITY.txt via SHA256SUMS only; it is not release-candidate verification and does not satisfy commit_contains_runtime.",
+        "No HLK/catalog/Authenticode/driver-load evidence exists or was created; E7 remains NOT_PROVEN."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Reproducible sign_release.py --verify PASS with the approved public anchor; owner delegation recorded in the analysis record."
+    },
+    {
       "id": "PIPE-READER-SHUTDOWN-E5-AA3B7B0-20261126",
       "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
       "timestamp": "2026-11-26",
@@ -18775,7 +18804,7 @@
   "evidence_level_summary": {
     "E0_count": 5,
     "E1_count": 51,
-    "E2_count": 171,
+    "E2_count": 172,
     "E3_count": 19,
     "E4_count": 5,
     "E5_count": 126,

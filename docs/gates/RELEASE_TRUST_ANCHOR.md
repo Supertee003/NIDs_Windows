@@ -52,6 +52,18 @@ DCNPphsqfklICz6MxxfS5jP005BOOGbug8Vxgpn8cZU=
 
 Full record: `analysis/current-head/RELEASE-SIGNATURE-AA3B7B0-20261126.md`.
 
+### Owner-delegated records-tip attestation (2026-11-28)
+
+The owner explicitly authorized signing on their behalf. The same approved key
+signed `analysis/current-head/owner-key-attestation-aa3b7b0-20261128/SHA256SUMS`
+over `CURRENT-SOURCE-IDENTITY.txt` (`signed_digest`
+`A810F023E18714273524A5D3D0FDAB4D22D1D1F9901AF360C5A8B6F5DF67E314`,
+`sign_release.py --verify` PASS). This is an **integrity attestation of the
+honest records tip**, not a new release, not E7, not a signed-driver claim, and
+it does not close `soak_24h`. It lives under `analysis/`, so the release gate's
+signature scan is unchanged. Record:
+`analysis/current-head/OWNER-KEY-ATTESTATION-AA3B7B0-20261128.md`.
+
 ## Operator use
 
 ```powershell

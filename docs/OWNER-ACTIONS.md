@@ -36,6 +36,14 @@ No combination of local tests, documentation or static review substitutes for A/
 
 ## 4. Card C — signature / E7 / signed driver
 
+**Agent action completed 2026-11-28:** under owner delegation, the approved
+current-source Ed25519 key signed a records-tip identity attestation
+(`analysis/current-head/OWNER-KEY-ATTESTATION-AA3B7B0-20261128.md`, verify PASS,
+digest `A810F023E1871427...`). No private key was tracked or printed. This is
+integrity of the honest record only — **not** a new release, E7, signed driver
+or soak credit. The remaining part of Card C (real HLK/catalog/Authenticode
+evidence) still needs artifacts produced by external tooling; none exists here.
+
 **Owner must supply:** confirmation whether a **new** Ed25519 release signature is wanted (key stays owner-held at `D:\aegis-tmp\keys\aegis-release-aa3b7b0.ed25519`; never paste it into chat or commit it), and real HLK/catalog/Authenticode evidence for E7 or signed drivers — or say "none".
 
 **Agent can prepare now:** record the exact paths and the no-fabrication boundary; keep the published identity `v1.1` / `466a226` / `a53eda8` and existing digest `94F65BCC…` unchanged.
