@@ -1,0 +1,42 @@
+{
+  "record_id": "SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127",
+  "captured_at": "2026-11-27T23:02:53+07:00",
+  "source_run_dir": "D:\\aegis-tmp\\owner-soak-aa3b7b0-20261126-225843",
+  "destination_dir": "analysis/current-head/raw-aa3b7b0-20261126/soak-225843-finalizer",
+  "copy_method": "byte-for-byte Copy-Item; SHA-256 verified equal for source and copy; no transcode and no value edits",
+  "files": [
+    {
+      "name": "result.json",
+      "source_sha256": "19D12276FA1C143BF3383BE6486E49F0C7872D91B257878ABE0AF478C2075323",
+      "copy_sha256": "19D12276FA1C143BF3383BE6486E49F0C7872D91B257878ABE0AF478C2075323",
+      "bytes": 6591,
+      "source_last_write_time": "2026-11-27T22:59:23.9554341+07:00",
+      "hash_match": true
+    },
+    {
+      "name": "soak-final.json",
+      "source_sha256": "56571085A57C9915ECE96680EA093438A8C6F266BC52660CC2935A4D13B9D821",
+      "copy_sha256": "56571085A57C9915ECE96680EA093438A8C6F266BC52660CC2935A4D13B9D821",
+      "bytes": 2742,
+      "source_last_write_time": "2026-11-27T22:59:11.1363978+07:00",
+      "hash_match": true
+    },
+    {
+      "name": "finalize.log",
+      "source_sha256": "1D61676613E31EF9897B277E4EC5E42972B90858012B0BFDD1CF69617207C555",
+      "copy_sha256": "1D61676613E31EF9897B277E4EC5E42972B90858012B0BFDD1CF69617207C555",
+      "bytes": 20616,
+      "source_last_write_time": "2026-11-27T22:59:23.9612443+07:00",
+      "hash_match": true
+    }
+  ],
+  "clock_note": "The scripts label log lines with Z, but filesystem LastWriteTime matches the operator's +07:00 clock. Treat those stamps as local clock labels, not verified UTC.",
+  "verdict_in_verbatim_copy": {
+    "check_exit": 3,
+    "verdict": "FAIL",
+    "elapsed_hours": 24.0,
+    "problems_count": 7,
+    "restore_verified": true
+  },
+  "no_claim": "This is a real finalizer artifact for run 20261126-225843, but it is FAIL and the runtime was swapped at 21:47:03 by the stale 214622 finalizer. It is not a PASS, does not close soak_24h, and creates no E5/E6/E7, signature or driver-load claim."
+}

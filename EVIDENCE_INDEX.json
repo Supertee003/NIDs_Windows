@@ -12008,6 +12008,34 @@
       "status_basis": "verbatim result.json SHA-256 0E3D136EB5FFE817192E239B3625379336F8BB5FDDDB3F8570E5504DAF6E4C70 and verbatim-manifest.json byte-exact source/copy hash equality"
     },
     {
+      "id": "SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-27",
+      "title": "Real SYSTEM finalizer verdict for soak 225843 is FAIL, with the runtime already swapped mid-window",
+      "level": "E0",
+      "component": "SYSTEM scheduled finalizer + host runtime",
+      "flow_id": "24 h window -> final check FAIL -> verified restore -> honest FAIL record",
+      "description": "The real finalizer artifact for run 20261126-225843 was written at 22:59:23 on 11/27: check_exit=3, verdict=FAIL, elapsed_hours=24.0, seven problems (daemon uptime 1.2h, DEGRADED, process generation 1795708740368->1795790817381, queue_dropped_total +115976, nose_frames_dropped +4904, minifilter_ring_dropped +6889891, minifilter_pipeline_dropped +29120) and restore.verified=true, errors=[]. It fails the #54 acceptance rule on verdict, problems and meaningful counter deltas. Independently, the stale 214622 finalizer had restored its pre-soak binaries over this window at 21:47:03 (issue #55), so the window is VOID for current-source soak evidence whatever the verdict. soak_24h stays OPEN; no PASS, E5/E6/E7, signature or driver-load claim is created.",
+      "files_verified": [
+        "analysis/current-head/SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127.md",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-225843-finalizer/result.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-225843-finalizer/soak-final.json",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-225843-finalizer/finalize.log",
+        "analysis/current-head/raw-aa3b7b0-20261126/soak-225843-finalizer/verbatim-manifest.json"
+      ],
+      "tests": [],
+      "result": "FAIL_RECORDED_NO_EVIDENCE_CREDIT",
+      "finding": "Real current-window finalizer verdict is FAIL and the window is VOID for a mid-window runtime swap; neither closes nor relaxes a gate.",
+      "evidence_artifact": "analysis/current-head/SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127.md",
+      "limitations": [
+        "verdict=FAIL and problems is non-empty; #54 acceptance not met.",
+        "Runtime changed at 21:47:03, so counter deltas cannot be attributed to a stable aa3b7b0 runtime.",
+        "No PASS, E5/E6/E7, signature or driver-load proof is created."
+      ],
+      "status": "VOIDED_FAIL",
+      "status_basis": "verbatim result.json SHA-256 19D12276FA1C143BF3383BE6486E49F0C7872D91B257878ABE0AF478C2075323 and verbatim-manifest.json byte-exact source/copy hash equality"
+    },
+    {
       "id": "PIPE-READER-SHUTDOWN-E5-AA3B7B0-20261126",
       "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
       "timestamp": "2026-11-26",
@@ -18745,7 +18773,7 @@
     }
   ],
   "evidence_level_summary": {
-    "E0_count": 4,
+    "E0_count": 5,
     "E1_count": 51,
     "E2_count": 171,
     "E3_count": 19,

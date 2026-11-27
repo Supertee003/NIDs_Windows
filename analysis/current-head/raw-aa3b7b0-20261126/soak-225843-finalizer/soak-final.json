@@ -1,0 +1,79 @@
+{
+  "verdict": "FAIL",
+  "soak_start": "2026-11-26T22:59:10",
+  "checked_at": "2026-11-27T22:59:10",
+  "elapsed_hours": 24.0,
+  "required_hours": 24.0,
+  "services": {
+    "AegisNids": "RUNNING",
+    "AegisAggregator": "RUNNING",
+    "AegisWfp": "RUNNING",
+    "AegisMinifilter": "RUNNING"
+  },
+  "daemon_uptime_hours": 1.2,
+  "daemon_state": "RUNNING",
+  "daemon_health_state": "DEGRADED",
+  "data_integrity": {
+    "queue_dropped_total": 115976,
+    "nose_frames_rejected": 0,
+    "nose_frames_dropped": 4904,
+    "nose_pipe_errors": 0,
+    "minifilter_ring_dropped": 6889891,
+    "minifilter_pipeline_dropped": 29120,
+    "loss_budget": 3500,
+    "shed_overload": 0,
+    "process_generation_ms": 1795790817381
+  },
+  "shed_overload": 0,
+  "loss_budget": 0,
+  "shed_budget": 0,
+  "scm_restarts": [],
+  "problems": [
+    "daemon uptime 1.20h is shorter than the soak 24.00h (process restarted mid-soak)",
+    "daemon reports DEGRADED (state=DEGRADED, runtime_state=RUNNING)",
+    "daemon process generation changed inside the window (1795708740368 -> 1795790817381): counter deltas are meaningless",
+    "queue_dropped_total grew by 115976 inside the window (baseline 0, now 115976) exceeding the loss budget 0",
+    "nose_frames_dropped grew by 4904 inside the window (baseline 0, now 4904) exceeding the loss budget 0",
+    "minifilter_ring_dropped grew by 6889891 inside the window (baseline 0, now 6889891) exceeding the loss budget 0",
+    "minifilter_pipeline_dropped grew by 29120 inside the window (baseline 0, now 29120) exceeding the loss budget 0"
+  ],
+  "baseline": {
+    "recorded_at": "2026-11-26T22:59:10",
+    "data_integrity": {
+      "queue_dropped_total": 0,
+      "nose_frames_rejected": 0,
+      "nose_frames_dropped": 0,
+      "nose_frames_dropped_framing": 0,
+      "nose_frames_dropped_midframe": 0,
+      "nose_frames_dropped_shape": 0,
+      "nose_frames_dropped_identity": 0,
+      "nose_frames_dropped_capacity": 0,
+      "nose_pipe_errors": 0,
+      "pipeline_processing_errors": 0,
+      "minifilter_ring_dropped": 0,
+      "minifilter_pipeline_dropped": 0,
+      "loss_budget": 3500,
+      "shed_overload": 0,
+      "process_generation_ms": 1795708740368
+    },
+    "shed_overload": 0
+  },
+  "counters_absolute": {
+    "queue_dropped_total": 115976,
+    "nose_frames_rejected": 0,
+    "nose_frames_dropped": 4904,
+    "nose_pipe_errors": 0,
+    "minifilter_ring_dropped": 6889891,
+    "minifilter_pipeline_dropped": 29120,
+    "shed_overload": 0
+  },
+  "counters_delta": {
+    "queue_dropped_total": 115976,
+    "nose_frames_rejected": 0,
+    "nose_frames_dropped": 4904,
+    "nose_pipe_errors": 0,
+    "minifilter_ring_dropped": 6889891,
+    "minifilter_pipeline_dropped": 29120,
+    "shed_overload": 0
+  }
+}
