@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-26T08:47:46.678124+00:00",
+  "generated_at": "2026-11-27T19:17:42.872799+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "C:\\Users\\User\\.local\\share\\opencode\\worktree\\a6f58a\\rule-coverage-20261119",
-  "total_files": 3265,
+  "total_files": 3581,
   "by_class": {
-    "canonical-docs": 609,
-    "canonical-build": 314,
-    "unclassified": 27,
-    "canonical-source": 1802,
-    "canonical-test": 417,
-    "canonical-config": 62,
+    "canonical-docs": 669,
+    "canonical-build": 384,
+    "unclassified": 29,
+    "canonical-source": 1963,
+    "canonical-test": 436,
+    "canonical-config": 66,
     "legacy": 34
   },
   "files": [
@@ -264,7 +264,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 64208
+      "size": 66042
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -403,6 +403,12 @@
       "class": "canonical-docs",
       "role": "architecture-decision",
       "size": 4614
+    },
+    {
+      "path": "analysis/current-head/AEGIS-001-020-DISPOSITION-20261128.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 11570
     },
     {
       "path": "analysis/current-head/AI-HANDOFF-AUDIT-20261119.md",
@@ -555,6 +561,12 @@
       "size": 38408
     },
     {
+      "path": "analysis/current-head/CODEC-VALIDATION-E1-AUDIT-AA3B7B0-20261128.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6309
+    },
+    {
       "path": "analysis/current-head/CONFIG-VALIDATE-001-20261114.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -585,6 +597,12 @@
       "size": 10359
     },
     {
+      "path": "analysis/current-head/CURRENT-HEAD-CLOSEOUT-AA3B7B0-20261126.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 8243
+    },
+    {
       "path": "analysis/current-head/CURRENT-STATUS-20261118.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -613,6 +631,12 @@
       "class": "canonical-build",
       "role": "build-config",
       "size": 666
+    },
+    {
+      "path": "analysis/current-head/DEEP-TECHNICAL-AUDIT-AA3B7B0-20261127.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 29907
     },
     {
       "path": "analysis/current-head/DETECT-L4-001-20261116.md",
@@ -823,6 +847,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 6601
+    },
+    {
+      "path": "analysis/current-head/HEALTH-KERNEL-E1-AUDIT-AA3B7B0-20261128.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 7702
     },
     {
       "path": "analysis/current-head/HEALTH-PROJECTION-001-20261109.md",
@@ -1185,6 +1215,30 @@
       "size": 3960
     },
     {
+      "path": "analysis/current-head/owner-key-attestation-aa3b7b0-20261128/CURRENT-SOURCE-IDENTITY.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1160
+    },
+    {
+      "path": "analysis/current-head/owner-key-attestation-aa3b7b0-20261128/SHA256SUMS",
+      "class": "unclassified",
+      "role": "other",
+      "size": 94
+    },
+    {
+      "path": "analysis/current-head/owner-key-attestation-aa3b7b0-20261128/signatures.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 362
+    },
+    {
+      "path": "analysis/current-head/OWNER-KEY-ATTESTATION-AA3B7B0-20261128.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2716
+    },
+    {
       "path": "analysis/current-head/OWNER-RUN-HOST-PROOF-RUNBOOK-20261126.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -1195,6 +1249,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 5767
+    },
+    {
+      "path": "analysis/current-head/PIPE-READER-SHUTDOWN-E5-AA3B7B0-20261126.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3006
     },
     {
       "path": "analysis/current-head/POLICY-MUTATE-001-PATCH.md",
@@ -1287,6 +1347,462 @@
       "size": 2800
     },
     {
+      "path": "analysis/current-head/R2003-CMDLINE-HOST-PROOF-E5-AA3B7B0-20261126.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3687
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/fuzzbench/aa3_perf_latency.log.transcode.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1175
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/fuzzbench/aa3_perf_quick.log.transcode.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1171
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/fuzzbench/bin_hashes.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 614
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/netbench/baseline.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 565
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/netbench/minifilter_before.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 11211
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/netbench/netbench.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 13773
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/netbench/preflight_0.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 12841
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/netbench/restore.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 565
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/netbench/result.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 43039
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/netbench/transcript.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1214
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v1-baseline_r2003.raw.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 247
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v1-baseline_r2003.raw.txt.transcode.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1181
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v1-negative_wire_marker.raw.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 516
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v1-negative_wire_marker.raw.txt.transcode.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1194
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v1-positive_marker.raw.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 510
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v1-positive_marker.raw.txt.transcode.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1184
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v1-result.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 3769
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v1-transcript.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2086
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-baseline_r2003.raw.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 247
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-baseline_r2003.raw.txt.transcode.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1181
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-negative_cmd_marker.raw.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 251
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-negative_cmd_marker.raw.txt.transcode.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1191
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-negative_wire_marker.raw.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 252
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-negative_wire_marker.raw.txt.transcode.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1193
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-positive_marker.raw.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 511
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-positive_marker.raw.txt.transcode.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1184
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-result.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 3803
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/r2003-e5/v2-transcript.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1770
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/s2s3-probe-defect/result.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 64254
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/s2s3-probe-defect/s2.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 4136
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/s2s3-probe-defect/transcript.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4885
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/baseline.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 564
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/nose1.stderr.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 582
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/nose2.stderr.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 896
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/restore.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 564
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/result.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 64356
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/s2.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 4234
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/s3_post.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 12930
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/s3_pre.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 12905
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/traffic1.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 175
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/traffic2.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 175
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/transcript.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5000
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/wait2_0.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 12905
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/s2s3-success/wait_0.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 12857
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/shutdown-e5/harness-provenance.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 241
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/shutdown-e5/i44_e45_aa3b7b0_elevated_run.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3481
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/shutdown-e5/i44_e45_aa3b7b0_inject.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1647
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/shutdown-e5/i44_e45_aa3b7b0_inject.txt.transcode.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1191
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/shutdown-e5/i44_e45_aa3b7b0_prestate.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1984
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-225843-finalizer/result.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 6591
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-225843-finalizer/soak-final.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2742
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-225843-finalizer/verbatim-manifest.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2033
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void/abort.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2915
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void/health-at-abort.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 12993
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void/soak-initial.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2183
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void/soak.baseline.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 602
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void/start.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2026
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void/transcript.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3527
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-defer/baseline.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 602
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-defer/defer-void.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2548
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-defer/health-at-defer-void.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 12774
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-defer/soak.baseline.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 602
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-defer/start.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2032
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-defer/transcript.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3522
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first/baseline.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 602
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first/health-at-void-gaps-first.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 12987
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first/soak-initial.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2183
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first/soak.baseline.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 602
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first/start.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2517
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first/transcript.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3939
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first/void-gaps-first.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2623
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first-late-finalizer/result.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 6905
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first-late-finalizer/soak-final.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2854
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/soak-void-gaps-first-late-finalizer/verbatim-manifest.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1966
+    },
+    {
+      "path": "analysis/current-head/raw-aa3b7b0-20261126/TRANSCODE-SIDECARS.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3789
+    },
+    {
       "path": "analysis/current-head/RB-024-F4CDE3C-20261119.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -1359,10 +1875,22 @@
       "size": 6828
     },
     {
+      "path": "analysis/current-head/RELEASE-SIGNATURE-AA3B7B0-20261126.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3754
+    },
+    {
       "path": "analysis/current-head/RELEASE-WAIVER-001-20261114.md",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 3595
+    },
+    {
+      "path": "analysis/current-head/REMAINING-GAPS-DISPOSITION-AA3B7B0-20261126.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5276
     },
     {
       "path": "analysis/current-head/reset-soak-baseline-466a226.ps1",
@@ -1437,6 +1965,12 @@
       "size": 4546
     },
     {
+      "path": "analysis/current-head/S2S3-HOST-PROOF-E5-AA3B7B0-20261126.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4898
+    },
+    {
       "path": "analysis/current-head/S3-PRODUCER-IDENTITY-EVIDENCE-20261125.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -1459,6 +1993,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 2780
+    },
+    {
+      "path": "analysis/current-head/SENSOR-COVERAGE-E1-AUDIT-AA3B7B0-20261128.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5567
     },
     {
       "path": "analysis/current-head/SERVICE-EXISTS-001-20261114.md",
@@ -1491,6 +2031,12 @@
       "size": 3468
     },
     {
+      "path": "analysis/current-head/SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5191
+    },
+    {
       "path": "analysis/current-head/SOAK-25H-20261113.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -1507,6 +2053,24 @@
       "class": "canonical-source",
       "role": "source",
       "size": 2965
+    },
+    {
+      "path": "analysis/current-head/SOAK-ATTEMPT-VOID-AA3B7B0-20261126.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1810
+    },
+    {
+      "path": "analysis/current-head/SOAK-ATTEMPT-VOID-DEFER-AA3B7B0-20261126.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2056
+    },
+    {
+      "path": "analysis/current-head/SOAK-ATTEMPT-VOID-GAPS-FIRST-AA3B7B0-20261126.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2208
     },
     {
       "path": "analysis/current-head/SOAK-BASELINE-001-20261114.md",
@@ -1555,6 +2119,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 3758
+    },
+    {
+      "path": "analysis/current-head/SOAK-VOID-LATE-FINALIZER-GAPS-FIRST-AA3B7B0-20261127.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5751
     },
     {
       "path": "analysis/current-head/SOAK-WINDOW-466A226-20261120.md",
@@ -1627,6 +2197,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4519
+    },
+    {
+      "path": "analysis/current-head/TEST-MATRIX-AA3B7B0-20261126.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3399
     },
     {
       "path": "analysis/current-head/TEST-SCOPE-001-20261109.md",
@@ -1825,6 +2401,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 2218
+    },
+    {
+      "path": "analysis/historical/HISTORICAL-NAMESPACE.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2531
     },
     {
       "path": "analysis/history-rewrite-20261106/commit-map.txt",
@@ -2226,7 +2808,7 @@
       "path": "AUTHORITY_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 18935
+      "size": 19120
     },
     {
       "path": "brain/__init__.py",
@@ -2286,7 +2868,7 @@
       "path": "brain/canonical_event.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 12768
+      "size": 13079
     },
     {
       "path": "brain/core_routing.py",
@@ -2616,7 +3198,7 @@
       "path": "ci_coverage.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 5999
+      "size": 6149
     },
     {
       "path": "CMakeLists.txt",
@@ -2802,7 +3384,7 @@
       "path": "CONTRACT_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 15770
+      "size": 16386
     },
     {
       "path": "contracts/fixtures/abi/event_boundaries.json",
@@ -3132,7 +3714,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 77268
+      "size": 78248
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3162,7 +3744,7 @@
       "path": "docs/architecture/ARCHITECTURE_CANONICAL.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10307
+      "size": 10618
     },
     {
       "path": "docs/architecture/authority-map.md",
@@ -3300,7 +3882,7 @@
       "path": "docs/architecture/SECURITY_BOUNDARIES.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9273
+      "size": 9543
     },
     {
       "path": "docs/architecture/SHIELD-AUTHORITY.md",
@@ -3426,19 +4008,25 @@
       "path": "docs/DEPLOYMENT_COMPATIBILITY.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2462
+      "size": 2717
+    },
+    {
+      "path": "docs/detection/DETECTION_COVERAGE.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2889
     },
     {
       "path": "docs/DETECTION_VALIDATION.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 12806
+      "size": 13368
     },
     {
       "path": "docs/DOCS_LIFECYCLE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3030
+      "size": 5080
     },
     {
       "path": "docs/ENV_VARS.md",
@@ -3450,13 +4038,13 @@
       "path": "docs/evidence/PROVENANCE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5117
+      "size": 5654
     },
     {
       "path": "docs/evidence/README.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 1637
+      "size": 1934
     },
     {
       "path": "docs/FILE_CLASSIFICATION.md",
@@ -3480,13 +4068,13 @@
       "path": "docs/gates/PRODUCTION_READINESS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10876
+      "size": 13508
     },
     {
       "path": "docs/gates/RELEASE_TRUST_ANCHOR.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2223
+      "size": 4325
     },
     {
       "path": "docs/gates/T17_benchmark_results.md",
@@ -3498,13 +4086,13 @@
       "path": "docs/gates/T20_100pct_audit.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 57680
+      "size": 56166
     },
     {
       "path": "docs/gates/T20_100pct_audit.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 1918
+      "size": 1819
     },
     {
       "path": "docs/gates/T20_final_regression.json",
@@ -3759,6 +4347,12 @@
       "size": 11381
     },
     {
+      "path": "docs/history/INDEX.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1734
+    },
+    {
       "path": "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -3783,10 +4377,16 @@
       "size": 4339
     },
     {
+      "path": "docs/operations/OPERATOR_COMMANDS.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2993
+    },
+    {
       "path": "docs/operations/QUICK_START.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4385
+      "size": 4573
     },
     {
       "path": "docs/OPERATOR_COMMAND_MAP.md",
@@ -3795,10 +4395,22 @@
       "size": 8687
     },
     {
+      "path": "docs/OWNER-ACTIONS.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6355
+    },
+    {
       "path": "docs/P0_P2_OPERATOR_ACCEPTANCE.md",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 1908
+    },
+    {
+      "path": "docs/PATH-TO-COMPLETE.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 11666
     },
     {
       "path": "docs/PEP_QUARANTINE_STATUS.md",
@@ -3840,13 +4452,13 @@
       "path": "docs/portfolio/APPLY_NOW.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4713
+      "size": 4925
     },
     {
       "path": "docs/portfolio/ARCHITECTURE_EN.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10938
+      "size": 11506
     },
     {
       "path": "docs/portfolio/CASE_STUDY.md",
@@ -3855,22 +4467,28 @@
       "size": 3646
     },
     {
+      "path": "docs/portfolio/CURRENT_HEAD_FUZZ_BENCH-20261126.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5623
+    },
+    {
       "path": "docs/portfolio/DEMO.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5661
+      "size": 5972
     },
     {
       "path": "docs/portfolio/DETECTION_CATALOG.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9420
+      "size": 9958
     },
     {
       "path": "docs/portfolio/DETECTION_MATRIX_CURRENT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7249
+      "size": 7677
     },
     {
       "path": "docs/portfolio/images/dashboard.png",
@@ -3894,7 +4512,7 @@
       "path": "docs/portfolio/INTERVIEW_PREP.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9493
+      "size": 10034
     },
     {
       "path": "docs/portfolio/OBSERVED_PERFORMANCE.md",
@@ -3906,25 +4524,25 @@
       "path": "docs/portfolio/PERFORMANCE_REPORT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5060
+      "size": 5663
     },
     {
       "path": "docs/portfolio/RESUME_PROJECT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5491
+      "size": 5576
     },
     {
       "path": "docs/portfolio/SENSOR_COVERAGE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3211
+      "size": 4128
     },
     {
       "path": "docs/portfolio/VERIFICATION_SUMMARY.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6473
+      "size": 8614
     },
     {
       "path": "docs/PROJECT_ANALYSIS_2026-09-14.md",
@@ -3933,10 +4551,28 @@
       "size": 36498
     },
     {
+      "path": "docs/protocol/CANONICAL_EVENT.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 646
+    },
+    {
+      "path": "docs/protocol/GOLDEN_VECTORS.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 748
+    },
+    {
       "path": "docs/protocol/INDEX.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3743
+      "size": 4070
+    },
+    {
+      "path": "docs/protocol/WIRE_FORMAT.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 726
     },
     {
       "path": "docs/runbooks/RB-001-block-ip-via-pep.md",
@@ -4080,7 +4716,7 @@
       "path": "docs/runbooks/RB-024-final-release-window.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 12153
+      "size": 12168
     },
     {
       "path": "docs/runbooks/README.md",
@@ -4104,13 +4740,13 @@
       "path": "docs/runtime/HEALTH_MODEL.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5636
+      "size": 5969
     },
     {
       "path": "docs/runtime/KERNEL_LIFECYCLE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3580
+      "size": 4374
     },
     {
       "path": "docs/runtime/LIFECYCLE.md",
@@ -4161,10 +4797,22 @@
       "size": 1922
     },
     {
+      "path": "docs/SCOPE.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3231
+    },
+    {
+      "path": "docs/security/THREAT_MODEL.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5851
+    },
+    {
       "path": "docs/SECURITY_THREAT_MODEL.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9735
+      "size": 11131
     },
     {
       "path": "docs/SLICE_C_LAB_GATE_DESIGN.md",
@@ -4173,10 +4821,22 @@
       "size": 16587
     },
     {
+      "path": "docs/SOURCE-SLICE-DECISIONS.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3615
+    },
+    {
       "path": "docs/SPRINT_2_PLAN.md",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 3376
+    },
+    {
+      "path": "docs/START-HERE.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5228
     },
     {
       "path": "docs/STEP06_completion_report.md",
@@ -4188,7 +4848,7 @@
       "path": "docs/STRUCTURE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8271
+      "size": 8516
     },
     {
       "path": "docs/TECHNOLOGY_DECISIONS.md",
@@ -4206,13 +4866,13 @@
       "path": "docs/testing/HOST_LIVE_DIAGNOSIS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6148
+      "size": 6291
     },
     {
       "path": "docs/testing/RESULTS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7236
+      "size": 8120
     },
     {
       "path": "docs/USER_OPERATIONS_GUIDE.md",
@@ -4626,13 +5286,13 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1701381
+      "size": 1745993
     },
     {
       "path": "FLOW_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 33952
+      "size": 34208
     },
     {
       "path": "go/aggregator/alert.go",
@@ -4734,7 +5394,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 517299
+      "size": 517298
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4818,7 +5478,7 @@
       "path": "nose/canonical.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 26298
+      "size": 26619
     },
     {
       "path": "nose/canonical_test.go",
@@ -4926,7 +5586,7 @@
       "path": "nose/payload_v3_test.go",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 11114
+      "size": 11988
     },
     {
       "path": "nose/pipe_writer.go",
@@ -5022,7 +5682,7 @@
       "path": "README.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 42639
+      "size": 44082
     },
     {
       "path": "reference_map.json",
@@ -5094,7 +5754,7 @@
       "path": "release/release-status.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 6374
+      "size": 11228
     },
     {
       "path": "release/T20-final/466a226/brain/__init__.py",
@@ -7300,6 +7960,1242 @@
     },
     {
       "path": "release/T20-final/46b93dc/tools/upgrade_rollback.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 8482
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/__init__.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 29
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/acceptance_gates.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1854
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/aegis_brain_cython/__init__.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 444
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/aegis_brain_cython/bridge.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 8189
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/aegis_brain_cython/fast_scan.c",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 468223
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/aegis_brain_cython/fast_scan.pyx",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6919
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/aegis_brain_cython/README.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1598
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/aegis_brain_cython/setup.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1287
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/aegis_brain_cython/test_fast_scan.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 4768
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/canonical_event.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 12768
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/core_routing.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1946
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/cython/__init__.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1601
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/cython/_py_fallback.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3242
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/cython/aegis_hotspot.c",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1227641
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/cython/aegis_hotspot.pxd",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1434
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/cython/aegis_hotspot.pyx",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 10814
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/cython/bridge_ipc.c",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 684926
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/cython/bridge_ipc.pyx",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 13512
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/cython/cython_regex_scan.c",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 421825
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/cython/cython_regex_scan.pyx",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5367
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/cython/sensor_pipe.c",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 332052
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/cython/sensor_pipe.pyx",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2419
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/cython/setup.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2472
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/detection_result.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3671
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/detection_scan.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2534
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/enforcement_pipeline.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2501
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/enforcement_receipt.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2962
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/forensic_evidence.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3172
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/pep_receipt.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2820
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/pep_request.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2217
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/policy_canonical_v1.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 7478
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/policy_decision.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2442
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/test_acceptance_gates.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1498
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/test_brain_envelope.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 2158
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/test_bridge_fallback.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1649
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/test_canonical_event.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 2309
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/test_core_routing.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1356
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/test_detection_result.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1364
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/test_detection_scan.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1725
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/test_enforcement_path.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 2360
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/test_enforcement_pipeline.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1894
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/test_enforcement_receipt.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1714
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/test_forensic_evidence.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 2121
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/test_pep_receipt.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1701
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/test_pep_request.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 2350
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/test_policy_decision.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1589
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/test_py_fallback_contract.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 2532
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/test_tier_routing.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1830
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/tier_routing.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2069
+    },
+    {
+      "path": "release/T20-final/6c94b47/brain/windows_brain.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 52776
+    },
+    {
+      "path": "release/T20-final/6c94b47/build.zig",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 15628
+    },
+    {
+      "path": "release/T20-final/6c94b47/config/Rules.json",
+      "class": "canonical-config",
+      "role": "config-data",
+      "size": 8731
+    },
+    {
+      "path": "release/T20-final/6c94b47/configs/canary_tests.json",
+      "class": "canonical-config",
+      "role": "config-data",
+      "size": 5476
+    },
+    {
+      "path": "release/T20-final/6c94b47/configs/policies.json",
+      "class": "canonical-config",
+      "role": "config-data",
+      "size": 3367
+    },
+    {
+      "path": "release/T20-final/6c94b47/configs/Rules.json",
+      "class": "canonical-config",
+      "role": "config-data",
+      "size": 8731
+    },
+    {
+      "path": "release/T20-final/6c94b47/installer/aegis.nsi",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 5439
+    },
+    {
+      "path": "release/T20-final/6c94b47/KNOWN_LIMITATIONS.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1515
+    },
+    {
+      "path": "release/T20-final/6c94b47/requirements.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 528
+    },
+    {
+      "path": "release/T20-final/6c94b47/ROLLBACK.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 501
+    },
+    {
+      "path": "release/T20-final/6c94b47/SBOM.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 27744
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/_probe_nose_proc.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 627
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/add_web_evidence.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1631
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis.bat",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 116
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4472
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis_alerts.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6053
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis_api.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5517
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis_block.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4114
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis_console.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 66449
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis_console_pro.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 12100
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis_daemon.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 34249
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis_defcon.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5432
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis_event_gen.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 9167
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis_graph.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6359
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis_metrics.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 7648
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis_notifier.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 8455
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis_open.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 38294
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis_rules.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 8905
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis_status.bat",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1245
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis_status.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6796
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/aegis_unblock.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3312
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/analyze_existing.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1836
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/analyze_vectors.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1703
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/attack_demo.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5182
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/boot-sequence.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5531
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/build_all.bat",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 8820
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/build_and_check.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1948
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/build_drivers.bat",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 10989
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/build_wfp_user_bridge.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4136
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/c1_e5_sidecar_proof.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 42922
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/check_brain.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 418
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/check_evidence.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 707
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/check_summary.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 7811
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/check_vec.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 746
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/clean_aegis.bat",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 12656
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/cleanup_stale_aegis_firewall.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3226
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/create_test_vectors.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 9031
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/Dashboard.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 11425
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/deploy_wfp_driver_20261024.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 11722
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/diag_aegis_dirs.bat",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 3378
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/diag_deep.bat",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 7892
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/doc_checker.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 11951
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5-clean-host.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 7199
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5-o2-remote-sink.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 409
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_arbiter_handback.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2874
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_arbiter_redeploy.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3426
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_arbiter_swap_test.ps1",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3062
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_arbiter_swap_verified.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6665
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_cdb_repro.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2355
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_cdb_repro2.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2427
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_deploy_abi_set.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4431
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_driver_swap.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2827
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_driver_swap_resume.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4364
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_eventlog_probe.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1032
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_localdumps_repro.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2784
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_nose_parent_probe.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1740
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_o2_deploy_candidate.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 7655
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_o2_direction_verified.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 16369
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_o2_exit_diagnostic.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 13756
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_o2_functional_proof.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6830
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_o2_payload_offset_proof.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 11336
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_o2_remote_tcp_sink.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2982
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_o2_rollback_candidate.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3876
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_outbound_probe.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5978
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_pe_export_diff.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4033
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_repro_crash.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2053
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_rollback_daemon.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 972
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/e5_wer_dump.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2254
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/fim_rule_canary_scan.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3368
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/gen_kali_22.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 11546
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/generate_detection_fixture_manifest.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5162
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/generate_phase8_lab_manifest.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 12957
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/generate_rule_qualification_matrix.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6483
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/install-boot-task.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3922
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/install_aegis.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 7923
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/install_drivers.bat",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 8338
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/kali_hostonly_probe.sh",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1080
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/kali_l7_benign_probe.sh",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 856
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/minifilter_service.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 9278
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/minifilter_sign.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 7544
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/ml_train.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 13019
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/package_release.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5116
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/pep_analysis.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2700
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/pipe_rule_canary_scan.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3406
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/pre_attack_readiness_scan.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5859
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/process_rule_canary_scan.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3536
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/project2_runtime_gate.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4502
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/rb021_current_source_preflight.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 7641
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/read_vectors.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 664
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/release_package.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1151
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/reload_rules_control.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1952
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_22rules_kit.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4651
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_aegis.bat",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 5878
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_control_receipt_probe.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2269
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_controlled_proof.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2883
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_eight_groups_safe.cmd",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 110
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_eight_groups_safe.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6980
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_etw_runtime_observe_only_proof.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3110
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_fim_real_observe_only_proof.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1636
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_fim_runtime_observe_only_proof.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4011
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_g2_dupfilter_proof.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 7332
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_host_production_preflight.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5283
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_lifecycle_recovery_proof.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 9000
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_observe_only_proof.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4109
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_phase8_lab_scenarios.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 16704
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_pipe_native_runtime_observe_only_proof.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6151
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_pipe_runtime_observe_only_proof.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3302
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_rule_matching_observe_only.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2663
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_rules_22_safe.cmd",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 106
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_rules_22_safe.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3271
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_synthetic_detection_adapters.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4821
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_vmware_lab_preflight.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4048
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_wfp_hostonly_observe_only.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2210
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_wfp_l4_observe_only_proof.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 13324
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/run_wfp_phase10_preflight.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3904
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/setup_aegis.bat",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 3252
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/sign_wfp_driver_20261024.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2707
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/stop_aegis.bat",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 766
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/summary_detection_path.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5729
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/validate_detection_fixture_manifest.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2620
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/validate_operator_cli.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1103
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/validate_phase8_lab_manifest.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 10346
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/verify_release.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5546
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/wdk_build_minifilter.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 8831
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/wdk_build_production.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 13296
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/wfp_s6_cleanup.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3748
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/wfp_service.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5673
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/wfp_sign.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6802
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/wfp_stale_evidence.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 8628
+    },
+    {
+      "path": "release/T20-final/6c94b47/scripts/windows_host_verification.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6346
+    },
+    {
+      "path": "release/T20-final/6c94b47/SHA256SUMS",
+      "class": "unclassified",
+      "role": "other",
+      "size": 24149
+    },
+    {
+      "path": "release/T20-final/6c94b47/signatures.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 552
+    },
+    {
+      "path": "release/T20-final/6c94b47/tools/aegisctl/__init__.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1156
+    },
+    {
+      "path": "release/T20-final/6c94b47/tools/aegisctl/api/__init__.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 33
+    },
+    {
+      "path": "release/T20-final/6c94b47/tools/aegisctl/api/control_api.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 70486
+    },
+    {
+      "path": "release/T20-final/6c94b47/tools/aegisctl/client.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 7876
+    },
+    {
+      "path": "release/T20-final/6c94b47/tools/aegisctl/components.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 9275
+    },
+    {
+      "path": "release/T20-final/6c94b47/tools/aegisctl/config.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3399
+    },
+    {
+      "path": "release/T20-final/6c94b47/tools/aegisctl/console.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 10828
+    },
+    {
+      "path": "release/T20-final/6c94b47/tools/aegisctl/contracts.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5974
+    },
+    {
+      "path": "release/T20-final/6c94b47/tools/aegisctl/envelope.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1469
+    },
+    {
+      "path": "release/T20-final/6c94b47/tools/aegisctl/fp_feedback.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4448
+    },
+    {
+      "path": "release/T20-final/6c94b47/tools/aegisctl/graph.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6560
+    },
+    {
+      "path": "release/T20-final/6c94b47/tools/aegisctl/utils.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5881
+    },
+    {
+      "path": "release/T20-final/6c94b47/tools/aegisctl/web_dashboard/app.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 57398
+    },
+    {
+      "path": "release/T20-final/6c94b47/tools/aegisctl.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 124776
+    },
+    {
+      "path": "release/T20-final/6c94b47/tools/upgrade_rollback.py",
       "class": "canonical-source",
       "role": "source",
       "size": 8482
@@ -15480,7 +17376,7 @@
       "path": "SECURITY.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2286
+      "size": 2575
     },
     {
       "path": "shared/__init__.py",
@@ -15612,13 +17508,13 @@
       "path": "shared/wire/wire_codec.h",
       "class": "canonical-source",
       "role": "source",
-      "size": 25387
+      "size": 25611
     },
     {
       "path": "shared/wire/wire_codec.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 27847
+      "size": 28162
     },
     {
       "path": "shield/Cargo.toml",
@@ -15810,7 +17706,7 @@
       "path": "src/contract/wire_event.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 17462
+      "size": 18005
     },
     {
       "path": "src/control/audit.zig",
@@ -17478,7 +19374,7 @@
       "path": "SYSTEM_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 24686
+      "size": 24773
     },
     {
       "path": "tests/__init__.py",
@@ -17526,7 +19422,7 @@
       "path": "tests/brain/test_canonical_event_v3.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 3596
+      "size": 4173
     },
     {
       "path": "tests/brain/test_cython_prefilter.py",
@@ -17760,7 +19656,7 @@
       "path": "tests/contracts/test_payload_envelope_v3.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 13659
+      "size": 14173
     },
     {
       "path": "tests/contracts/test_pep_abi_layout.py",
@@ -17778,7 +19674,7 @@
       "path": "tests/contracts/wire_codec_v3_cpp_check.cpp",
       "class": "canonical-source",
       "role": "source",
-      "size": 13006
+      "size": 13684
     },
     {
       "path": "tests/cython/profile_brain_hotspot.py",
@@ -18132,7 +20028,7 @@
       "path": "tests/release/test_vr_truth.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 5586
+      "size": 6540
     },
     {
       "path": "tests/reliability/test_t15_reliability_config.py",
@@ -19122,7 +21018,7 @@
       "path": "tools/final_audit.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 49629
+      "size": 49953
     },
     {
       "path": "tools/final_regression.py",
@@ -19605,5 +21501,5 @@
       "size": 624
     }
   ],
-  "source_commit": "aa3b7b0"
+  "source_commit": "3e7e591"
 }
