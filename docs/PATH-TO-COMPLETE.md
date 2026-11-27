@@ -18,6 +18,8 @@ For the short decision card — what is blocked versus what can proceed now — 
 | Issue hygiene | #47–#54 all have explicit status comments; #55 is the STOP-THE-LINE issue for the mid-window runtime swap; no skip/xfail/relaxation added |
 | Verification at build source `c01e809` | `OK - 691 artifacts ... source_commit=c01e809`; E2 proofs in `analysis/current-head/AEGIS-004A-CODEC-STRICT-E2-20261128.md`, `analysis/current-head/AEGIS-008-SENSOR-E2-20261128.md` and `analysis/current-head/AEGIS-003-HEALTH-ADDITIVE-E2-20261128.md`, E2 plus narrow private-pipe E3 proof in `analysis/current-head/AEGIS-004B-V1-GATES-E2E3-20261128.md`, and the owner-delegated cryptographic release-record proof in `analysis/current-head/RELEASE-SIGNATURE-C01E809-20261128.md`; `final_audit.py --check` with owner anchor = `NOT SHIPPABLE (1/6 gates open: soak_24h)` after the owner-delegated signature at `release/T20-final/128c7f5`; no waiver or gate change. Earlier `aa3b7b0`, `3e7e591`, `3c78c96` and `473b3fe` records are HISTORICAL at this source |
 
+| CI reconciliation | Both workflows green at `e20f46f` (46056163773/46056163713), `9aef957` (46057895696/46057895645), `128c7f5` (46063152181/46063152110) and `f5c9b1a` (46065310283/46065310315). The `6de0184` AEGIS CI failure was a records-level invalid evidence level, fixed before `e20f46f`; see `analysis/current-head/CI-RECORDS-CLOSEOUT-20261128.md`. Unpushed source/rebaseline commits have no CI run and are not credited. |
+
 The full non-host pytest at `c01e809` is `1519 passed, 1 skipped, 18 deselected, 27 subtests passed in 181.42s (0:03:01)`. It is **E2** only: it excludes `host_live` tests and `tests/test_e2e.py`; it is not a host, soak, signature or E7 proof.
 
 ## 2. Remaining inputs that are not in the agent's authority

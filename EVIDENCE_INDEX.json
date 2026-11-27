@@ -12287,6 +12287,37 @@
       "status_basis": "Tracked patch record with exact commands and results at build source 3c78c96."
     },
     {
+      "id": "CI-RECORDS-CLOSEOUT-20261128",
+      "head_sha": "c01e8091995e3afb9e93e48ea3bd1d7cb6ae5cce",
+      "timestamp": "2026-11-28",
+      "title": "CI reconciliation for pushed AEGIS records commits at c01e809",
+      "level": "E2",
+      "component": "GitHub Actions -> read-only run consumption -> records truth surfaces",
+      "flow_id": "pushed records commit -> AEGIS CI + Host Regression -> verbatim run IDs -> records closeout",
+      "description": "Read-only reconciliation of CI outcomes: 6de0184 AEGIS CI run 46060680923 failed only because EVIDENCE_INDEX still held the invalid composite level E2 + narrow E3 for AEGIS-004B; Host Regression run 46060680916 was success. The records-level defect was fixed to E2 before e20f46f. Both workflows are success at e20f46f (46056163773/46056163713), 9aef957 (46057895696/46057895645), 128c7f5 (46063152181/46063152110) and f5c9b1a (46065310283/46065310315). No CI PASS is claimed for unpushed source/rebaseline commits; no workflow, threshold, verdict or test was changed.",
+      "files_verified": [
+        "analysis/current-head/CI-RECORDS-CLOSEOUT-20261128.md",
+        "EVIDENCE_INDEX.json",
+        "release/release-status.json",
+        "docs/START-HERE.md",
+        "docs/PATH-TO-COMPLETE.md"
+      ],
+      "tests": [
+        "gh run list --commit <full sha> --json workflowName,status,conclusion,databaseId -> run IDs and conclusions above",
+        "gh run view 46060680923 --log-failed -> one records-level evidence-level assertion failure, not a source/test regression",
+        "python scripts/check_summary.py -> SUMMARY_VALID after the E2_count rebaseline"
+      ],
+      "result": "PASS_E2",
+      "finding": "Repository-side CI bookkeeping is complete: all pushed records commits from e20f46f onward have both workflows green and the earlier 6de0184 failure is diagnosed as records-only and resolved. This does not close soak_24h and creates no E5/E6/E7 claim.",
+      "evidence_artifact": "analysis/current-head/CI-RECORDS-CLOSEOUT-20261128.md",
+      "limitations": [
+        "CI green is E1/E2 verification only, not host E5/E6/E7 or soak evidence.",
+        "Unpushed source/rebaseline commits have no CI runs and are not credited with a CI PASS."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Verbatim GitHub Actions run IDs and conclusions; historical failure cause inspected in the failed-step log."
+    },
+    {
       "id": "RELEASE-SIGNATURE-C01E809-20261128",
       "head_sha": "c01e8091995e3afb9e93e48ea3bd1d7cb6ae5cce",
       "timestamp": "2026-11-28",
@@ -19137,7 +19168,7 @@
   "evidence_level_summary": {
     "E0_count": 5,
     "E1_count": 55,
-    "E2_count": 177,
+    "E2_count": 178,
     "E3_count": 19,
     "E4_count": 5,
     "E5_count": 126,

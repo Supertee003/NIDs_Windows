@@ -40,6 +40,7 @@ This page is an onboarding index, not a new proof. It points to the current trut
 - `python -m pytest -q tests/ --ignore=tests/test_e2e.py -m "not host_live"` → at `c01e809`: `1519 passed, 1 skipped, 18 deselected, 27 subtests passed in 181.42s (0:03:01)`; E2 only, not a host/soak/signature proof.
 - `python tools/sign_release.py --verify --dir release/T20-final/128c7f5` → `PASS` for the owner-delegated current-source signature (`EBE91BB403BFF248...`).
 - `python tools/final_audit.py --check` with the owner anchor → `NOT SHIPPABLE (1/6 gates open: soak_24h)` after the owner-delegated signature at `128c7f5`; T20 drift is reverted after every check.
+- CI reconciliation (`analysis/current-head/CI-RECORDS-CLOSEOUT-20261128.md`): both workflows green at `e20f46f`, `9aef957`, `128c7f5` and `f5c9b1a`; the earlier `6de0184` AEGIS CI failure was a records-level evidence-level defect, fixed before `e20f46f`. Unpushed source/rebaseline commits have no CI run and are not credited.
 
 ## 4. Hard rules until a valid current-source soak PASS exists
 
