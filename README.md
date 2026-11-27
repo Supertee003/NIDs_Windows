@@ -96,33 +96,15 @@ authoritative MITRE ATT&CK mapping in this repository. Details:
 [23-row current-source matrix](docs/portfolio/DETECTION_MATRIX_CURRENT.md), and
 [source audit](analysis/current-head/SOURCE_AUDIT-20261123.md).
 
-### Project 2 Runtime Gate
+### Operator surfaces and preflight
 
-Before starting any Kali qualification probe, run the single fail-closed preflight:
+AEGIS provides one unified operator control surface backed by the authenticated
+Zig control daemon; the operator surfaces do not create a second runtime
+authority. The fail-closed preflight, exact commands and state-reading rules
+live in [`docs/operations/OPERATOR_COMMANDS.md`](docs/operations/OPERATOR_COMMANDS.md),
+and detailed build/run steps in [`docs/operations/QUICK_START.md`](docs/operations/QUICK_START.md).
 
-```powershell
-powershell -ExecutionPolicy Bypass `
-  -File .\scripts\project2_runtime_gate.ps1
-```
-
-The gate writes health, readiness, snapshot, enforcement-status, and a result receipt under `admin-evidence`. It passes only when the daemon is `RUNNING`, `degraded=false`, all 23 rules are active, forensic verification is true, the Go Nose worker is connected, and enforcement remains `detection-only` with `prevention_gate=closed`. If it fails, do not start the Kali probes.
-
-### Unified Command Control Center
-
-AEGIS provides one unified operator control surface backed by the
-authenticated Zig control daemon. The operator surfaces do not create a
-second runtime authority.
-
-Use the following commands from the repository root:
-
-```powershell
-python tools\aegisctl.py snapshot
-python scripts\aegis_console_pro.py --role operator
-python -m tools.aegisctl.web_dashboard.app   # http://127.0.0.1:5000/
-python scripts\aegis_console.py --mode dashboard
-```
-
-The `v1.1` release-gate operator state is:
+The **historical `v1.1` release-gate operator state** (not the current board) was:
 
 | Area | Status |
 |---|---|
@@ -496,14 +478,8 @@ Do not mix binaries from `Program Files`, an old release bundle and the current 
 
 Start the current daemon using the project’s documented service or development start procedure. Do not start multiple copies. The Zig daemon must own the control pipe and worker lifecycle.
 
-Verify the runtime through the control plane:
-
-```powershell
-python tools\aegisctl.py status
-python tools\aegisctl.py health
-python tools\aegisctl.py diagnose
-```
-
+Verify the runtime through the control plane using the commands in
+[`docs/operations/OPERATOR_COMMANDS.md`](docs/operations/OPERATOR_COMMANDS.md).
 A healthy observe-only system should expose the state of the runtime, worker readiness, data-plane counters, forensic status, WFP capability, FIM readiness, and the prevention gate. The expected safe posture is:
 
 ```text
@@ -519,19 +495,9 @@ receipt_required      = true
 
 ### CLI
 
-The CLI is the most reliable interface for engineering and automation:
-
-```powershell
-python tools\aegisctl.py status --json
-python tools\aegisctl.py health --json
-python tools\aegisctl.py metrics
-python tools\aegisctl.py rules list
-python tools\aegisctl.py rules validate
-python tools\aegisctl.py events count
-python tools\aegisctl.py events tail
-python tools\aegisctl.py incidents
-```
-
+The CLI is the most reliable interface for engineering and automation; the exact
+status, health, rule and event commands are in
+[`docs/operations/OPERATOR_COMMANDS.md`](docs/operations/OPERATOR_COMMANDS.md).
 Use the JSON forms in automation. Human-readable forms are intended for operators during a lab session.
 
 ### Web dashboard

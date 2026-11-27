@@ -65,7 +65,11 @@ Additional keys emitted by `src/control/state_machine.zig`:
 
 Adding these fields is a **source slice**, not a documentation edit. It would advance
 the build source and require fresh E3/E4/E5 proof; it is therefore out of this
-records-only patch.
+records-only patch. Exact current-source line locations, a no-ABI additive JSON
+patch skeleton and the state-vocabulary boundary are recorded in
+[`HEALTH-KERNEL-E1-AUDIT`](../../analysis/current-head/HEALTH-KERNEL-E1-AUDIT-AA3B7B0-20261128.md);
+source execution is pending the owner decision in
+[`SOURCE-SLICE-DECISIONS`](../SOURCE-SLICE-DECISIONS.md).
 
 ## 4. Component families
 

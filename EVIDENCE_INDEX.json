@@ -12106,6 +12106,112 @@
       "status_basis": "Tracked documents and additive release-status fields; checks reproducible with the listed commands."
     },
     {
+      "id": "SENSOR-COVERAGE-E1-AUDIT-AA3B7B0-20261128",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-28",
+      "title": "Go Nose sensor coverage — E1 source audit and patch-transaction skeleton",
+      "level": "E1",
+      "component": "nose / acquisition",
+      "flow_id": "network frame -> Go Nose decode -> v3 envelope -> pipe frame",
+      "description": "Read-only source inspection at exact build source aa3b7b0. Maps implemented vs hermetic-E2 vs host-proven behavior for length checks, VLAN/QinQ, IPv6 extension headers, captured/original truncation, BPF/loopback, sendWire, reconnect, shutdown and counters. Records concrete gaps and a PATCH-ID skeleton; no source file, gate, verdict or health label was changed.",
+      "files_verified": [
+        "analysis/current-head/SENSOR-COVERAGE-E1-AUDIT-AA3B7B0-20261128.md",
+        "nose/capture.go",
+        "nose/capture_hermetic_test.go",
+        "nose/capture_visibility_test.go",
+        "nose/pipe_writer.go",
+        "nose/pipe_writer_test.go",
+        "nose/payload_v3_test.go",
+        "docs/portfolio/SENSOR_COVERAGE.md"
+      ],
+      "tests": [
+        "read-only git diff aa3b7b0 -- nose -> empty",
+        "python scripts/doc_checker.py -> 0 FAIL",
+        "python -m pytest tests/docs -q -> 53 passed"
+      ],
+      "result": "PASS_E1",
+      "finding": "Go Nose has narrow hermetic E2 for BPF selection, basic decode and truncation envelopes; VLAN/QinQ decode, IPv6 extension chains, short-write/reconnect framing and goroutine-leak proof are absent. Host visibility remains NOT_PROVEN at aa3b7b0.",
+      "evidence_artifact": "analysis/current-head/SENSOR-COVERAGE-E1-AUDIT-AA3B7B0-20261128.md",
+      "limitations": [
+        "E1 source inspection only; no fresh Go test run was added in this records patch.",
+        "No host, Npcap, pipe or finalizer action was performed.",
+        "The proposed source slice was deliberately not applied because it would move the build source and regress the release_signature gate."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Tracked analysis record with exact file:line locations at the current build source."
+    },
+    {
+      "id": "CODEC-VALIDATION-E1-AUDIT-AA3B7B0-20261128",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-28",
+      "title": "Canonical event / wire codec validation — E1 source audit",
+      "level": "E1",
+      "component": "contracts / codecs",
+      "flow_id": "canonical frame -> decode/validate -> reject counter -> evidence",
+      "description": "Read-only source inspection at aa3b7b0. Confirms live Zig, Go, pipe, C++ and Python exact-length rules and reject counters; records four concrete divergences: Zig legacy WEV1 trailing-byte acceptance, partial provenance tuple accepted by Go/C++/Python/brain, missing v1 field gates in C++/reference Python, and unpinned short-write/reject-counter seams. Includes a no-ABI patch-transaction skeleton; no source file was changed.",
+      "files_verified": [
+        "analysis/current-head/CODEC-VALIDATION-E1-AUDIT-AA3B7B0-20261128.md",
+        "src/contract/canonical_event.zig",
+        "src/contract/wire_event.zig",
+        "src/capture/nose_pipe_reader.zig",
+        "nose/canonical.go",
+        "nose/pipe_writer_test.go",
+        "shared/wire/wire_codec.h",
+        "shared/wire/wire_codec.py",
+        "brain/canonical_event.py",
+        "shared/protocol/wire_v3.md"
+      ],
+      "tests": [
+        "python scripts/doc_checker.py -> 0 FAIL",
+        "python scripts/check_summary.py -> SUMMARY_VALID",
+        "python tools/truth.py verify -> TRUTH_VALID @ aa3b7b0"
+      ],
+      "result": "PASS_E1",
+      "finding": "Live decode paths enforce exact lengths and reject malformed frames; four validation-only divergences remain and are closable without ABI or wire change.",
+      "evidence_artifact": "analysis/current-head/CODEC-VALIDATION-E1-AUDIT-AA3B7B0-20261128.md",
+      "limitations": [
+        "E1 source inspection only; no fresh codec test run was added in this records patch.",
+        "The proposed source slice was deliberately not applied because it would move build source and regress release_signature."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Tracked analysis record with exact file:line locations at the current build source."
+    },
+    {
+      "id": "HEALTH-KERNEL-E1-AUDIT-AA3B7B0-20261128",
+      "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
+      "timestamp": "2026-11-28",
+      "title": "Runtime health and kernel lifecycle — E1 source audit",
+      "level": "E1",
+      "component": "control / health + kernel lifecycle",
+      "flow_id": "health fact -> state machine -> JSON -> operator display; driver load -> telemetry -> unload -> cleanup verification",
+      "description": "Read-only source inspection at aa3b7b0. Confirms health fields reason (worker-scoped only), last_transition, impact, recovery_state and UNKNOWN are absent or partial at exact source lines; records a no-ABI additive JSON patch skeleton that does not change the state vocabulary. Confirms kernel WFP/minifilter lifecycle source and fail-open classify/dispatch, with load/unload/cleanup/signature/full-kernel IDS still NOT_PROVEN. No source, host, driver or service action was performed.",
+      "files_verified": [
+        "analysis/current-head/HEALTH-KERNEL-E1-AUDIT-AA3B7B0-20261128.md",
+        "src/control/state_machine.zig",
+        "src/control/handler_registry.zig",
+        "src/pipeline/runtime_state.zig",
+        "docs/runtime/HEALTH_MODEL.md",
+        "docs/runtime/KERNEL_LIFECYCLE.md",
+        "drivers/wfp_callout/aegis_wfp.c",
+        "drivers/minifilter/aegis_minifilter.c"
+      ],
+      "tests": [
+        "python scripts/doc_checker.py -> 0 FAIL",
+        "python scripts/check_summary.py -> SUMMARY_VALID",
+        "python tools/truth.py verify -> TRUTH_VALID @ aa3b7b0"
+      ],
+      "result": "PASS_E1",
+      "finding": "AEGIS-003 additive health JSON fields are E2-only and require fresh E3/E4/E5 before a DONE claim; adding UNKNOWN is an owner-level contract revision. AEGIS-009 kernel lifecycle cannot be closed by E2 and its source remains frozen under #47/#50 STOP-THE-LINE.",
+      "evidence_artifact": "analysis/current-head/HEALTH-KERNEL-E1-AUDIT-AA3B7B0-20261128.md",
+      "limitations": [
+        "E1 source inspection only; no fresh Zig/host test was added in this records patch.",
+        "No host, driver, service or finalizer action was performed.",
+        "The proposed source slices were deliberately not applied because they move build source, regress release_signature, and #47/#50 are STOP-THE-LINE frozen."
+      ],
+      "status": "RESOLVED",
+      "status_basis": "Tracked analysis record with exact file:line locations at the current build source."
+    },
+    {
       "id": "PIPE-READER-SHUTDOWN-E5-AA3B7B0-20261126",
       "head_sha": "aa3b7b0161e425e54155d5767737bffcde7939b5",
       "timestamp": "2026-11-26",
@@ -18844,7 +18950,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 5,
-    "E1_count": 52,
+    "E1_count": 55,
     "E2_count": 172,
     "E3_count": 19,
     "E4_count": 5,

@@ -30,6 +30,9 @@
 
 `docs/CANONICAL_EVENT_SCHEMA.md` and `docs/architecture/CONTRACTS.md` are historical
 or superseded views; see `docs/architecture/DEPRECATION_MAP.md` and `CONTRACT_MAP.json`.
+Current-source validation findings: [`CODEC-VALIDATION-E1-AUDIT`](../../analysis/current-head/CODEC-VALIDATION-E1-AUDIT-AA3B7B0-20261128.md)
+and [`GOLDEN_VECTORS.md`](GOLDEN_VECTORS.md); source fixes remain an explicit
+[`SOURCE-SLICE-DECISIONS`](../SOURCE-SLICE-DECISIONS.md) decision, not an implicit doc edit.
 
 ## Boundary reminder
 

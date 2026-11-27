@@ -1,8 +1,10 @@
 # Windows deployment compatibility — declared vs tested
 
-> Scope: build source `4dd3393` (HISTORICAL at current source `aa3b7b0`). AEGIS-PLAN-019.
-> This page separates a declared target from a tested OS matrix. No OS version
-> was tested while writing it.
+> Scope: **current build source `aa3b7b0`** (AEGIS-PLAN-019). The matrix below
+> was rebased from its original `4dd3393` scope; the original page is
+> HISTORICAL. This page separates a declared target from a tested OS matrix.
+> No new OS test was performed while writing this page — a declare-only row is
+> never a PASS row.
 
 ## 1. Declared target
 

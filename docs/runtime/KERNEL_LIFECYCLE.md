@@ -4,6 +4,12 @@
 > This is a **contract and runbook index**, not a claim that a driver was loaded
 > in this session. The agent session is non-elevated; no kernel object was
 > touched while writing this page.
+>
+> Current-source source-line findings for WFP and minifilter lifecycle are in
+> [`HEALTH-KERNEL-E1-AUDIT`](../../analysis/current-head/HEALTH-KERNEL-E1-AUDIT-AA3B7B0-20261128.md);
+> its source work stays frozen under #47/#50 pending the owner decision in
+> [`SOURCE-SLICE-DECISIONS`](../SOURCE-SLICE-DECISIONS.md). No load, unload,
+> cleanup or signature PASS is claimed here.
 
 ## 1. Canonical kernel surface
 

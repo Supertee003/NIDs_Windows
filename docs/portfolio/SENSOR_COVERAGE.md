@@ -9,6 +9,10 @@
 > At `aa3b7b0` the measured set is a narrow loopback E6 (R9006), a narrow R2003 E5 (one
 > positive, two negative controls), narrow S2/S3 E5 and a controlled 100 conn/s loopback E5.
 > VLAN/QinQ, IPv6 extension headers, the full rule matrix and full Windows E5 remain NOT_PROVEN.
+> Current-source Go-specific findings and the exact E2 / host-proof split are in
+> [`SENSOR-COVERAGE-E1-AUDIT`](../../analysis/current-head/SENSOR-COVERAGE-E1-AUDIT-AA3B7B0-20261128.md);
+> its source slice is pending the owner decision recorded in
+> [`SOURCE-SLICE-DECISIONS`](../SOURCE-SLICE-DECISIONS.md). No host row is promoted here.
 
 ## 1. Coverage matrix
 
