@@ -276,6 +276,12 @@ def validate_v3_envelope(ev: CanonicalEvent) -> None:
         if (ev.capture_sequence or ev.producer_epoch or
                 ev.producer_generation or ev.interface_id):
             raise ValueError("v3 provenance without valid flag")
+    else:
+        # V3-PRODUCER-IDENTITY-001: parity with Zig ingress; a partial tuple
+        # cannot be deduplicated safely.
+        if not (ev.capture_sequence and ev.producer_epoch and
+                ev.producer_generation and ev.interface_id):
+            raise ValueError("v3 partial provenance tuple")
 
 
 def encode_v3(ev: CanonicalEvent) -> bytes:

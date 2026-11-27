@@ -460,6 +460,10 @@ inline bool aegis_v3_envelope_valid(const V3Envelope& env, const uint8_t* payloa
     if ((env.flags & V3_FLAG_PROVENANCE_VALID) == 0) {
         if (env.capture_sequence != 0 || env.producer_epoch != 0 ||
             env.producer_generation != 0 || env.interface_id != 0) return false;
+    } else {
+        // V3-PRODUCER-IDENTITY-001: parity with Zig ingress.
+        if (env.capture_sequence == 0 || env.producer_epoch == 0 ||
+            env.producer_generation == 0 || env.interface_id == 0) return false;
     }
     return true;
 }

@@ -128,7 +128,8 @@ pub fn deserializeEvent(buf: []const u8) ?canonical.CanonicalEvent {
     if (header.payload_type != @intFromEnum(PayloadType.canonical_event)) return null;
     // Validate payload length matches expected canonical event payload size.
     if (header.payload_length != canonical.WIRE_PAYLOAD_SIZE) return null;
-    if (buf.len < WIRE_HEADER_SIZE + header.payload_length) return null;
+    // AUDIT-004: exact frame length — no ignored trailing bytes on this helper.
+    if (buf.len != WIRE_HEADER_SIZE + header.payload_length) return null;
 
     // Extract payload slice.
     const payload = buf[WIRE_HEADER_SIZE .. WIRE_HEADER_SIZE + header.payload_length];
@@ -343,38 +344,38 @@ test "STEP2: serializeEvent/deserializeEvent round-trip" {
 test "STEP2: deserializeEvent rejects wrong magic" {
     var event = canonical.create(.zig_core);
     var buf: [256]u8 = undefined;
-    _ = try serializeEvent(&buf, &event);
+    const written = try serializeEvent(&buf, &event);
 
     buf[0] = 0x00; // Corrupt magic
-    try std.testing.expect(deserializeEvent(&buf) == null);
+    try std.testing.expect(deserializeEvent(buf[0..written]) == null);
 }
 
 test "STEP2: deserializeEvent rejects wrong version" {
     var event = canonical.create(.zig_core);
     var buf: [256]u8 = undefined;
-    _ = try serializeEvent(&buf, &event);
+    const written = try serializeEvent(&buf, &event);
 
     buf[4] = 99; // Corrupt version
-    try std.testing.expect(deserializeEvent(&buf) == null);
+    try std.testing.expect(deserializeEvent(buf[0..written]) == null);
 }
 
 test "STEP2: deserializeEvent rejects wrong payload_type" {
     var event = canonical.create(.zig_core);
     var buf: [256]u8 = undefined;
-    _ = try serializeEvent(&buf, &event);
+    const written = try serializeEvent(&buf, &event);
 
     buf[6] = 1; // payload_type = command (not event)
-    try std.testing.expect(deserializeEvent(&buf) == null);
+    try std.testing.expect(deserializeEvent(buf[0..written]) == null);
 }
 
 test "STEP2: deserializeEvent rejects corrupted CRC" {
     var event = canonical.create(.zig_core);
     var buf: [256]u8 = undefined;
-    _ = try serializeEvent(&buf, &event);
+    const written = try serializeEvent(&buf, &event);
 
     // Corrupt a payload byte (within canonical event, after header)
     buf[WIRE_HEADER_SIZE + 4] ^= 0xFF;
-    try std.testing.expect(deserializeEvent(&buf) == null);
+    try std.testing.expect(deserializeEvent(buf[0..written]) == null);
 }
 
 test "STEP2: deserializeEvent rejects short buffer" {
@@ -385,11 +386,19 @@ test "STEP2: deserializeEvent rejects short buffer" {
 test "STEP2: deserializeEvent rejects wrong payload_length" {
     var event = canonical.create(.zig_core);
     var buf: [256]u8 = undefined;
-    _ = try serializeEvent(&buf, &event);
+    const written = try serializeEvent(&buf, &event);
 
     // Corrupt payload_length to wrong value (e.g., 200 instead of 109)
     std.mem.writeInt(u32, buf[8..12], 200, .little);
-    try std.testing.expect(deserializeEvent(&buf) == null);
+    try std.testing.expect(deserializeEvent(buf[0..written]) == null);
+}
+
+test "AUDIT-004: deserializeEvent rejects trailing bytes" {
+    var event = canonical.create(.zig_core);
+    var buf: [256]u8 = undefined;
+    const written = try serializeEvent(&buf, &event);
+    try std.testing.expect(deserializeEvent(buf[0..written]) != null);
+    try std.testing.expect(deserializeEvent(buf[0 .. written + 1]) == null);
 }
 
 // ============================================================

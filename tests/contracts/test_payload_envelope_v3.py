@@ -412,3 +412,17 @@ def test_v2_vector_stays_metadata_only():
     assert e.version == 2
     assert e.payload_envelope is None
     assert e.payload_bytes == b""
+
+
+def test_v3_envelope_rejects_partial_provenance_tuple():
+    # V3-PRODUCER-IDENTITY-001: parity with Zig ingress and wire_v3.md.
+    import copy
+
+    base = _env_007()
+    validate_v3_envelope(base, PAYLOAD_007)
+    for field in ("capture_sequence", "producer_epoch",
+                  "producer_generation", "interface_id"):
+        env = copy.copy(base)
+        setattr(env, field, 0)
+        with pytest.raises(ValueError, match="partial provenance tuple"):
+            validate_v3_envelope(env, PAYLOAD_007)

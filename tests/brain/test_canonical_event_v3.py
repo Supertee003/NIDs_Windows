@@ -97,3 +97,17 @@ def test_brain_v3_vectors_match_the_reference_python_codec():
         assert brain.source_ip == reference.source_ip
         assert brain.dest_port == reference.dest_port
         assert brain.payload_bytes == reference.payload_bytes
+
+
+def test_brain_rejects_partial_provenance_tuple():
+    # V3-PRODUCER-IDENTITY-001: parity with Zig ingress and wire_v3.md.
+    from dataclasses import replace
+
+    ev = ce.decode(_vector("event_v3_007.bin"))
+    assert ev.payload_flags & ce.V3_FLAG_PROVENANCE_VALID
+    ce.validate_v3_envelope(ev)
+    for field in ("capture_sequence", "producer_epoch",
+                  "producer_generation", "interface_id"):
+        partial = replace(ev, **{field: 0})
+        with pytest.raises(ValueError, match="partial provenance tuple"):
+            ce.validate_v3_envelope(partial)

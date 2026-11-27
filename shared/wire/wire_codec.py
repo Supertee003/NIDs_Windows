@@ -162,6 +162,12 @@ def validate_v3_envelope(env: PayloadEnvelope, payload: bytes) -> None:
         if (env.capture_sequence or env.producer_epoch or
                 env.producer_generation or env.interface_id):
             raise ValueError("v3 provenance without valid flag")
+    else:
+        # V3-PRODUCER-IDENTITY-001: parity with Zig ingress; a partial tuple
+        # cannot be deduplicated safely.
+        if not (env.capture_sequence and env.producer_epoch and
+                env.producer_generation and env.interface_id):
+            raise ValueError("v3 partial provenance tuple")
 
 
 class PayloadType(IntEnum):

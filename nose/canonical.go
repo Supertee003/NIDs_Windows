@@ -398,6 +398,13 @@ func (env *V3Envelope) Validate(payload []byte) error {
 			env.ProducerGeneration != 0 || env.InterfaceID != 0 {
 			return errors.New("canonical: v3 provenance without valid flag")
 		}
+	} else {
+		// V3-PRODUCER-IDENTITY-001: parity with Zig ingress. A partial tuple
+		// cannot be deduplicated safely, so it fails closed.
+		if env.CaptureSequence == 0 || env.ProducerEpoch == 0 ||
+			env.ProducerGeneration == 0 || env.InterfaceID == 0 {
+			return errors.New("canonical: v3 partial provenance tuple")
+		}
 	}
 	return nil
 }

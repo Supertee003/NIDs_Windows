@@ -190,6 +190,20 @@ void check_strict_rejections(const std::string& dir) {
         check(!accepted, c.what);
     }
 
+    // V3-PRODUCER-IDENTITY-001: a partial tuple with the provenance-valid
+    // flag still set must be rejected, matching Zig ingress. producer_epoch
+    // is frame-relative bytes 153..156 (envelope at 133, +20).
+    std::vector<uint8_t> partial = good;
+    std::memset(partial.data() + 153, 0, 4);
+    aegis::CanonicalEvent ev_partial;
+    aegis::V3Envelope env_partial;
+    const uint8_t* payload_partial = nullptr;
+    size_t payload_len_partial = 0;
+    check(!aegis::aegis_wire_decode_event_v3(
+              partial.data(), partial.size(), ev_partial, env_partial,
+              &payload_partial, &payload_len_partial),
+          "partial provenance tuple rejected");
+
     // Truncated transport frame (one byte short) must be rejected as well.
     std::vector<uint8_t> short_frame(good.begin(), good.end() - 1);
     aegis::CanonicalEvent ev;

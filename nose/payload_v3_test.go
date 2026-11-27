@@ -352,3 +352,28 @@ func TestCaptureAttachmentSemantics(t *testing.T) {
 		t.Fatalf("over-max frame must clamp and report truncated: env=%+v len=%d", env, len(payload))
 	}
 }
+
+// V3-PRODUCER-IDENTITY-001: Go must reject a partial tuple when the
+// provenance-valid flag is set, matching Zig ingress and wire_v3.md.
+func TestV3EnvelopeRejectsPartialProvenanceTuple(t *testing.T) {
+	base := envV3_007()
+	mutations := []struct {
+		name string
+		zero func(*V3Envelope)
+	}{
+		{"capture_sequence", func(e *V3Envelope) { e.CaptureSequence = 0 }},
+		{"producer_epoch", func(e *V3Envelope) { e.ProducerEpoch = 0 }},
+		{"producer_generation", func(e *V3Envelope) { e.ProducerGeneration = 0 }},
+		{"interface_id", func(e *V3Envelope) { e.InterfaceID = 0 }},
+	}
+	for _, tc := range mutations {
+		env := base
+		tc.zero(&env)
+		if err := env.Validate(payload007()); err == nil {
+			t.Fatalf("partial provenance tuple %s accepted", tc.name)
+		}
+	}
+	if err := base.Validate(payload007()); err != nil {
+		t.Fatalf("complete provenance tuple rejected: %v", err)
+	}
+}
