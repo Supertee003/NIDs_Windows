@@ -17,6 +17,7 @@ This page is an onboarding index, not a new proof. It points to the current trut
 6. `docs/DOCS_LIFECYCLE.md` and `analysis/historical/HISTORICAL-NAMESPACE.md` — what is frozen, archived or historical.
 7. `docs/PATH-TO-COMPLETE.md` — what remains, the three owner inputs required, and the exact closeout sequence. It is a plan, not new proof.
 8. `analysis/current-head/SOAK-225843-FINALIZER-FAIL-AA3B7B0-20261127.md` and `SOAK-VOID-LATE-FINALIZER-GAPS-FIRST-AA3B7B0-20261127.md` — the real finalizer verdicts (`FAIL`) and the STOP-THE-LINE runtime swap. Neither closes a gate.
+9. `docs/OWNER-ACTIONS.md` — the short card separating what still needs owner input from what the agent can do immediately.
 
 ## 2. Where development actually starts
 

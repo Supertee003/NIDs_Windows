@@ -5,7 +5,7 @@
 **BOARD:** **5/6 PASS — `soak_24h` OPEN — NOT SHIPPABLE**  
 **FINALIZER:** the real `D:\aegis-tmp\owner-soak-aa3b7b0-20261126-225843\result.json` was written at `2026-11-27T22:59:23+07:00` with **`verdict=FAIL`**, `check_exit=3`, `elapsed_hours=24.0`, 7 problems and `restore.verified=true` — it does **not** close `soak_24h`. **STOP-THE-LINE (#55): a stale finalizer from the void `214622` window had already restored its pre-soak binaries over the runtime of `225843` at `21:47:03`, so the window is VOID for current-source soak evidence regardless of verdict.**
 
-This page is a **plan and an owner-input checklist, not evidence**. It does not close a gate, create a signature, add E7, or change a verdict. It exists so that "make everything complete" has one unambiguous meaning: every item the repository side can do is already done; the remaining items require inputs that only the owner or the external SYSTEM finalizer can supply.
+For the short decision card — what is blocked versus what can proceed now — see `docs/OWNER-ACTIONS.md`. This page is a **plan and an owner-input checklist, not evidence**. It does not close a gate, create a signature, add E7, or change a verdict. It exists so that "make everything complete" has one unambiguous meaning: every item the repository side can do is already done; the remaining items require inputs that only the owner or the external SYSTEM finalizer can supply.
 
 ## 1. Already complete on the repository side
 
